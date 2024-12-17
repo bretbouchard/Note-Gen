@@ -47,6 +47,9 @@ The Note Sequence Generator is a specialized tool that works with scale degrees 
 
 ![Type Check](https://github.com/bretbouchard/Note-Gen/workflows/WORKFLOW-FILE/badge.svg)
 
+
+![example workflow](https://github.com/github/docs/actions/workflows/main.yml/badge.svg)
+
 ## Installation
 
 1. Clone the repository:
