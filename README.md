@@ -45,6 +45,8 @@ The Note Sequence Generator is a specialized tool that works with scale degrees 
 - **Language:** Python 3.8+
 - **Testing:** Pytest
 
+![Type Check](https://github.com/{bretbouchard}/{main}/workflows/Type%20Check/badge.svg)
+
 ## Installation
 
 1. Clone the repository:
