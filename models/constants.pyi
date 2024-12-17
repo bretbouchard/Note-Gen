@@ -1,3 +1,5 @@
+"""Module defining musical constants, including scale intervals."""
+
 from typing import Dict, List
 
 SCALE_INTERVALS: Dict[str, List[int]] = {

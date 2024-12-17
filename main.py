@@ -10,9 +10,14 @@ class ChordProgressionRequest(BaseModel):
     style: str = "basic"
     start_degree: Optional[int] = None
 
+class ScaleInfo(BaseModel):
+    root: str
+    scale: str
+
 class ChordProgressionGenerator(BaseModel):
     """Generator for chord progressions."""
     progression: List[ScaleDegree] = []  # Default to an empty list
+    scale_info: ScaleInfo
 
     def generate_progression(self, style: str = "basic", start_degree: Optional[int] = None) -> List[ScaleDegree]:
         """Generate a chord progression."""
@@ -35,7 +40,10 @@ class ChordProgressionGenerator(BaseModel):
 app = FastAPI()
 
 # Initialize your generators
-chord_generator = ChordProgressionGenerator()
+root_note = 'C'  # Example root note
+scale = 'major'  # Example scale type
+scale_info = ScaleInfo(root=root_note, scale=scale)
+chord_generator = ChordProgressionGenerator(scale_info=scale_info)
 
 @app.post("/generate_progression/")
 async def generate_progression(request: ChordProgressionRequest) -> List[ScaleDegree]:

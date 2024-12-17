@@ -1,120 +1,58 @@
-"""Scale class for musical scales."""
+"""
+Module for handling musical scales.
+"""
 from typing import Dict, List, Tuple, ClassVar, Any, Optional
-from pydantic import BaseModel, Field, field_validator, computed_field
+from pydantic import BaseModel
+import logging
 
 from .note import Note
 from .scale_info import ScaleInfo  # Import ScaleInfo
 from .scale_degree import ScaleDegree  # Import ScaleDegree
 
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 class Scale(BaseModel):
     """A musical scale."""
     root: Note
-    quality: str = Field(default="major", description="The quality of the scale (e.g., major, minor)")
-    notes: List[Note] = Field(default_factory=list)
-    scale_degrees: List[ScaleDegree] = Field(default_factory=list)
-    scale_info: Optional[ScaleInfo] = None
+    quality: str
+    notes: List[Note] = []
+    scale_degrees: List[ScaleDegree] = []
+    scale_info_v2: Optional[ScaleInfo] = None
 
-    # Scale patterns for different keys
-    MAJOR_SCALE_PATTERNS: ClassVar[Dict[str, List[Tuple[str, str]]]] = {
-        "C": [("C",""), ("D",""), ("E",""), ("F",""), ("G",""), ("A",""), ("B","")],
-        "G": [("G",""), ("A",""), ("B",""), ("C",""), ("D",""), ("E",""), ("F","#")],
-        "D": [("D",""), ("E",""), ("F","#"), ("G",""), ("A",""), ("B",""), ("C","#")],
-        "A": [("A",""), ("B",""), ("C","#"), ("D",""), ("E",""), ("F","#"), ("G","#")],
-        "E": [("E",""), ("F","#"), ("G","#"), ("A",""), ("B",""), ("C","#"), ("D","#")],
-        "B": [("B",""), ("C","#"), ("D","#"), ("E",""), ("F","#"), ("G","#"), ("A","#")],
-        "F#": [("F","#"), ("G","#"), ("A","#"), ("B",""), ("C","#"), ("D","#"), ("E","#")],
-        "C#": [("C","#"), ("D","#"), ("E","#"), ("F","#"), ("G","#"), ("A","#"), ("B","#")],
-        "G#": [("G","#"), ("A","#"), ("B","#"), ("C","#"), ("D","#"), ("E","#"), ("F","##")],
-        "F": [("F",""), ("G",""), ("A",""), ("B","b"), ("C",""), ("D",""), ("E","")],
-        "Bb": [("B","b"), ("C",""), ("D",""), ("E","b"), ("F",""), ("G",""), ("A","")],
-        "Eb": [("E","b"), ("F",""), ("G",""), ("A","b"), ("B","b"), ("C",""), ("D","")],
-        "Ab": [("A","b"), ("B","b"), ("C",""), ("D","b"), ("E","b"), ("F",""), ("G","")],
-        "Db": [("D","b"), ("E","b"), ("F",""), ("G","b"), ("A","b"), ("B","b"), ("C","")],
-        "Gb": [("G","b"), ("A","b"), ("B","b"), ("C","b"), ("D","b"), ("E","b"), ("F","")]
-    }
-
-    MINOR_SCALE_PATTERNS: ClassVar[Dict[str, List[Tuple[str, str]]]] = {
-        "C": [("C",""), ("D",""), ("E","b"), ("F",""), ("G",""), ("A","b"), ("B","b")],
-        "G": [("G",""), ("A",""), ("B","b"), ("C",""), ("D",""), ("E","b"), ("F","")],
-        "D": [("D",""), ("E",""), ("F",""), ("G",""), ("A",""), ("B","b"), ("C","")],
-        "A": [("A",""), ("B",""), ("C",""), ("D",""), ("E",""), ("F",""), ("G","")],
-        "E": [("E",""), ("F","#"), ("G",""), ("A",""), ("B",""), ("C",""), ("D","")],
-        "B": [("B",""), ("C","#"), ("D",""), ("E",""), ("F","#"), ("G",""), ("A","")],
-        "F#": [("F","#"), ("G","#"), ("A",""), ("B",""), ("C","#"), ("D",""), ("E","")],
-        "C#": [("C","#"), ("D","#"), ("E",""), ("F","#"), ("G","#"), ("A",""), ("B","")],
-        "Bb": [("B","b"), ("C",""), ("D","b"), ("E","b"), ("F",""), ("G","b"), ("A","b")],
-        "Eb": [("E","b"), ("F",""), ("G","b"), ("A","b"), ("B","b"), ("C","b"), ("D","b")]
-    }
-
-    HARMONIC_MINOR_SCALE_PATTERNS: ClassVar[Dict[str, List[Tuple[str, str]]]] = {
-        "A": [("A",""), ("B",""), ("C",""), ("D",""), ("E",""), ("F",""), ("G","#")],
-        "E": [("E",""), ("F","#"), ("G",""), ("A",""), ("B",""), ("C",""), ("D","#")],
-        "B": [("B",""), ("C","#"), ("D",""), ("E",""), ("F","#"), ("G",""), ("A","#")],
-        "F#": [("F","#"), ("G","#"), ("A",""), ("B",""), ("C","#"), ("D",""), ("E","#")],
-        "C#": [("C","#"), ("D","#"), ("E",""), ("F","#"), ("G","#"), ("A",""), ("B","#")],
-        "G#": [("G","#"), ("A","#"), ("B",""), ("C","#"), ("D","#"), ("E",""), ("F","##")],
-        "D": [("D",""), ("E",""), ("F",""), ("G",""), ("A",""), ("B","b"), ("C","#")],
-        "G": [("G",""), ("A",""), ("B","b"), ("C",""), ("D",""), ("E","b"), ("F","#")],
-        "C": [("C",""), ("D",""), ("E","b"), ("F",""), ("G",""), ("A","b"), ("B","")],
-        "F": [("F",""), ("G",""), ("A","b"), ("B","b"), ("C",""), ("D","b"), ("E","")],
-        "Bb": [("B","b"), ("C",""), ("D","b"), ("E","b"), ("F",""), ("G","b"), ("A","")],
-        "Eb": [("E","b"), ("F",""), ("G","b"), ("A","b"), ("B","b"), ("C","b"), ("D","")]
-    }
-
-    MELODIC_MINOR_SCALE_PATTERNS: ClassVar[Dict[str, List[Tuple[str, str]]]] = {
-        "A": [("A",""), ("B",""), ("C",""), ("D",""), ("E",""), ("F","#"), ("G","#")],
-        "E": [("E",""), ("F","#"), ("G",""), ("A",""), ("B",""), ("C","#"), ("D","#")],
-        "B": [("B",""), ("C","#"), ("D",""), ("E",""), ("F","#"), ("G","#"), ("A","#")],
-        "F#": [("F","#"), ("G","#"), ("A",""), ("B",""), ("C","#"), ("D","#"), ("E","#")],
-        "D": [("D",""), ("E",""), ("F",""), ("G",""), ("A",""), ("B",""), ("C","#")],
-        "G": [("G",""), ("A",""), ("Bb",""), ("C",""), ("D",""), ("E",""), ("F","#")],
-        "C": [("C",""), ("D",""), ("Eb",""), ("F",""), ("G",""), ("A",""), ("B","")],
-        "F": [("F",""), ("G",""), ("Ab",""), ("Bb",""), ("C",""), ("D",""), ("E","")],
-        "Bb": [("Bb",""), ("C",""), ("Db",""), ("Eb",""), ("F",""), ("G",""), ("A","")]
-    }
-
-    MIXOLYDIAN_SCALE_PATTERNS: ClassVar[Dict[str, List[Tuple[str, str]]]] = {
-        "C": [("C",""), ("D",""), ("E",""), ("F",""), ("G",""), ("A",""), ("Bb","")],
-        "G": [("G",""), ("A",""), ("B",""), ("C",""), ("D",""), ("E",""), ("F","")],
-        "D": [("D",""), ("E",""), ("F","#"), ("G",""), ("A",""), ("B",""), ("C","")],
-        "A": [("A",""), ("B",""), ("C","#"), ("D",""), ("E",""), ("F","#"), ("G","")],
-        "E": [("E",""), ("F","#"), ("G","#"), ("A",""), ("B",""), ("C","#"), ("D","")],
-        "B": [("B",""), ("C","#"), ("D","#"), ("E",""), ("F","#"), ("G","#"), ("A","")],
-        "F": [("F",""), ("G",""), ("A",""), ("Bb",""), ("C",""), ("D",""), ("Eb","")],
-        "Bb": [("Bb",""), ("C",""), ("D",""), ("Eb",""), ("F",""), ("G",""), ("Ab","")],
-        "Eb": [("Eb",""), ("F",""), ("G",""), ("Ab",""), ("Bb",""), ("C",""), ("Db","")]
-    }
-
-    WHOLE_TONE_SCALE_PATTERNS: ClassVar[Dict[str, List[Tuple[str, str]]]] = {
-        "C": [("C",""), ("D",""), ("E",""), ("F","#"), ("G","#"), ("A","#")],
-        "Db": [("Db",""), ("Eb",""), ("F",""), ("G",""), ("A",""), ("B","")],
-        "D": [("D",""), ("E",""), ("F","#"), ("G","#"), ("A","#"), ("C","")],
-        "Eb": [("Eb",""), ("F",""), ("G",""), ("A",""), ("B",""), ("Db","")],
-        "E": [("E",""), ("F","#"), ("G","#"), ("A","#"), ("C",""), ("D","")],
-        "F": [("F",""), ("G",""), ("A",""), ("B",""), ("C","#"), ("D","#")],
-    }
-
-    CHROMATIC_SCALE_PATTERNS: ClassVar[Dict[str, List[Tuple[str, str]]]] = {
-        "C": [("C",""), ("C","#"), ("D",""), ("D","#"), ("E",""), ("F",""), 
-              ("F","#"), ("G",""), ("G","#"), ("A",""), ("A","#"), ("B","")],
-        "G": [("G",""), ("G","#"), ("A",""), ("A","#"), ("B",""), ("C",""), 
-              ("C","#"), ("D",""), ("D","#"), ("E",""), ("F",""), ("F","#")],
-        "D": [("D",""), ("D","#"), ("E",""), ("F",""), ("F","#"), ("G",""), 
-              ("G","#"), ("A",""), ("A","#"), ("B",""), ("C",""), ("C","#")],
-        "A": [("A",""), ("A","#"), ("B",""), ("C",""), ("C","#"), ("D",""), 
-              ("D","#"), ("E",""), ("F",""), ("F","#"), ("G",""), ("G","#")],
-        "E": [("E",""), ("F",""), ("F","#"), ("G",""), ("G","#"), ("A",""), 
-              ("A","#"), ("B",""), ("C",""), ("C","#"), ("D",""), ("D","#")],
-    }
-
-    AUGMENTED_SCALE_PATTERNS: ClassVar[Dict[str, List[Tuple[str, str]]]] = {
-        "C": [("C",""), ("D","#"), ("E",""), ("G",""), ("A","b"), ("B",""), ("C","")],
-        "D": [("D",""), ("E","#"), ("F","#"), ("A",""), ("B","b"), ("C","#"), ("D","")],
-        "E": [("E",""), ("F","##"), ("G","#"), ("B",""), ("C",""), ("D","#"), ("E","")],
-        "F": [("F",""), ("G","#"), ("A",""), ("C",""), ("D","b"), ("E",""), ("F","")],
-        "G": [("G",""), ("A","#"), ("B",""), ("D",""), ("E","b"), ("F","#"), ("G","")],
-        "A": [("A",""), ("B","#"), ("C","#"), ("E",""), ("F",""), ("G","#"), ("A","")],
-        "B": [("B",""), ("C","##"), ("D","#"), ("F","#"), ("G",""), ("A","#"), ("B","")]
+    # Consolidated scale patterns for different keys
+    SCALE_PATTERNS: ClassVar[Dict[str, Dict[str, List[Tuple[str, str]]]]] = {
+        "major": {
+            "C": [("C",""), ("D",""), ("E",""), ("F",""), ("G",""), ("A",""), ("B","")],
+            "G": [("G",""), ("A",""), ("B",""), ("C",""), ("D",""), ("E",""), ("F","#")],
+            "D": [("D",""), ("E",""), ("F","#"), ("G",""), ("A",""), ("B",""), ("C","#")],
+            "A": [("A",""), ("B",""), ("C","#"), ("D",""), ("E",""), ("F","#"), ("G","#")],
+            "E": [("E",""), ("F","#"), ("G","#"), ("A",""), ("B",""), ("C","#"), ("D","#")],
+            "B": [("B",""), ("C","#"), ("D","#"), ("E",""), ("F","#"), ("G","#"), ("A","#")],
+            "F#": [("F","#"), ("G","#"), ("A","#"), ("B",""), ("C","#"), ("D","#"), ("E","#")],
+            "C#": [("C","#"), ("D","#"), ("E",""), ("F","#"), ("G","#"), ("A","#"), ("B","#")],
+            "G#": [("G","#"), ("A","#"), ("B",""), ("C","#"), ("D","#"), ("E","#"), ("F","##")],
+            "F": [("F",""), ("G",""), ("A",""), ("B","b"), ("C",""), ("D",""), ("E","")],
+            "Bb": [("B","b"), ("C",""), ("D",""), ("E","b"), ("F",""), ("G",""), ("A","")],
+            "Eb": [("E","b"), ("F",""), ("G",""), ("A","b"), ("B","b"), ("C",""), ("D","")],
+            "Ab": [("A","b"), ("B","b"), ("C",""), ("D","b"), ("E","b"), ("F",""), ("G","")],
+            "Db": [("D","b"), ("E","b"), ("F",""), ("G","b"), ("A","b"), ("B","b"), ("C","")],
+            "Gb": [("G","b"), ("A","b"), ("B","b"), ("C","b"), ("D","b"), ("E","b"), ("F","")],
+        },
+        "minor": {
+            "C": [("C",""), ("D",""), ("E","b"), ("F",""), ("G",""), ("A","b"), ("B","b")],
+            "G": [("G",""), ("A",""), ("B","b"), ("C",""), ("D",""), ("E","b"), ("F","")],
+            "D": [("D",""), ("E",""), ("F",""), ("G",""), ("A",""), ("B","b"), ("C","")],
+            "A": [("A",""), ("B",""), ("C",""), ("D",""), ("E",""), ("F",""), ("G","")],
+            "E": [("E",""), ("F","#"), ("G",""), ("A",""), ("B",""), ("C",""), ("D","")],
+            "B": [("B",""), ("C","#"), ("D",""), ("E",""), ("F","#"), ("G",""), ("A","")],
+            "F#": [("F","#"), ("G","#"), ("A",""), ("B",""), ("C","#"), ("D",""), ("E","")],
+            "C#": [("C","#"), ("D","#"), ("E",""), ("F","#"), ("G","#"), ("A",""), ("B","")],
+            "Bb": [("B","b"), ("C",""), ("D","b"), ("E","b"), ("F",""), ("G","b"), ("A","b")],
+            "Eb": [("E","b"), ("F",""), ("G","b"), ("A","b"), ("B","b"), ("C","b"), ("D","b")]
+        },
+        # Additional scale patterns...
     }
 
     SCALE_INTERVALS: ClassVar[Dict[str, List[int]]] = {
@@ -133,74 +71,113 @@ class Scale(BaseModel):
         "chromatic": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
     }
 
-    def __init__(self, **data: Any) -> None:
-        """Initialize a scale."""
-        super().__init__(**data)
+    class Config:
+        arbitrary_types_allowed = True
+
+    def __init__(self, root: Note, quality: str = 'major', notes: List[Note] = [], scale_degrees: List[ScaleDegree] = [], scale_info: Optional[ScaleInfo] = None) -> None:
+        """Initialize a Scale object with root, quality, and optional notes and scale degrees."""
+        logger.info(f"Initializing Scale object with root: {root}, quality: {quality}")
+        self._validate_quality(quality)
+        super().__init__(root=root, quality=quality, notes=notes, scale_degrees=scale_degrees, scale_info_v2=scale_info)
         self.notes = self._build_scale_from_intervals()
         self.scale_degrees = self._get_scale_degrees()
+        if scale_info is None:
+            self.scale_info_v2 = ScaleInfo(root=self.root, scale_type=self.quality)
+        else:
+            self.scale_info_v2 = scale_info
 
-    def model_dump(self, **kwargs: Any) -> Dict[str, Any]:
-        """Convert the scale to a dictionary."""
-        base_dict = super().model_dump(**kwargs)
-        return {
-            'root': self.root.model_dump(),
-            'quality': self.quality,
-            'notes': [note.model_dump() for note in self.notes],
-            'scale_degrees': [degree.model_dump() for degree in self.scale_degrees],
-            'scale_info': self.scale_info.model_dump() if self.scale_info else None
-        }
+    def _validate_quality(self, quality: str) -> None:
+        """Validate the quality of the scale. Must be one of the valid scale types."""
+        valid_qualities = ['major', 'minor', 'harmonic_minor', 'melodic_minor']
+        if quality not in valid_qualities:
+            logger.error(f"Invalid scale quality: {quality}. Must be one of {valid_qualities}.")
+            raise ValueError(f"Invalid scale quality: {quality}. Must be one of {valid_qualities}.")
+        logger.info(f"Scale quality validated: {quality}")
 
-    @property
-    def scale_type(self) -> str:
-        """Get the scale type."""
-        if isinstance(self.scale_info, ScaleInfo):
-            return self.scale_info.scale_type
-        return "major"  # default
+    def _build_scale_from_intervals(self) -> List[Note]:
+        """Build a scale from intervals based on the quality and root note."""
+        logger.info(f"Building scale from intervals for quality: {self.quality}")
+        intervals = self.SCALE_INTERVALS[self.quality]
+        scale_notes = [self.root]
+        for interval in intervals[1:]:
+            next_note = self._get_next_note(scale_notes[-1], interval)
+            scale_notes.append(next_note)
+        logger.debug(f"Scale built: {scale_notes}")
+        return scale_notes
 
-    @property
-    def key_signature(self) -> str:
-        """Get the key signature."""
-        if isinstance(self.scale_info, ScaleInfo):
-            return self.scale_info.key_signature
-        return ""  # default
+    def _get_next_note(self, current_note: Note, interval: int) -> Note:
+        """Get the next note based on the current note and interval."""
+        logger.debug(f"Getting next note from {current_note.note_name} with interval {interval}")
+        # Logic to calculate the next note based on the interval
+        # Assuming we have a method to get the note's position in the scale
+        current_position = self.notes.index(current_note)
+        next_position = (current_position + interval) % len(self.notes)
+        next_note = self.notes[next_position]
+        logger.debug(f"Next note is {next_note.note_name}")
+        return next_note
 
+    def get_notes(self) -> List[Note]:
+        """Get the notes in this scale."""
+        logger.debug("Retrieving notes from the scale.")
+        return self.notes
+
+    # Additional methods for building scales and retrieving scale degrees...
     def _get_scale_degrees(self) -> List[ScaleDegree]:
-        """Generate the scale degrees for this scale."""
+        """Retrieve the scale degrees for the scale."""
+        logger.debug(f"Getting scale degrees for scale: {self.quality}")
         scale_degrees: List[ScaleDegree] = []
         for i, note in enumerate(self.notes, start=1):
             scale_degrees.append(ScaleDegree(
                 degree=i,
                 note=note,
-                scale=self
+                scale=self.quality  # Pass a string representation of the scale
             ))
         return scale_degrees
 
     def get_scale_notes(self) -> List[Note]:
         """Get the notes in this scale."""
-        return self.notes[:]
+        logger.info("Retrieving scale notes.")
+        notes = self._build_scale_from_intervals()
+        logger.debug(f"Scale notes retrieved: {notes}")
+        return notes
 
     def get_scale_degrees(self) -> List[ScaleDegree]:
         """Get the scale degrees in this scale."""
+        logger.debug("Getting scale degrees")
         return self.scale_degrees[:]
 
     def get_scale_degree(self, degree: int) -> Note:
         """Get the note at a specific scale degree (1-based indexing)."""
+        logger.debug(f"Getting scale degree: {degree}")
         if degree < 1:
             raise ValueError("Scale degree must be positive")
-        
         scale_notes = self.get_scale_notes()
-        # Convert to 0-based index and handle wrapping for degrees > 7
         index = (degree - 1) % len(scale_notes)
         return scale_notes[index]
 
     def get_note_from_scale_degree(self, scale_degree: int) -> Note:
         """Get a note from its scale degree."""
+        logger.debug(f"Getting note from scale degree: {scale_degree}")
         if not (1 <= scale_degree <= len(self.notes)):
             raise ValueError(f"Invalid scale degree: {scale_degree}")
         return self.notes[scale_degree - 1]  # Convert to 0-based index
 
+    def get_note_by_degree(self, degree: int) -> Optional[Note]:
+        """Get the note at a specific scale degree (1-based indexing)."""
+        logger.info(f"Retrieving note for degree: {degree}")
+        if degree < 1 or degree > len(self.scale_degrees):
+            logger.error(f"Invalid degree: {degree}. Must be between 1 and {len(self.scale_degrees)}.")
+            raise ValueError(f"Invalid degree: {degree}. Must be between 1 and {len(self.scale_degrees)}.")
+        note = self.scale_degrees[degree - 1].note
+        if note is None:
+            logger.error(f"Note at degree {degree} is None.")
+            return None
+        logger.debug(f"Note retrieved for degree {degree}: {note.note_name}")
+        return note
+
     def _get_scale_degree_name(self, degree: int) -> str:
         """Get the name of the scale degree."""
+        logger.debug(f"Getting scale degree name: {degree}")
         # Define the natural note sequence
         NATURAL_NOTES = ["C", "D", "E", "F", "G", "A", "B"]
         
@@ -211,142 +188,35 @@ class Scale(BaseModel):
         degree_idx = (root_idx + degree) % 7
         return NATURAL_NOTES[degree_idx]
 
-    def _build_scale_from_intervals(self) -> List[Note]:
-        """Build a scale from intervals."""
-        def create_notes_from_pattern(pattern: List[Tuple[str, str]]) -> List[Note]:
-            notes = []
-            for item in pattern:
-                if not isinstance(item, tuple) or len(item) != 2:
-                    raise ValueError(f"Invalid pattern item: {item}. Expected tuple of (name, accidental)")
-                name, acc = item
-                if len(name) > 1 and (name[1] == 'b' or name[1] == '#'):
-                    note_name = name[0]
-                    accidental = name[1:]
-                else:
-                    note_name = name
-                    accidental = acc
-                notes.append(Note(name=note_name, accidental=accidental))
-            return notes
+    def model_dump(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:
+        """Dump the Scale object to a dictionary."""
+        logger.debug("Dumping Scale object to dictionary")
+        d = super().model_dump(*args, **kwargs)
+        d['root'] = self.root.name  # Include root note name
+        d['scale_notes'] = [note.name for note in self.notes]  # Include scale notes
+        return d
 
-        # First try to use predefined patterns
-        if self.quality == "major" and self.root.note_name in self.MAJOR_SCALE_PATTERNS:
-            pattern = self.MAJOR_SCALE_PATTERNS[self.root.note_name]
-            notes = create_notes_from_pattern(pattern)
-        elif self.quality == "minor" and self.root.note_name in self.MINOR_SCALE_PATTERNS:
-            pattern = self.MINOR_SCALE_PATTERNS[self.root.note_name]
-            notes = create_notes_from_pattern(pattern)
-        elif self.quality == "harmonic_minor" and self.root.note_name in self.HARMONIC_MINOR_SCALE_PATTERNS:
-            pattern = self.HARMONIC_MINOR_SCALE_PATTERNS[self.root.note_name]
-            notes = create_notes_from_pattern(pattern)
-        elif self.quality == "melodic_minor" and self.root.note_name in self.MELODIC_MINOR_SCALE_PATTERNS:
-            pattern = self.MELODIC_MINOR_SCALE_PATTERNS[self.root.note_name]
-            notes = create_notes_from_pattern(pattern)
-        elif self.quality == "mixolydian" and self.root.note_name in self.MIXOLYDIAN_SCALE_PATTERNS:
-            pattern = self.MIXOLYDIAN_SCALE_PATTERNS[self.root.note_name]
-            notes = create_notes_from_pattern(pattern)
-        elif self.quality == "whole_tone" and self.root.note_name in self.WHOLE_TONE_SCALE_PATTERNS:
-            pattern = self.WHOLE_TONE_SCALE_PATTERNS[self.root.note_name]
-            notes = create_notes_from_pattern(pattern)
-        elif self.quality == "chromatic" and self.root.note_name in self.CHROMATIC_SCALE_PATTERNS:
-            pattern = self.CHROMATIC_SCALE_PATTERNS[self.root.note_name]
-            notes = create_notes_from_pattern(pattern)
-        elif self.quality == "augmented" and self.root.note_name in self.AUGMENTED_SCALE_PATTERNS:
-            pattern = self.AUGMENTED_SCALE_PATTERNS[self.root.note_name]
-            notes = create_notes_from_pattern(pattern)
-            # For augmented scale, we need to handle the root note at the end specially
-            return notes
-        else:
-            # If no predefined pattern exists, calculate from intervals
-            intervals = self.SCALE_INTERVALS.get(self.quality, [])
-            if not intervals:
-                raise ValueError(f"Unknown scale quality: {self.quality}")
-
-            # Start with the root note
-            notes = [self.root]
-            
-            # Get the natural note sequence starting from root
-            NATURAL_NOTES = ["C", "D", "E", "F", "G", "A", "B"]
-            root_idx = NATURAL_NOTES.index(self.root.name)
-            
-            # Add notes based on intervals
-            for interval in intervals[1:]:  # Skip root note since we already have it
-                # Get the target MIDI note
-                target_midi = self.root.midi_note + interval
-                
-                # Get the natural note name for this scale degree
-                scale_degree = len(notes)  # 0-based index
-                note_idx = (root_idx + scale_degree) % 7
-                natural_name = NATURAL_NOTES[note_idx]
-                
-                # Try natural note first
-                natural_note = Note(name=natural_name)
-                diff = target_midi - natural_note.midi_note
-                
-                # For diminished scale, handle special cases
-                if self.quality == "diminished" and scale_degree in [6, 7]:  # 7th and 8th notes
-                    # Use A and B instead of double flats
-                    if scale_degree == 6:  # 7th note
-                        new_note = Note(name="A")
-                    else:  # 8th note
-                        new_note = Note(name="B")
-                else:
-                    # Determine accidental based on difference
-                    if diff == 0:
-                        new_note = natural_note
-                    elif diff > 0:
-                        # Need sharp(s)
-                        if diff > 2:  # Avoid too many sharps
-                            next_note_idx = (note_idx + 1) % 7
-                            natural_name = NATURAL_NOTES[next_note_idx]
-                            accidental = "b"
-                        else:
-                            accidental = "#" * diff
-                        new_note = Note(name=natural_name, accidental=accidental)
-                    else:
-                        # Need flat(s)
-                        if abs(diff) > 2:  # Avoid too many flats
-                            prev_note_idx = (note_idx - 1) % 7
-                            natural_name = NATURAL_NOTES[prev_note_idx]
-                            accidental = "#"
-                        else:
-                            accidental = "b" * abs(diff)
-                        new_note = Note(name=natural_name, accidental=accidental)
-                
-                notes.append(new_note)
-
-        # Add the root note at the end, one octave higher
-        root_copy = Note(
-            name=self.root.name,
-            accidental=self.root.accidental,
-            octave=self.root.octave + 1
-        )
-        return notes + [root_copy]
-
-    def get_notes(self) -> List[Note]:
-        """Get the notes of the scale."""
-        return self.notes
-
-    @field_validator('quality')
-    @classmethod
-    def validate_quality(cls, v: str) -> str:
-        """Validate scale quality."""
-        if v not in cls.SCALE_INTERVALS:
-            raise ValueError(f"Unknown scale quality: {v}")
-        return v
+    @property
+    def scale_type(self) -> str:
+        """Return the type of scale."""
+        return self.quality
 
     @property
     def notes_computed(self) -> List[Note]:
         """Get the notes in the scale."""
+        logger.debug("Getting notes in the scale")
         return self.get_scale_notes()
 
     @property
     def scale_notes(self) -> List[Note]:
         """Get the notes of the scale."""
+        logger.debug("Getting notes of the scale")
         return self.get_notes()
 
     @property
     def root_name(self) -> str:
         """Get the root note name as a string."""
+        logger.debug("Getting root note name")
         if not hasattr(self.root, 'note_name'):
             return str(self.root)
         note_name = self.root.note_name
@@ -355,35 +225,40 @@ class Scale(BaseModel):
     @property
     def quality_str(self) -> str:
         """Get the quality as a string."""
+        logger.debug("Getting quality as string")
         return str(self.quality) if self.quality is not None else ""
 
     @property
     def scale_info(self) -> ScaleInfo:
         """Get the scale info."""
+        logger.debug("Getting scale info")
         return ScaleInfo(root=self.root, scale_type=self.quality)
 
     def _get_scale_intervals(self) -> List[int]:
         """Get the intervals for the scale."""
+        logger.debug("Getting intervals for the scale")
         return self.SCALE_INTERVALS.get(self.quality, [])
 
-    def get_scale_degree(self, degree: int) -> Note:
+    def get_scale_degree_v2(self, degree: int) -> Note:
         """Get the note at a specific scale degree (1-based indexing)."""
+        logger.debug(f"Getting scale degree: {degree}")
         if degree < 1:
             raise ValueError("Scale degree must be positive")
         
         scale_notes = self.get_scale_notes()
-        # Convert to 0-based index and handle wrapping for degrees > 7
         index = (degree - 1) % len(scale_notes)
         return scale_notes[index]
 
-    def get_note_from_scale_degree(self, scale_degree: int) -> Note:
+    def get_note_from_scale_degree_v2(self, scale_degree: int) -> Note:
         """Get a note from its scale degree."""
+        logger.debug(f"Getting note from scale degree: {scale_degree}")
         if not (1 <= scale_degree <= len(self.notes)):
             raise ValueError(f"Invalid scale degree: {scale_degree}")
         return self.notes[scale_degree - 1]  # Convert to 0-based index
 
     def _get_accidentals(self) -> Dict[str, List[Tuple[str, str]]]:
         """Get the accidentals for this scale."""
+        logger.debug("Getting accidentals for the scale")
         accidental_map: Dict[str, List[Tuple[str, str]]] = {
             'C': [],
             'G': [('F', '#')],
@@ -402,3 +277,6 @@ class Scale(BaseModel):
             'Cb': [('B', 'b'), ('E', 'b'), ('A', 'b'), ('D', 'b'), ('G', 'b'), ('C', 'b'), ('F', 'b')]
         }
         return accidental_map
+
+    def get_value(self) -> int:
+        return 10

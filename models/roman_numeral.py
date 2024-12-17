@@ -1,175 +1,236 @@
-"""Module for handling roman numerals in music theory."""
+"""
+Module for handling Roman numeral analysis in music theory.
+
+This module provides functionality for analyzing and representing chords and chord progressions using Roman numerals. It includes classes and functions for converting between chord representations and their corresponding Roman numeral notations.
+
+Roman Numeral Analysis
+----------------------
+
+The `RomanNumeral` class encapsulates the representation of a chord using Roman numerals, allowing for easy conversion between chord and Roman numeral formats.
+
+Classes:
+--------
+
+- `RomanNumeral`: Represents a Roman numeral for a chord, including its quality and methods for conversion.
+
+Usage:
+------
+
+To create a Roman numeral representation of a chord, instantiate the `RomanNumeral` class and use its methods to convert to a chord representation:
+
+```python
+roman_numeral = RomanNumeral("I", "major")
+chord = roman_numeral.to_chord()
+print(chord)
+```
+
+This module is designed to be extensible, allowing for the addition of new functionalities related to Roman numeral analysis as needed.
+"""
 from __future__ import annotations
 
-from typing import ClassVar, Dict, Optional, Union, Any
-from pydantic import BaseModel
+from typing import Optional, Dict, ClassVar, List
+from pydantic import BaseModel, field_validator
+import re
+import logging
 
+from .chord import Chord, ChordQuality
 from .note import Note
 from .scale import Scale
 from .scale_info import ScaleInfo
-from .chord_base import ROMAN_TO_INT, QUALITY_INTERVALS, INT_TO_ROMAN, WORD_TO_ROMAN
-import re
+from .scale_type import ScaleType
+
+logger = logging.getLogger(__name__)
 
 class RomanNumeral(BaseModel):
-    """A class for representing Roman numerals in music theory."""
-    numeral: str
+    scale: Scale  # Assuming Scale is defined elsewhere
+    numeral_str: str
     scale_degree: int
-    is_major: bool = True
-    is_diminished: bool = False
-    is_augmented: bool = False
-    is_half_diminished: bool = False
-    has_seventh: bool = False
-    has_ninth: bool = False
-    has_eleventh: bool = False
-    inversion: int = 0
-    pedal_bass: Optional[str] = None
-    scale: Optional[Union[Scale, ScaleInfo]] = None
 
-    @property
-    def is_flattened(self) -> bool:
-        """Return whether the numeral is flattened."""
-        return self.numeral.startswith('b')
+    class Config:
+        arbitrary_types_allowed = True
+
+    class_var_chord_quality_mapping: ClassVar[Dict[str, str]] = {
+        'I': 'major',
+        'IV': 'major',
+        'V': 'major',
+        'ii': 'minor',
+        'iii': 'minor',
+        'vi': 'minor',
+        # Add more mappings as needed
+    }
+
+    WORD_TO_ROMAN: ClassVar[Dict[str, str]] = {
+        'one': 'I',
+        'two': 'II',
+        'three': 'III',
+        'four': 'IV',
+        'five': 'V',
+        'six': 'VI',
+        'seven': 'VII'
+    }
+
+    INT_TO_ROMAN: ClassVar[Dict[int, str]] = {
+        1: 'I',
+        2: 'II',
+        3: 'III',
+        4: 'IV',
+        5: 'V',
+        6: 'VI',
+        7: 'VII'
+    }
+
+    ROMAN_TO_INT: ClassVar[Dict[str, int]] = {
+        'I': 1,
+        'II': 2,
+        'III': 3,
+        'IV': 4,
+        'V': 5,
+        'VI': 6,
+        'VII': 7
+    }
+
+    def __init__(self, scale: Scale, numeral: str, numeral_str: str, scale_degree: int, is_major: bool, 
+                 is_diminished: bool, is_augmented: bool, is_half_diminished: bool, 
+                 has_seventh: bool, has_ninth: bool, has_eleventh: bool, inversion: int):
+        if scale is None:
+            raise ValueError("Scale cannot be None")
+        self.scale = scale
+        self.numeral = numeral
+        self.numeral_str = numeral_str
+        self.scale_degree = scale_degree
+        self.is_major = is_major
+        self.is_diminished = is_diminished
+        self.is_augmented = is_augmented
+        self.is_half_diminished = is_half_diminished
+        self.has_seventh = has_seventh
+        self.has_ninth = has_ninth
+        self.has_eleventh = has_eleventh
+        self.inversion = inversion
+        self.chord_notes: List[Note] = []
+
+    def get_note(self) -> Optional[Note]:
+        """Get the corresponding note based on the Roman numeral and scale."""
+        if self.scale is None:
+            logger.error("Scale is None, cannot get note.")
+            return None
+        note = self.scale.get_note_by_degree(self.scale_degree)
+        return note  # Ensure this returns a Note type
+
+    def get_notes(self) -> List[Note]:
+        """Get the notes in this chord."""
+        logger.debug("get_notes called")
+        return self.chord_notes
+
+    @field_validator('numeral')
+    def validate_numeral(cls, value: str) -> str:
+        if value not in cls.class_var_chord_quality_mapping:
+            raise ValueError(f"Invalid Roman numeral: {value}. Must be one of: {', '.join(cls.class_var_chord_quality_mapping.keys())}.")
+        return value
 
     @classmethod
-    def from_str(cls, numeral_str: str, scale: Optional[Union[Scale, ScaleInfo]] = None) -> 'RomanNumeral':
-        """Create a RomanNumeral from a string."""
-        # Store original numeral for flattened check
-        original_numeral = numeral_str.strip()
+    def determine_root_note_from_numeral(cls, numeral_str: str) -> Note:
+        """Determine the root note based on the Roman numeral string.
 
-        # Handle flattened numerals
-        is_flattened = original_numeral.startswith('b')
-        if is_flattened:
-            numeral_str = original_numeral[1:].strip()
+        Args:
+            numeral_str (str): The Roman numeral string.
+
+        Returns:
+            Note: The corresponding root note for the scale.
+        """
+        # Define a mapping from Roman numerals to root notes
+        roman_to_note = {
+            'I': 'C',
+            'II': 'D',
+            'III': 'E',
+            'IV': 'F',
+            'V': 'G',
+            'VI': 'A',
+            'VII': 'B',
+            # Add more mappings as needed
+        }
+
+        # Normalize the numeral string
+        base = numeral_str.strip().upper()
+
+        # Get the corresponding note
+        if base in roman_to_note:
+            note_name = roman_to_note[base]
+            return Note.from_name(note_name)  # Assuming Note has a method to create from name
         else:
-            numeral_str = original_numeral
+            raise ValueError(f"Invalid Roman numeral for root note: {numeral_str}")
 
-        # Extract the base numeral (I, II, III, etc.)
-        base_match = re.match(r"([IiVv]+|[1-7]|(?:one|two|three|four|five|six|seven))(.*)", numeral_str)
+    @classmethod
+    def from_str(cls, numeral_str: str, scale_type: Optional[ScaleType] = None) -> 'RomanNumeral':
+        if scale_type is None:
+            raise ValueError("Invalid scale provided.")
+
+        root: Note = cls.determine_root_note_from_numeral(numeral_str)
+
+        # Create ScaleInfo without the quality parameter
+        scale_info = ScaleInfo(scale_type=str(scale_type), root=root)  
+
+        # Create the Scale using the root note and scale information
+        scale = Scale(root=root, quality=scale_info.quality)
+
+        base_match = re.match(r"(b?)([IiVv]+|[1-7]|(?:one|two|three|four|five|six|seven))(.*)", numeral_str)
         if not base_match:
             raise ValueError(f"Invalid Roman numeral: {numeral_str}")
 
-        base, modifiers = base_match.groups()
-        
-        # Convert numeric or word representation to Roman numeral
-        if base.isdigit():
-            base = INT_TO_ROMAN[int(base)]
-        elif base.lower() in WORD_TO_ROMAN:
-            base = WORD_TO_ROMAN[base.lower()]
-        
-        # Determine if major/minor from base numeral case
-        is_major = base.isupper()
-        
-        # Get scale degree
-        try:
-            scale_degree = ROMAN_TO_INT[base.upper()]
-        except KeyError:
-            raise ValueError(f"Invalid Roman numeral: {numeral_str}")
-        
-        # Parse modifiers
-        is_diminished = 'o' in modifiers or '°' in modifiers
-        is_augmented = '+' in modifiers
-        is_half_diminished = 'ø' in modifiers
-        has_seventh = '7' in modifiers
-        has_ninth = '9' in modifiers
-        has_eleventh = '11' in modifiers
+        flat, base, modifiers = base_match.groups()
+        scale_degree = cls.get_scale_degree(base)
 
-        # Handle inversions
-        inversion = 0
-        if '/' in modifiers:
-            try:
-                inversion_part = modifiers.split('/')[-1]
-                if inversion_part.isdigit():
-                    inversion = int(inversion_part)
-            except (ValueError, IndexError):
-                pass
+        # Determine chord quality based on the base
+        chord_quality = ChordQuality(cls.class_var_chord_quality_mapping.get(base, ChordQuality.major))  
 
-        return cls(
-            numeral=original_numeral,
-            scale_degree=scale_degree,
-            is_major=is_major,
-            is_diminished=is_diminished,
-            is_augmented=is_augmented,
-            is_half_diminished=is_half_diminished,
-            has_seventh=has_seventh,
-            has_ninth=has_ninth,
-            has_eleventh=has_eleventh,
-            inversion=inversion,
-            scale=scale
-        )
+        # Define bass as the next note in the scale
+        bass: Note = Note.from_midi(root.midi_number + 2)  # Example logic for bass
 
-    def get_note(self) -> Note:
-        """Get the root note of this Roman numeral."""
-        if not self.scale:
-            raise ValueError("Scale must be set to get note")
-        
-        # Get the scale notes
-        scale_notes = self.scale.get_scale_notes()
-        
-        # Get the note at the scale degree
-        if self.scale_degree < 1 or self.scale_degree > len(scale_notes):
-            raise ValueError(f"Invalid scale degree: {self.scale_degree}")
-        
-        # Get the base note
-        note = scale_notes[self.scale_degree - 1].copy()
-        
-        # Handle flattened numerals by lowering the note by a semitone
-        if self.is_flattened:
-            note = note.transpose(-1)
-        
-        return note
+        # Create the corresponding Chord based on the scale and degree
+        chord_notes: List[Note] = []  
+        chord = Chord(root=root, quality=chord_quality, notes=chord_notes, bass=bass)
 
-    @property
-    def chord_quality(self) -> str:
-        """Get the chord quality."""
-        # Check for specific chord qualities in order of precedence
-        if self.is_diminished:
-            if self.has_seventh:
-                return 'diminished7'
-            return 'diminished'
-        if self.is_half_diminished:
-            if self.has_seventh:
-                return 'half-diminished7'
-            return 'half-diminished'
-        if self.is_augmented:
-            if self.has_seventh:
-                return 'augmented7'
-            return 'augmented'
-        
-        # Handle extended chords
-        if self.has_eleventh:
-            return 'minor11' if not self.is_major else 'major11'
-        if self.has_ninth:
-            return 'minor9' if not self.is_major else 'major9'
-        
-        # Handle seventh chords
-        if 'maj7' in self.numeral:
-            return 'major7'
-        if self.has_seventh:
-            return 'dominant7' if self.is_major else 'minor7'
-        
-        # Handle suspended chords
-        if 'sus' in self.numeral:
-            if '4' in self.numeral:
-                return '7sus4' if self.has_seventh else 'sus4'
-            return '7sus2' if self.has_seventh else 'sus2'
-        
-        # Basic triads
-        return 'major' if self.is_major else 'minor'
+        # Create and return the RomanNumeral instance
+        return cls(scale=scale, numeral_str=numeral_str, scale_degree=scale_degree, numeral=base, 
+                   is_major=chord_quality == ChordQuality.major, 
+                   is_diminished=chord_quality == ChordQuality.diminished, 
+                   is_augmented=chord_quality == ChordQuality.augmented, 
+                   is_half_diminished=chord_quality == ChordQuality.half_diminished7, 
+                   has_seventh=False, has_ninth=False, has_eleventh=False, inversion=0)
 
-    def to_note(self) -> Note:
-        """Convert to a note."""
-        return self.get_note()
+    @classmethod
+    def get_scale_degree(cls, base: str) -> int:
+        roman_to_degree = {
+            'I': 1,
+            'II': 2,
+            'III': 3,
+            'IV': 4,
+            'V': 5,
+            'VI': 6,
+            'VII': 7,
+        }
+        return roman_to_degree.get(base.upper(), 0)
 
-    def dict(self, *, include: Optional[Any] = None, exclude: Optional[Any] = None, 
-             by_alias: bool = False, exclude_unset: bool = False, 
-             exclude_defaults: bool = False, exclude_none: bool = False) -> dict[str, Any]:
-        """Convert the RomanNumeral to a dictionary representation."""
-        base_dict = super().dict(
-            include=include,
-            exclude=exclude,
-            by_alias=by_alias,
-            exclude_unset=exclude_unset,
-            exclude_defaults=exclude_defaults,
-            exclude_none=exclude_none
-        )
-        return base_dict
+    def __str__(self) -> str:
+        """Return the string representation of the Roman numeral.
+
+        Returns:
+            str: The Roman numeral representation.
+        """
+        return f"{self.numeral} ({self.get_quality()})"
+
+    def get_quality(self) -> str:
+        """Get the quality of the Roman numeral.
+
+        Returns:
+            str: The quality of the Roman numeral.
+        """
+        if self.is_major:
+            return "major"
+        elif self.is_diminished:
+            return "diminished"
+        elif self.is_augmented:
+            return "augmented"
+        elif self.is_half_diminished:
+            return "half-diminished7"
+        else:
+            return "minor"

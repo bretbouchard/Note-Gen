@@ -1,13 +1,19 @@
 """Module for generating chord progressions."""
 from __future__ import annotations
 
-from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple, ClassVar
-from pydantic import BaseModel, Field
+import logging
+logger = logging.getLogger(__name__)
 
-from .chord import Chord
+import logging
+logger = logging.getLogger(__name__)
+
+from enum import Enum
+from typing import Dict, List, Optional, Tuple, ClassVar
+from pydantic import BaseModel, Field
+from .chord import Chord, ChordQuality
 from .scale_info import ScaleInfo
 from .chord_progression import ChordProgression
+from .note import Note
 
 class ProgressionPattern(str, Enum):
     """Common chord progression patterns."""
@@ -62,107 +68,173 @@ class ChordProgressionGenerator(BaseModel):
         ProgressionPattern.MINOR_i_VI_III_VII: [(1, "minor"), (6, "major"), (3, "major"), (7, "major")]
     }
 
+    CHORD_INTERVALS: ClassVar[Dict[str, List[int]]] = {
+        "major": [0, 4, 7],
+        "minor": [0, 3, 7],
+        "diminished": [0, 3, 6],
+        "major7": [0, 4, 7, 11],
+        "minor7": [0, 3, 7, 10],
+        "dominant7": [0, 4, 7, 10]
+    }
+
     def get_chord_quality(self, scale_degree: int, is_minor: bool = False) -> str:
         """Get the default chord quality for a scale degree."""
         qualities = self.MINOR_SCALE_QUALITIES if is_minor else self.MAJOR_SCALE_QUALITIES
         return qualities[scale_degree]
 
+    def _generate_chord_notes(self, root: Note, quality: str) -> List[Note]:
+        intervals = self.CHORD_INTERVALS[quality]
+        chord_notes = []
+        for interval in intervals:
+            note = root.transpose(interval)  # Assuming Note has a transpose method
+            chord_notes.append(note)
+        return chord_notes
+
     def generate(self, pattern: Optional[ProgressionPattern] = None) -> ChordProgression:
         """Generate a chord progression based on the specified pattern."""
-        progression = ChordProgression(scale_info=self.scale_info)
-        pattern = pattern or self.pattern or ProgressionPattern.BASIC_I_IV_V_I
+        try:
+            logger.info(f"Generating chord progression with pattern: {pattern}")
+            if pattern is None:
+                pattern = self.pattern
+            if pattern is None:
+                logger.error("Pattern is not specified.")
+                raise ValueError("Pattern is not specified.")
+            progression = ChordProgression(scale_info=self.scale_info)
+            progression_pattern = self.PROGRESSION_PATTERNS[pattern]
+            self.scale_info.compute_scale_degrees()  # Ensure this is called before generating chords
+            logger.info(f"Scale degrees available: {self.scale_info.scale_degrees}")  # Log available scale degrees
+            for degree, quality in progression_pattern:
+                logger.info(f"Generating chord for degree: {degree}, quality: {quality}")  # Log degree and quality
+                root = self.scale_info.get_scale_degree(degree)
+                if root is None or not isinstance(root, Note):
+                    logger.error(f"Invalid root note for degree: {degree}")
+                    continue  # Skip this iteration if root is None
+                chord_notes = self._generate_chord_notes(root, quality)
+                if chord_notes is None or not all(isinstance(note, Note) for note in chord_notes):
+                    logger.error(f"Failed to generate valid chord notes for root: {root} and quality: {quality}")
+                    continue  # Skip this iteration if chord_notes is invalid
+                bass = self.scale_info.get_scale_degree(degree + 1)  # Assuming bass is the next degree
+                if bass is None or not isinstance(bass, Note):
+                    logger.error(f"Invalid bass note for degree: {degree}")
+                    continue  # Skip if bass is invalid
+                if root is None or not isinstance(root, Note) or any(note is None for note in chord_notes) or bass is None or not isinstance(bass, Note):
+                    logger.error(f"Invalid root or chord notes or bass for degree: {degree}")
+                    continue  # Skip this iteration if root or chord_notes or bass is invalid
+                chord = Chord(root=root, quality=ChordQuality(quality), notes=chord_notes, bass=bass)
+                progression.add_chord(chord)
+                logger.info(f"Generated chord - Root: {root}, Bass: {bass}, Chord Notes: {chord_notes}")
+            return progression
+        except Exception as e:
+            logger.error(f"Failed to generate chord progression: {str(e)}")
+            raise
 
-        # Get the progression pattern
-        progression_pattern = self.PROGRESSION_PATTERNS[pattern]
+    def generate_custom(self, degrees: List[int], qualities: List[str]) -> ChordProgression:
+        """Generate a custom chord progression based on specified degrees and qualities."""
+        try:
+            logger.info(f"Generating custom progression with degrees: {degrees} and qualities: {qualities}")
+            if len(degrees) != len(qualities):
+                logger.error("Degrees and qualities lists must be of the same length.")
+                raise ValueError("Degrees and qualities lists must be of the same length.")
+            progression = ChordProgression(scale_info=self.scale_info)
+            for degree, quality in zip(degrees, qualities):
+                logger.info(f"Generating chord for degree: {degree}, quality: {quality}")  # Log degree and quality
+                root = self.scale_info.scale_notes[degree - 1]  # Adjust for 0-indexing
+                if root is None or not isinstance(root, Note):
+                    logger.error(f"Invalid root note for degree: {degree}")
+                    continue  # Skip this iteration if root is None
+                chord_notes = self._generate_chord_notes(root, quality)
+                if chord_notes is None or not all(isinstance(note, Note) for note in chord_notes):
+                    logger.error(f"Failed to generate valid chord notes for root: {root} and quality: {quality}")
+                    continue  # Skip this iteration if chord_notes is invalid
+                if root is None or not isinstance(root, Note) or any(note is None for note in chord_notes):
+                    logger.error(f"Invalid root or chord notes for degree: {degree}")
+                    continue  # Skip this iteration if root or chord_notes is invalid
+                chord = Chord(root=root, quality=ChordQuality(quality), notes=chord_notes, bass=root)
+                progression.add_chord(chord)
+                logger.info(f"Generated chord - Root: {root}, Bass: {root}, Chord Notes: {chord_notes}")
+            return progression
+        except Exception as e:
+            logger.error(f"Failed to generate custom chord progression: {str(e)}")
+            raise
 
-        # Generate chords based on the pattern
-        for degree, quality in progression_pattern:
-            root = self.scale_info.get_scale_degree(degree)
-            chord = Chord(root=root, quality=quality)
-            progression.add_chord(chord)
-
-        return progression
-
-    def generate_custom(self, degrees: List[int], qualities: Optional[List[str]] = None) -> ChordProgression:
-        """Generate a custom chord progression using specified scale degrees."""
-        progression = ChordProgression(scale_info=self.scale_info)
-        is_minor = self.scale_info.mode.lower() == "minor"
-
-        # If qualities are not specified, use default qualities based on scale
-        if qualities is None:
-            qualities = [self.get_chord_quality(degree, is_minor) for degree in degrees]
-
-        # Generate chords
-        for degree, quality in zip(degrees, qualities):
-            root = self.scale_info.get_scale_degree(degree)
-            chord = Chord(root=root, quality=quality)
-            progression.add_chord(chord)
-
-        return progression
-
-    def generate_random(self, length: Optional[int] = None) -> ChordProgression:
-        """Generate a random chord progression."""
-        import random
-
-        length = length or self.progression_length
-        progression = ChordProgression(scale_info=self.scale_info)
-        is_minor = self.scale_info.mode.lower() == "minor"
-
-        # Common scale degrees (1, 4, 5 are most common)
-        common_degrees = [1, 4, 5] * 2 + [2, 3, 6] + [7]
-        
-        # Generate random progression
-        for _ in range(length):
-            degree = random.choice(common_degrees)
-            quality = self.get_chord_quality(degree, is_minor)
-            
-            # Occasionally add seventh chords
-            if random.random() < 0.3:
-                if quality == "major":
-                    quality = random.choice(["major7", "dominant7"])
-                elif quality == "minor":
-                    quality = "minor7"
-
-            root = self.scale_info.get_scale_degree(degree)
-            chord = Chord(root=root, quality=quality)
-            progression.add_chord(chord)
-
-        return progression
+    def generate_random(self, length: int) -> ChordProgression:
+        """Generate a random chord progression of the specified length."""
+        try:
+            logger.info(f"Generating random progression of length: {length}")
+            if length <= 0:
+                logger.error("Length must be a positive integer.")
+                raise ValueError("Length must be a positive integer.")
+            import random
+            progression = ChordProgression(scale_info=self.scale_info)
+            for _ in range(length):
+                degree = random.choice(list(self.MAJOR_SCALE_QUALITIES.keys()))
+                quality = random.choice(list(self.MAJOR_SCALE_QUALITIES.values()))
+                logger.info(f"Generating chord for degree: {degree}, quality: {quality}")  # Log degree and quality
+                root = self.scale_info.scale_notes[degree - 1]  # Adjust for 0-indexing
+                if root is None or not isinstance(root, Note):
+                    logger.error(f"Invalid root note for degree: {degree}")
+                    continue  # Skip this iteration if root is None
+                chord_notes = self._generate_chord_notes(root, quality)
+                if chord_notes is None or not all(isinstance(note, Note) for note in chord_notes):
+                    logger.error(f"Failed to generate valid chord notes for root: {root} and quality: {quality}")
+                    continue  # Skip this iteration if chord_notes is invalid
+                if root is None or not isinstance(root, Note) or any(note is None for note in chord_notes):
+                    logger.error(f"Invalid root or chord notes for degree: {degree}")
+                    continue  # Skip this iteration if root or chord_notes is invalid
+                chord = Chord(root=root, quality=ChordQuality(quality), notes=chord_notes, bass=root)
+                progression.add_chord(chord)
+                logger.info(f"Generated chord - Root: {root}, Bass: {root}, Chord Notes: {chord_notes}")
+            return progression
+        except Exception as e:
+            logger.error(f"Failed to generate random chord progression: {str(e)}")
+            raise
 
     def generate_chord(self, numeral: str) -> Chord:
-        """Generate a chord from a Roman numeral."""
-        from .roman_numeral import RomanNumeral
-        
-        # Handle pedal point chords (e.g., I/V)
-        if "/" in numeral:
-            upper, lower = numeral.split("/")
-            upper_chord = Chord.from_roman_numeral(upper, self.scale_info)
-            lower_numeral = RomanNumeral.from_str(lower, self.scale_info)
-            lower_note = lower_numeral.to_note()
-            
-            # Add the pedal note to the chord
-            notes = upper_chord.notes
-            notes.insert(0, lower_note)  # Add bass note at the beginning
-            return Chord(
-                root=upper_chord.root,
-                quality=upper_chord.quality,
-                chord_notes=notes,
-                duration=upper_chord.duration,
-                velocity=upper_chord.velocity
-            )
-        
-        # Parse the roman numeral with scale context
-        roman = RomanNumeral.from_str(numeral, self.scale_info)
-        
-        # Get the root note based on the scale degree
-        root = roman.get_note()
-        
-        # Create the chord with the specified quality
-        return Chord(root=root, quality=roman.chord_quality)
+        """Generate a chord based on the given numeral."""
+        # Determine the scale degree from the numeral
+        scale_degree = self._parse_numeral(numeral)
+        if scale_degree is None:
+            raise ValueError(f"Invalid numeral: {numeral}")
 
-    def dict(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:
-        """Convert to dictionary representation."""
-        d = super().dict(*args, **kwargs)
-        if self.scale_info:
-            d['scale_info'] = self.scale_info.dict()
-        return d
+        # Determine if the chord is minor
+        is_minor = numeral.islower() or 'm' in numeral
+
+        # Get the chord quality
+        quality = self.get_chord_quality(scale_degree, is_minor)
+
+        # Generate the root note based on the scale info
+        root_note = self.scale_info.root
+
+        # Ensure root is a valid Note object
+        if root_note is None or not isinstance(root_note, Note):
+            logger.error(f"Invalid root note for degree: {scale_degree}")
+            raise ValueError(f"Invalid root note for degree: {scale_degree}")
+
+        # Ensure chord_notes are generated and valid
+        chord_notes = self._generate_chord_notes(root_note, quality)
+        if chord_notes is None or not all(isinstance(note, Note) for note in chord_notes):
+            logger.error(f"Failed to generate valid chord notes for root: {root_note} and quality: {quality}")
+            raise ValueError(f"Failed to generate valid chord notes for root: {root_note} and quality: {quality}")
+
+        # Ensure root and chord_notes do not contain None values
+        if root_note is None or not isinstance(root_note, Note) or any(note is None for note in chord_notes):
+            logger.error(f"Invalid root or chord notes for degree: {scale_degree}")
+            raise ValueError(f"Invalid root or chord notes for degree: {scale_degree}")
+
+        # Create and return the Chord object
+        return Chord(root=root_note, quality=ChordQuality(quality), notes=chord_notes)
+
+    def _parse_numeral(self, numeral: str) -> Optional[int]:
+        """Parse a Roman numeral to a scale degree."""
+        if '/' in numeral:
+            # Handle compound numerals (e.g., I/V)
+            parts = numeral.split('/')
+            return self._parse_numeral(parts[0])  # Return the first part for now
+
+        numeral_map = {
+            'I': 1, 'ii': 2, 'iii': 3, 'IV': 4, 'V': 5, 'vi': 6, 'vii': 7,
+            'i': 1, 'iv': 4, 'v': 5, 'VI': 6, 'VII': 7,
+            'bIII': 3, 'bVI': 6, 'bII': 2, 'bVII': 7, 'bI': 1,
+            'III': 3, 'VII': 7
+        }
+        return numeral_map.get(numeral)

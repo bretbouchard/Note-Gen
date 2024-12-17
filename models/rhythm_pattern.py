@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import random
 from typing import Any, List, Optional
-from pydantic import BaseModel, Field, ConfigDict, validator
+from pydantic import BaseModel, Field, ConfigDict, field_validator
 
 
 class RhythmNote(BaseModel):
@@ -16,25 +16,23 @@ class RhythmNote(BaseModel):
     accent: str | None = Field(default=None, description="Note accent (staccato, legato, accent)")
     swing_ratio: float | None = Field(default=None, description="Swing ratio for this note (0.5-0.75)")
 
-    model_config = ConfigDict(
-        extra="allow",  # Allow extra fields
-        validate_assignment=True,  # Validate on attribute assignment
-    )
-
-    @validator("velocity")
+    class Config:
+        model_config = ConfigDict(arbitrary_types_allowed=True)
+   
+    @field_validator("velocity")
     @classmethod
     def validate_velocity(cls, v: float) -> float:
         """Validate that velocity is between 0 and 127."""
         if not 0 <= float(v) <= 127:
-            raise ValueError("Velocity must be between 0 and 127")
+            raise ValueError("Velocity must be between 0 and 127. Invalid value found.")
         return float(v)
 
-    @validator("duration")
+    @field_validator("duration")
     @classmethod
     def validate_duration(cls, v: float) -> float:
         """Validate that duration is positive."""
         if float(v) <= 0:
-            raise ValueError("Duration must be positive")
+            raise ValueError("Duration must be positive. Invalid value found.")
         return float(v)
 
     def get(self, key: str, default: Any | None = None) -> Any:
@@ -73,52 +71,54 @@ class RhythmPatternData(BaseModel):
     accent_pattern: list[str] | None = Field(default=None, description="Pattern of accents to apply")
     default_duration: float = Field(default=1.0, description="Default duration for rhythm patterns")
 
-    model_config = ConfigDict(
-        extra="allow",  # Allow extra fields
-        validate_assignment=True,  # Validate on attribute assignment
-    )
+    class Config:
+        model_config = ConfigDict(arbitrary_types_allowed=True)
+ 
 
-    @validator('notes')
+    @field_validator('notes')
     def check_notes(cls, v: List[RhythmNote]) -> List[RhythmNote]:
+        """Validate that all items in notes are instances of RhythmNote."""
         if not all(isinstance(note, RhythmNote) for note in v):
-            raise ValueError('All items in notes must be instances of RhythmNote')
+            raise ValueError('All items in notes must be instances of RhythmNote. Invalid input found.')
         return v
 
-    @validator('duration')
+    @field_validator('duration')
     def check_duration(cls, v: float) -> float:
+        """Validate that duration is a non-negative number."""
         if not isinstance(v, (float, int)) or v < 0:
-            raise ValueError('duration must be a non-negative number')
+            raise ValueError('Duration must be a non-negative number. Invalid value found.')
         return v
 
-    @validator('time_signature')
+    @field_validator('time_signature')
     def check_time_signature(cls, v: str) -> str:
+        """Validate that time_signature is a non-empty string."""
         if not isinstance(v, str) or not v:
-            raise ValueError('time_signature must be a non-empty string')
+            raise ValueError('Time signature must be a non-empty string. Invalid value found.')
         return v
 
-    @validator("swing_ratio")
+    @field_validator("swing_ratio")
     def validate_swing_ratio(cls, v: float | None) -> float | None:
         """Validate that swing ratio is between 0.5 and 0.75."""
         if v is not None and not 0.5 <= float(v) <= 0.75:
-            raise ValueError("Swing ratio must be between 0.5 and 0.75")
+            raise ValueError('Swing ratio must be between 0.5 and 0.75. Invalid value found.')
         return v
 
-    @validator("variation_probability")
+    @field_validator("variation_probability")
     def validate_variation_probability(cls, v: float) -> float:
-        """Validate variation probability is between 0 and 1."""
+        """Validate that variation probability is between 0 and 1."""
         if not 0 <= float(v) <= 1:
-            raise ValueError("Variation probability must be between 0 and 1")
+            raise ValueError('Variation probability must be between 0 and 1. Invalid value found.')
         return float(v)
 
-    @validator("humanize_amount")
+    @field_validator("humanize_amount")
     def validate_humanize_amount(cls, v: float) -> float:
-        """Validate humanize amount is between 0 and 1."""
+        """Validate that humanize amount is between 0 and 1."""
         if not 0 <= float(v) <= 1:
-            raise ValueError("Humanize amount must be between 0 and 1")
+            raise ValueError('Humanize amount must be between 0 and 1. Invalid value found.')
         return float(v)
 
     def __init__(self, **data: Any) -> None:
-        """Initialize RhythmPatternData."""
+        """Initialize RhythmPatternData with flexible data handling."""
         # Convert any dict notes to RhythmNote objects
         if "notes" in data and isinstance(data["notes"], list):
             data["notes"] = [
@@ -147,7 +147,6 @@ class RhythmPatternData(BaseModel):
                 continue
 
             # Calculate swing offset based on note position
-            beat_position = note.position % 1.0
             swing_offset = (self.swing_ratio - 0.5) * 0.5
             note.position += swing_offset
 
@@ -232,19 +231,19 @@ class RhythmPattern(BaseModel):
     humanize_amount: float = Field(default=0.0, description="Amount of humanization to apply (0-1)")
     accent_pattern: list[str] | None = Field(default=None, description="Pattern of accents to apply")
 
-    model_config = ConfigDict(
-            extra="allow",  # Allow extra fields
-            validate_assignment=True,  # Validate on attribute assignment
-        )
+    class Config:
+        model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    @validator('name', pre=True)
-    def check_name(cls, v: str | None) -> str:
-        if not isinstance(v, str) or not v:
-            raise ValueError('name must be a non-empty string')
+    @field_validator('name')
+    def check_name(cls, v: str | None) -> str | None:
+        """Validate that name is a string."""
+        if v is not None and not isinstance(v, str):
+            raise ValueError('Name must be a string. Invalid value found.')
         return v
 
-    @validator('data', pre=True)
+    @field_validator('data')
     def check_data(cls, v: RhythmPatternData | dict[str, Any]) -> RhythmPatternData:
+        """Validate that data is a RhythmPatternData object."""
         if not isinstance(v, RhythmPatternData):
             v = RhythmPatternData(**v)
         return v

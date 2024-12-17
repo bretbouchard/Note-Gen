@@ -104,7 +104,7 @@ def get_default_chord_progression(root_note: Note, scale: Scale) -> ChordProgres
     from .chord_progression_generator import ChordProgressionGenerator
     from .scale_info import ScaleInfo
     
-    scale_info = ScaleInfo(root=root_note, scale=scale)
+    scale_info = ScaleInfo(root=root_note)  # Removed unexpected scale argument
     generator = ChordProgressionGenerator(root_note=root_note, scale=scale, scale_info=scale_info)
     numerals = COMMON_PROGRESSIONS[DEFAULT_PROGRESSION]
     chords = []

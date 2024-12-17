@@ -1,6 +1,9 @@
 """Module defining scale types."""
 from enum import Enum
 from typing import List, Final
+import logging
+
+logger = logging.getLogger(__name__)
 
 class ScaleType(Enum):
     """Enum representing different scale types."""
@@ -21,22 +24,31 @@ class ScaleType(Enum):
 
     def get_intervals(self) -> List[int]:
         """Get the intervals for this scale type."""
+        logger.debug(f"Getting intervals for scale type: {self.name}")
         return self.value
 
     def validate_degree(self, degree: int) -> bool:
         """Validate if a scale degree is valid for this scale type."""
-        return 1 <= degree <= len(self.value) + 1
+        logger.debug(f"Validating degree: {degree} for scale type: {self.name}")
+        if degree < 1 or degree > len(self.value) + 1:
+            logger.error(f"Invalid scale degree: {degree}. Must be between 1 and {len(self.value) + 1}.")
+            raise ValueError(f"Invalid scale degree: {degree}. Must be between 1 and {len(self.value) + 1}.")
+        logger.info(f"Degree {degree} is valid for scale type: {self.name}")
+        return True
 
     @property
     def degree_count(self) -> int:
         """Get the number of degrees in this scale type."""
+        logger.debug(f"Getting degree count for scale type: {self.name}")
         return len(self.value)
 
     @property
     def is_diatonic(self) -> bool:
         """Check if the scale is diatonic (7 notes)."""
+        logger.debug(f"Checking if scale type: {self.name} is diatonic")
         return self.degree_count == 7
 
     def get_scale_degrees(self) -> List[int]:
         """Get the scale degrees for this scale type."""
+        logger.debug(f"Getting scale degrees for scale type: {self.name}")
         return list(range(1, self.degree_count + 1))

@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from typing import Any, Literal, Optional, Union, List, Dict, TYPE_CHECKING
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator, ConfigDict
 
 if TYPE_CHECKING:
     from models.chord import Chord
@@ -17,7 +17,8 @@ PatternDataType = Union[List[int], Dict[str, Any], 'NotePatternData']
 
 class NotePatternData(BaseModel):
     """Data structure for note patterns."""
-    model_config = {"arbitrary_types_allowed": True}
+    class Config:
+        model_config = ConfigDict(extra="allow")
 
     notes: List[NoteType] = Field(default_factory=list)
     intervals: Optional[List[int]] = Field(default=None, description="List of intervals between notes")
@@ -31,35 +32,39 @@ class NotePatternData(BaseModel):
     restart_on_chord: bool = Field(default=False, description="Whether to restart on chord")
     octave_range: Optional[List[int]] = Field(default=None, description="Range of octaves to use")
 
-    @validator('notes')
+    @field_validator('notes')
+    @classmethod
     def check_notes(cls, v: List[NoteType]) -> List[NoteType]:
-        """Validate notes in the pattern."""
+        """Validate notes in the pattern. All items must be instances of Note, ScaleDegree, or Chord."""
         if not all(isinstance(note, (Note, ScaleDegree, Chord)) for note in v):
-            raise ValueError('All items in notes must be instances of Note, ScaleDegree, or Chord')
+            raise ValueError('All items in notes must be instances of Note, ScaleDegree, or Chord. Invalid input found.')
         return v
 
-    @validator('intervals')
+    @field_validator('intervals')
+    @classmethod
     def check_intervals(cls, v: Optional[List[int]]) -> Optional[List[int]]:
-        """Validate intervals in the pattern."""
+        """Validate intervals in the pattern. All intervals must be integers."""
         if v is not None and not all(isinstance(i, int) for i in v):
-            raise ValueError('All intervals must be integers')
+            raise ValueError('All intervals must be integers. Invalid input found.')
         return v
 
-    @validator('octave_range')
+    @field_validator('octave_range')
+    @classmethod
     def check_octave_range(cls, v: Optional[List[int]]) -> Optional[List[int]]:
-        """Validate octave range."""
+        """Validate octave range. Must be a list of two integers between -2 and 8."""
         if v is not None:
             if len(v) != 2:
-                raise ValueError('Octave range must be a list of two integers')
+                raise ValueError('Octave range must be a list of two integers. Invalid length found.')
             if not all(isinstance(i, int) and -2 <= i <= 8 for i in v):
-                raise ValueError('Octave range must be between -2 and 8')
+                raise ValueError('Octave range must be between -2 and 8. Invalid values found.')
             if v[0] > v[1]:
-                raise ValueError('First octave must be lower than second octave')
+                raise ValueError('First octave must be lower than second octave. Invalid range found.')
         return v
 
 class NotePattern(BaseModel):
     """A musical pattern with transformation capabilities."""
-    model_config = {"arbitrary_types_allowed": True}
+    class Config:
+        model_config = ConfigDict(extra="allow")
 
     name: str = Field(description="Name of the pattern")
     description: str = Field(default="", description="Description of the pattern")
@@ -83,7 +88,7 @@ class NotePattern(BaseModel):
         return cls(name=name, data=data)
 
     def get_notes(self) -> List[NoteType]:
-        """Get all notes in the pattern."""
+        """Get all notes in the pattern. Returns a list of notes or an empty list if none found."""
         if self.notes:
             return self.notes
         if isinstance(self.data, NotePatternData):
@@ -91,7 +96,7 @@ class NotePattern(BaseModel):
         return []
 
     def get_intervals(self) -> List[int]:
-        """Get all intervals in the pattern."""
+        """Get all intervals in the pattern. Returns a list of intervals or an empty list if none found."""
         if self.intervals:
             return self.intervals
         if isinstance(self.data, NotePatternData) and self.data.intervals:
@@ -99,7 +104,7 @@ class NotePattern(BaseModel):
         return []
 
     def get_duration(self) -> float:
-        """Get the duration of the pattern."""
+        """Get the duration of the pattern. Returns the duration or a default value if none found."""
         if self.duration is not None:
             return self.duration
         if isinstance(self.data, NotePatternData):
@@ -107,22 +112,22 @@ class NotePattern(BaseModel):
         return 1.0
 
     def dict(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:
-        """Convert to dictionary representation."""
-        d = super().dict(*args, **kwargs)
+        """Convert to dictionary representation, including nested data if applicable."""
+        d = super().model_dump(*args, **kwargs)
         if isinstance(self.data, NotePatternData):
-            d['data'] = self.data.dict()
+            d['data'] = self.data.model_dump()
         return d
 
 def get_pattern_notes(pattern: List[int], notes: List[NoteType]) -> List[NoteType]:
-    """Get notes from a pattern."""
+    """Get notes from a pattern. Returns a list of notes or raises an error if pattern is invalid."""
     if not check_pattern_notes(pattern, notes):
         raise ValueError("Invalid pattern or notes")
     return [notes[i] for i in pattern if 0 <= i < len(notes)]
 
 def check_pattern_notes(pattern: List[int], notes: List[NoteType]) -> bool:
-    """Check if pattern notes are valid."""
+    """Check if pattern notes are valid. Returns True if all notes are valid, otherwise False."""
     return all(isinstance(i, int) and 0 <= i < len(notes) for i in pattern)
 
 def check_pattern_intervals(pattern: List[int], intervals: List[int]) -> bool:
-    """Check if pattern intervals are valid."""
+    """Check if pattern intervals are valid. Returns True if all intervals are valid, otherwise False."""
     return all(isinstance(i, int) for i in pattern + intervals)
