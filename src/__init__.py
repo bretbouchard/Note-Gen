@@ -1,0 +1,3 @@
+"""
+Note-Gen backend package
+"""

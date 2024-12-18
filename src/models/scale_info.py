@@ -21,7 +21,7 @@ class ScaleInfo(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     scale_type: str = Field(default="major")
     root: Note
-    quality: str = Field(default="major")
+    # quality: str = Field(default="major")
     key_signature: str = Field(default="")
     intervals: List[int] = Field(default_factory=list)
     scale_degrees: Optional[List[ScaleDegree]] = Field(default=None)
@@ -36,32 +36,61 @@ class ScaleInfo(BaseModel):
             raise ValueError(f"Invalid scale type: {value}. Must be 'major', 'minor', 'harmonic_minor', or 'melodic_minor'.")
         return value
 
-    def __init__(self, root: Note, scale_type: str = 'major', key_signature: str = '', intervals: List[int] = [], scale_degrees: Optional[List[ScaleDegree]] = None, mode: Optional[str] = 'major', notes: List[Note] = []) -> None:
+    def __init__(
+        self,
+        root: Note,
+        scale_type: str = 'major',
+        key_signature: str = '',
+        intervals: Optional[List[int]] = None,
+        scale_degrees: Optional[List[ScaleDegree]] = None,
+        mode: Optional[str] = 'major',
+        notes: Optional[List[Note]] = None
+    ) -> None:
         """Initialize a ScaleInfo object with root, scale type, key signature, and optional intervals and scale degrees."""
         logger = logging.getLogger(__name__)
         logger.info(f"Initializing ScaleInfo with root: {root}, scale_type: {scale_type}, key_signature: {key_signature}")
+        
+        # Validate required parameters
         if not root:
             logger.error("Root note is required.")
             raise ValueError("Root note is required. Please provide a valid Note object.")
-        if not isinstance(scale_type, str):
-            logger.error("Scale type must be a string.")
-            raise ValueError("Scale type must be a string. Please provide a valid string.")
-        if not isinstance(key_signature, str):
-            logger.error("Key signature must be a string.")
-            raise ValueError("Key signature must be a string. Please provide a valid string.")
-        if not isinstance(intervals, list):
-            logger.error("Intervals must be a list.")
-            raise ValueError("Intervals must be a list. Please provide a valid list of integers.")
-        if scale_degrees is not None and not isinstance(scale_degrees, list):
-            logger.error("Scale degrees must be a list.")
-            raise ValueError("Scale degrees must be a list. Please provide a valid list of ScaleDegree objects.")
-        if mode is not None and not isinstance(mode, str):
-            logger.error("Mode must be a string.")
-            raise ValueError("Mode must be a string. Please provide a valid string.")
-        if not isinstance(notes, list):
-            logger.error("Notes must be a list.")
-            raise ValueError("Notes must be a list. Please provide a valid list of Note objects.")
-        super().__init__(root=root, scale_type=scale_type, key_signature=key_signature, intervals=intervals, scale_degrees=scale_degrees, mode=mode, notes=notes)
+        
+        # Initialize default values for mutable parameters
+        intervals = intervals if intervals is not None else []
+        notes = notes if notes is not None else []
+        
+        super().__init__(
+            root=root,
+            scale_type=scale_type,
+            key_signature=key_signature,
+            intervals=intervals,
+            scale_degrees=scale_degrees,
+            mode=mode,
+            notes=notes
+        )
+        
+    @property
+    def quality(self) -> str:
+        """Get the quality of the scale based on its type."""
+        logger = logging.getLogger(__name__)
+        logger.debug(f"Getting quality for scale type: {self.scale_type}")
+        
+        # Use a dictionary for mapping instead of if-elif chain
+        quality_mapping = {
+            'major': 'major',
+            'minor': 'minor',
+            'harmonic_minor': 'harmonic_minor',
+            'melodic_minor': 'melodic_minor',
+            'dorian': 'dorian',
+            'phrygian': 'phrygian',
+            'lydian': 'lydian',
+            'mixolydian': 'mixolydian'
+        }
+        
+        quality = quality_mapping.get(self.scale_type, 'major')
+        logger.info(f"Determined quality: {quality} for scale type: {self.scale_type}")
+        return quality
+
 
     def get_note_by_degree(self, degree: int) -> Optional[Note]:
         """Get the note corresponding to a specific scale degree."""

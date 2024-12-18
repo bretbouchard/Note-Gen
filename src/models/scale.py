@@ -1,17 +1,19 @@
 """
 Module for handling musical scales.
 """
-from typing import Dict, List, Tuple, ClassVar, Any, Optional
-from pydantic import BaseModel, ConfigDict
+from __future__ import annotations
 import logging
+from typing import List, Optional, Dict, Any, ClassVar, TYPE_CHECKING, Tuple
+from pydantic import BaseModel, ConfigDict
 
+from src.models.base_types import MusicalBase
 from src.models.note import Note
-from src.models.scale_info import ScaleInfo  # Import ScaleInfo
-from src.models.scale_degree import ScaleDegree  # Import ScaleDegree
-from src.models.chord import Chord
+from src.models.scale_degree import ScaleDegree
+from src.models.scale_info import ScaleInfo
 
-# Set up logging
-logging.basicConfig(level=logging.INFO)
+if TYPE_CHECKING:
+    from src.models.chord import Chord
+
 logger = logging.getLogger(__name__)
 
 class Scale(BaseModel):

@@ -108,21 +108,25 @@ class PatternInterpreter(BaseModel):
 
     def _interpret_current_element(self) -> Note:
         """Interpret the current element in the pattern.
-
+        
         Returns:
             Note: The interpreted note.
+            
+        Raises:
+            ValueError: If the current element is None or invalid.
         """
         element = self.pattern[self._current_index]
         if element is None:
-            logger.error("Current element is None.")
-            raise ValueError("Current element cannot be None.")
+            raise ValueError("Current element cannot be None")
+            
         if isinstance(element, Note):
             return element
-        elif isinstance(element, ScaleDegree):
+            
+        if isinstance(element, ScaleDegree):
             if element.value is None:
-                logger.error("ScaleDegree value is None.")
-                raise ValueError("ScaleDegree value cannot be None.")
+                raise ValueError("ScaleDegree value cannot be None")
             return self.scale.get_scale_degree(element.value)
+            
         return self.scale.get_scale_degree(1)
 
 class ScalePatternInterpreter(PatternInterpreter):

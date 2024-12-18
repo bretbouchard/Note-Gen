@@ -13,9 +13,33 @@ The Note Sequence Generator is a specialized tool that works with scale degrees 
 - Create reusable melodic and rhythmic templates
 - Experiment with different musical styles and progressions
 
+## Project Structure
+
+```plaintext
+note_generator/
+├── __init__.py
+├── models/
+│   ├── chord.py
+│   ├── chord_progression.py
+│   ├── chord_progression_generator.py
+│   ├── chord_roman_utils.py
+│   ├── enums.py
+│   ├── note.py
+│   ├── note_sequence.py
+│   └── scale_info.py
+├── note_modulation.py  # Note modulation logic
+├── note_sequence.py    # Sequence generation
+├── presets.py         # Preset patterns and progressions
+└── chord_progressions.py  # Chord progression library
+
+main.py                # FastAPI application
+requirements.txt       # Project dependencies
+```
+
 ## Features
 
 ### Chord Progressions
+
 - Rich library of preset chord progressions including:
   - Jazz standards (II-V-I, Bird Blues, Coltrane Changes)
   - Pop progressions (I-V-vi-IV, Doo-Wop)
@@ -23,15 +47,19 @@ The Note Sequence Generator is a specialized tool that works with scale degrees 
   - Blues variations
   - Rock and EDM patterns
 - Custom chord progression creation
+- Random progression generation
 - Support for complex chord qualities (maj7, min7, dim, aug)
+- Robust error handling for invalid scale degrees and chord notes
 
 ### Note Generation
+
 - Scale-degree based note generation
 - Chord-aware note modulation
 - Pattern-based sequence generation
 - Support for various musical styles
 
 ### API Endpoints
+
 - Generate notes from chord progressions
 - Generate notes from individual chords
 - Access preset chord progressions
@@ -44,55 +72,67 @@ The Note Sequence Generator is a specialized tool that works with scale degrees 
 - **Server:** Uvicorn
 - **Language:** Python 3.8+
 - **Testing:** Pytest
+- **Logging:** Python's built-in logging module
 
 ![Type Check](https://github.com/bretbouchard/Note-Gen/actions/workflows/type-check.yml/badge.svg)
 
-
 ## Installation
 
-1. Clone the repository:
+Clone the repository:
+
 ```bash
 git clone https://github.com/yourusername/note-sequence-generator.git
 cd note-sequence-generator
 ```
 
-2. Create a virtual environment (optional but recommended):
+Create a virtual environment (optional but recommended):
+
 ```bash
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 ```
 
-3. Install dependencies:
+Install dependencies:
+
 ```bash
 pip install -r requirements.txt
 ```
 
 ## Usage
 
-1. Start the FastAPI server:
+Start the FastAPI server:
+
 ```bash
 uvicorn main:app --reload
 ```
 
-2. Access the API documentation:
-- OpenAPI documentation: http://localhost:8000/docs
-- ReDoc documentation: http://localhost:8000/redoc
+Access the API documentation:
+
+- OpenAPI documentation: <http://localhost:8000/docs>
+- ReDoc documentation: <http://localhost:8000/redoc>
 
 ### Example API Calls
 
+Generate a note sequence from a chord progression
+
 ```python
-# Generate a note sequence from a chord progression
 POST /generate/progression
 {
     "progression_name": "II-V-I in C Major",
     "pattern_name": "Ascending Scale",
     "rhythm_pattern_name": "Quarter Notes"
 }
+```
 
-# Get available chord progressions
+Get available chord progressions
+
+```python
 GET /presets/progressions
+```
 
-# Generate notes from a single chord
+Generate notes from a single chord
+
+```python
 POST /generate/chord
 {
     "chord": {
@@ -103,19 +143,14 @@ POST /generate/chord
 }
 ```
 
-## Project Structure
+Generate a random chord progression
 
-```
-note_generator/
-├── __init__.py
-├── models.py           # Pydantic models
-├── note_modulation.py  # Note modulation logic
-├── note_sequence.py    # Sequence generation
-├── presets.py         # Preset patterns and progressions
-└── chord_progressions.py  # Chord progression library
-
-main.py                # FastAPI application
-requirements.txt       # Project dependencies
+```python
+POST /generate/progression/random
+{
+    "length": 4,
+    "scale": "C major"
+}
 ```
 
 ## Contributing

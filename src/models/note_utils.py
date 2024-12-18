@@ -24,7 +24,7 @@ In addition to the note conversion and validation functions, this module also pr
 from typing import Dict, Tuple
 from pydantic import BaseModel, ConfigDict
 
-from src.models.accidental_type import AccidentalType
+from src.models.enums import AccidentalType
 from src.models.note import Note
 from src.models.chord import Chord
 

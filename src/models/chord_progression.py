@@ -23,15 +23,17 @@ This module is designed to be extensible, allowing for the addition of new prope
 This module allows for the creation and manipulation of chord progressions, including validation and transposition.
 """
 
-from __future__ import annotations
-
 from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, Field, model_validator
 import logging
 
-from .chord import Chord, ChordQuality
-from .scale_info import ScaleInfo
+from src.models.note import Note
+from src.models.chord import Chord
+from src.models.chord_quality import ChordQuality
+from src.models.enums import ChordQualityType
+from src.models.scale_info import ScaleInfo
 
+# Set up logging
 logger = logging.getLogger(__name__)
 
 class ChordProgression(BaseModel):
@@ -44,8 +46,9 @@ class ChordProgression(BaseModel):
     class Config:
         arbitrary_types_allowed = True
     
-    chords: List[Chord] = Field(default_factory=list)
+    chords: List[Chord]
     scale_info: Optional[ScaleInfo] = None
+
 
     @model_validator(mode='before')
     def validate_chords(cls, values: Dict[str, Any]) -> Dict[str, Any]:
@@ -69,44 +72,30 @@ class ChordProgression(BaseModel):
         return self.chords[index]
 
     def get_all_chords(self) -> List[Chord]:
-
         return self.chords
 
-    def transpose(self, semitones: int) -> ChordProgression:
-        """Transpose the progression by a number of semitones.
-        
-        Args:
-            semitones (int): Number of semitones to transpose by
-            
-        Returns:
-            ChordProgression: A new chord progression with transposed chords.
-        """
-        logger.info(f"Transposing progression by {semitones} semitones")
-        new_chords = []
+    def transpose(self, interval: int) -> None:
+        """Transpose the chord progression by the given interval."""
+        logger.debug(f"Transposing progression by {interval} intervals")
         for chord in self.chords:
-            if chord.root is None:
-                continue  # Skip chords with no root note
-            new_root = chord.root.transpose(semitones)
-            new_chord = Chord(
-                root=new_root,
-                quality=ChordQuality(chord.quality),
-                notes=chord.get_notes(),
-                bass=chord.bass,
-                inversion=chord.inversion
-            )
-            new_chords.append(new_chord)
-
-        return ChordProgression(
-            chords=new_chords,
-            scale_info=self.scale_info
-        )
+            if chord.root:
+                new_midi_number = chord.root.midi_number + interval
+                new_root = Note.from_midi(midi_number=new_midi_number)
+                
+                # Determine new quality
+                if chord.quality is None:
+                    new_quality = ChordQualityType.MAJOR
+                    logger.warning("No chord quality found, defaulting to MAJOR")
+                else:
+                    new_quality = chord.quality  # Already a ChordQualityType
+                
+                chord.root = new_root
+                chord.quality = new_quality
+                chord.chord_notes = chord.generate_chord_notes(new_root, new_quality, chord.inversion)
+                logger.debug(f"Transposed chord: root={new_root}, quality={new_quality}")
 
     def dict(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:
-        """Convert to dictionary representation.
-
-        Returns:
-            Dict[str, Any]: A dictionary representation of the chord progression.
-        """
+        """Convert to dictionary representation."""
         d = super().dict(*args, **kwargs)
         d['chords'] = [chord.dict() for chord in self.chords]
         if self.scale_info:

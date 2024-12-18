@@ -1,12 +1,13 @@
 import pytest
-from src.models import note, note_sequence
-from src.models import chord
-from src.models import scale_degree
-from src.models import scale
+from src.models.note import Note  # Import Note class directly
+from src.models.note_sequence import NoteSequence
+from src.models.chord import Chord
+from src.models.scale_degree import ScaleDegree
+from src.models.scale import Scale
 
 
 def test_note_initialization() -> None:
-    note = note.Note(name='C', octave=4, duration=1.0, velocity=100)
+    note = Note(name='C', octave=4, duration=1.0, velocity=100)  # Use Note directly
     assert note.name == 'C'
     assert note.octave == 4
     assert note.duration == 1.0
@@ -15,28 +16,28 @@ def test_note_initialization() -> None:
 
 def test_invalid_note_name() -> None:
     with pytest.raises(ValueError):
-        note.Note(name='H', )  # Invalid note name
+        Note(name='H')  # Use Note directly
 
 
 def test_invalid_octave() -> None:
     with pytest.raises(ValueError):
-        note.Note(name='C',  octave=10)  # Invalid octave
+        Note(name='C', octave=10)  # Use Note directly
 
 
 def test_midi_number() -> None:
-    note = note.Note(name='C', octave=4)
+    note = Note(name='C', octave=4)  # Use Note directly
     assert note.midi_number == 60  # Corrected to Middle C (C4)
     
-    note = note.Note(name='C', accidental='#', octave=4)
+    note = Note(name='C', accidental='#', octave=4)  # Use Note directly
     assert note.midi_number == 61  # C# in octave 4
 
 
 def test_string_representation() -> None:
-    note = note.Note(name='D', accidental='b', octave=5)  # Setting accidental to flat
+    note = Note(name='D', accidental='b', octave=5)  # Use Note directly
     assert str(note) == 'D flat in octave 5'
 
 
 def test_note_equality() -> None:
-    note1 = note.Note(name='E',  octave=4)
-    note2 = note.Note(name='E',  octave=4)
+    note1 = Note(name='E', octave=4)  # Use Note directly
+    note2 = Note(name='E', octave=4)  # Use Note directly
     assert note1 == note2

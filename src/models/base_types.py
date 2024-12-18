@@ -22,48 +22,14 @@ This module is designed to be extensible, allowing for the addition of new types
 Base types for music theory models."""
 
 from __future__ import annotations
+from typing import TYPE_CHECKING
+from pydantic import BaseModel, ConfigDict
 
-import logging
-from typing import Optional, Any
-from pydantic import BaseModel, Field, ConfigDict, ValidationError
+if TYPE_CHECKING:
+    from src.models.note import Note
 
-from src.models.accidental_type import AccidentalType
 
-class Note(BaseModel):
-    """A musical note."""
-    note_name: str = Field(description="The note name (A-G)")
-    accidental: AccidentalType = Field(
-        default=AccidentalType.NATURAL,
-        description="The accidental applied to this note"
-    )
-    midi_number: int = Field(description="The MIDI note number")
-    duration: float = Field(default=1.0, description="The duration of the note")
-    velocity: Optional[int] = Field(default=None, description="The velocity of the note")
-    position: Optional[float] = Field(default=None, description="The position of the note")
-    octave_offset: int = Field(default=0, description="The octave offset")
-    is_chord_note: bool = Field(default=False, description="Whether this note is part of a chord")
-    scale_type: Optional[str] = Field(default="major", description="The scale type")
-    key: Optional[str] = Field(default="C", description="The key")
+class MusicalBase(BaseModel):
+    """Base class for all musical models."""
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    class Config:
-        arbitrary_types_allowed = True
-
-    def __init__(self, **data: Any) -> None:
-        logger = logging.getLogger(__name__)
-        try:
-            logger.info(f"Initializing Note with data: {data}")
-            super().__init__(**data)
-            # Validate critical fields
-            if not self.note_name:
-                logger.error("Note name must be provided.")
-                raise ValueError("Note name must be provided.")
-            if self.midi_number < 0 or self.midi_number > 127:
-                logger.error("MIDI number must be between 0 and 127.")
-                raise ValueError("MIDI number must be between 0 and 127.")
-            logger.debug(f"Note initialized with note_name: {self.note_name}, midi_number: {self.midi_number}")
-        except ValidationError as e:
-            logger.error(f"Validation error: {e}")
-            raise
-        except Exception as e:
-            logger.error(f"An error occurred: {e}")
-            raise

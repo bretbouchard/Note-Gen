@@ -1,37 +1,21 @@
-"""Module for defining musical notes in music theory.
-
-This module provides classes and functions for representing musical notes, including their properties, alterations, and relationships to scales. It allows for the creation and manipulation of notes, enabling various musical applications such as composition and analysis.
-
-Note Class
-----------
-
-The `Note` class encapsulates the properties of a musical note, including its name and any alterations (e.g., sharps or flats).
-
-Usage
------
-
-To create a musical note, instantiate the `Note` class with the desired note name and optional accidental:
-
-```python
-note = Note('C', AccidentalType.SHARP)
-print(note)
-```
-
-This module is designed to be extensible, allowing for the addition of new properties and methods related to musical notes as needed."""
-
+from __future__ import annotations
 import logging
-from typing import ClassVar, Dict, Any
-from pydantic import BaseModel, Field, ConfigDict, validator, field_validator
-from src.models.chord import Chord
-from src.models.scale_degree import ScaleDegree
-from src.models.scale import Scale
-from src.models.note_event import NoteEvent
+from typing import ClassVar, Dict, Any, TYPE_CHECKING
+from pydantic import Field, field_validator, ConfigDict
+from src.models.base_types import MusicalBase
+from src.models.enums import AccidentalType
 
-# Set up logging
+
+if TYPE_CHECKING:
+    from src.models.chord import Chord
+    from src.models.scale import Scale
+    from src.models.scale_degree import ScaleDegree
+    from src.models.note_event import NoteEvent
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-class Note(BaseModel):
+class Note(MusicalBase):
 
     NOTES: ClassVar[Dict[str, int]] = {
         'C': 0,
@@ -140,14 +124,6 @@ class Note(BaseModel):
         if value < 0 or value > 8:
             raise ValueError('Octave must be between 0 and 8')
         return value
-
-    @property
-    def midi_number(self):
-        return self.midi_number
-
-    @midi_number.setter
-    def midi_number(self, value):
-        self._midi_number = value
 
     @staticmethod
     def get_note_name(midi_number: int) -> str:
@@ -262,16 +238,16 @@ class Note(BaseModel):
             raise ValueError(f"Invalid note string: {note_str}") from e
 
     @classmethod
-    def from_midi(cls, midi_number: int, name: str) -> 'Note':
+    def from_midi(cls, midi_number: int) -> 'Note':
         """Create a Note instance from a MIDI number.
-    
+
         Args:
             midi_number (int): MIDI number
-            name (str): Note name
-    
+
         Returns:
             Note: Created note object
         """
+        name = cls.get_note_name(midi_number)
         return cls(name=name, midi_number=midi_number)
 
     def transpose(self, interval: int) -> 'Note':
@@ -291,7 +267,7 @@ class Note(BaseModel):
         if not 0 <= new_midi <= 127:
             logger.error(f"Transposition would result in invalid MIDI number: {new_midi}")
             raise ValueError(f"Transposition would result in invalid MIDI number: {new_midi}")
-        return Note.from_midi(new_midi, self.name)
+        return Note.from_midi(new_midi)
 
     def enharmonic(self) -> 'Note':
         """Get enharmonic equivalent of note.
@@ -348,6 +324,20 @@ class Note(BaseModel):
             return NotImplemented
         return self.midi_number == other.midi_number
 
+    def __add__(self, interval: int) -> 'Note':
+        """Add an interval (in semitones) to the current note.
+        
+        Args:
+            interval (int): The interval to add.
+        
+        Returns:
+            Note: A new Note object representing the transposed note.
+        """
+        # Calculate the new MIDI number
+        new_midi_number = self.midi_number + interval
+        # Create a new Note from the new MIDI number
+        return Note.from_midi(new_midi_number)
+
     def dict(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:
         """Convert to dictionary representation.
 
@@ -357,7 +347,9 @@ class Note(BaseModel):
         d = super().model_dump(*args, **kwargs)
         return d
 
-    def test_midi_number():
+    @staticmethod
+    def test_midi_number() -> None:
+        """Test the MIDI number calculations."""
         note = Note(name='C', octave=4)
         assert note.midi_number == 60  # Middle C (C4)
         

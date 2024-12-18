@@ -1,8 +1,15 @@
-from typing import Dict, List, Optional
+from __future__ import annotations
+from typing import Dict, List, Optional, TYPE_CHECKING
 from pydantic import BaseModel, ConfigDict
-from .note import Note
-from .chord_quality import ChordQuality
+from src.models.base_types import MusicalBase
+from src.models.note import Note
+from src.models.enums import ChordQualityType  # Add this import
 import logging
+
+if TYPE_CHECKING:
+    from src.models.note import Note
+    from src.models.chord_quality import ChordQuality
+
 
 logger = logging.getLogger(__name__)
 
@@ -27,76 +34,84 @@ WORD_TO_ROMAN = {
 }
 
 # Mapping of chord qualities to their intervals
+# Mapping of chord qualities to their intervals
 QUALITY_QUALITIES = {
-    ChordQuality.major,
-    ChordQuality.minor,
-    ChordQuality.diminished,
-    ChordQuality.augmented,
-    ChordQuality.dominant7,
-    ChordQuality.major7,
-    ChordQuality.minor7,
-    ChordQuality.diminished7,
-    ChordQuality.half_diminished7,
-    ChordQuality.sus2,
-    ChordQuality.sus4
+    ChordQualityType.MAJOR,
+    ChordQualityType.MINOR,
+    ChordQualityType.DIMINISHED,
+    ChordQualityType.AUGMENTED,
+    ChordQualityType.DOMINANT_7,
+    ChordQualityType.MAJOR_7,
+    ChordQualityType.MINOR_7,
+    ChordQualityType.DIMINISHED_7,
+    ChordQualityType.HALF_DIMINISHED_7,
+    ChordQualityType.SUS2,
+    ChordQualityType.SUS4
 }
 
-CHORD_INTERVALS: Dict[ChordQuality, List[int]] = {
-    ChordQuality.major: [0, 4, 7],
-    ChordQuality.minor: [0, 3, 7],
-    ChordQuality.diminished: [0, 3, 6],
-    ChordQuality.augmented: [0, 4, 8],
-    ChordQuality.dominant7: [0, 4, 7, 10],
-    ChordQuality.major7: [0, 4, 7, 11],
-    ChordQuality.minor7: [0, 3, 7, 10],
-    ChordQuality.diminished7: [0, 3, 6, 9],
-    ChordQuality.half_diminished7: [0, 3, 6, 10],
-    ChordQuality.sus2: [0, 2, 7],
-    ChordQuality.sus4: [0, 5, 7]
+CHORD_INTERVALS: Dict[ChordQualityType, List[int]] = {
+    ChordQualityType.MAJOR: [0, 4, 7],
+    ChordQualityType.MINOR: [0, 3, 7],
+    ChordQualityType.DIMINISHED: [0, 3, 6],
+    ChordQualityType.AUGMENTED: [0, 4, 8],
+    ChordQualityType.DOMINANT_7: [0, 4, 7, 10],
+    ChordQualityType.MAJOR_7: [0, 4, 7, 11],
+    ChordQualityType.MINOR_7: [0, 3, 7, 10],
+    ChordQualityType.DIMINISHED_7: [0, 3, 6, 9],
+    ChordQualityType.HALF_DIMINISHED_7: [0, 3, 6, 10],
+    ChordQualityType.SUS2: [0, 2, 7],
+    ChordQualityType.SUS4: [0, 5, 7]
 }
 
 CHORD_COUNT = {
-    ChordQuality.major: 3,
-    ChordQuality.minor: 3,
-    ChordQuality.diminished: 3,
-    ChordQuality.augmented: 3,
-    ChordQuality.dominant7: 4,
-    ChordQuality.major7: 4,
-    ChordQuality.minor7: 4,
-    ChordQuality.diminished7: 4,
-    ChordQuality.half_diminished7: 4,
-    ChordQuality.augmented7: 4,
-    ChordQuality.major9: 5,
-    ChordQuality.minor9: 5,
-    ChordQuality.dominant9: 5,
-    ChordQuality.major11: 6,
-    ChordQuality.minor11: 6,
-    ChordQuality.sus2: 3,
-    ChordQuality.sus4: 3,
-    ChordQuality.seven_sus4: 4
+    ChordQualityType.MAJOR: 3,
+    ChordQualityType.MINOR: 3,
+    ChordQualityType.DIMINISHED: 3,
+    ChordQualityType.AUGMENTED: 3,
+    ChordQualityType.DOMINANT_7: 4,
+    ChordQualityType.MAJOR_7: 4,
+    ChordQualityType.MINOR_7: 4,
+    ChordQualityType.DIMINISHED_7: 4,
+    ChordQualityType.HALF_DIMINISHED_7: 4,
+    ChordQualityType.AUGMENTED_7: 4,
+    ChordQualityType.MAJOR_9: 5,
+    ChordQualityType.MINOR_9: 5,
+    ChordQualityType.DOMINANT_9: 5,
+    ChordQualityType.MAJOR_11: 6,
+    ChordQualityType.MINOR_11: 6,
+    ChordQualityType.SUS2: 3,
+    ChordQualityType.SUS4: 3,
+    ChordQualityType.SEVEN_SUS4: 4
 }
 
-class ChordBase(BaseModel):
+class ChordBase(MusicalBase):
     """Base class for chord-related structures."""
     model_config = ConfigDict(arbitrary_types_allowed=True)
-    root: int
+    root: Note
     intervals: List[int]
     duration: Optional[float] = None
     velocity: Optional[int] = None
 
     @property
     def notes(self) -> List[int]:
-        """Get the list of notes in the chord."""
-        return [self.root + interval for interval in self.intervals]
+        """Get the notes as a list of intervals."""
+        return [int(interval) for interval in self.intervals]
 
-    def get_intervals(self, quality: ChordQuality) -> List[int]:
-        """Return the intervals that define the chord."""
-        if isinstance(quality, ChordQuality):
-            return CHORD_INTERVALS[quality]  # Ensure this returns List[int]
-        else:
-            logger.error("Quality must be an instance of ChordQuality")
-            raise ValueError("Quality must be an instance of ChordQuality")
+    def get_intervals(self, quality: ChordQualityType) -> List[int]:
+        """Get the intervals for a given chord quality.
+        
+        Args:
+            quality: The chord quality type to get intervals for.
+            
+        Returns:
+            List[int]: The intervals for the chord quality.
+            
+        Raises:
+            ValueError: If quality is not a ChordQualityType instance.
+        """
+        if not isinstance(quality, ChordQualityType):
+            raise ValueError("Quality must be an instance of ChordQualityType")
+        return CHORD_INTERVALS[quality]
 
     def __str__(self) -> str:
-        """Return the string representation of the chord base."""
         return f"ChordBase(root={self.root}, intervals={self.intervals})"

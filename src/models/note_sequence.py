@@ -29,7 +29,7 @@ class NoteSequence(BaseModel):
             raise ValueError('All events must be NoteEvent instances.')
         return v
 
-    def add_note(self, note: Note | ScaleDegree | Chord, 
+    def add_note(self, note: Union[str, Note, ScaleDegree, Chord], 
                  position: float = 0.0, 
                  duration: float = 1.0,
                  velocity: int = 100) -> None:
@@ -61,6 +61,7 @@ class NoteSequence(BaseModel):
         """Transpose the note sequence by the given number of semitones."""
         return NoteSequence(notes=[note + semitones for note in self.notes])
 
+NoteSequence.model_rebuild()
 
 class PatternInterpreter(BaseModel):
     """Base class for pattern interpreters."""
@@ -103,3 +104,5 @@ def create_pattern_interpreter(
     if scale is not None:
         return ScalePatternInterpreter(pattern=pattern, scale=scale, **kwargs)
     return PatternInterpreter(pattern=pattern)
+
+NoteSequence.model_rebuild()
