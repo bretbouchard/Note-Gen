@@ -2,9 +2,9 @@
 import logging
 from pydantic import BaseModel, Field, ConfigDict
 
-from models.note import Note
-from models.chord import Chord
-from models.scale_degree import ScaleDegree
+from .note import Note
+from src.models.chord import Chord
+from src.models.scale_degree import ScaleDegree
 
 # Set up logging
 logger = logging.getLogger(__name__)

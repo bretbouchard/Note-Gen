@@ -1,3 +1,6 @@
+from src.models.note import Note
+from src.models.chord import Chord
+from src.models.scale import Scale
 from fastapi import FastAPI, HTTPException      
 from pydantic import BaseModel  
 from typing import List, Optional

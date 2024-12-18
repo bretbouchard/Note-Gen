@@ -5,9 +5,10 @@ from typing import Dict, List, Tuple, ClassVar, Any, Optional
 from pydantic import BaseModel, ConfigDict
 import logging
 
-from .note import Note
-from .scale_info import ScaleInfo  # Import ScaleInfo
-from .scale_degree import ScaleDegree  # Import ScaleDegree
+from src.models.note import Note
+from src.models.scale_info import ScaleInfo  # Import ScaleInfo
+from src.models.scale_degree import ScaleDegree  # Import ScaleDegree
+from src.models.chord import Chord
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -278,3 +279,17 @@ class Scale(BaseModel):
 
     def get_value(self) -> int:
         return 10
+
+    def validate_accidental(self, note: Note) -> bool:
+        """Validate if the accidental of a note is valid within the context of this scale."""
+        logger = logging.getLogger(__name__)
+        logger.info(f"Validating accidental for note: {note}")
+        if note.accidental not in ['sharp', 'flat', 'natural']:
+            logger.warning(f"Invalid accidental: {note.accidental}")
+            return False
+        # Determine valid accidentals based on the scale notes
+        valid_notes = [n.name for n in self.notes]
+        if note.name not in valid_notes:
+            logger.warning(f"Note name {note.name} is not in the scale notes.")
+            return False
+        return True

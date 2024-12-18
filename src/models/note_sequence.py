@@ -1,20 +1,34 @@
 """Module for handling sequences of musical notes."""
 from typing import List, Optional, Sequence, Union, Any
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from models.note import Note
-from models.chord import Chord
-from models.scale_degree import ScaleDegree
-from models.scale import Scale
-from models.note_event import NoteEvent
+from .note import Note
+from .chord import Chord
+from .scale_degree import ScaleDegree
+from .scale import Scale
+from .note_event import NoteEvent
 
 class NoteSequence(BaseModel):
     """A sequence of musical notes with timing information."""
     model_config = ConfigDict(arbitrary_types_allowed=True)
-    
-    events: List[NoteEvent] = []
+    notes: List[int] = Field(default_factory=list)
+    events: List[NoteEvent] = Field(default_factory=list)
     duration: float = 0.0
-    
+
+    @field_validator('notes')
+    def check_notes(cls, v: List[int]) -> List[int]:
+        if not all(isinstance(note, int) for note in v):
+            raise ValueError('All notes must be integers.')
+        if not all(0 <= note <= 127 for note in v):
+            raise ValueError('All notes must be in the MIDI range (0-127).')
+        return v
+
+    @field_validator('events')
+    def check_events(cls, v: List[NoteEvent]) -> List[NoteEvent]:
+        if not all(isinstance(event, NoteEvent) for event in v):
+            raise ValueError('All events must be NoteEvent instances.')
+        return v
+
     def add_note(self, note: Note | ScaleDegree | Chord, 
                  position: float = 0.0, 
                  duration: float = 1.0,
@@ -27,7 +41,7 @@ class NoteSequence(BaseModel):
             velocity=velocity
         )
         self.events.append(event)
-        self._update_duration()
+        self._update_duration()  # Ensure duration is updated correctly
     
     def _update_duration(self) -> None:
         if self.events:
@@ -42,6 +56,11 @@ class NoteSequence(BaseModel):
         """Clear all notes from the sequence."""
         self.events.clear()
         self.duration = 0.0
+
+    def transpose(self, semitones: int) -> 'NoteSequence':
+        """Transpose the note sequence by the given number of semitones."""
+        return NoteSequence(notes=[note + semitones for note in self.notes])
+
 
 class PatternInterpreter(BaseModel):
     """Base class for pattern interpreters."""
@@ -60,7 +79,7 @@ class ScalePatternInterpreter(PatternInterpreter):
     
     def interpret(self, position: float = 0.0) -> NoteSequence:
         """Interpret the pattern and return a note sequence."""
-        sequence = NoteSequence()
+        sequence = NoteSequence(notes=[])  # Initialize with an empty list of notes
         for i, step in enumerate(self.pattern):
             if isinstance(step, (int, str)):
                 # Get notes from scale

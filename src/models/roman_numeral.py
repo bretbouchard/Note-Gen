@@ -33,11 +33,10 @@ from pydantic import BaseModel, ConfigDict
 import re
 import logging
 
-from .note import Note
-from .scale import Scale
-from .scale_info import ScaleInfo
-from .scale_type import ScaleType
-from models.chord_roman_utils import get_roman_numeral_from_chord
+from src.models.note import Note
+from src.models.scale import Scale
+from src.models.scale_info import ScaleInfo
+from src.models.scale_type import ScaleType
 
 logger = logging.getLogger(__name__)
 
@@ -128,38 +127,27 @@ class RomanNumeral(BaseModel):
 
     @classmethod
     def determine_root_note_from_numeral(cls, numeral_str: str) -> Note:
-        """Determine the root note based on the Roman numeral string.
-
-        Args:
-            numeral_str (str): The Roman numeral string.
-
-        Returns:
-            Note: The corresponding root note for the scale.
-        """
-        # Define a mapping from Roman numerals to root notes
-        roman_to_note = {
-            'I': 'C',
-            'II': 'D',
-            'III': 'E',
-            'IV': 'F',
-            'V': 'G',
-            'VI': 'A',
-            'VII': 'B',
-            # Add more mappings as needed
+        """Determine the root note based on the Roman numeral string."""
+        roman_to_midi = {
+            'I': 60,  # C4
+            'II': 62,  # D4
+            'III': 64,  # E4
+            'IV': 65,  # F4
+            'V': 67,  # G4
+            'VI': 69,  # A4
+            'VII': 71,  # B4
         }
 
-        # Normalize the numeral string
         base = numeral_str.strip().upper()
-
-        # Get the corresponding note
-        if base in roman_to_note:
-            note_name = roman_to_note[base]
-            return Note.from_name(note_name)  # Assuming Note has a method to create from name
+        if base in roman_to_midi:
+            midi_number = roman_to_midi[base]
+            return Note.from_midi(midi_number, name=base)  # Call from_midi with MIDI number and name
         else:
             raise ValueError(f"Invalid Roman numeral for root note: {numeral_str}")
 
     @classmethod
-    def from_str(cls, numeral_str: str, scale_type: Optional[ScaleType] = None) -> 'RomanNumeral':
+    def from_str(cls, numeral_str: str, scale_type: Optional[ScaleType] = None) -> "RomanNumeral":
+        from src.models.chord_roman_utils import get_roman_numeral_from_chord  # Move import here to avoid circular dependency
         if scale_type is None:
             raise ValueError("Invalid scale provided.")
 
@@ -179,23 +167,33 @@ class RomanNumeral(BaseModel):
         scale_degree = cls.get_scale_degree(base)
 
         # Determine chord quality based on the base
-        chord_quality = ChordQuality(cls.class_var_chord_quality_mapping.get(base, ChordQuality.major))  
+        chord_quality = cls.class_var_chord_quality_mapping.get(base, "major")  
 
         # Define bass as the next note in the scale
-        bass: Note = Note.from_midi(root.midi_number + 2)  # Example logic for bass
+        bass: Note = Note.from_midi(root.midi_number + 2, name='SomeName')  # Example logic for bass
 
-        # Create the corresponding Chord based on the scale and degree
-        chord_notes: List[Note] = []  
-        chord = get_roman_numeral_from_chord(root=root, quality=chord_quality, notes=chord_notes, bass=bass)
+        # Replace lines 187-188 with:
+        from src.models.chord import Chord, ChordQuality  # Add ChordQuality import
+
+        # Initialize chord_notes before using
+        chord_notes: List[Note] = []
+
+        # Convert string quality to ChordQuality enum
+        chord = Chord(
+            root=root,
+            quality=ChordQuality(chord_quality),  # Convert str to ChordQuality
+            notes=chord_notes,
+            bass=bass
+        )
 
         # Create and return the RomanNumeral instance
         return cls(scale=scale, numeral_str=numeral_str, scale_degree=scale_degree, numeral=base, 
-                   is_major=chord_quality == ChordQuality.major, 
-                   is_diminished=chord_quality == ChordQuality.diminished, 
-                   is_augmented=chord_quality == ChordQuality.augmented, 
-                   is_half_diminished=chord_quality == ChordQuality.half_diminished7, 
-                   has_seventh=False, has_ninth=False, has_eleventh=False, inversion=0)
-
+                is_major=chord_quality == "major", 
+                is_diminished=chord_quality == "diminished", 
+                is_augmented=chord_quality == "augmented", 
+                is_half_diminished=chord_quality == "half-diminished7", 
+                has_seventh=False, has_ninth=False, has_eleventh=False, inversion=0)
+    
     @classmethod
     def get_scale_degree(cls, base: str) -> int:
         roman_to_degree = {
@@ -233,3 +231,12 @@ class RomanNumeral(BaseModel):
             return "half-diminished7"
         else:
             return "minor"
+
+    def get_intervals(self) -> List[int]:
+        """Get the intervals for this roman numeral."""
+        # Implement the logic to return intervals based on the roman numeral
+        return [0, 4, 7]  # Example for major chord
+
+    @classmethod
+    def some_function_that_uses_get_roman_numeral_from_chord(cls) -> None:
+        pass  # Placeholder for future implementation

@@ -1,38 +1,10 @@
-"""Module for defining the base properties of musical chords.
-
-This module provides classes and functions that define the fundamental properties of musical chords, including their intervals, qualities, and relationships to scales. It serves as a foundation for more complex chord structures and manipulations.
-
-The module contains the following key components:
-
-- Mappings for Roman numerals to integer scale degrees (ROMAN_TO_INT)
-- Mappings for integers to Roman numerals (INT_TO_ROMAN)
-- Mappings for words to Roman numerals (WORD_TO_ROMAN)
-- Mappings for chord qualities to their intervals (QUALITY_INTERVALS and CHORD_INTERVALS)
-- A base class for chords (ChordBase) with attributes for notes, duration, and velocity
-
-ChordBase Class
-----------------
-
-The `ChordBase` class encapsulates the basic properties of a chord, including its intervals and quality. It provides methods for manipulating and analyzing chord structures.
-
-Usage
------
-
-To create a base chord, instantiate the `ChordBase` class with the desired notes, duration, and velocity:
-
-```python
-chord = ChordBase(notes=[Note("C"), Note("E"), Note("G")], duration=1.0, velocity=100)
-print(chord)
-```
-
-This module is designed to be extensible, allowing for the addition of new properties and methods related to chord analysis as needed.
-
-"""
-
 from typing import Dict, List, Optional
 from pydantic import BaseModel, ConfigDict
 from .note import Note
 from .chord_quality import ChordQuality
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Mapping of Roman numerals to integer scale degrees
 ROMAN_TO_INT = {
@@ -105,47 +77,26 @@ CHORD_COUNT = {
 }
 
 class ChordBase(BaseModel):
-    """Base class for musical chords.
-
-    This class defines the fundamental properties of a chord, including its intervals and qualities. It provides methods for manipulating and analyzing chord structures.
-
-    Attributes:
-        notes (List[Note]): A list of notes in the chord.
-        duration (Optional[float]): The duration of the chord. Defaults to None.
-        velocity (Optional[int]): The velocity of the chord. Defaults to None.
-
-    The ChordBase class provides a foundation for working with chords, allowing for the creation of chords with specific notes, duration, and velocity.
-    It serves as a base class for more specific chord types, enabling the creation of complex chord structures.
-
-    Example:
-        >>> chord = ChordBase(notes=[Note("C"), Note("E"), Note("G")], duration=1.0, velocity=100)
-        >>> print(chord.notes)
-        [Note("C"), Note("E"), Note("G")]
-        >>> print(chord.duration)
-        1.0
-        >>> print(chord.velocity)
-        100
-    """
+    """Base class for chord-related structures."""
     model_config = ConfigDict(arbitrary_types_allowed=True)
-    notes: List[Note]
+    root: int
+    intervals: List[int]
     duration: Optional[float] = None
     velocity: Optional[int] = None
 
+    @property
+    def notes(self) -> List[int]:
+        """Get the list of notes in the chord."""
+        return [self.root + interval for interval in self.intervals]
+
     def get_intervals(self, quality: ChordQuality) -> List[int]:
-        """Return the intervals that define the chord.
-
-        Args:
-            quality (ChordQuality): The quality of the chord (e.g., ChordQuality.major, ChordQuality.minor).
-
-        Returns:
-            List[int]: The intervals of the chord.
-        """
-        return CHORD_INTERVALS.get(quality, [])
+        """Return the intervals that define the chord."""
+        if isinstance(quality, ChordQuality):
+            return CHORD_INTERVALS[quality]  # Ensure this returns List[int]
+        else:
+            logger.error("Quality must be an instance of ChordQuality")
+            raise ValueError("Quality must be an instance of ChordQuality")
 
     def __str__(self) -> str:
-        """Return the string representation of the chord base.
-
-        Returns:
-            str: The string representation of the chord base.
-        """
-        return f"Chord with notes: {self.notes}, duration: {self.duration}, velocity: {self.velocity}"
+        """Return the string representation of the chord base."""
+        return f"ChordBase(root={self.root}, intervals={self.intervals})"

@@ -10,10 +10,11 @@ from typing_extensions import NotRequired
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
-from .chord_base import CHORD_INTERVALS, CHORD_COUNT  # Ensure CHORD_COUNT is imported
-from .note import Note  # Ensure Note is imported
-from .chord_quality import ChordQuality  # Import ChordQuality from chord_quality.py
-from models.chord_roman_utils import get_chord_from_roman_numeral  # Updated import
+from src.models.chord_base import ChordBase, CHORD_INTERVALS, CHORD_COUNT  # Ensure CHORD_COUNT is imported
+from src.models.note import Note  # Ensure Note is imported
+from src.models.chord_quality import ChordQuality  # Import ChordQuality from chord_quality.py
+from src.models.roman_numeral import RomanNumeral  # Add import at top of file
+from src.models.scale import Scale  # Import Scale
 
 # Define Literal types for warnings and modes
 Modes: TypeAlias = Literal['json', 'python']
@@ -38,7 +39,6 @@ class Chord(BaseModel):
         inversion (int): The inversion of the chord.
         notes_list (Optional[List[Note]]): The list of notes in the chord.
     """
-
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     root: Optional[Note] = None
@@ -117,10 +117,10 @@ class Chord(BaseModel):
 
     def __init__(self, root: Optional[Note], quality: Optional[ChordQuality], notes: List[Note], bass: Optional[Note] = None, inversion: int = 0) -> None:
         logger.debug(f"Initializing chord with data: {{root: {root}, quality: {quality}, notes: {notes}, bass: {bass}, inversion: {inversion}}}")
-        if root is not None:
-            self.root = self.validate_root(root)
-        else:
-            self.root = None
+        if not isinstance(root, Note):
+            logger.error("Root must be a Note object.")
+            raise ValueError("Root must be a Note object.")
+        self.root = self.validate_root(root)
         self.quality = self.validate_quality(quality)  # Validate quality
         self.chord_notes = [note for note in notes if note is not None]  # Filter out None values
         if not self.chord_notes:
@@ -195,7 +195,7 @@ class Chord(BaseModel):
         logger.debug(f"Creating note from root: {root} with interval: {interval}")
         midi_number = root.midi_number + interval
         logger.debug(f"Creating note with MIDI number: {midi_number}")
-        note = Note.from_midi(midi_number)
+        note = Note.from_midi(midi_number, name=f'Note {midi_number}')  # Include name argument
         logger.info(f"Created note: {note.note_name} from root: {root} with interval: {interval}")
         return note
 
@@ -209,11 +209,13 @@ class Chord(BaseModel):
         raise ValueError(f"Invalid inversion index: {inversion}")
 
     def some_method(self) -> None:
+        """Some method."""
         logger.debug("some_method called")
         if self.root:
             midi_num = self.root.midi_number  # Access midi_number correctly
 
     def another_method(self) -> List[Note]:
+        """Another method."""
         logger.debug("another_method called")
         return [note for note in self.chord_notes if note is not None]  # Ensure no None values are returned
 
@@ -238,14 +240,110 @@ class Chord(BaseModel):
         self.chord_notes = value
 
     @classmethod
-    def from_roman_numeral(cls, roman_numeral: str) -> Chord:
-        """Create a chord from a Roman numeral."""
-        if roman_numeral is None:
-            raise ValueError("Roman numeral cannot be None when creating a chord.")
+    def from_base(cls, base: ChordBase) -> 'Chord':
+        """Create a chord from a ChordBase instance."""
+        if not isinstance(base, ChordBase):
+            logger.error("Invalid base: must be a ChordBase instance")
+            raise ValueError("Invalid base: must be a ChordBase instance")
         
-        logger.debug(f"Creating chord from Roman numeral: {roman_numeral}")
-        return get_chord_from_roman_numeral(roman_numeral)
+        if base.root is None:
+            logger.error("Base root is required")
+            raise ValueError("Base root is required")
+        
+        if not isinstance(base.root, Note):
+            logger.error("Base root must be a Note object.")
+            raise ValueError("Base root must be a Note object.")
+        
+        if not base.intervals:
+            logger.error("Base intervals are required")
+            raise ValueError("Base intervals are required")
+        
+        # Convert intervals to actual notes
+        if not isinstance(base.root, Note):
+            logger.error("Base root must be a Note object.")
+            raise ValueError("Base root must be a Note object.")
+        root_note = Note.from_midi(base.root.midi_number, name=f'Root {base.root.midi_number}')
+        notes = [Note.from_midi(base.root.midi_number + interval, name=f'Note {base.root.midi_number + interval}') for interval in base.intervals]
+        chord = cls(
+            root=root_note,
+            quality=None,  # You might want to determine quality from intervals
+            notes=notes,
+            bass=None,
+            inversion=0
+        )
+        
+        # Set duration and velocity after creation
+        chord.duration = base.duration
+        chord.velocity = base.velocity
+        return chord
+    
+    @classmethod
+    def from_roman_numeral(cls, roman_str: str, root_note: Note) -> Chord:
+        from src.models.chord_roman_utils import get_chord_from_roman_numeral  # Import here to avoid circular import
+        """Create a chord from a roman numeral string."""
+        if not isinstance(roman_str, str):
+            logger.error("Invalid roman_str: must be a string")
+            raise ValueError("Invalid roman_str: must be a string")
+        
+        from src.models.roman_numeral import RomanNumeral
 
+        # Check the parameters required for RomanNumeral
+        some_scale = Scale(root=root_note)  # Use the provided root_note as the root for the Scale
+        if some_scale is None:
+            logger.error("Scale cannot be None")
+            raise ValueError("Scale cannot be None")
+        if not isinstance(some_scale, Scale):
+            logger.error("Scale must be an instance of Scale")
+            raise ValueError("Scale must be an instance of Scale")
+        
+        roman = RomanNumeral(
+            numeral=roman_str,
+            numeral_str=roman_str,
+            scale=some_scale,
+            scale_degree=0,
+            is_major=True,
+            is_diminished=False,
+            is_augmented=False,
+            is_half_diminished=False,
+            has_seventh=False,
+            has_ninth=False,
+            has_eleventh=False,
+            inversion=0
+        )
+        
+        base = get_chord_from_roman_numeral(roman, root_note)  # Ensure to pass root_note argument
+        
+        if base.root is None:
+            logger.error("Base root is required")
+            raise ValueError("Base root is required")
+        
+        if not isinstance(base.root, Note):
+            logger.error("Base root must be a Note object.")
+            raise ValueError("Base root must be a Note object.")
+        
+        if not base.intervals:
+            logger.error("Base intervals are required")
+            raise ValueError("Base intervals are required")
+        
+        # Create notes using from_midi
+        if not isinstance(base.root, Note):
+            logger.error("Base root must be a Note object.")
+            raise ValueError("Base root must be a Note object.")
+        root_note = Note.from_midi(base.root.midi_number, name=f'Root {base.root.midi_number}')
+        notes = [Note.from_midi(base.root.midi_number + interval, name=f'Note {base.root.midi_number + interval}') for interval in base.intervals]
+        chord = cls(
+            root=root_note,
+            quality=None,
+            notes=notes,
+            bass=None,
+            inversion=0
+        )
+        
+        # Set duration and velocity after creation
+        chord.duration = base.duration
+        chord.velocity = base.velocity
+        return chord
+        
     @classmethod
     def from_root(cls, root: Note, quality: Union[ChordQuality, str] = ChordQuality.major) -> Chord:
         """Create a chord from a root note and quality."""
@@ -342,8 +440,8 @@ class Chord(BaseModel):
         if self.root is None:
             logger.error("Root note is None")
             raise ValueError("Root note cannot be None")
-        new_root = Note.from_midi(self.root.midi_number + semitones)
-        new_notes = [Note.from_midi(note.midi_number + semitones) for note in self.chord_notes]
+        new_root = Note.from_midi(self.root.midi_number + semitones, name=f'Transposed Root {self.root.midi_number + semitones}')  # Include name argument
+        new_notes = [Note.from_midi(note.midi_number + semitones, name=f'Transposed Note {note.midi_number + semitones}') for note in self.chord_notes]  # Include name argument
         return Chord(
             root=new_root,
             quality=self.quality,
@@ -405,10 +503,10 @@ class Chord(BaseModel):
         """Create a copy of the chord."""
         logger.debug("model_copy called")
         if self.root is not None:
-            root = Note.from_midi(self.root.midi_number)
+            root = Note.from_midi(self.root.midi_number, name=f'Copied Root {self.root.midi_number}')  # Include name argument
         else:
             root = None
-        new_notes = [Note.from_midi(note.midi_number) for note in self.chord_notes]
+        new_notes = [Note.from_midi(note.midi_number, name=f'Copied Note {note.midi_number}') for note in self.chord_notes]  # Include name argument
         return Chord(
             root=root,
             quality=ChordQuality(self.quality) if isinstance(self.quality, str) else self.quality,
@@ -432,7 +530,7 @@ class Chord(BaseModel):
         note_from_str = Note.from_str(root)
         logger.debug(f"Output of Note.from_str('{root}'): {Note.from_str(root)}")  # Log the output of Note.from_str
         logger.debug(f"Note created from string '{root}': {note_from_str}")  # Log the created note
-        scale_notes = [Note.from_midi(note_from_str.midi_number + interval) for interval in intervals]
+        scale_notes = [Note.from_midi(note_from_str.midi_number + interval, name=f'Scale Note {note_from_str.midi_number + interval}') for interval in intervals]  # Include name argument
         logger.debug(f"Generated scale notes for {root}: {[note.note_name for note in scale_notes]}")  # Log generated scale notes
         return scale_notes
 

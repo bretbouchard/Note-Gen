@@ -1,7 +1,7 @@
 # note_pattern.pyi
 
 from typing import Union, List
-from models.note import Note
+from src.models.note import Note
 from models.scale_degree import ScaleDegree
 from models.chord import Chord
 

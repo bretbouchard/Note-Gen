@@ -8,14 +8,18 @@ from .note_pattern import NotePattern
 from .rhythm_pattern import RhythmPattern, RhythmPatternData
 from .scale import Scale
 
+# Module for handling default presets in music theory
+
+# Default values for musical components
+DEFAULT_KEY = 'C'
+DEFAULT_SCALE_TYPE = 'major'
+DEFAULT_CHORD_PROGRESSION = 'I-IV-V-I'
+DEFAULT_NOTE_PATTERN = 'Simple Triad'
+DEFAULT_RHYTHM_PATTERN = 'quarter_notes'
+
 class Presets(BaseModel):
     # Define your fields here
     model_config = ConfigDict(arbitrary_types_allowed=True)
-
-# Default selections
-DEFAULT_PROGRESSION = "I-V-vi-IV"
-DEFAULT_NOTE_PATTERN = "Simple Triad"
-DEFAULT_RHYTHM_PATTERN = "quarter_notes"
 
 # Common chord progressions in Roman numeral notation
 COMMON_PROGRESSIONS: Dict[str, List[str]] = {
@@ -109,9 +113,16 @@ def get_default_chord_progression(root_note: Note, scale: Scale) -> ChordProgres
     from .chord_progression_generator import ChordProgressionGenerator
     from .scale_info import ScaleInfo
     
-    scale_info = ScaleInfo(root=root_note)  # Removed unexpected scale argument
-    generator = ChordProgressionGenerator(root_note=root_note, scale=scale, scale_info=scale_info)
-    numerals = COMMON_PROGRESSIONS[DEFAULT_PROGRESSION]
+    # Create ScaleInfo with root and scale type
+    scale_info = ScaleInfo(
+        root=root_note,
+        scale_type=str(scale)  # Convert scale to string instead of using .name
+    )
+    
+    # Pass scale_info to the generator
+    generator = ChordProgressionGenerator(scale_info=scale_info)
+    
+    numerals = COMMON_PROGRESSIONS[DEFAULT_CHORD_PROGRESSION]
     chords = []
     for numeral in numerals:
         chord = generator.generate_chord(numeral)

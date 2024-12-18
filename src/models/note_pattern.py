@@ -5,9 +5,9 @@ from typing import Any, Literal, Optional, Union, List, Dict, TYPE_CHECKING
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 if TYPE_CHECKING:
-    from models.chord import Chord
-    from models.note import Note
-    from models.scale_degree import ScaleDegree
+    from .chord import Chord
+    from .note import Note
+    from .scale_degree import ScaleDegree
 
 # Type aliases
 DirectionType = Literal["forward", "backward", "random", "alternating"]

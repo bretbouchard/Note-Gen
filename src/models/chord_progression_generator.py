@@ -10,10 +10,11 @@ logger = logging.getLogger(__name__)
 from enum import Enum
 from typing import Dict, List, Optional, Tuple, ClassVar
 from pydantic import BaseModel, Field
-from .chord import Chord, ChordQuality
-from .scale_info import ScaleInfo
-from .chord_progression import ChordProgression
-from .note import Note
+from src.models.chord import Chord, ChordQuality
+from src.models.scale_info import ScaleInfo
+from src.models.chord_progression import ChordProgression
+from src.models.note_sequence import NoteSequence  # Import NoteSequence
+from src.models.note import Note  # Update import statement
 
 class ProgressionPattern(str, Enum):
     """Common chord progression patterns."""
@@ -90,7 +91,7 @@ class ChordProgressionGenerator(BaseModel):
             chord_notes.append(note)
         return chord_notes
 
-    def generate(self, pattern: Optional[ProgressionPattern] = None) -> ChordProgression:
+    def generate(self, pattern: Optional[ProgressionPattern] = None) -> Tuple[ChordProgression, NoteSequence]:
         """Generate a chord progression based on the specified pattern."""
         try:
             logger.info(f"Generating chord progression with pattern: {pattern}")
@@ -99,10 +100,13 @@ class ChordProgressionGenerator(BaseModel):
             if pattern is None:
                 logger.error("Pattern is not specified.")
                 raise ValueError("Pattern is not specified.")
+            
             progression = ChordProgression(scale_info=self.scale_info)
+            note_sequence = NoteSequence(notes=[], events=[], duration=0.0)  # Initialize NoteSequence
             progression_pattern = self.PROGRESSION_PATTERNS[pattern]
             self.scale_info.compute_scale_degrees()  # Ensure this is called before generating chords
             logger.info(f"Scale degrees available: {self.scale_info.scale_degrees}")  # Log available scale degrees
+    
             for degree, quality in progression_pattern:
                 logger.info(f"Generating chord for degree: {degree}, quality: {quality}")  # Log degree and quality
                 root = self.scale_info.get_scale_degree(degree)
@@ -113,17 +117,22 @@ class ChordProgressionGenerator(BaseModel):
                 if chord_notes is None or not all(isinstance(note, Note) for note in chord_notes):
                     logger.error(f"Failed to generate valid chord notes for root: {root} and quality: {quality}")
                     continue  # Skip this iteration if chord_notes is invalid
+                
                 bass = self.scale_info.get_scale_degree(degree + 1)  # Assuming bass is the next degree
                 if bass is None or not isinstance(bass, Note):
                     logger.error(f"Invalid bass note for degree: {degree}")
                     continue  # Skip if bass is invalid
-                if root is None or not isinstance(root, Note) or any(note is None for note in chord_notes) or bass is None or not isinstance(bass, Note):
-                    logger.error(f"Invalid root or chord notes or bass for degree: {degree}")
-                    continue  # Skip this iteration if root or chord_notes or bass is invalid
+                
                 chord = Chord(root=root, quality=ChordQuality(quality), notes=chord_notes, bass=bass)
                 progression.add_chord(chord)
+                
+                # Add chord notes to NoteSequence
+                for note in chord_notes:
+                    note_sequence.add_note(note, position=0.0, duration=1.0)  # Adjust position and duration as needed
+                
                 logger.info(f"Generated chord - Root: {root}, Bass: {bass}, Chord Notes: {chord_notes}")
-            return progression
+            
+            return progression, note_sequence  # Return both progression and NoteSequence
         except Exception as e:
             logger.error(f"Failed to generate chord progression: {str(e)}")
             raise

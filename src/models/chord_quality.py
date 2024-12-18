@@ -1,3 +1,5 @@
+from src.models.note import Note
+from .chord import Chord
 from enum import Enum
 from pydantic import BaseModel, ConfigDict
 

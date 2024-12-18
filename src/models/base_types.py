@@ -27,7 +27,7 @@ import logging
 from typing import Optional, Any
 from pydantic import BaseModel, Field, ConfigDict, ValidationError
 
-from .accidental_type import AccidentalType
+from src.models.accidental_type import AccidentalType
 
 class Note(BaseModel):
     """A musical note."""

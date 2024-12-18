@@ -93,8 +93,7 @@ class ScaleInfo(BaseModel):
             logger.info(f"Generated note for degree {i + 1}: {note}")  # Log generated notes
             scale_degree = ScaleDegree(
                 degree=i + 1,
-                note=note,
-                scale_info=self
+                note=note
             )
             scale_degrees.append(scale_degree)
 

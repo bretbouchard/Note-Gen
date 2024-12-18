@@ -21,25 +21,18 @@ This module is designed to be extensible, allowing for the addition of new prope
 
 import logging
 from typing import ClassVar, Dict, Any
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, validator, field_validator
+from src.models.chord import Chord
+from src.models.scale_degree import ScaleDegree
+from src.models.scale import Scale
+from src.models.note_event import NoteEvent
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class Note(BaseModel):
-    """Class representing a musical note.
 
-    This class encapsulates the properties of a musical note, including its name, pitch, and any alterations. It provides methods for manipulating and analyzing notes.
-
-    Attributes:
-        name (str): Note name (A-G)
-        accidental (str): Accidental (# or b)
-        octave (int): Octave number
-        duration (float): Note duration
-        velocity (int): Note velocity
-        midi_number (int): MIDI number
-    """
     NOTES: ClassVar[Dict[str, int]] = {
         'C': 0,
         'C#': 1,
@@ -53,10 +46,8 @@ class Note(BaseModel):
         'Gb': 6,
         'G': 7,
         'G#': 8,
-        'Ab': 8,
         'A': 9,
         'A#': 10,
-        'Bb': 10,
         'B': 11,
         'Cb': -1,
         'B#': 12,
@@ -93,16 +84,90 @@ class Note(BaseModel):
         'Bbb4': 10
     }
     ACCIDENTALS: ClassVar[Dict[str, int]] = {
-        '': 0, '#': 1, 'b': -1, '##': 2, 'bb': -2
+        'natural': 0,
+        '': 0,
+        '#': 1,
+        'b': -1,
+        '##': 2,
+        'bb': -2
     }
+    MIDDLE_C_MIDI: ClassVar[int] = 60  # Default MIDI number for Middle C
     name: str = Field(..., description="Note name (A-G)")
     accidental: str = Field(default="", description="Accidental (# or b)")
     octave: int = Field(default=4, description="Octave number")
     duration: float = Field(default=1.0, description="Note duration")
     velocity: int = Field(default=64, description="Note velocity")
-    midi_number: int = Field(default=0, description="MIDI number")
+    midi_number: int = Field(default=MIDDLE_C_MIDI, description="MIDI number")
+
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    def __init__(self, **data: Any) -> None:
+        super().__init__(**data)
+        # Calculate MIDI number based on note properties
+        self.midi_number = self.calculate_midi_number()
+
+    def calculate_midi_number(self) -> int:
+        """Calculate MIDI number based on note name, accidental, and octave."""
+        # Get the base value for the note from NOTES dictionary
+        base_value = self.NOTES.get(self.name, 0)
+        
+        # Add accidental modification
+        accidental_value = self.ACCIDENTALS.get(self.accidental, 0)
+        
+        # Calculate the complete MIDI number
+        midi_number = ((self.octave + 1) * 12) + base_value + accidental_value
+        
+        return midi_number
+
+
+    @field_validator('name')
+    def validate_note_name(cls, value: str) -> str:
+        valid_notes = {'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'}
+        if value not in valid_notes:
+            raise ValueError('Invalid note name')
+        return value
+
+    @field_validator('accidental')
+    def validate_accidental(cls, value: str) -> str:
+        valid_accidentals = {'', '#', 'b'}
+        if value not in valid_accidentals:
+            raise ValueError('Invalid accidental')
+        return value
+
+    @field_validator('octave')
+    def validate_octave(cls, value: int) -> int:
+        if value < 0 or value > 8:
+            raise ValueError('Octave must be between 0 and 8')
+        return value
+
+    @property
+    def midi_number(self):
+        return self.midi_number
+
+    @midi_number.setter
+    def midi_number(self, value):
+        self._midi_number = value
+
+    @staticmethod
+    def get_note_name(midi_number: int) -> str:
+        note_to_name = {
+            60: 'C',
+            61: 'C#',
+            62: 'D',
+            63: 'D#',
+            64: 'E',
+            65: 'F',
+            66: 'F#',
+            67: 'G',
+            68: 'G#',
+            69: 'A',
+            70: 'A#',
+            71: 'B',
+            72: 'C4',
+            # Add more mappings as needed
+        }
+        return note_to_name.get(midi_number, 'Unknown Note')
 
     def note_name(self) -> str:
         """Note name without octave (e.g., C)
@@ -197,42 +262,17 @@ class Note(BaseModel):
             raise ValueError(f"Invalid note string: {note_str}") from e
 
     @classmethod
-    def from_midi(cls, midi_num: int) -> 'Note':
-        """Create a Note from a MIDI number. Must be between 0 and 127.
-
+    def from_midi(cls, midi_number: int, name: str) -> 'Note':
+        """Create a Note instance from a MIDI number.
+    
         Args:
-            midi_num (int): MIDI number
-
+            midi_number (int): MIDI number
+            name (str): Note name
+    
         Returns:
             Note: Created note object
-
-        Raises:
-            ValueError: If the MIDI number is invalid
         """
-        if not 0 <= midi_num <= 127:
-            logger.error(f"MIDI number must be between 0 and 127, got {midi_num}")
-            raise ValueError(f"MIDI number must be between 0 and 127, got {midi_num}. Invalid value found.")
-        octave = (midi_num // 12) - 2
-        note_num = midi_num % 12
-
-        # Find closest natural note
-        for name, base_num in cls.NOTES.items():
-            if base_num == note_num:
-                return cls(name=name, octave=octave, midi_number=midi_num)
-            elif base_num > note_num:
-                prev_name = list(cls.NOTES.keys())[list(cls.NOTES.values()).index(base_num) - 1]
-                return cls(name=prev_name, accidental="#", octave=octave, midi_number=midi_num)
-
-        # Handle special case for B#
-        return cls(name='B', accidental="#", octave=octave, midi_number=midi_num)
-
-    def to_midi(self) -> int:
-        """Convert note to MIDI number.
-
-        Returns:
-            int: MIDI number
-        """
-        return self.midi_number
+        return cls(name=name, midi_number=midi_number)
 
     def transpose(self, interval: int) -> 'Note':
         """Transpose note by given interval.
@@ -246,12 +286,12 @@ class Note(BaseModel):
         Raises:
             ValueError: If the transposition would result in an invalid MIDI number
         """
-        new_midi = self.to_midi() + interval
+        new_midi = self.midi_number + interval
         logger.debug(f"Transposing {self.note_name} by {interval} to MIDI {new_midi}")
         if not 0 <= new_midi <= 127:
             logger.error(f"Transposition would result in invalid MIDI number: {new_midi}")
             raise ValueError(f"Transposition would result in invalid MIDI number: {new_midi}")
-        return Note.from_midi(new_midi)
+        return Note.from_midi(new_midi, self.name)
 
     def enharmonic(self) -> 'Note':
         """Get enharmonic equivalent of note.
@@ -259,7 +299,7 @@ class Note(BaseModel):
         Returns:
             Note: Enharmonic equivalent note object
         """
-        midi_num = self.to_midi()
+        midi_num = self.midi_number
         current_note = (self.NOTES[self.name] + self.ACCIDENTALS[self.accidental]) % 12
 
         # Return natural notes as is
@@ -284,15 +324,16 @@ class Note(BaseModel):
         Returns:
             bool: Whether the notes are enharmonically equivalent
         """
-        return self.to_midi() == other.to_midi()
+        return self.midi_number == other.midi_number
 
     def __str__(self) -> str:
-        """String representation of note.
-
-        Returns:
-            str: String representation of note
-        """
-        return f"{self.name}{self.accidental}{self.octave}"
+        """String representation of note."""
+        accidental_str = 'natural'  # Default to natural
+        if self.accidental == 'b':
+            accidental_str = 'flat'
+        elif self.accidental == '#':
+            accidental_str = 'sharp'
+        return f'{self.name} {accidental_str} in octave {self.octave}'
 
     def __eq__(self, other: object) -> bool:
         """Compare notes by MIDI number.
@@ -305,7 +346,7 @@ class Note(BaseModel):
         """
         if not isinstance(other, Note):
             return NotImplemented
-        return self.to_midi() == other.to_midi()
+        return self.midi_number == other.midi_number
 
     def dict(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:
         """Convert to dictionary representation.
@@ -315,3 +356,10 @@ class Note(BaseModel):
         """
         d = super().model_dump(*args, **kwargs)
         return d
+
+    def test_midi_number():
+        note = Note(name='C', octave=4)
+        assert note.midi_number == 60  # Middle C (C4)
+        
+        note = Note(name='C', accidental='#', octave=4)
+        assert note.midi_number == 61  # C# in octave 4
