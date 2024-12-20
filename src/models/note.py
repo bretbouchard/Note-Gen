@@ -1,7 +1,7 @@
 from __future__ import annotations
 import logging
 from typing import ClassVar, Dict, Any, TYPE_CHECKING
-from pydantic import Field, field_validator, ConfigDict
+from pydantic import Field, field_validator, ConfigDict, BaseModel
 from src.models.base_types import MusicalBase
 from src.models.enums import AccidentalType
 
@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-class Note(MusicalBase):
+class Note(MusicalBase, BaseModel):
 
     NOTES: ClassVar[Dict[str, int]] = {
         'C': 0,
@@ -121,29 +121,37 @@ class Note(MusicalBase):
 
     @field_validator('octave')
     def validate_octave(cls, value: int) -> int:
-        if value < 0 or value > 8:
-            raise ValueError('Octave must be between 0 and 8')
+        # MIDI standard supports notes from C-1 to G9
+        if value < -1 or value > 9:
+            raise ValueError('Octave must be between -1 and 9 (MIDI standard range)')
+        return value
+
+    @field_validator('duration')
+    def validate_duration(cls, value: float) -> float:
+        if value <= 0:
+            raise ValueError('Duration must be greater than 0')
         return value
 
     @staticmethod
     def get_note_name(midi_number: int) -> str:
-        note_to_name = {
-            60: 'C',
-            61: 'C#',
-            62: 'D',
-            63: 'D#',
-            64: 'E',
-            65: 'F',
-            66: 'F#',
-            67: 'G',
-            68: 'G#',
-            69: 'A',
-            70: 'A#',
-            71: 'B',
-            72: 'C4',
-            # Add more mappings as needed
+        """Get the note name from a MIDI number without octave."""
+        # Map MIDI note numbers (0-11) to note names
+        note_names = {
+            0: 'C',
+            1: 'C#',
+            2: 'D',
+            3: 'D#',
+            4: 'E',
+            5: 'F',
+            6: 'F#',
+            7: 'G',
+            8: 'G#',
+            9: 'A',
+            10: 'A#',
+            11: 'B'
         }
-        return note_to_name.get(midi_number, 'Unknown Note')
+        # Get the note name by taking the modulo 12 of the MIDI number
+        return note_names.get(midi_number % 12, 'Unknown Note')
 
     def note_name(self) -> str:
         """Note name without octave (e.g., C)
@@ -247,8 +255,9 @@ class Note(MusicalBase):
         Returns:
             Note: Created note object
         """
-        name = cls.get_note_name(midi_number)
-        return cls(name=name, midi_number=midi_number)
+        octave = min(midi_number // 12, 8)  # Calculate octave from MIDI number, capping at 8
+        note_name = cls.get_note_name(midi_number % 12)  # Get note name from MIDI number
+        return cls(name=note_name, octave=octave, midi_number=midi_number)
 
     def transpose(self, interval: int) -> 'Note':
         """Transpose note by given interval.

@@ -2,12 +2,15 @@
 from __future__ import annotations
 
 from typing import Any, Literal, Optional, Union, List, Dict, TYPE_CHECKING
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, ValidationError
 
-if TYPE_CHECKING:
-    from .chord import Chord
-    from .note import Note
-    from .scale_degree import ScaleDegree
+from src.models.note import Note
+from src.models.chord import Chord
+from src.models.scale_degree import ScaleDegree
+from src.models.chord_quality import ChordQuality
+from src.models.chord_base import ChordBase
+
+
 
 # Type aliases
 DirectionType = Literal["forward", "backward", "random", "alternating"]
@@ -19,9 +22,8 @@ class NotePatternData(BaseModel):
     """Data structure for note patterns."""
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    notes: List[NoteType] = Field(default_factory=list)
+    notes: List[NoteType] = Field(default_factory=list, description="List of notes in the pattern")
     intervals: Optional[List[int]] = Field(default=None, description="List of intervals between notes")
-    duration: float = Field(default=1.0, description="Duration of the pattern")
     position: float = Field(default=0.0, description="Position of the pattern")
     velocity: Optional[int] = Field(default=None, description="Velocity of the pattern")
     direction: Optional[DirectionType] = Field(default=None, description="Direction of the pattern")
@@ -37,6 +39,19 @@ class NotePatternData(BaseModel):
         """Validate notes in the pattern. All items must be instances of Note, ScaleDegree, or Chord."""
         if not all(isinstance(note, (Note, ScaleDegree, Chord)) for note in v):
             raise ValueError('All items in notes must be instances of Note, ScaleDegree, or Chord. Invalid input found.')
+        return v
+
+    @field_validator('notes')
+    @classmethod
+    def validate_notes(cls, v: List[NoteType]) -> List[NoteType]:
+        """Validate notes in the pattern. All items must be instances of Note, ScaleDegree, or Chord."""
+        if v is None:
+            raise ValueError("Notes cannot be None.")
+        if not v:
+            raise ValueError("Notes cannot be empty.")
+        for note in v:
+            if not isinstance(note, (Note, ScaleDegree, Chord)):
+                raise ValueError(f"Invalid note: {note}. Must be an instance of Note, ScaleDegree, or Chord.")
         return v
 
     @field_validator('intervals')
@@ -59,6 +74,10 @@ class NotePatternData(BaseModel):
             if v[0] > v[1]:
                 raise ValueError('First octave must be lower than second octave. Invalid range found.')
         return v
+
+    def calculate_total_duration(self) -> float:
+        """Calculate the total duration of the notes in the pattern."""
+        return sum(note.duration for note in self.notes if isinstance(note, Note))
 
 class NotePattern(BaseModel):
     """A musical pattern with transformation capabilities."""
@@ -106,7 +125,7 @@ class NotePattern(BaseModel):
         if self.duration is not None:
             return self.duration
         if isinstance(self.data, NotePatternData):
-            return self.data.duration
+            return self.data.calculate_total_duration()
         return 1.0
 
     def dict(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:
@@ -129,3 +148,12 @@ def check_pattern_notes(pattern: List[int], notes: List[NoteType]) -> bool:
 def check_pattern_intervals(pattern: List[int], intervals: List[int]) -> bool:
     """Check if pattern intervals are valid. Returns True if all intervals are valid, otherwise False."""
     return all(isinstance(i, int) for i in pattern + intervals)
+
+def setup_models() -> None:
+    NotePatternData.model_rebuild()
+
+def initialize_models() -> None:
+    setup_models()
+    NotePatternData.model_rebuild()
+
+initialize_models()  # Call this at the end to ensure all models are defined before rebuilding

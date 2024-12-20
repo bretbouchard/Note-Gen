@@ -65,8 +65,7 @@ class PatternInterpreter(BaseModel):
     pattern: Sequence[Union[int, str, Note, ScaleDegree, Dict[str, Any]]]
     _current_index: int = 0
 
-    class Config:
-        arbitrary_types_allowed = True
+    _config = ConfigDict(arbitrary_types_allowed=True)
 
     def __init__(self, scale: Scale, pattern: Sequence[Union[int, str, Note, ScaleDegree, Dict[str, Any]]]) -> None:
         """Initialize PatternInterpreter with a scale and pattern.

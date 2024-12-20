@@ -1,129 +1,96 @@
-"""Module for defining musical patterns.
-
-This module provides classes and functions for defining various musical patterns used in compositions. It includes implementations for different types of patterns, such as rhythmic patterns, melodic patterns, and harmonic patterns, allowing for flexible musical composition and manipulation.
-"""
-from typing import Any, List, Literal, Dict, Union
-
-from pydantic import BaseModel, Field, ConfigDict
-
-
-DirectionType = Literal["forward", "backward", "random", "alternating"]
-ApproachType = Literal["chromatic", "diatonic", "below", "above"]
-
-class RhythmNote(BaseModel):
-    """A single note in a rhythm pattern."""
-    position: float = Field(default=0.0)
-    duration: float = Field(default=1.0)
-    velocity: float = Field(default=100.0)
-    is_rest: bool = Field(default=False)
-    accent: str | None = Field(default=None)
-    swing_ratio: float | None = Field(default=None)
-
-    class Config:
-        arbitrary_types_allowed = True
-
-    @classmethod
-    def validate_velocity(cls, v: float) -> float:
-        if not 0 <= v <= 127:
-            raise ValueError("Velocity must be between 0 and 127")
-        return v
-
-    @classmethod
-    def validate_duration(cls, v: float) -> float:
-        if v <= 0:
-            raise ValueError("Duration must be positive")
-        return v
-
-    def get(self, key: str, default: Any | None = None) -> Any:
-        return getattr(self, key, default)
-
-    def __getitem__(self, key: str) -> Any:
-        return getattr(self, key)
-
-    def dict(self, **kwargs: Any) -> dict[str, Any]:
-        return self.model_dump(**kwargs)
+from typing import Any, List, Literal, Dict, Union, Optional
+from pydantic import BaseModel, Field, ConfigDict, field_validator
+from typing_extensions import Annotated
 
 class RhythmPatternData(BaseModel):
     """Data for a rhythm pattern."""
-    notes: List[RhythmNote] = Field(default_factory=list)
-    duration: float = Field(default=0.0)
-    time_signature: str = Field(default="4/4")
-    swing_enabled: bool = Field(default=False)
-    swing_ratio: float = Field(default=0.67)
-    groove_type: str | None = Field(default=None)
-    variation_probability: float = Field(default=0.0)
-    humanize_amount: float = Field(default=0.0)
-    accent_pattern: list[str] | None = Field(default=None)
-    default_duration: float = Field(default=1.0)
+    model_config = ConfigDict(arbitrary_types_allowed=True, populate_by_name=True)
 
-    class Config:
-        arbitrary_types_allowed = True
+    notes: List[Any] = Field(default=[])
+    duration: Annotated[float, Field(default=0.0)]
+    time_signature: Annotated[str, Field(default="4/4")]
+    swing_enabled: Annotated[bool, Field(default=False)]
+    humanize_amount: Annotated[float, Field(default=0.0)]
+    accent_pattern: Annotated[Optional[List[str]], Field(default=None)]
+    swing_ratio: Annotated[float, Field(default=0.67)]
+    groove_type: Annotated[Optional[str], Field(default=None)]
+    variation_probability: Annotated[float, Field(default=0.0, ge=0, le=1)]
+    default_duration: Annotated[float, Field(default=1.0)]
+    total_duration: float = Field(default=0.0, description="Total duration of the rhythm pattern")
 
+    @field_validator("duration")
     @classmethod
-    def check_notes(cls, v: Union[list[Union[dict, RhythmNote]], Any]) -> list[RhythmNote]:
-        if not isinstance(v, list):
-            raise ValueError("Notes must be a list")
-        return [RhythmNote(**note) if isinstance(note, dict) else note for note in v]
-
-    @classmethod
-    def check_duration(cls, v: Union[int, float]) -> float:
+    def validate_duration(cls, v: float) -> float:
         if v < 0:
             raise ValueError("Duration must be non-negative")
         return v
 
+    @field_validator("time_signature")
     @classmethod
-    def check_time_signature(cls, v: Union[str, Any]) -> str:
-        if not isinstance(v, str) or '/' not in v:
-            raise ValueError("Invalid time signature format")
+    def validate_time_signature(cls, v: str) -> str:
+        if v not in ["4/4", "3/4", "2/4"]:
+            raise ValueError("Invalid time signature. Must be one of: '4/4', '3/4', '2/4'.")
         return v
 
-class MusicalPattern(BaseModel):
-    """Base class for musical patterns."""
-    pattern_data: List[Dict[str, Any]]
-    notes: List[RhythmNote] = Field(default_factory=list)
-    duration: float = Field(default=0.0)
-    time_signature: str = Field(default="4/4")
-    swing_enabled: bool = Field(default=False)
-    swing_ratio: float = Field(default=0.67)
-    groove_type: str | None = Field(default=None)
-    variation_probability: float = Field(default=0.0)
-    humanize_amount: float = Field(default=0.0)
-    accent_pattern: list[str] | None = Field(default=None)
-    default_duration: float = Field(default=1.0)
-
-    class Config:
-        arbitrary_types_allowed = True
-
-    def generate(self) -> List[Any]:
-        """Generate the musical sequence based on the pattern data.
-
-        Returns:
-            List[Any]: The generated musical sequence.
-        """
-        raise NotImplementedError("Subclasses must implement this method.")
-
+    @field_validator("swing_ratio")
     @classmethod
-    def validate_swing_ratio(cls, v: float | None) -> float | None:
-        if v is not None and not 0 <= v <= 1:
+    def validate_swing_ratio(cls, v: float) -> float:
+        if not (0 <= v <= 1):
             raise ValueError("Swing ratio must be between 0 and 1")
         return v
 
+    @field_validator("humanize_amount")
+    @classmethod
+    def validate_humanize_amount(cls, v: float) -> float:
+        """Validate that humanize amount is between 0 and 1."""
+        if not 0 <= v <= 1:
+            raise ValueError('Humanize amount must be between 0 and 1. Invalid value found.')
+        return v
+
+    @field_validator("swing_enabled")
+    @classmethod
+    def validate_swing_enabled(cls, v: bool) -> bool:
+        return v
+
+    @field_validator("accent_pattern")
+    @classmethod
+    def validate_accent_pattern(cls, v: Optional[List[str]]) -> Optional[List[str]]:
+        if v is not None and not all(isinstance(acc, str) for acc in v):
+            raise ValueError("Accent pattern must be a list of strings")
+        return v
+
+    @field_validator("groove_type")
+    @classmethod
+    def validate_groove_type(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and v not in ["straight", "swing"]:
+            raise ValueError("Groove type must be either 'straight' or 'swing'")
+        return v
+
+    @field_validator("variation_probability")
     @classmethod
     def validate_variation_probability(cls, v: float) -> float:
-        if not 0 <= v <= 1:
+        if not (0 <= v <= 1):
             raise ValueError("Variation probability must be between 0 and 1")
         return v
 
-    @classmethod
-    def validate_humanize_amount(cls, v: float) -> float:
-        if not 0 <= v <= 1:
-            raise ValueError("Humanize amount must be between 0 and 1")
-        return v
-
-    def _update_duration(self) -> None:
+    def recalculate_pattern_duration(self) -> None:
         if self.notes:
-            self.duration = max(note.position + note.duration for note in self.notes)
+            self.total_duration = max(note.position + note.duration for note in self.notes)
+        else:
+            self.total_duration = 0.0
 
-    def apply_swing(self) -> None:
-        if not self.swing_enabled:
-            return
+    def __init__(self, notes: List[Any] = [], **data: Any) -> None:
+        if not notes:
+            raise ValueError("Notes cannot be empty.")
+        print("Initializing RhythmPatternData with:")
+        print(f"  notes: {notes}")
+        print(f"  duration: {self.duration}")
+        print(f"  time_signature: {self.time_signature}")
+        print(f"  swing_enabled: {self.swing_enabled}")
+        print(f"  humanize_amount: {self.humanize_amount}")
+        print(f"  accent_pattern: {self.accent_pattern}")
+        print(f"  swing_ratio: {self.swing_ratio}")
+        super().__init__(**data)
+        if notes is not None:
+            self.notes = notes
+        self.recalculate_pattern_duration()

@@ -24,7 +24,7 @@ This module allows for the creation and manipulation of chord progressions, incl
 """
 
 from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, model_validator, ConfigDict, field_validator
 import logging
 
 from src.models.note import Note
@@ -37,38 +37,30 @@ from src.models.scale_info import ScaleInfo
 logger = logging.getLogger(__name__)
 
 class ChordProgression(BaseModel):
-    """Class representing a progression of chords.
-
-    This class encapsulates a sequence of chords, allowing for manipulation and analysis of the progression. It provides methods for adding chords, analyzing the progression, and converting it to a string representation.
-
-    A chord progression consisting of multiple chords."""
-    
-    class Config:
-        arbitrary_types_allowed = True
+    """Class representing a progression of chords."""
+    model_config = ConfigDict(arbitrary_types_allowed=True)
     
     chords: List[Chord]
     scale_info: Optional[ScaleInfo] = None
 
 
-    @model_validator(mode='before')
-    def validate_chords(cls, values: Dict[str, Any]) -> Dict[str, Any]:
+    @field_validator('chords')
+    def validate_chords(cls, v: List[Chord]) -> List[Chord]:
         """Validate the chords in the progression."""
-        logger.info("Validating chords in the progression.")
-        if 'chords' not in values:
-            values['chords'] = []
-        for chord in values['chords']:
+        if not v:
+            raise ValueError("Chords cannot be empty.")
+        for chord in v:
             if not isinstance(chord, Chord):
-                logger.error(f"Invalid chord: {chord}. Must be an instance of Chord.")
-                raise ValueError(f"Invalid chord: {chord}. Must be an instance of Chord.")
-        logger.info("Chord validation completed successfully.")
-        return values
+                raise ValueError("All items in chords must be instances of Chord.")
+        return v
 
     def add_chord(self, chord: Chord) -> None:
-        if chord is None or not isinstance(chord, Chord):
-            raise ValueError("Invalid chord type. Must be a Chord instance.")
         self.chords.append(chord)
 
     def get_chord_at(self, index: int) -> Chord:
+        """Get a chord at a specific index."""
+        if index < 0 or index >= len(self.chords):
+            raise IndexError("Index out of range")
         return self.chords[index]
 
     def get_all_chords(self) -> List[Chord]:

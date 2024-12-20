@@ -124,6 +124,8 @@ class ChordProgressionGenerator(BaseModel):
                     logger.error(f"Invalid bass note for degree: {degree}")
                     continue  # Skip if bass is invalid
                 
+                logger.info(f"Generating chord for degree: {degree}, quality: {quality}, root: {root}")
+                logger.info(f"Creating Chord instance with degree: {degree}, quality: {quality}, root: {root}")
                 chord = Chord(root=root, quality=ChordQualityType(quality), notes=chord_notes, bass=bass)
                 progression.add_chord(chord)
                 
@@ -168,6 +170,8 @@ class ChordProgressionGenerator(BaseModel):
                     logger.error(f"Failed to generate valid chord notes for root: {root} and quality: {quality}")
                     continue
                 
+                logger.info(f"Generating chord for degree: {degree}, quality: {quality}, root: {root}")
+                logger.info(f"Creating Chord instance with degree: {degree}, quality: {quality}, root: {root}")
                 chord = Chord(root=root, quality=ChordQualityType(quality), notes=chord_notes, bass=root)
                 progression.add_chord(chord)
                 logger.info(f"Generated chord - Root: {root}, Bass: {root}, Chord Notes: {chord_notes}")
@@ -202,6 +206,8 @@ class ChordProgressionGenerator(BaseModel):
                     logger.error(f"Failed to generate valid chord notes for root: {root} and quality: {quality}")
                     continue
                 
+                logger.info(f"Generating chord for degree: {degree}, quality: {quality}, root: {root}")
+                logger.info(f"Creating Chord instance with degree: {degree}, quality: {quality}, root: {root}")
                 chord = Chord(root=root, quality=ChordQualityType(quality), notes=chord_notes, bass=root)
                 progression.add_chord(chord)
                 logger.info(f"Generated chord - Root: {root}, Bass: {root}, Chord Notes: {chord_notes}")
@@ -235,6 +241,8 @@ class ChordProgressionGenerator(BaseModel):
             logger.error(f"Failed to generate valid chord notes for root: {root_note} and quality: {quality}")
             raise ValueError(f"Failed to generate valid chord notes for root: {root_note} and quality: {quality}")
         
+        logger.info(f"Generating chord for degree: {scale_degree}, quality: {quality}, root: {root_note}")
+        logger.info(f"Creating Chord instance with degree: {scale_degree}, quality: {quality}, root: {root_note}")
         # Create and return the Chord object
         return Chord(root=root_note, quality=ChordQualityType(quality), notes=chord_notes)
 

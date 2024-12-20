@@ -99,23 +99,35 @@ class Scale(BaseModel):
         """Build a scale from intervals based on the quality and root note."""
         logger.info(f"Building scale from intervals for quality: {self.quality}")
         intervals = self.SCALE_INTERVALS[self.quality]
-        scale_notes = [self.root]
-        for interval in intervals[1:]:
-            next_note = self._get_next_note(scale_notes[-1], interval)
+        logger.debug(f"Intervals used for scale: {intervals}")
+        
+        scale_notes = [self.root]  # Start with the root note
+        base_midi = self.root.midi_number  # Use root note as reference
+        
+        for interval in intervals[1:]:  # Skip first interval (0)
+            next_midi = base_midi + interval  # Calculate from root
+            next_note = self._get_next_note(next_midi)
+            logger.debug(f"Next note calculated: {next_note.note_name} with MIDI number: {next_midi}")
             scale_notes.append(next_note)
-        logger.debug(f"Scale built: {scale_notes}")
+            
         return scale_notes
-
-    def _get_next_note(self, current_note: Note, interval: int) -> Note:
-        """Get the next note based on the current note and interval."""
-        logger.debug(f"Getting next note from {current_note.note_name} with interval {interval}")
-        # Logic to calculate the next note based on the interval
-        # Assuming we have a method to get the note's position in the scale
-        current_position = self.notes.index(current_note)
-        next_position = (current_position + interval) % len(self.notes)
-        next_note = self.notes[next_position]
-        logger.debug(f"Next note is {next_note.note_name}")
-        return next_note
+    
+    def _get_next_note(self, midi_number: int) -> Note:
+        """Create a note from a MIDI number."""
+        logger.debug(f"Creating note from MIDI number: {midi_number}")
+        
+        # Ensure MIDI number is in valid range
+        midi_number = midi_number % 128
+        
+        # Get note name and octave
+        note_name = Note.get_note_name(midi_number)
+        octave = midi_number // 12
+        
+        # If note name includes octave, separate it
+        if note_name[-1].isdigit():
+            note_name = note_name[:-1]
+        
+        return Note(name=note_name, octave=octave)
 
     def get_notes(self) -> List[Note]:
         """Get the notes in this scale."""
@@ -139,7 +151,7 @@ class Scale(BaseModel):
         """Get the notes in this scale."""
         logger.info("Retrieving scale notes.")
         notes = self._build_scale_from_intervals()
-        logger.debug(f"Scale notes retrieved: {notes}")
+        logger.debug(f"Scale notes retrieved: {[note.note_name for note in notes]}")
         return notes
 
     def get_scale_degrees(self) -> List[ScaleDegree]:

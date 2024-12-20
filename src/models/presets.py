@@ -5,7 +5,7 @@ from pydantic import BaseModel, ConfigDict
 from .chord_progression import ChordProgression
 from .note import Note
 from .note_pattern import NotePattern
-from .rhythm_pattern import RhythmPattern, RhythmPatternData
+from .rhythm_pattern import RhythmPattern, RhythmPatternData, RhythmNote
 from .scale import Scale
 
 # Module for handling default presets in music theory
@@ -16,6 +16,7 @@ DEFAULT_SCALE_TYPE = 'major'
 DEFAULT_CHORD_PROGRESSION = 'I-IV-V-I'
 DEFAULT_NOTE_PATTERN = 'Simple Triad'
 DEFAULT_RHYTHM_PATTERN = 'quarter_notes'
+DEFAULT_RHYTHM_PATTERN_NAME = 'Quarter Notes'
 
 class Presets(BaseModel):
     # Define your fields here
@@ -80,31 +81,31 @@ NOTE_PATTERNS: Dict[str, List[int]] = {
 
 # Rhythm patterns
 RHYTHM_PATTERNS: Dict[str, RhythmPatternData] = {
-    "quarter_notes": RhythmPatternData(duration=4.0, notes=[
-        {"position": 0.0, "duration": 1.0},
-        {"position": 1.0, "duration": 1.0},
-        {"position": 2.0, "duration": 1.0},
-        {"position": 3.0, "duration": 1.0}
+    "quarter_notes": RhythmPatternData(notes=[
+        RhythmNote(position={"value": 0.0}, duration={"value": 1.0, "unit": "beat"}),
+        RhythmNote(position={"value": 1.0}, duration={"value": 1.0, "unit": "beat"}),
+        RhythmNote(position={"value": 2.0}, duration={"value": 1.0, "unit": "beat"}),
+        RhythmNote(position={"value": 3.0}, duration={"value": 1.0, "unit": "beat"})
     ]),
-    "eighth_notes": RhythmPatternData(duration=4.0, notes=[
-        {"position": 0.0, "duration": 0.5},
-        {"position": 0.5, "duration": 0.5},
-        {"position": 1.0, "duration": 0.5},
-        {"position": 1.5, "duration": 0.5},
-        {"position": 2.0, "duration": 0.5},
-        {"position": 2.5, "duration": 0.5},
-        {"position": 3.0, "duration": 0.5},
-        {"position": 3.5, "duration": 0.5}
+    "eighth_notes": RhythmPatternData(notes=[
+        RhythmNote(position={"value": 0.0}, duration={"value": 0.5, "unit": "beat"}),
+        RhythmNote(position={"value": 0.5}, duration={"value": 0.5, "unit": "beat"}),
+        RhythmNote(position={"value": 1.0}, duration={"value": 0.5, "unit": "beat"}),
+        RhythmNote(position={"value": 1.5}, duration={"value": 0.5, "unit": "beat"}),
+        RhythmNote(position={"value": 2.0}, duration={"value": 0.5, "unit": "beat"}),
+        RhythmNote(position={"value": 2.5}, duration={"value": 0.5, "unit": "beat"}),
+        RhythmNote(position={"value": 3.0}, duration={"value": 0.5, "unit": "beat"}),
+        RhythmNote(position={"value": 3.5}, duration={"value": 0.5, "unit": "beat"})
     ]),
-    "syncopated": RhythmPatternData(duration=4.0, notes=[
-        {"position": 0.0, "duration": 1.5},
-        {"position": 1.5, "duration": 1.0},
-        {"position": 2.5, "duration": 1.5}
+    "syncopated": RhythmPatternData(notes=[
+        RhythmNote(position={"value": 0.0}, duration={"value": 1.5, "unit": "beat"}),
+        RhythmNote(position={"value": 1.5}, duration={"value": 1.0, "unit": "beat"}),
+        RhythmNote(position={"value": 2.0}, duration={"value": 0.5, "unit": "beat"})
     ]),
-    "dotted_quarter": RhythmPatternData(duration=4.0, notes=[
-        {"position": 0.0, "duration": 1.5},
-        {"position": 1.5, "duration": 1.5},
-        {"position": 3.0, "duration": 1.0}
+    "dotted_quarter": RhythmPatternData(notes=[
+        RhythmNote(position={"value": 0.0}, duration={"value": 1.5, "unit": "beat"}),
+        RhythmNote(position={"value": 1.5}, duration={"value": 1.5, "unit": "beat"}),
+        RhythmNote(position={"value": 3.0}, duration={"value": 1.0, "unit": "beat"})
     ])
 }
 
@@ -135,7 +136,7 @@ def get_default_note_pattern() -> NotePattern:
 
 def get_default_rhythm_pattern() -> RhythmPattern:
     """Get the default rhythm pattern."""
-    return RhythmPattern(data=RHYTHM_PATTERNS[DEFAULT_RHYTHM_PATTERN])
+    return RhythmPattern(name=DEFAULT_RHYTHM_PATTERN_NAME, data=RHYTHM_PATTERNS[DEFAULT_RHYTHM_PATTERN])
 
 def get_available_chord_progressions() -> List[str]:
     """Get a list of available chord progression names."""

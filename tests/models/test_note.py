@@ -41,3 +41,19 @@ def test_note_equality() -> None:
     note1 = Note(name='E', octave=4)  # Use Note directly
     note2 = Note(name='E', octave=4)  # Use Note directly
     assert note1 == note2
+
+
+def test_valid_durations() -> None:
+    """Test initialization of Note with valid durations."""
+    note1 = Note(name='C', octave=4, duration=2.0, velocity=100)
+    note2 = Note(name='D', octave=4, duration=3.0, velocity=100)
+    assert note1.duration == 2.0
+    assert note2.duration == 3.0
+
+
+def test_invalid_duration() -> None:
+    """Test initialization of Note with invalid durations."""
+    with pytest.raises(ValueError):
+        Note(name='E', octave=4, duration=0, velocity=100)  # Duration cannot be zero
+    with pytest.raises(ValueError):
+        Note(name='F', octave=4, duration=-1, velocity=100)  # Duration cannot be negative

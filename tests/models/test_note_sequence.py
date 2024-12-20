@@ -2,10 +2,12 @@ import pytest
 from src.models.note_sequence import NoteSequence
 from src.models.note import Note
 
+
 def test_note_sequence_creation() -> None:
     """Test valid note sequence creation."""
     valid_sequence = NoteSequence(notes=[60, 62, 64, 65])
     assert valid_sequence.notes == [60, 62, 64, 65]
+
 
 def test_note_sequence_validation() -> None:
     """Test note sequence validation."""
@@ -13,6 +15,7 @@ def test_note_sequence_validation() -> None:
         NoteSequence(notes=[60, 62, 128])  # 128 is out of MIDI range
     with pytest.raises(ValueError):
         NoteSequence(notes=[-1])  # -1 is out of MIDI range
+
 
 def test_musical_operations() -> None:
     """Test musical operations."""
