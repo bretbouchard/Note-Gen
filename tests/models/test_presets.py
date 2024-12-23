@@ -1,7 +1,9 @@
 import pytest
 from src.note_gen.models.note import Note
-from src.note_gen.models.scale import Scale, ScaleInfo
-from src.note_gen.models.presets import Presets, get_default_chord_progression, get_default_note_pattern, get_default_rhythm_pattern
+from src.note_gen.models.scale import Scale, ScaleInfo, ScaleDegree
+from src.note_gen.models.presets import Presets, get_default_chord_progression, get_default_note_pattern, get_default_rhythm_pattern, NOTE_PATTERNS, RHYTHM_PATTERNS
+from src.note_gen.models.note_pattern import NotePattern
+from src.note_gen.models.rhythm_pattern import RhythmPattern
 
 # Define the necessary constants
 COMMON_PROGRESSIONS = {
@@ -15,8 +17,9 @@ DEFAULT_RHYTHM_PATTERN = [1, 1, 1, 1, 1, 1]
 
 @pytest.fixture
 def scale(root_note) -> Scale:
+    scale_degree = ScaleDegree(degree=1, note=root_note)  # Example scale degree
     scale = Scale(
-        scale=ScaleInfo(root=root_note),
+        scale=ScaleInfo(root=root_note, scale_degrees=[scale_degree, ScaleDegree(degree=2, note=Note(name='D', accidental='', octave=4))]),  # Include scale degrees
         numeral='I',
         numeral_str='I',
         scale_degree=1,
@@ -37,14 +40,16 @@ def root_note():
     return Note(name='C', accidental='', octave=4)
 
 def test_get_default_chord_progression(scale: Scale) -> None:
-    assert get_default_chord_progression(scale) == COMMON_PROGRESSIONS['I-IV-V-I']  # Ensure the test logic matches the expected output
-
+    progression = get_default_chord_progression(scale.root, scale)
+    assert progression.get_chord_names() == ['I', 'IV', 'V', 'I'], f"Expected ['I', 'IV', 'V', 'I'], but got {progression.get_chord_names()}"  # Adjusted to check chord names
 
 def test_get_default_note_pattern() -> None:
-    assert get_default_note_pattern() == DEFAULT_NOTE_PATTERN
+    expected_pattern = NotePattern(name='Simple Triad', data=NOTE_PATTERNS['Simple Triad'])
+    assert get_default_note_pattern() == expected_pattern
 
 
 def test_get_default_rhythm_pattern() -> None:
-    assert get_default_rhythm_pattern() == DEFAULT_RHYTHM_PATTERN
+    expected_rhythm_pattern = RhythmPattern(name='quarter_notes', data=RHYTHM_PATTERNS['quarter_notes'])
+    assert get_default_rhythm_pattern() == expected_rhythm_pattern
 
 # Address the Pydantic validation error related to RhythmNote

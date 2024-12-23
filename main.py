@@ -1,6 +1,6 @@
-from src.models.note import Note
-from src.models.chord import Chord
-from src.models.scale import Scale
+from src.note_gen.models.note import Note
+from src.note_gen.models.chord import Chord
+from src.note_gen.models.scale import Scale
 from fastapi import FastAPI, HTTPException      
 from pydantic import BaseModel  
 from typing import List, Optional

@@ -58,6 +58,9 @@ class ChordProgression(BaseModel):
     def get_all_chords(self) -> List[Chord]:
         return self.chords
 
+    def get_chord_names(self) -> List[str]:
+        return [chord.root.note_name for chord in self.chords]  # Retrieve the names of the chords in the progression
+
     def transpose(self, interval: int) -> None:
         logger.debug(f"Transposing progression by {interval} intervals")
         for chord in self.chords:

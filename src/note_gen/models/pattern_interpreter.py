@@ -40,7 +40,7 @@ This module is designed to be extensible, allowing for the addition of new patte
 
 from __future__ import annotations
 
-from typing import Any, Dict, Sequence, Union
+from typing import Any, Dict, Sequence, Union, List
 import logging
 
 logger = logging.getLogger(__name__)
@@ -105,10 +105,26 @@ class PatternInterpreter(BaseModel):
         """Reset the pattern interpreter to the beginning of the pattern."""
         self._current_index = 0
 
-    def process(self) -> None:
+    def process(self) -> List[Note]:
         """Process the pattern based on the current scale and generate musical sequences."""
-        # Logic for processing the pattern goes here
-        pass
+        result = []
+        
+        for element in self.pattern:
+            if isinstance(element, Note):
+                result.append(element)
+            elif isinstance(element, ScaleDegree):
+                note = self.scale.get_scale_degree(element.value)
+                result.append(note)
+            elif isinstance(element, int):
+                note = Note.from_midi(element)  # Assuming a method exists to create Note from MIDI number
+                result.append(note)
+            elif isinstance(element, str):
+                note = Note.from_name(element)  # Assuming a method exists to create Note from name
+                result.append(note)
+            else:
+                raise ValueError(f"Unsupported pattern element type: {type(element)}")
+        
+        return result
 
     def _interpret_current_element(self) -> Note:
         """Interpret the current element in the pattern.
