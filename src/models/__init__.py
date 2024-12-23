@@ -1,3 +1,0 @@
-"""
-Music theory models package
-"""

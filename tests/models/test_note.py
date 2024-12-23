@@ -1,9 +1,9 @@
 import pytest
-from src.models.note import Note  # Import Note class directly
-from src.models.note_sequence import NoteSequence
-from src.models.chord import Chord
-from src.models.scale_degree import ScaleDegree
-from src.models.scale import Scale
+from src.note_gen.models.note import Note  # Import Note class directly
+from src.note_gen.models.note_sequence import NoteSequence
+from src.note_gen.models.chord import Chord
+from src.note_gen.models.scale_degree import ScaleDegree
+from src.note_gen.models.scale import Scale
 
 
 def test_note_initialization() -> None:

@@ -1,5 +1,5 @@
 import pytest
-from src.models.rhythm_pattern import RhythmPattern, RhythmPatternData, RhythmNote
+from src.note_gen.models.rhythm_pattern import RhythmPattern, RhythmPatternData, RhythmNote
 
 
 def test_rhythm_pattern_creation() -> None:

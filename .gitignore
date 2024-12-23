@@ -2,3 +2,7 @@ refactor/
 /.vscode
 /__pycache__
 /venv
+
+
+# Ignore coverage documentation
+documentation
