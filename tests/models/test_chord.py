@@ -1,10 +1,7 @@
-from typing import Any
 import pytest
 import logging
-from src.note_gen.models.chord import Chord
-from src.note_gen.models.note import Note
-from src.note_gen.models.chord_quality import ChordQuality
-from src.note_gen.models.enums import ChordQualityType  # This is the correct enum
+from src.note_gen.models.musical_elements import Note , Chord
+from src.note_gen.models.enums import ChordQualityType  
 from src.note_gen.models.chord_base import ChordBase
 
 # Configure logging to output to console

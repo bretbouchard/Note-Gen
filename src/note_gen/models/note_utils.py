@@ -42,33 +42,34 @@ from typing import Dict, Tuple
 from pydantic import BaseModel, ConfigDict
 
 from src.note_gen.models.enums import AccidentalType
-from src.note_gen.models.note import Note
-from src.note_gen.models.chord import Chord
+
 
 class NoteUtils(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
+
 # Mapping of note names to MIDI note numbers (C4 = 60)
 NOTE_TO_NUMBER: Dict[str, int] = {
-    'C': 0,
-    'D': 2,
-    'E': 4,
-    'F': 5,
-    'G': 7,
-    'A': 9,
-    'B': 11
+    "C": 0,
+    "D": 2,
+    "E": 4,
+    "F": 5,
+    "G": 7,
+    "A": 9,
+    "B": 11,
 }
 
 # Mapping of MIDI note numbers to note names
 NUMBER_TO_NOTE: Dict[int, str] = {
-    0: 'C',
-    2: 'D',
-    4: 'E',
-    5: 'F',
-    7: 'G',
-    9: 'A',
-    11: 'B'
+    0: "C",
+    2: "D",
+    4: "E",
+    5: "F",
+    7: "G",
+    9: "A",
+    11: "B",
 }
+
 
 def calculate_midi_note(note_name: str, accidental: AccidentalType, octave: int) -> int:
     """
@@ -92,10 +93,11 @@ def calculate_midi_note(note_name: str, accidental: AccidentalType, octave: int)
     accidental_offset = {
         AccidentalType.NATURAL: 0,
         AccidentalType.SHARP: 1,
-        AccidentalType.FLAT: -1
+        AccidentalType.FLAT: -1,
     }[accidental]
 
     return base_note + accidental_offset + (octave * 12)
+
 
 def midi_to_note(midi_number: int) -> Tuple[str, AccidentalType, int]:
     """
@@ -125,6 +127,7 @@ def midi_to_note(midi_number: int) -> Tuple[str, AccidentalType, int]:
     # If we get here, something went wrong
     raise ValueError(f"Could not convert MIDI number {midi_number} to note")
 
+
 def note_name_to_midi(note_name: str) -> int:
     """Convert a note name to its corresponding MIDI note number.
 
@@ -135,12 +138,23 @@ def note_name_to_midi(note_name: str) -> int:
         int: The corresponding MIDI note number.
     """
     note_to_midi = {
-        'C': 0, 'C#': 1, 'D': 2, 'D#': 3, 'E': 4, 'F': 5, 'F#': 6, 'G': 7,
-        'G#': 8, 'A': 9, 'A#': 10, 'B': 11
+        "C": 0,
+        "C#": 1,
+        "D": 2,
+        "D#": 3,
+        "E": 4,
+        "F": 5,
+        "F#": 6,
+        "G": 7,
+        "G#": 8,
+        "A": 9,
+        "A#": 10,
+        "B": 11,
     }
     # Extract the note and octave
     note, octave = note_name[:-1], int(note_name[-1])
     return note_to_midi[note] + (octave + 1) * 12
+
 
 def validate_note_name(note_name: str) -> bool:
     """Validate a musical note name.
@@ -151,8 +165,9 @@ def validate_note_name(note_name: str) -> bool:
     Returns:
         bool: True if the note name is valid, False otherwise.
     """
-    valid_notes = {'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'}
+    valid_notes = {"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"}
     return note_name in valid_notes
+
 
 def midi_to_note_name(midi: int) -> str:
     """Convert a MIDI note number to its corresponding note name.
@@ -168,9 +183,10 @@ def midi_to_note_name(midi: int) -> str:
     """
     if midi < 0 or midi > 127:
         raise ValueError("MIDI number must be between 0 and 127")
-    note_names = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
+    note_names = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
     octave = midi // 12 - 1
     note = note_names[midi % 12]
-    return f'{note}{octave}'
+    return f"{note}{octave}"
+
 
 # Additional utility functions can be added as needed...

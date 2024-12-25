@@ -1,11 +1,16 @@
 from enum import Enum
-from typing import List, Final
+from typing import List
 import logging
 
 logger = logging.getLogger(__name__)
 
+
 class ScaleType(str, Enum):
     """Enum representing different scale types."""
+
+    def __init__(self, value: str) -> None:
+        super().__init__(value)
+
     MAJOR = "major"
     NATURAL_MINOR = "natural_minor"
     HARMONIC_MINOR = "harmonic_minor"
@@ -37,7 +42,7 @@ class ScaleType(str, Enum):
             ScaleType.PENTATONIC_MINOR: [3, 2, 2, 3, 2],
             ScaleType.BLUES: [3, 2, 1, 1, 3, 2],
             ScaleType.CHROMATIC: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-            ScaleType.WHOLE_TONE: [2, 2, 2, 2, 2, 2]
+            ScaleType.WHOLE_TONE: [2, 2, 2, 2, 2, 2],
         }
         logger.debug(f"Getting intervals for scale type: {self.name}")
         return intervals_map[self]
@@ -46,8 +51,12 @@ class ScaleType(str, Enum):
         """Validate if a scale degree is valid for this scale type."""
         intervals = self.get_intervals()
         if degree < 1 or degree > len(intervals) + 1:
-            logger.error(f"Invalid scale degree: {degree}. Must be between 1 and {len(intervals) + 1}.")
-            raise ValueError(f"Invalid scale degree: {degree}. Must be between 1 and {len(intervals) + 1}.")
+            logger.error(
+                f"Invalid scale degree: {degree}. Must be between 1 and {len(intervals) + 1}."
+            )
+            raise ValueError(
+                f"Invalid scale degree: {degree}. Must be between 1 and {len(intervals) + 1}."
+            )
         return True
 
     @property

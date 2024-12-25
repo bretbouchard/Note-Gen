@@ -1,6 +1,5 @@
-import pytest
 from src.note_gen.models.chord_base import ChordBase
-from src.note_gen.models.note import Note
+from src.note_gen.models.musical_elements import Note
 from src.note_gen.models.enums import ChordQualityType
 
 

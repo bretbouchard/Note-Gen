@@ -1,12 +1,15 @@
 from enum import Enum
 
+
 class AccidentalType(Enum):
     """Enum for accidental types in musical notation."""
+
     NATURAL = ""
     SHARP = "#"
     FLAT = "b"
     DOUBLE_SHARP = "##"
     DOUBLE_FLAT = "bb"
+
 
 class ChordQualityType(Enum):
     MAJOR = "major"

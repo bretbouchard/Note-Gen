@@ -1,5 +1,3 @@
-import pytest
-from src.note_gen.models.pattern_type import PatternType
 from src.note_gen.models.scale_type import ScaleType  # Import ScaleType
 
 

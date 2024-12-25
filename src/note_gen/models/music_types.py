@@ -3,6 +3,7 @@
 from enum import Enum, auto
 from pydantic import BaseModel, ConfigDict
 
+
 class AccidentalType(Enum):
     """Represents musical accidentals.
 
@@ -14,11 +15,13 @@ class AccidentalType(Enum):
     - DOUBLE_SHARP: Raises the pitch of a note by two semitones.
     - DOUBLE_FLAT: Lowers the pitch of a note by two semitones.
     """
+
     NATURAL = auto()
     SHARP = auto()
     FLAT = auto()
     DOUBLE_SHARP = auto()
     DOUBLE_FLAT = auto()
+
 
 class MusicTypes(BaseModel):
     # Define your fields here

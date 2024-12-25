@@ -1,9 +1,9 @@
 import pytest
 from unittest.mock import MagicMock, patch
-from src.note_gen.models.note import Note
+
 from src.note_gen.models.scale_info import ScaleInfo
 from src.note_gen.models.chord_progression_generator import ChordProgressionGenerator, ProgressionPattern
-from src.note_gen.models.chord import Chord, ChordQualityType
+from src.note_gen.models.musical_elements import Chord, Note
 from src.note_gen.models.chord_progression import ChordProgression
 from pydantic import ValidationError
 

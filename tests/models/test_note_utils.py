@@ -1,6 +1,6 @@
 import pytest
-from src.note_gen.models.note_utils import calculate_midi_note, midi_to_note, note_name_to_midi, validate_note_name, midi_to_note_name
-from src.note_gen.models.note import AccidentalType, Note
+from src.note_gen.models.note_utils import calculate_midi_note, midi_to_note, note_name_to_midi, validate_note_name
+from src.note_gen.models.musical_elements import Note
 
 
 def test_get_note() -> None:

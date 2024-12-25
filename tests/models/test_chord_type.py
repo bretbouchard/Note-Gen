@@ -1,4 +1,3 @@
-import pytest
 from src.note_gen.models.chord_type import ChordType
 
 

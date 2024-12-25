@@ -1,13 +1,13 @@
-from src.note_gen.models.note import Note
-from src.note_gen.models.chord import Chord
 from enum import Enum
 from typing import List
 import logging
 
 logger = logging.getLogger(__name__)
 
+
 class PatternType(str, Enum):
     """Enum representing different pattern types."""
+
     ASCENDING = "ascending"
     DESCENDING = "descending"
     ASCENDING_DESCENDING = "ascending_descending"
@@ -17,7 +17,7 @@ class PatternType(str, Enum):
     def get_pattern(self, notes: List[str]) -> List[str]:
         """Generate a pattern from the given notes."""
         logger.debug(f"Generating {self.value} pattern")
-        
+
         if not notes:
             return []
 
@@ -33,6 +33,7 @@ class PatternType(str, Enum):
                 return reversed_notes + notes[1:]
             case PatternType.RANDOM:
                 import random
+
                 shuffled = notes.copy()
                 random.shuffle(shuffled)
                 return shuffled

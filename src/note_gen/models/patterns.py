@@ -1,9 +1,11 @@
-from typing import Any, List, Literal, Dict, Union, Optional
+from typing import Any, List, Optional
 from pydantic import BaseModel, Field, ConfigDict, field_validator
 from typing_extensions import Annotated
 
+
 class RhythmPatternData(BaseModel):
     """Data for a rhythm pattern."""
+
     model_config = ConfigDict(arbitrary_types_allowed=True, populate_by_name=True)
 
     notes: List[Any] = Field(default=[])
@@ -16,7 +18,9 @@ class RhythmPatternData(BaseModel):
     groove_type: Annotated[Optional[str], Field(default=None)]
     variation_probability: Annotated[float, Field(default=0.0, ge=0, le=1)]
     default_duration: Annotated[float, Field(default=1.0)]
-    total_duration: float = Field(default=0.0, description="Total duration of the rhythm pattern")
+    total_duration: float = Field(
+        default=0.0, description="Total duration of the rhythm pattern"
+    )
 
     @field_validator("duration")
     @classmethod
@@ -29,7 +33,9 @@ class RhythmPatternData(BaseModel):
     @classmethod
     def validate_time_signature(cls, v: str) -> str:
         if v not in ["4/4", "3/4", "2/4"]:
-            raise ValueError("Invalid time signature. Must be one of: '4/4', '3/4', '2/4'.")
+            raise ValueError(
+                "Invalid time signature. Must be one of: '4/4', '3/4', '2/4'."
+            )
         return v
 
     @field_validator("swing_ratio")
@@ -44,7 +50,9 @@ class RhythmPatternData(BaseModel):
     def validate_humanize_amount(cls, v: float) -> float:
         """Validate that humanize amount is between 0 and 1."""
         if not 0 <= v <= 1:
-            raise ValueError('Humanize amount must be between 0 and 1. Invalid value found.')
+            raise ValueError(
+                "Humanize amount must be between 0 and 1. Invalid value found."
+            )
         return v
 
     @field_validator("swing_enabled")
@@ -75,7 +83,9 @@ class RhythmPatternData(BaseModel):
 
     def recalculate_pattern_duration(self) -> None:
         if self.notes:
-            self.total_duration = max(note.position + note.duration for note in self.notes)
+            self.total_duration = max(
+                note.position + note.duration for note in self.notes
+            )
         else:
             self.total_duration = 0.0
 

@@ -39,16 +39,16 @@ while True:
 This module is designed to be extensible, allowing for the addition of new pattern interpreters as needed."""
 
 from __future__ import annotations
+from pydantic import BaseModel, ConfigDict
+from src.note_gen.models.musical_elements import Note
+from src.note_gen.models.scale_degree import ScaleDegree
+from src.note_gen.models.scale import Scale
 
 from typing import Any, Dict, Sequence, Union, List
 import logging
 
 logger = logging.getLogger(__name__)
 
-from pydantic import BaseModel, ConfigDict
-from src.note_gen.models.note import Note
-from src.note_gen.models.scale_degree import ScaleDegree
-from src.note_gen.models.scale import Scale
 
 class PatternInterpreter(BaseModel):
     """Base class for pattern interpreters.
@@ -61,13 +61,16 @@ class PatternInterpreter(BaseModel):
         _current_index (int): The current index in the pattern. Defaults to 0.
     """
 
+    model_config = ConfigDict(arbitrary_types_allowed=True)
     scale: Scale
     pattern: Sequence[Union[int, str, Note, ScaleDegree, Dict[str, Any]]]
     _current_index: int = 0
 
-    _config = ConfigDict(arbitrary_types_allowed=True)
-
-    def __init__(self, scale: Scale, pattern: Sequence[Union[int, str, Note, ScaleDegree, Dict[str, Any]]]) -> None:
+    def __init__(
+        self,
+        scale: Scale,
+        pattern: Sequence[Union[int, str, Note, ScaleDegree, Dict[str, Any]]],
+    ) -> None:
         """Initialize PatternInterpreter with a scale and pattern.
 
         Args:
@@ -108,7 +111,7 @@ class PatternInterpreter(BaseModel):
     def process(self) -> List[Note]:
         """Process the pattern based on the current scale and generate musical sequences."""
         result = []
-        
+
         for element in self.pattern:
             if isinstance(element, Note):
                 result.append(element)
@@ -116,45 +119,55 @@ class PatternInterpreter(BaseModel):
                 note = self.scale.get_scale_degree(element.value)
                 result.append(note)
             elif isinstance(element, int):
-                note = Note.from_midi(element)  # Assuming a method exists to create Note from MIDI number
+                note = Note.from_midi(
+                    element
+                )  # Assuming a method exists to create Note from MIDI number
                 result.append(note)
             elif isinstance(element, str):
-                note = Note.from_name(element)  # Assuming a method exists to create Note from name
+                note = Note.from_name(
+                    element
+                )  # Assuming a method exists to create Note from name
                 result.append(note)
             else:
                 raise ValueError(f"Unsupported pattern element type: {type(element)}")
-        
+
         return result
 
     def _interpret_current_element(self) -> Note:
         """Interpret the current element in the pattern.
-        
+
         Returns:
             Note: The interpreted note.
-            
+
         Raises:
             ValueError: If the current element is None or invalid.
         """
         element = self.pattern[self._current_index]
         if element is None:
             raise ValueError("Current element cannot be None")
-            
+
         if isinstance(element, Note):
             return element
-            
+
         if isinstance(element, ScaleDegree):
             if element.value is None:
                 raise ValueError("ScaleDegree value cannot be None")
             return self.scale.get_scale_degree(element.value)
-            
+
         return self.scale.get_scale_degree(1)
+
 
 class ScalePatternInterpreter(PatternInterpreter):
     """Interpreter for scale patterns.
 
-    This class interprets scale patterns and generates musical sequences based on the provided scale information."""
+    This class interprets scale patterns and generates musical sequences based on the provided scale information.
+    """
 
-    def __init__(self, scale: Scale, pattern: Sequence[Union[int, str, Note, ScaleDegree, Dict[str, Any]]]) -> None:
+    def __init__(
+        self,
+        scale: Scale,
+        pattern: Sequence[Union[int, str, Note, ScaleDegree, Dict[str, Any]]],
+    ) -> None:
         """Initialize the scale pattern interpreter.
 
         Args:
@@ -163,10 +176,15 @@ class ScalePatternInterpreter(PatternInterpreter):
         """
         super().__init__(scale=scale, pattern=pattern)
 
+
 class ArpeggioPatternInterpreter(PatternInterpreter):
     """Interpreter for arpeggio patterns."""
 
-    def __init__(self, scale: Scale, pattern: Sequence[Union[int, str, Note, ScaleDegree, Dict[str, Any]]]) -> None:
+    def __init__(
+        self,
+        scale: Scale,
+        pattern: Sequence[Union[int, str, Note, ScaleDegree, Dict[str, Any]]],
+    ) -> None:
         """Initialize the arpeggio pattern interpreter.
 
         Args:
@@ -175,10 +193,15 @@ class ArpeggioPatternInterpreter(PatternInterpreter):
         """
         super().__init__(scale=scale, pattern=pattern)
 
+
 class MelodicPatternInterpreter(PatternInterpreter):
     """Interpreter for melodic patterns."""
 
-    def __init__(self, scale: Scale, pattern: Sequence[Union[int, str, Note, ScaleDegree, Dict[str, Any]]]) -> None:
+    def __init__(
+        self,
+        scale: Scale,
+        pattern: Sequence[Union[int, str, Note, ScaleDegree, Dict[str, Any]]],
+    ) -> None:
         """Initialize the melodic pattern interpreter.
 
         Args:
@@ -187,7 +210,12 @@ class MelodicPatternInterpreter(PatternInterpreter):
         """
         super().__init__(scale=scale, pattern=pattern)
 
-def create_pattern_interpreter(pattern: Sequence[Union[int, str, Note, ScaleDegree, Dict[str, Any]]], scale: Scale, pattern_type: str = "scale") -> PatternInterpreter:
+
+def create_pattern_interpreter(
+    pattern: Sequence[Union[int, str, Note, ScaleDegree, Dict[str, Any]]],
+    scale: Scale,
+    pattern_type: str = "scale",
+) -> PatternInterpreter:
     """Create a pattern interpreter based on type.
 
     Args:

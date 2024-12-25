@@ -1,7 +1,5 @@
 import pytest
 from src.note_gen.models.note_sequence import NoteSequence
-from src.note_gen.models.note import Note
-
 
 def test_note_sequence_creation() -> None:
     """Test valid note sequence creation."""

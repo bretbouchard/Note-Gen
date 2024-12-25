@@ -2,6 +2,9 @@ from pydantic import BaseModel
 from src.note_gen.models.enums import ChordQualityType
 import logging
 
+# Removed unused import of Chord
+
+
 class ChordQuality(BaseModel):
     quality: ChordQualityType
 
@@ -19,7 +22,7 @@ class ChordQuality(BaseModel):
             "min7": ChordQualityType.MINOR_SEVENTH,
             "dim7": ChordQualityType.DIMINISHED_SEVENTH,
             "half_diminished": ChordQualityType.HALF_DIMINISHED,
-            "half_diminished7": ChordQualityType.HALF_DIMINISHED_SEVENTH,
+            "half_diminished7": ChordQualityType.HALF_DIMINISHED_7,
             "aug7": ChordQualityType.AUGMENTED_SEVENTH,
             "major9": ChordQualityType.MAJOR_9,
             "minor9": ChordQualityType.MINOR_9,
@@ -30,10 +33,10 @@ class ChordQuality(BaseModel):
             "sus4": ChordQualityType.SUS4,
             "seven_sus4": ChordQualityType.SEVEN_SUS4,
         }
-        
         quality = quality_dict.get(quality_str.lower())
         if quality is None:
-            logging.warning(f"Unknown chord quality '{quality_str}' provided. Defaulting to MAJOR.")
+            logging.warning(
+                f"Unknown chord quality '{quality_str}' provided. Defaulting to MAJOR."
+            )
             quality = ChordQualityType.MAJOR  # Default to MAJOR if not found
-            
         return cls(quality=quality)

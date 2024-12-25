@@ -1,5 +1,5 @@
 import pytest
-from src.note_gen.models.note import AccidentalType, Note
+from src.note_gen.models.musical_elements import Note
 from src.note_gen.models.scale_info import ScaleInfo
 from src.note_gen.models.scale_degree import ScaleDegree
 from src.note_gen.models.scale import Scale

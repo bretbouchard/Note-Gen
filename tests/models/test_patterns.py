@@ -1,4 +1,3 @@
-import pytest
 from src.note_gen.models.rhythm_pattern import RhythmPatternData, RhythmNote
 
 

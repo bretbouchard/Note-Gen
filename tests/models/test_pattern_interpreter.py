@@ -1,7 +1,7 @@
 import pytest
 from typing import Sequence
 from src.note_gen.models.pattern_interpreter import PatternInterpreter
-from src.note_gen.models.note import Note
+from src.note_gen.models.musical_elements import Note
 from src.note_gen.models.scale import Scale
 from src.note_gen.models.scale_info import ScaleInfo
 from src.note_gen.models.scale_degree import ScaleDegree

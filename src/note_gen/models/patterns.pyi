@@ -1,4 +1,5 @@
 """Type stubs for patterns module."""
+
 from typing import List, Dict, Any, Optional, Union
 from pydantic import BaseModel
 
@@ -10,7 +11,7 @@ DirectionType = str
 ApproachType = str
 
 NoteType = Union[Note, ScaleDegree, Chord]
-PatternDataType = Union[List[int], Dict[str, Any], 'NotePatternData']
+PatternDataType = Union[List[int], Dict[str, Any], "NotePatternData"]
 
 class RhythmNote:
     position: float = 0.0
@@ -77,10 +78,13 @@ class RhythmPattern:
     @classmethod
     def check_name(cls, v: Optional[str]) -> str: ...
     @classmethod
-    def check_data(cls, v: Union[RhythmPatternData, Dict[str, Any]]) -> RhythmPatternData: ...
+    def check_data(
+        cls, v: Union[RhythmPatternData, Dict[str, Any]]
+    ) -> RhythmPatternData: ...
 
 class NotePatternData(BaseModel):
     """Type stub for NotePatternData."""
+
     notes: List[NoteType] = []
     intervals: Optional[List[int]] = None
     duration: float = 1.0
@@ -97,6 +101,7 @@ class NotePatternData(BaseModel):
 
 class NotePattern(BaseModel):
     """Type stub for NotePattern."""
+
     name: str
     description: str = ""
     data: Optional[Union[NotePatternData, List[int]]] = None
@@ -114,12 +119,8 @@ class NotePattern(BaseModel):
     default_duration: Optional[float] = None
 
     @classmethod
-    def create(cls, name: str, data: NotePatternData) -> 'NotePattern': ...
-
+    def create(cls, name: str, data: NotePatternData) -> "NotePattern": ...
     def get_notes(self) -> List[NoteType]: ...
-
     def get_intervals(self) -> List[int]: ...
-
     def get_duration(self) -> float: ...
-
     def dict(self, *args: Any, **kwargs: Any) -> Dict[str, Any]: ...

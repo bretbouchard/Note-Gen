@@ -1,22 +1,50 @@
 from __future__ import annotations
 import logging
 import sys
-from typing import Any, List, Optional
-from pydantic import BaseModel, Field, ValidationError, field_validator
+from typing import List, Optional
+from pydantic import BaseModel, Field, field_validator
 
 # Configure logging
-logging.basicConfig(stream=sys.stdout, level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    stream=sys.stdout,
+    level=logging.DEBUG,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+)
 logger = logging.getLogger(__name__)
 
 
 class RhythmNote(BaseModel):
     """A single note in a rhythm pattern."""
+
+    def __init__(
+        self,
+        *,
+        position: float = 0.0,
+        duration: float = 1.0,
+        velocity: int = 100,
+        is_rest: bool = False,
+        accent: Optional[int] = None,
+        swing_ratio: Optional[float] = None,
+    ) -> None:
+        super().__init__(
+            position=position,
+            duration=duration,
+            velocity=velocity,
+            is_rest=is_rest,
+            accent=accent,
+            swing_ratio=swing_ratio,
+        )
+
     position: float = Field(0.0, description="Position in beats")
     duration: float = Field(1.0, description="Duration in beats")
     velocity: int = Field(100, description="Note velocity (0-127)")
     is_rest: bool = Field(False, description="Indicates if the note is a rest")
-    accent: Optional[int] = Field(None, description="Note accent (e.g., staccato, legato, accent)")
-    swing_ratio: Optional[float] = Field(None, description="Swing ratio for this note (0.5-0.75)")
+    accent: Optional[int] = Field(
+        None, description="Note accent (e.g., staccato, legato, accent)"
+    )
+    swing_ratio: Optional[float] = Field(
+        None, description="Swing ratio for this note (0.5-0.75)"
+    )
 
     @field_validator("position")
     def validate_position(cls, value: float) -> float:
@@ -45,14 +73,42 @@ class RhythmNote(BaseModel):
 
 class RhythmPatternData(BaseModel):
     """Data for a rhythm pattern."""
-    notes: List[RhythmNote] = Field(default_factory=list, description="List of rhythmic notes")
-    time_signature: str = Field("4/4", description="Time signature in 'numerator/denominator' format")
+
+    notes: List[RhythmNote] = Field(
+        default_factory=list, description="List of rhythmic notes"
+    )
+    time_signature: str = Field(
+        "4/4", description="Time signature in 'numerator/denominator' format"
+    )
     swing_enabled: bool = Field(False, description="Indicates if swing is enabled")
     humanize_amount: float = Field(0.0, description="Amount to humanize the pattern")
     swing_ratio: float = Field(0.67, description="Global swing ratio (0.5-0.75)")
     style: Optional[str] = Field(None, description="Musical style (e.g., jazz, rock)")
     default_duration: float = Field(1.0, description="Default note duration")
-    total_duration: float = Field(0.0, description="Total duration of the rhythm pattern")
+    total_duration: float = Field(
+        0.0, description="Total duration of the rhythm pattern"
+    )
+
+    def __init__(
+        self,
+        *,
+        notes: List[RhythmNote] = None,
+        time_signature: str = "4/4",
+        swing_enabled: bool = False,
+        humanize_amount: float = 0.0,
+        swing_ratio: float = 0.67,
+        style: Optional[str] = None,
+        default_duration: float = 1.0,
+    ) -> None:
+        super().__init__(
+            notes=notes or [],
+            time_signature=time_signature,
+            swing_enabled=swing_enabled,
+            humanize_amount=humanize_amount,
+            swing_ratio=swing_ratio,
+            style=style,
+            default_duration=default_duration,
+        )
 
     @field_validator("humanize_amount")
     def validate_humanize_amount(cls, value: float) -> float:
@@ -66,7 +122,7 @@ class RhythmPatternData(BaseModel):
             raise ValueError("Swing ratio must be between 0.5 and 0.75.")
         return value
 
-    @field_validator('notes')
+    @field_validator("notes")
     def validate_notes(cls, notes: List[RhythmNote]) -> List[RhythmNote]:
         if not notes:
             raise ValueError("Cannot calculate total duration: no notes present.")
@@ -91,6 +147,7 @@ class RhythmPatternData(BaseModel):
 
 class RhythmPattern(BaseModel):
     """Represents a pattern for generating rhythmic notes."""
+
     name: str
     data: RhythmPatternData
     description: Optional[str] = Field("", description="Pattern description")
@@ -103,7 +160,7 @@ class RhythmPattern(BaseModel):
         if not value.strip():
             raise ValueError("Name cannot be empty.")
         return value
-    
+
     @field_validator("data")
     def validate_data(cls, data: RhythmPatternData) -> RhythmPatternData:
         if not isinstance(data, RhythmPatternData):
@@ -112,11 +169,15 @@ class RhythmPattern(BaseModel):
             raise ValueError("RhythmPatternData must contain at least one note.")
         return data
 
-    def get_events_in_range(self, start_position: float, end_position: float) -> List[RhythmNote]:
+    def get_events_in_range(
+        self, start_position: float, end_position: float
+    ) -> List[RhythmNote]:
         """Get all notes within a specified range of positions."""
         return [
-            note for note in self.data.notes
-            if note.position < end_position and (note.position + note.duration) > start_position
+            note
+            for note in self.data.notes
+            if note.position < end_position
+            and (note.position + note.duration) > start_position
         ]
 
     def get_pattern_duration(self) -> float:

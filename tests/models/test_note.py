@@ -1,9 +1,5 @@
 import pytest
-from src.note_gen.models.note import Note  # Import Note class directly
-from src.note_gen.models.note_sequence import NoteSequence
-from src.note_gen.models.chord import Chord
-from src.note_gen.models.scale_degree import ScaleDegree
-from src.note_gen.models.scale import Scale
+from src.note_gen.models.musical_elements import Note
 
 
 def test_note_initialization() -> None:
@@ -18,10 +14,23 @@ def test_invalid_note_name() -> None:
     with pytest.raises(ValueError):
         Note(name='H')  # Use Note directly
 
+def test_valid_octaves() -> None:
+    valid_octaves = [-2, 0, 4, 8]
+    for octave in valid_octaves:
+        note = Note(name='C', octave=octave)  # Use Note directly
+        assert note.octave == octave  # Ensure the octave is set correctly
+
+
 
 def test_invalid_octave() -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Octave must be between -2 and 8"):
         Note(name='C', octave=10)  # Use Note directly
+
+    with pytest.raises(ValueError, match="Octave must be between -2 and 8"):
+        Note(name='C', octave=-3)  # Use Note directly
+        
+
+
 
 
 def test_midi_number() -> None:
@@ -30,6 +39,9 @@ def test_midi_number() -> None:
     
     note = Note(name='C', accidental='#', octave=4)  # Use Note directly
     assert note.midi_number == 61  # C# in octave 4
+    
+    note = Note(name='D', accidental='#', octave=4)  # Use Note directly
+    assert note.midi_number == 63  # D# in octave 4
 
 
 def test_string_representation() -> None:

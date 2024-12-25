@@ -1,7 +1,7 @@
 import pytest
-from src.note_gen.models.note import Note
+from src.note_gen.models.musical_elements import Note
 from src.note_gen.models.scale import Scale, ScaleInfo, ScaleDegree
-from src.note_gen.models.presets import Presets, get_default_chord_progression, get_default_note_pattern, get_default_rhythm_pattern, NOTE_PATTERNS, RHYTHM_PATTERNS
+from src.note_gen.models.presets import get_default_chord_progression, get_default_note_pattern, get_default_rhythm_pattern, NOTE_PATTERNS, RHYTHM_PATTERNS
 from src.note_gen.models.note_pattern import NotePattern
 from src.note_gen.models.rhythm_pattern import RhythmPattern
 

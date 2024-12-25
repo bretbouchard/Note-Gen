@@ -1,6 +1,6 @@
 import pytest
 from src.note_gen.models.note_pattern import NotePattern, NotePatternData
-from src.note_gen.models.note import Note
+from src.note_gen.models.musical_elements import Note
 
 
 def test_note_pattern_creation() -> None:
