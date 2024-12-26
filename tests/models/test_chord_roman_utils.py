@@ -14,20 +14,26 @@ def chord(note):
     return Chord(root=note, quality=ChordQualityType.MAJOR)
 
 @pytest.fixture
-def roman_numeral(note: Note) -> RomanNumeral:
-    scale = Scale(
-        scale_info_v2=ScaleInfo(root=note.scale("major")),
-        numeral='I',
-        scale_degree=1,
-        quality='major',
+def scale() -> Scale:
+    root_note = Note(name="C", accidental="", octave=4)
+    scale_degree = 1  # Use an integer for scale degree
+    return Scale(
+        root=root_note,
+        quality="major",
+        scale_degree=scale_degree,
+        numeral="I",
         is_major=True,
         is_diminished=False,
         is_augmented=False,
+        is_half_diminished=False,
         has_seventh=False,
         has_ninth=False,
         has_eleventh=False,
         inversion=0
-    )
+    )  # Create a Scale instance
+
+@pytest.fixture
+def roman_numeral(note: Note, scale) -> RomanNumeral:
     return RomanNumeral(scale=scale, numeral='I', numeral_str='I', scale_degree=1)
 
 def test_get_roman_numeral_from_chord(chord: Chord) -> None:

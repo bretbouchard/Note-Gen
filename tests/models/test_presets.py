@@ -16,14 +16,14 @@ DEFAULT_NOTE_PATTERN = [1, 2, 3, 5, 6, 8]
 DEFAULT_RHYTHM_PATTERN = [1, 1, 1, 1, 1, 1]
 
 @pytest.fixture
-def scale(root_note) -> Scale:
-    scale_degree = ScaleDegree(degree=1, note=root_note)  # Example scale degree
-    scale = Scale(
-        scale=ScaleInfo(root=root_note, scale_degrees=[scale_degree, ScaleDegree(degree=2, note=Note(name='D', accidental='', octave=4))]),  # Include scale degrees
-        numeral='I',
-        numeral_str='I',
-        scale_degree=1,
-        quality='major',
+def scale() -> Scale:
+    root_note = Note(name="C", accidental="", octave=4)
+    scale_degree = 1  # Use an integer for scale degree
+    return Scale(
+        root=root_note,
+        quality="major",
+        scale_degree=scale_degree,
+        numeral="I",
         is_major=True,
         is_diminished=False,
         is_augmented=False,
@@ -32,8 +32,7 @@ def scale(root_note) -> Scale:
         has_ninth=False,
         has_eleventh=False,
         inversion=0
-    )
-    return scale
+    )  # Create a Scale instance
 
 @pytest.fixture
 def root_note():

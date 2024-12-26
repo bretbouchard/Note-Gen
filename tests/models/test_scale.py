@@ -6,12 +6,13 @@ from src.note_gen.models.scale import Scale
 
 @pytest.fixture
 def some_scale_instance() -> Scale:
+    root_note = Note(name="C", accidental="", octave=4)
+    scale_degree = 1  # Use an integer for scale degree
     return Scale(
-        scale=ScaleInfo(root=Note(name='C', octave=4)),  # Provide a valid ScaleInfo instance
-        numeral='I',
-        numeral_str='I',
-        scale_degree=1,
-        quality='major',
+        root=root_note,
+        quality="major",
+        scale_degree=scale_degree,
+        numeral="I",
         is_major=True,
         is_diminished=False,
         is_augmented=False,
@@ -20,7 +21,7 @@ def some_scale_instance() -> Scale:
         has_ninth=False,
         has_eleventh=False,
         inversion=0
-    )
+    )  # Create a Scale instance
 
 @pytest.fixture
 def setup_scale_info() -> ScaleInfo:

@@ -1,7 +1,7 @@
 """Module defining musical types, including accidentals."""
 
 from enum import Enum, auto
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class AccidentalType(Enum):
@@ -24,5 +24,6 @@ class AccidentalType(Enum):
 
 
 class MusicTypes(BaseModel):
-    # Define your fields here
+    accidental: AccidentalType = Field(..., description='Type of accidental')
+    accidental_info: dict = Field({}, description='Additional information about the accidental')
     model_config = ConfigDict(arbitrary_types_allowed=True)

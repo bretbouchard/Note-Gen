@@ -144,4 +144,4 @@ class ChordBase(MusicalBase):
         return CHORD_INTERVALS[quality]
 
     def __str__(self) -> str:
-        return f"ChordBase(root={self.root}, intervals={self.intervals})"
+        return f"ChordBase(root={self.root.name} natural in octave {self.root.octave}, intervals={self.intervals})"

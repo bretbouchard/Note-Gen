@@ -3,6 +3,7 @@ from src.note_gen.models.roman_numeral import RomanNumeral
 from src.note_gen.models.scale import Scale
 from src.note_gen.models.enums import ChordQualityType
 from src.note_gen.models.musical_elements import Note as NoteModel
+from src.note_gen.models.scale_degree import ScaleDegree
 
 
 @pytest.fixture
@@ -11,12 +12,14 @@ def note() -> NoteModel:
 
 
 @pytest.fixture
-def scale(note: NoteModel) -> Scale:
+def scale() -> Scale:
+    root_note = NoteModel(name="C", accidental="", octave=4)
+    scale_degree = 1  # Use an integer for scale degree
     return Scale(
-        root=note,
-        quality=ChordQualityType.MAJOR,
-        scale_degree=1,
-        numeral='I',
+        root=root_note,
+        quality="major",
+        scale_degree=scale_degree,
+        numeral="I",
         is_major=True,
         is_diminished=False,
         is_augmented=False,
@@ -25,28 +28,22 @@ def scale(note: NoteModel) -> Scale:
         has_ninth=False,
         has_eleventh=False,
         inversion=0
-    )
+    )  # Create a Scale instance
 
 
 @pytest.fixture
 def roman_numeral(scale: Scale) -> RomanNumeral:
     return RomanNumeral(
-        scale=scale,
         numeral_str='I',
-        scale_degree=scale.scale_degree
+        scale_degree=scale.scale_degree,
+        scale=scale,
+        numeral='I'  # Ensure the numeral is passed
     )
 
 
 def test_roman_numeral_to_int(roman_numeral: RomanNumeral) -> None:
-    assert roman_numeral.to_int() == 1
-    assert roman_numeral.to_int() == 5
-    assert roman_numeral.to_int() == 10
-    assert roman_numeral.to_int() == 50
-    assert roman_numeral.to_int() == 100
-    assert roman_numeral.to_int() == 500
-    assert roman_numeral.to_int() == 1000
+    assert roman_numeral.to_int() == 1  # Corrected expected value
 
 
 def test_roman_numeral(roman_numeral: RomanNumeral) -> None:
-    assert roman_numeral.to_int() == 1
-    assert roman_numeral.to_int() == 5
+    assert roman_numeral.to_int() == 1  # Corrected expected value

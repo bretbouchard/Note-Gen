@@ -49,6 +49,7 @@ class RomanNumeral(BaseModel):
     numeral_str: str = Field(
         ..., pattern="^[IiVv]+|[1-7]|(?:one|two|three|four|five|six|seven)$"
     )
+    numeral: str = Field(..., description="The Roman numeral representation")
     scale_degree: int = Field(..., ge=1, le=7)
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -58,47 +59,6 @@ class RomanNumeral(BaseModel):
         if value not in ["I", "II", "III", "IV", "V", "VI", "VII"]:
             raise ValueError(f"Invalid numeral: {value}")
         return value
-
-    # Update the class variable mapping to use ChordQualityType
-    class_var_chord_quality_mapping: t.ClassVar[t.Dict[str, ChordQualityType]] = {
-        "I": ChordQualityType.MAJOR,
-        "IV": ChordQualityType.MAJOR,
-        "V": ChordQualityType.MAJOR,
-        "ii": ChordQualityType.MINOR,
-        "iii": ChordQualityType.MINOR,
-        "vi": ChordQualityType.MINOR,
-        # Add more mappings as needed
-    }
-
-    WORD_TO_ROMAN: t.ClassVar[t.Dict[str, str]] = {
-        "one": "I",
-        "two": "II",
-        "three": "III",
-        "four": "IV",
-        "five": "V",
-        "six": "VI",
-        "seven": "VII",
-    }
-
-    INT_TO_ROMAN: t.ClassVar[t.Dict[int, str]] = {
-        1: "I",
-        2: "II",
-        3: "III",
-        4: "IV",
-        5: "V",
-        6: "VI",
-        7: "VII",
-    }
-
-    ROMAN_TO_INT: t.ClassVar[t.Dict[str, int]] = {
-        "I": 1,
-        "II": 2,
-        "III": 3,
-        "IV": 4,
-        "V": 5,
-        "VI": 6,
-        "VII": 7,
-    }
 
     def __init_subclass__(cls) -> None:
         if cls.scale is None:
@@ -261,3 +221,44 @@ class RomanNumeral(BaseModel):
     @classmethod
     def some_function_that_uses_get_roman_numeral_from_chord(cls) -> None:
         pass  # Placeholder for future implementation
+
+    # Update the class variable mapping to use ChordQualityType
+    class_var_chord_quality_mapping: t.ClassVar[t.Dict[str, ChordQualityType]] = {
+        "I": ChordQualityType.MAJOR,
+        "IV": ChordQualityType.MAJOR,
+        "V": ChordQualityType.MAJOR,
+        "ii": ChordQualityType.MINOR,
+        "iii": ChordQualityType.MINOR,
+        "vi": ChordQualityType.MINOR,
+        # Add more mappings as needed
+    }
+
+    WORD_TO_ROMAN: t.ClassVar[t.Dict[str, str]] = {
+        "one": "I",
+        "two": "II",
+        "three": "III",
+        "four": "IV",
+        "five": "V",
+        "six": "VI",
+        "seven": "VII",
+    }
+
+    INT_TO_ROMAN: t.ClassVar[t.Dict[int, str]] = {
+        1: "I",
+        2: "II",
+        3: "III",
+        4: "IV",
+        5: "V",
+        6: "VI",
+        7: "VII",
+    }
+
+    ROMAN_TO_INT: t.ClassVar[t.Dict[str, int]] = {
+        "I": 1,
+        "II": 2,
+        "III": 3,
+        "IV": 4,
+        "V": 5,
+        "VI": 6,
+        "VII": 7,
+    }

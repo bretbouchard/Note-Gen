@@ -9,9 +9,21 @@ from src.note_gen.models.scale_degree import ScaleDegree
 @pytest.fixture
 def scale() -> Scale:
     root_note = Note(name="C", accidental="", octave=4)
-    scale_degree = ScaleDegree(degree=1, note=root_note)  # Create a ScaleDegree instance
-    scale_info = ScaleInfo(root=root_note, scale_type="major", scale_degrees=[scale_degree])  # Create a ScaleInfo instance
-    return Scale(scale=scale_info, numeral="C", numeral_str="C", scale_degree=1, quality="major", is_major=True, is_diminished=False, is_augmented=False, is_half_diminished=False, has_seventh=False, has_ninth=False, has_eleventh=False, inversion=0)  # Create a Scale instance
+    scale_degree = 1  # Use an integer for scale degree
+    return Scale(
+        root=root_note,
+        quality="major",
+        scale_degree=scale_degree,
+        numeral="I",
+        is_major=True,
+        is_diminished=False,
+        is_augmented=False,
+        is_half_diminished=False,
+        has_seventh=False,
+        has_ninth=False,
+        has_eleventh=False,
+        inversion=0
+    )  # Create a Scale instance
 
 @pytest.fixture
 def pattern() -> Sequence[str]:
