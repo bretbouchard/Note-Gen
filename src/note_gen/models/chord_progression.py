@@ -29,6 +29,7 @@ import logging
 
 from src.note_gen.models.musical_elements import Note, Chord
 from src.note_gen.models.enums import ChordQualityType
+from src.note_gen.models import scale_info
 from src.note_gen.models.scale_info import ScaleInfo
 
 # Set up logging
@@ -38,7 +39,7 @@ logger = logging.getLogger(__name__)
 class ChordProgression(BaseModel):
     """Class representing a progression of chords."""
 
-    scale_info: ScaleInfo
+    scale_info: scale_info.ScaleInfo
     chords: List[Chord]
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -49,9 +50,10 @@ class ChordProgression(BaseModel):
             raise ValueError("scale_info must be a ScaleInfo instance")
         super().__init__(scale_info=scale_info, chords=chords)
 
+
     @field_validator("chords")
     def validate_chords(cls, v: List[Chord]) -> List[Chord]:
-        if not v:  # Checks if the list is empty
+        if not v:
             raise ValueError("Chords cannot be empty.")
         return v
 

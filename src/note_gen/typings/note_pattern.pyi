@@ -1,9 +1,9 @@
 # note_pattern.pyi
 
 from typing import Union, List
-from src.models.note import Note
-from models.scale_degree import ScaleDegree
-from models.chord import Chord
+from src.note_gen.models.note import Note
+from src.note_gen.models.scale_degree import ScaleDegree
+from src.note_gen.models.chord import Chord
 
 class NotePatternData:
     notes: List[Union[Note, ScaleDegree, Chord]]

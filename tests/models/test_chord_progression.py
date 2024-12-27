@@ -9,8 +9,8 @@ from src.note_gen.models.enums import ChordQualityType
 def setup_chord_progression() -> ChordProgression:
     scale_info = ScaleInfo(root=Note(name='C', octave=4), scale_type='major')  # Provide the required root argument
     chords = [
-        Chord(root=Note(name='C', octave=4), quality='major', notes=[Note(name='C', octave=4)]),
-        Chord(root=Note(name='G', octave=4), quality='major', notes=[Note(name='G', octave=4)])
+        Chord(root=Note(name='C', octave=4), notes=[Note(name='C', octave=4)], quality='major'),
+        Chord(root=Note(name='G', octave=4), notes=[Note(name='G', octave=4)], quality='major')
     ]
     return ChordProgression(scale_info=scale_info, chords=chords)
 

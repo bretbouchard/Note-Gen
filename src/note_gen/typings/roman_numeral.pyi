@@ -1,8 +1,8 @@
 # roman_numeral.pyi
 
 from typing import ClassVar, Optional, List
-from .chord import Chord
-from .scale_degree import ScaleDegree
+from src.note_gen.models.chord import Chord
+from src.note_gen.models.scale_degree import ScaleDegree
 
 class RomanNumeral:
     QUALITY_MODIFIERS: ClassVar[dict[str, tuple[str, List[int]]]]

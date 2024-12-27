@@ -3,9 +3,9 @@ from typing import List, Any, Optional, Union, Literal, ClassVar
 
 from pydantic import BaseModel, ConfigDict
 
-from .chord import Chord
-from .note import Note
-from .scale_degree import ScaleDegree
+from src.note_gen.models.chord import Chord
+from src.note_gen.models.note import Note
+from src.note_gen.models.scale_degree import ScaleDegree
 
 DirectionType = Literal["forward", "backward", "random", "alternating"]
 ApproachType = Literal["chromatic", "diatonic", "below", "above"]

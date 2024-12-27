@@ -1,6 +1,7 @@
 from __future__ import annotations
 from typing import ClassVar, Dict, Any, Optional
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+from src.note_gen.models.scale_degree import ScaleDegree
 
 class Note(BaseModel):
     """A musical note representation."""

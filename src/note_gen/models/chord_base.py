@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import Dict, List, Optional, TYPE_CHECKING
 from pydantic import ConfigDict
-from src.note_gen.models.base_types import MusicalBase
+from src.note_gen.models.base_types import MusicalBase as AbsoluteMusicalBase
 from src.note_gen.models.musical_elements import Note
 from src.note_gen.models.enums import ChordQualityType
 import logging
@@ -113,7 +113,7 @@ CHORD_COUNT = {
 }
 
 
-class ChordBase(MusicalBase):
+class ChordBase(AbsoluteMusicalBase):
     """Base class for chord-related structures."""
 
     model_config = ConfigDict(arbitrary_types_allowed=True)

@@ -3,6 +3,7 @@
 from pydantic import BaseModel, Field, field_validator
 from typing import List, Optional
 from pydantic.config import ConfigDict
+from src.note_gen.models.enums import AccidentalType
 
 
 class Note(BaseModel):

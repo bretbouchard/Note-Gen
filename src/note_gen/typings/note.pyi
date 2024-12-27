@@ -1,5 +1,5 @@
 from typing import ClassVar, Optional, Union, List
-from .scale_degree import ScaleDegree
+from src.note_gen.models.scale_degree import ScaleDegree
 
 class Note:
     NOTE_TO_NUMBER: ClassVar[dict[str, int]] = ...

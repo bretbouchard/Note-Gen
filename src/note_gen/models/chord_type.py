@@ -2,6 +2,7 @@
 
 from typing import List, Final
 from pydantic import BaseModel, ConfigDict
+from src.note_gen.models.enums import ChordQualityType
 
 
 class ChordType(BaseModel):

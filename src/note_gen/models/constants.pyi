@@ -2,6 +2,7 @@
 
 from typing import Dict, List
 from pydantic import BaseModel, ConfigDict
+from src.note_gen.models.enums import ChordQualityType
 
 class Constants(BaseModel):
     SCALE_INTERVALS: Dict[str, List[int]] = {

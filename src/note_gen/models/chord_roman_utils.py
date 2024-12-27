@@ -1,7 +1,7 @@
 import logging
 
 from src.note_gen.models.musical_elements import Note, Chord
-from src.note_gen.models.roman_numeral import RomanNumeral
+from src.note_gen.models import roman_numeral
 from src.note_gen.models.key import Key
 
 __all__ = ["get_roman_numeral_from_chord", "get_chord_from_roman_numeral"]
@@ -27,7 +27,7 @@ def get_roman_numeral_from_chord(chord: Chord) -> str:
 def get_chord_from_roman_numeral(roman_numeral: str, key_note: Note) -> Chord:
     """Get a chord from a roman numeral in a given key."""
     # Create a RomanNumeral object from the string
-    roman = RomanNumeral.from_str(roman_numeral)
+    roman = roman_numeral.RomanNumeral.from_str(roman_numeral)
 
     # Convert the RomanNumeral to a Chord
     chord = roman.to_chord(key_note)

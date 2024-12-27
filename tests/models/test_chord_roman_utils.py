@@ -11,7 +11,7 @@ def note():
 
 @pytest.fixture
 def chord(note):
-    return Chord(root=note, quality=ChordQualityType.MAJOR)
+    return Chord(root=note, notes=[note], quality=ChordQualityType.MAJOR)
 
 @pytest.fixture
 def scale() -> Scale:

@@ -1,10 +1,10 @@
 # pattern_interpreter.pyi
 
 from typing import List
-from models.chord import Chord
-from src.models.note import Note
-from models.patterns import NotePattern
-from models.scale_info import ScaleInfo
+from src.note_gen.models.chord import Chord
+from src.note_gen.models.note import Note
+from src.note_gen.models.patterns import NotePattern
+from src.note_gen.models.scale_info import ScaleInfo
 
 class PatternInterpreter:
     def interpret(self, pattern: NotePattern, chord: Chord, scale_info: ScaleInfo) -> List[Note]: ...

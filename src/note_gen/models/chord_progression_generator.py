@@ -4,10 +4,10 @@ from __future__ import annotations
 from enum import Enum
 from typing import Dict, List, Optional, Tuple, ClassVar
 from pydantic import BaseModel, Field
-from src.note_gen.models.scale_info import ScaleInfo
 from src.note_gen.models.chord_progression import ChordProgression
 from src.note_gen.models.musical_elements import Note, Chord  # Update import statement
 from src.note_gen.models.enums import ChordQualityType
+from src.note_gen.models.scale_info import ScaleInfo  # Update import statement
 
 import logging
 import random
@@ -254,17 +254,22 @@ class ChordProgressionGenerator(BaseModel):
                     root.midi_number - 12
                 )  # Transpose down by one octave for bass
                 logger.info(f"Creating bass note for degree: {degree}, bass: {bass}")
+                # Ensure chord_notes is populated correctly before creating the Chord instance
+                if chord_notes is None or not all(isinstance(note, Note) for note in chord_notes):
+                    logger.error(
+                        f"Failed to generate valid chord notes for root: {root} and quality: {quality}"
+                    )
+                    continue
                 chord = Chord(
                     root=root,
                     quality=ChordQualityType(quality),
                     notes=chord_notes,
-                    bass=bass,
+                    # bass=bass,
                 )
                 chords.append(chord)
                 logger.info(
                     f"Generated chord - Root: {root}, Bass: {bass}, Chord Notes: {chord_notes}"
                 )
-
             progression = ChordProgression(scale_info=self.scale_info, chords=chords)
             return progression
         except Exception as e:
@@ -318,7 +323,7 @@ class ChordProgressionGenerator(BaseModel):
                     root=root,
                     quality=ChordQualityType(quality),
                     notes=chord_notes,
-                    bass=bass,
+                    # bass=bass,
                 )
                 chords.append(chord)
                 logger.info(
@@ -380,7 +385,7 @@ class ChordProgressionGenerator(BaseModel):
             root=root_note,
             quality=ChordQualityType(quality),
             notes=chord_notes,
-            bass=bass,
+            # bass=bass,
         )
 
     def _parse_numeral(self, numeral: str) -> Optional[int]:
