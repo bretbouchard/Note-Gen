@@ -45,6 +45,39 @@ logger = logging.getLogger(__name__)
 
 
 class RomanNumeral(BaseModel):
+    """Model for roman numerals used in chord progressions."""
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    numeral: str = Field(..., description="The roman numeral string")
+
+    ROMAN_TO_INT: t.ClassVar[t.Dict[str, int]] = {
+        'I': 1, 'II': 2, 'III': 3, 'IV': 4, 'V': 5, 'VI': 6, 'VII': 7,
+        'i': 1, 'ii': 2, 'iii': 3, 'iv': 4, 'v': 5, 'vi': 6, 'vii': 7
+    }
+
+    @classmethod
+    def from_str(cls, numeral: str) -> 'RomanNumeral':
+        """Create a RomanNumeral from a string."""
+        return cls(numeral=numeral)
+
+    def to_int(self) -> int:
+        """Convert the Roman numeral to its integer value."""
+        return self.ROMAN_TO_INT.get(self.numeral, 0)
+
+    @classmethod
+    def to_int_from_str(cls, numeral: str) -> int:
+        """Convert a roman numeral string to its integer value."""
+        return cls.ROMAN_TO_INT.get(numeral, 0)
+
+    def __str__(self) -> str:
+        """Get string representation."""
+        return self.numeral
+
+
+class RomanNumeralChord(BaseModel):
+    """Model for roman numerals used in chord progressions."""
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     scale: Scale  # Assuming Scale is defined elsewhere
     numeral_str: str = Field(
         ..., pattern="^[IiVv]+|[1-7]|(?:one|two|three|four|five|six|seven)$"
@@ -52,7 +85,22 @@ class RomanNumeral(BaseModel):
     numeral: str = Field(..., description="The Roman numeral representation")
     scale_degree: int = Field(..., ge=1, le=7)
 
-    model_config = ConfigDict(arbitrary_types_allowed=True)
+    ROMAN_TO_INT: t.ClassVar[t.Dict[str, int]] = {
+        'I': 1,
+        'II': 2,
+        'III': 3,
+        'IV': 4,
+        'V': 5,
+        'VI': 6,
+        'VII': 7,
+        'i': 1,
+        'ii': 2,
+        'iii': 3,
+        'iv': 4,
+        'v': 5,
+        'vi': 6,
+        'vii': 7
+    }
 
     @field_validator("numeral_str")
     def validate_numeral(cls, value: str) -> str:
@@ -120,7 +168,7 @@ class RomanNumeral(BaseModel):
     @classmethod
     def from_str(
         cls, numeral_str: str, scale_type: t.Optional[ScaleType] = None
-    ) -> "RomanNumeral":
+    ) -> "RomanNumeralChord":
 
         if scale_type is None:
             raise ValueError("Invalid scale provided.")
@@ -159,10 +207,10 @@ class RomanNumeral(BaseModel):
             numeral_str=numeral_str,
             scale_degree=scale_degree,
             numeral=base,
-            is_major=quality_type == ChordQualityType.MAJOR,
-            is_diminished=quality_type == ChordQualityType.DIMINISHED,
-            is_augmented=quality_type == ChordQualityType.AUGMENTED,
-            is_half_diminished=quality_type == ChordQualityType.HALF_DIMINISHED_7,
+            is_major=quality_type.value == ChordQualityType.MAJOR.value,
+            is_diminished=quality_type.value == ChordQualityType.DIMINISHED.value,
+            is_augmented=quality_type.value == ChordQualityType.AUGMENTED.value,
+            is_half_diminished=quality_type.value == ChordQualityType.HALF_DIMINISHED_7.value,
             has_seventh=False,
             has_ninth=False,
             has_eleventh=False,
@@ -184,9 +232,12 @@ class RomanNumeral(BaseModel):
 
     def to_int(self) -> int:
         """Convert the Roman numeral to its integer value."""
-        # Implement the logic to convert the Roman numeral to an integer
-        # Use the ROMAN_TO_INT class variable to map the Roman numeral to its integer value
         return self.ROMAN_TO_INT.get(self.numeral, 0)
+
+    @classmethod
+    def to_int_from_str(cls, numeral: str) -> int:
+        """Convert a roman numeral string to its integer value."""
+        return cls.ROMAN_TO_INT.get(numeral, 0)
 
     def __str__(self) -> str:
         """Return the string representation of the Roman numeral.
@@ -194,7 +245,7 @@ class RomanNumeral(BaseModel):
         Returns:
             str: The Roman numeral representation.
         """
-        return f"{self.numeral} ({self.get_quality()})"
+        return f"RomanNumeralChord(scale={self.scale.root.full_note_name}, numeral={self.numeral})"
 
     def get_quality(self) -> str:
         """Get the quality of the Roman numeral.
@@ -251,14 +302,4 @@ class RomanNumeral(BaseModel):
         5: "V",
         6: "VI",
         7: "VII",
-    }
-
-    ROMAN_TO_INT: t.ClassVar[t.Dict[str, int]] = {
-        "I": 1,
-        "II": 2,
-        "III": 3,
-        "IV": 4,
-        "V": 5,
-        "VI": 6,
-        "VII": 7,
     }

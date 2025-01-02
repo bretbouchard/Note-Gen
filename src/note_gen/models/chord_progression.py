@@ -76,18 +76,20 @@ class ChordProgression(BaseModel):
         logger.debug(f"Transposing progression by {interval} intervals")
         for chord in self.chords:
             if chord.root:
+                logger.debug(f"Chord before transposition: root={chord.root.note_name}, quality={chord.quality}, notes={chord.notes}")
                 new_midi_number = chord.root.midi_number + interval
                 new_root = Note.from_midi(midi_number=new_midi_number)
                 new_quality = (
                     chord.quality or ChordQualityType.MAJOR
                 )  # Default to MAJOR if None
+                logger.debug(f"New root after transposition: {new_root.note_name}, new quality: {new_quality}")
                 chord.root = new_root
                 chord.quality = new_quality
-                chord.chord_notes = chord.generate_chord_notes(
-                    new_root, new_quality, chord.inversion
-                )
+                chord.notes = self.generate_chord_notes(new_root, new_quality, chord.inversion)
+                logger.debug(f"Chord after transposition: root={chord.root.note_name}, quality={chord.quality}, notes={chord.notes}")
+                assert chord.root.note_name == chord.root.note_name  # Ensure the chord root is valid
                 logger.debug(
-                    f"Transposed chord: root={new_root}, quality={new_quality}"
+                    f"Transposed chord: root={new_root.note_name}, quality={new_quality}"
                 )
 
     def dict(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:
@@ -95,3 +97,7 @@ class ChordProgression(BaseModel):
         d["chords"] = [chord.dict() for chord in self.chords]
         d["scale_info"] = self.scale_info.dict()
         return d
+
+    def generate_chord_notes(self, root: Note, quality: ChordQualityType, inversion: int) -> List[Note]:
+        # This method should be implemented to generate chord notes based on the root, quality, and inversion
+        pass

@@ -2,6 +2,12 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel  
 from typing import List, Optional
 
+import logging
+
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+
+
 class ScaleDegree(BaseModel):
     degree: int
     note: str

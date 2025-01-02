@@ -1,55 +1,58 @@
+"""Tests for note pattern models."""
+
+from typing import List
 import pytest
-from src.note_gen.models.note_pattern import NotePattern, NotePatternData
 from src.note_gen.models.musical_elements import Note
+from src.note_gen.models.note_pattern import NotePattern
 
 
 def test_note_pattern_creation() -> None:
-    """Test creation of NotePattern with valid data."""
-    notes: list[Note] = [Note(name='C', pitch='C4', duration=1.0, velocity=64)]  # Use valid note name
-    note_pattern_data: NotePatternData = NotePatternData(notes=notes)
-    note_pattern: NotePattern = NotePattern(name='ValidPattern', data=note_pattern_data)
-    assert note_pattern.name == 'ValidPattern'
-    if isinstance(note_pattern.data, NotePatternData):
-        assert len(note_pattern.data.notes) == 1
+    """Test creating a valid note pattern."""
+    notes = [
+        Note.from_name('C4'),
+        Note.from_name('E4'),
+        Note.from_name('G4')
+    ]
+    pattern = NotePattern(name="Test Pattern", data=[0, 4, 7], notes=notes)
+    assert len(pattern.notes) == 3
+    assert pattern.notes[0].note_name == 'C'
+    assert pattern.notes[0].octave == 4
+    assert pattern.notes[1].note_name == 'E'
+    assert pattern.notes[1].octave == 4
+    assert pattern.notes[2].note_name == 'G'
+    assert pattern.notes[2].octave == 4
 
 
 def test_invalid_note_pattern() -> None:
-    """Test handling of invalid note pattern data."""
+    """Test creating a note pattern with invalid notes."""
     with pytest.raises(ValueError):
-        NotePattern(name='', data=NotePatternData(notes=[]))
+        NotePattern(name="Test Pattern", data=[0, 4, 7], notes=["not a note"])
 
 
 def test_note_pattern_total_duration() -> None:
-    """Test the assignment of notes in the pattern."""
-    notes: list[Note] = [Note(name='C', pitch='C4', duration=1.0, velocity=64),
-                         Note(name='D', pitch='D4', duration=2.0, velocity=64)]
-    note_pattern_data: NotePatternData = NotePatternData(notes=notes)
-    note_pattern: NotePattern = NotePattern(name='MyPattern', data=note_pattern_data)
-    
-    # Assert that the notes are assigned correctly by checking MIDI numbers
-    if isinstance(note_pattern.data, NotePatternData):
-        assert len(note_pattern.data.notes) == 2
-        assert isinstance(note_pattern.data.notes[0], Note)
-        if isinstance(note_pattern.data.notes[0], Note):
-            assert note_pattern.data.notes[0].midi_number == 60  # C4 MIDI number
-        assert isinstance(note_pattern.data.notes[1], Note)
-        if isinstance(note_pattern.data.notes[1], Note):
-            assert note_pattern.data.notes[1].midi_number == 62  # D4 MIDI number
+    """Test calculating total duration of a note pattern."""
+    notes = [
+        Note.from_name('C4', duration=1.0),
+        Note.from_name('E4', duration=0.5),
+        Note.from_name('G4', duration=0.25)
+    ]
+    pattern = NotePattern(name="Test Pattern", data=[0, 4, 7], notes=notes)
+    assert pattern.total_duration == 1.75
 
 
 def test_invalid_note_data() -> None:
-    """Test handling of invalid note data."""
+    """Test creating a note pattern with invalid note data."""
     with pytest.raises(ValueError):
-        Note(pitch='', duration=-1.0, velocity=200)
+        NotePattern(name="Test Pattern", data=["invalid"], notes=[])
 
 
 def test_empty_notes() -> None:
-    """Test handling of empty notes in NotePatternData."""
-    with pytest.raises(ValueError):
-        NotePatternData(notes=[])
+    """Test creating a note pattern with empty notes list."""
+    pattern = NotePattern(name="Test Pattern", data=[0, 4, 7])
+    assert len(pattern.notes) == 0
 
 
 def test_invalid_note_type() -> None:
-    """Test handling of invalid note types."""
+    """Test creating a note pattern with invalid note type."""
     with pytest.raises(ValueError):
-        NotePatternData(notes=[None])
+        NotePattern(name="Test Pattern", data=[0, 4, 7], notes=[123])  # type: ignore

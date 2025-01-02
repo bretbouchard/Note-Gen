@@ -22,7 +22,7 @@ class ScaleInfo(BaseModel):
     """Information about a musical scale."""
 
     scale_type: str = Field(default="major")
-    root: Note
+    root: Note = Field(..., description="Root note of the scale")
     scale_degrees: List[ScaleDegree] = Field(
         default_factory=list, description="List of scale degrees"
     )  # Ensure scale_degrees is initialized properly
@@ -37,50 +37,27 @@ class ScaleInfo(BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    def __init__(
-        self,
-        *,
-        scale_type: str = "major",
-        root: Note,
-        scale_degrees: List[ScaleDegree] = None,
-        key_signature: str = "",
-        intervals: List[int] = None,
-        mode: Optional[str] = None,
-        notes: List[Note] = None,
-        scale_notes: List[Note] = None,
-        scale: List[str] = None,
-    ) -> None:
-        super().__init__(
-            scale_type=scale_type,
-            root=root,
-            scale_degrees=scale_degrees or [],
-            key_signature=key_signature,
-            intervals=intervals or [],
-            mode=mode,
-            notes=notes or [],
-            scale_notes=scale_notes or [],
-            scale=scale or [],
-        )
-
+    @field_validator("root", mode="before")
     @classmethod
-    @field_validator("root")
-    def validate_root(cls, root: Note) -> Note:
-        if root is None:
+    def validate_root(cls, v: Optional[Note]) -> Note:
+        """Validate root note."""
+        if v is None:
             raise ValueError("Root note is required.")
-        return root
+        return v
 
-    @classmethod
     @field_validator("scale_degrees", mode="before")
+    @classmethod
     def validate_scale_degrees(
         cls, scale_degrees: Optional[List[ScaleDegree]]
     ) -> List[ScaleDegree]:
-        if scale_degrees is not None and not all(
-            isinstance(degree, ScaleDegree) for degree in scale_degrees
-        ):
+        if scale_degrees is None:
+            return []
+        if not all(isinstance(degree, ScaleDegree) for degree in scale_degrees):
             raise ValueError("All scale degrees must be instances of ScaleDegree.")
-        return scale_degrees or []
+        return scale_degrees
 
     @field_validator("scale_type")
+    @classmethod
     def validate_scale_type(cls, value: str) -> str:
         if value not in ["major", "minor", "harmonic_minor", "melodic_minor"]:
             raise ValueError(
@@ -138,7 +115,7 @@ class ScaleInfo(BaseModel):
         # Create scale degrees
         scale_degrees = []
         for i, interval in enumerate(intervals):
-            note = self.root.transpose(interval)
+            note = self.root.transpose(interval) if self.root else None
             logger.info(
                 f"Generated note for degree {i + 1}: {note}"
             )  # Log generated notes
@@ -187,7 +164,7 @@ class ScaleInfo(BaseModel):
         logger = logging.getLogger(__name__)
         logger.debug("Converting ScaleInfo to dictionary representation.")
         d = super().model_dump(*args, **kwargs)
-        d["root"] = self.root.name  # Include root note name
+        d["root"] = self.root.name if self.root else None  # Include root note name
         d["scale_notes"] = [note.name for note in self.notes]  # Include scale notes
         logger.info("ScaleInfo converted to dictionary successfully.")
         return d
@@ -195,3 +172,7 @@ class ScaleInfo(BaseModel):
     @property
     def intervals(self) -> List[int]:
         return SCALE_INTERVALS.get(self.scale_type, [])
+
+    def get_intervals(self) -> List[int]:
+        """Get the intervals for this scale type."""
+        return SCALE_INTERVALS.get(self.scale_type, SCALE_INTERVALS["major"])

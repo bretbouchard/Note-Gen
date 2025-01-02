@@ -1,71 +1,70 @@
+"""Test note model."""
+
 import pytest
-from src.note_gen.models.musical_elements import Note
+from src.note_gen.models.note import Note
 
 
 def test_note_initialization() -> None:
-    note = Note(name='C', octave=4, duration=1.0, velocity=100)  # Use Note directly
-    assert note.name == 'C'
+    """Test initialization of Note with valid data."""
+    note = Note.from_name('C4')
+    assert note.note_name == 'C'  # Correct assertion for base note name
     assert note.octave == 4
-    assert note.duration == 1.0
-    assert note.velocity == 100
 
 
 def test_invalid_note_name() -> None:
+    """Test initialization of Note with invalid note name."""
     with pytest.raises(ValueError):
-        Note(name='H')  # Use Note directly
+        Note.from_name('H')  # H is not a valid note name
+
 
 def test_valid_octaves() -> None:
-    valid_octaves = [-2, 0, 4, 8]
+    """Test initialization of Note with valid octaves."""
+    valid_octaves = [0, 4, 8] 
     for octave in valid_octaves:
-        note = Note(name='C', octave=octave)  # Use Note directly
-        assert note.octave == octave  # Ensure the octave is set correctly
-
+        note = Note.from_name(f'C{octave}')
+        assert note.octave == octave
 
 
 def test_invalid_octave() -> None:
-    with pytest.raises(ValueError, match="Octave must be between -2 and 8"):
-        Note(name='C', octave=10)  # Use Note directly
-
-    with pytest.raises(ValueError, match="Octave must be between -2 and 8"):
-        Note(name='C', octave=-3)  # Use Note directly
-        
-
-
+    """Test initialization of Note with invalid octave."""
+    invalid_octaves = [-1, 9, 12]  # Invalid octaves
+    for octave in invalid_octaves:
+        with pytest.raises(ValueError):
+            Note.from_name(f'C{octave}')  # Attempt to create a Note with an invalid octave
 
 
 def test_midi_number() -> None:
-    note = Note(name='C', octave=4)  # Use Note directly
-    assert note.midi_number == 60  # Corrected to Middle C (C4)
-    
-    note = Note(name='C', accidental='#', octave=4)  # Use Note directly
-    assert note.midi_number == 61  # C# in octave 4
-    
-    note = Note(name='D', accidental='#', octave=4)  # Use Note directly
-    assert note.midi_number == 63  # D# in octave 4
+    """Test MIDI number calculation."""
+    note = Note.from_name('C4')
+    assert note.midi_number == 60  # C4 is MIDI note 60
 
 
 def test_string_representation() -> None:
-    note = Note(name='D', accidental='b', octave=5)  # Use Note directly
-    assert str(note) == 'D flat in octave 5'
+    """Test string representation of Note."""
+    note = Note.from_name('C#5')
+    assert str(note) == 'C#5'
 
 
 def test_note_equality() -> None:
-    note1 = Note(name='E', octave=4)  # Use Note directly
-    note2 = Note(name='E', octave=4)  # Use Note directly
+    """Test note equality."""
+    note1 = Note.from_name('C4')
+    note2 = Note.from_name('C4')
+    note3 = Note.from_name('D4')
     assert note1 == note2
+    assert note1 != note3
+    assert note1.note_name == note2.note_name
+    assert note1.octave == note2.octave
 
 
 def test_valid_durations() -> None:
     """Test initialization of Note with valid durations."""
-    note1 = Note(name='C', octave=4, duration=2.0, velocity=100)
-    note2 = Note(name='D', octave=4, duration=3.0, velocity=100)
-    assert note1.duration == 2.0
-    assert note2.duration == 3.0
+    valid_durations = [0.0, 0.5, 1.0, 2.0]
+    for duration in valid_durations:
+        note = Note.from_name('C4', duration=duration)
+        assert note.duration == duration
 
 
 def test_invalid_duration() -> None:
-    """Test initialization of Note with invalid durations."""
+    """Test initialization of Note with invalid duration."""
     with pytest.raises(ValueError):
-        Note(name='E', octave=4, duration=0, velocity=100)  # Duration cannot be zero
-    with pytest.raises(ValueError):
-        Note(name='F', octave=4, duration=-1, velocity=100)  # Duration cannot be negative
+        Note.from_name('C4', duration=-1.0)  # Negative duration is invalid

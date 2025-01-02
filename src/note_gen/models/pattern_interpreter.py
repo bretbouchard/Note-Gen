@@ -124,9 +124,9 @@ class PatternInterpreter(BaseModel):
                 )  # Assuming a method exists to create Note from MIDI number
                 result.append(note)
             elif isinstance(element, str):
-                note = Note.from_name(
+                note = Note.from_full_name(
                     element
-                )  # Assuming a method exists to create Note from name
+                )  # Assuming a method exists to create Note from full name
                 result.append(note)
             else:
                 raise ValueError(f"Unsupported pattern element type: {type(element)}")

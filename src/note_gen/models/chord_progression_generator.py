@@ -162,7 +162,11 @@ class ChordProgressionGenerator(BaseModel):
         chord_notes = []
         for interval in intervals:
             note = root.transpose(interval)  # Assuming Note has a transpose method
-            chord_notes.append(note)
+            # Ensure the note is valid and has a midi_number
+            if note and isinstance(note, Note) and note.midi_number is not None:
+                chord_notes.append(note)
+            else:
+                logger.error(f"Invalid note generated for interval {interval} from root {root}")
         return chord_notes
 
     def generate(
@@ -189,11 +193,17 @@ class ChordProgressionGenerator(BaseModel):
         self.scale_info.compute_scale_degrees()  # Assuming this method exists to compute scale degrees
 
         for degree, quality in scale_degrees:
+            logger.debug(f"Generating chord with quality: {quality.lower()}")
+            logger.debug(f"Quality: {quality}")
+            logger.debug(f"Quality before conversion: {quality}")
+            logger.debug(f"Quality before conversion: {quality.lower()}")
+            logger.debug(f"Quality being passed to Chord: {quality}")
             root_note = self.scale_info.get_scale_degree(degree)
-            if not root_note:
+            if not root_note or not root_note.midi_number:
                 raise ValueError(f"Invalid scale degree: {degree}")
 
             # Create the chord based on the root note and quality
+            logger.debug(f"Quality being passed to Chord: {quality}")
             chord = Chord(root=root_note, quality=ChordQualityType[quality.upper()])
             chords.append(chord)
             logger.debug("Generated chord: %s", chord)
@@ -262,7 +272,7 @@ class ChordProgressionGenerator(BaseModel):
                     continue
                 chord = Chord(
                     root=root,
-                    quality=ChordQualityType(quality),
+                    quality=ChordQualityType[quality.lower()],
                     notes=chord_notes,
                     # bass=bass,
                 )
@@ -321,7 +331,7 @@ class ChordProgressionGenerator(BaseModel):
                 logger.info(f"Creating bass note for degree: {degree}, bass: {bass}")
                 chord = Chord(
                     root=root,
-                    quality=ChordQualityType(quality),
+                    quality=ChordQualityType[quality.lower()],
                     notes=chord_notes,
                     # bass=bass,
                 )
@@ -342,51 +352,35 @@ class ChordProgressionGenerator(BaseModel):
 
     def generate_chord(self, numeral: str) -> Chord:
         """Generate a chord based on the given numeral."""
-        # Determine the scale degree from the numeral
-        scale_degree = self._parse_numeral(numeral)
-        if scale_degree is None:
-            raise ValueError(f"Invalid numeral: {numeral}")
+        logger.info("Generating chord for numeral: %s", numeral)
+        degree = self._parse_numeral(numeral)
 
-        # Determine if the chord is minor
-        is_minor = numeral.islower() or "m" in numeral
+        # Validate quality
+        quality = self.MAJOR_SCALE_QUALITIES.get(degree) or self.MINOR_SCALE_QUALITIES.get(degree)
+        if quality is None:
+            logger.error(f"Invalid degree: {degree} for chord generation")
+            raise ValueError(f"Invalid degree: {degree}")
 
-        # Get the chord quality
-        quality = self.get_chord_quality(scale_degree, is_minor)
+        # Validate quality
+        if quality not in self.CHORD_INTERVALS:
+            logger.error(f"Invalid quality: {quality} for chord generation")
+            raise ValueError(f"Invalid quality: {quality}")
 
-        # Get the root note from scale info
-        root_note = self.scale_info.root
+        # Convert quality to enum
+        try:
+            quality_enum = ChordQualityType[quality.lower()]
+        except KeyError:
+            logger.error(f"Invalid quality: {quality} for chord generation")
+            raise ValueError(f"Invalid quality: {quality}")
 
-        # Generate chord notes
-        chord_notes = self._generate_chord_notes(root_note, quality)
+        root_note = self.scale_info.get_scale_degree(degree)
+        if root_note is None:
+            logger.error(f"No root note found for degree: {degree}")
+            raise ValueError(f"No root note found for degree: {degree}")
 
-        # Validate chord notes
-        if chord_notes is None or not all(
-            isinstance(note, Note) for note in chord_notes
-        ):
-            logger.error(
-                f"Failed to generate valid chord notes for root: {root_note} and quality: {quality}"
-            )
-            raise ValueError(
-                f"Failed to generate valid chord notes for root: {root_note} and quality: {quality}"
-            )
-
-        logger.info(
-            f"Generating chord for degree: {scale_degree}, quality: {quality}, root: {root_note}"
-        )
-        logger.info(
-            f"Creating Chord instance with degree: {scale_degree}, quality: {quality}, root: {root_note}"
-        )
-        # Create and return the Chord object
-        bass = Note.from_midi(
-            root_note.midi_number - 12
-        )  # Transpose down by one octave for bass
-        logger.info(f"Creating bass note for degree: {scale_degree}, bass: {bass}")
-        return Chord(
-            root=root_note,
-            quality=ChordQualityType(quality),
-            notes=chord_notes,
-            # bass=bass,
-        )
+        chord = Chord(root=root_note, quality=quality_enum)
+        logger.debug("Generated chord: %s", chord)
+        return chord
 
     def _parse_numeral(self, numeral: str) -> Optional[int]:
         """Parse a Roman numeral to a scale degree."""
@@ -416,7 +410,3 @@ class ChordProgressionGenerator(BaseModel):
             "III": 3,
         }
         return numeral_map.get(numeral)
-
-    def get_scale(self) -> ScaleInfo:
-        # Implementation here
-        return self.scale_info

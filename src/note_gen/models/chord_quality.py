@@ -3,7 +3,9 @@ from src.note_gen.models.enums import ChordQualityType
 import logging
 
 # Removed unused import of Chord
+__all__ = ['ChordQuality', 'ChordQualityType']
 
+logger = logging.getLogger(__name__)
 
 class ChordQuality(BaseModel):
     quality: ChordQualityType
@@ -11,6 +13,8 @@ class ChordQuality(BaseModel):
     @classmethod
     def from_string(cls, quality_str: str) -> "ChordQuality":
         """Convert a string representation of a chord quality to a ChordQuality instance."""
+        logger.debug(f"Converting quality string: {quality_str}")
+        logger.debug(f"Quality string being converted: {quality_str}")
         quality_dict = {
             "major": ChordQualityType.MAJOR,
             "minor": ChordQualityType.MINOR,

@@ -1,154 +1,135 @@
 # src/note_gen/models/musical_elements.py
 
-from pydantic import BaseModel, Field, field_validator
-from typing import List, Optional
-from pydantic.config import ConfigDict
-from src.note_gen.models.enums import AccidentalType
+from typing import List, Optional, Dict, Any
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+from src.note_gen.models.enums import AccidentalType, ChordQualityType
+from src.note_gen.models.note import Note
 
 
-class Note(BaseModel):
-    """A musical note."""
-
-    name: str = Field(..., description="Name of the note")
-    octave: int = Field(..., description="Octave of the note")
-    velocity: int = Field(default=100, description="Velocity of the note")
-    duration: float = Field(default=1.0, description="Duration of the note")
-
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-
-    @property
-    def midi_number(self) -> int:
-        """Calculate the MIDI number for the note."""
-        return (self.octave + 1) * 12 + self.note_to_semitone(self.name)
-
-    def transpose(self, semitones: int) -> "Note":
-        """Transpose the note by a given number of semitones."""
-        new_octave = self.octave + (self.note_to_semitone(self.name) + semitones) // 12
-        new_name = self.semitone_to_note_name(
-            (self.note_to_semitone(self.name) + semitones) % 12
-        )
-        return Note(
-            name=new_name,
-            octave=new_octave,
-            velocity=self.velocity,
-            duration=self.duration,
-        )
-
-    def shift_octave(self, octaves: int) -> "Note":
-        """Shift the note by a given number of octaves."""
-        return Note(
-            name=self.name,
-            octave=self.octave + octaves,
-            velocity=self.velocity,
-            duration=self.duration,
-        )
-
-    @property
-    def accidental(self) -> Optional[str]:
-        if "#" in self.name:
-            return "#"
-        elif "b" in self.name:
-            return "b"
-        return None
-
-    @staticmethod
-    def note_to_semitone(name: str) -> int:
-        """Convert note name to semitone value."""
-        note_mapping = {
-            "C": 0,
-            "C#": 1,
-            "Db": 1,
-            "D": 2,
-            "D#": 3,
-            "Eb": 3,
-            "E": 4,
-            "F": 5,
-            "F#": 6,
-            "Gb": 6,
-            "G": 7,
-            "G#": 8,
-            "Ab": 8,
-            "A": 9,
-            "A#": 10,
-            "Bb": 10,
-            "B": 11,
-            "Cb": -1,
-            "B#": 12,
-            "Dbb": 1,
-            "Ebb": 2,
-            "Fb": 4,
-            "Gbb": 5,
-            "Abb": 8,
-            "Bbb": 10,
-        }
-        return note_mapping.get(name, -1)  # Returns -1 for invalid notes
-
-    @staticmethod
-    def semitone_to_note_name(semitone: int) -> str:
-        """Convert semitone value back to note name."""
-        reverse_mapping = {
-            0: "C",
-            1: "C#",
-            2: "D",
-            3: "D#",
-            4: "E",
-            5: "F",
-            6: "F#",
-            7: "G",
-            8: "G#",
-            9: "A",
-            10: "A#",
-            11: "B",
-        }
-        return reverse_mapping.get(
-            semitone % 12, "Invalid"
-        )  # Return 'Invalid' for out-of-range values
+__all__ = ['Note', 'ChordQuality', 'Chord']
 
 
-class MusicalBase:
-    pass
-
-
-class Chord(MusicalBase, BaseModel):
-    """A musical chord."""
+class ChordQuality(BaseModel):
+    """Model for chord quality."""
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    root: Note = Field(..., description="Root note of the chord")
-    quality: Optional[str] = Field(default=None, description="Quality of the chord")
-    notes: List[Note] = Field(
-        default_factory=list, description="List of notes in the chord"
-    )
+    quality_type: ChordQualityType = Field(default=ChordQualityType.MAJOR)
+    has_seventh: bool = Field(default=False)
+    has_ninth: bool = Field(default=False)
+    has_eleventh: bool = Field(default=False)
+    is_diminished: bool = Field(default=False)
+    is_augmented: bool = Field(default=False)
 
-    @field_validator("quality")
-    def validate_quality(cls, value: Optional[str]) -> None:
-        valid_qualities = ["major", "minor", "diminished", "augmented"]
-        if value and value not in valid_qualities:
-            raise ValueError(f"Invalid chord quality: {value}")
+    @classmethod
+    def from_str(cls, quality_str: str) -> "ChordQuality":
+        """Create a ChordQuality from a string."""
+        quality_map = {
+            'major': ChordQualityType.MAJOR,
+            'minor': ChordQualityType.MINOR,
+            'diminished': ChordQualityType.DIMINISHED,
+            'augmented': ChordQualityType.AUGMENTED,
+            'dominant': ChordQualityType.DOMINANT,
+            'dominant7': ChordQualityType.DOMINANT_7,
+            'major7': ChordQualityType.MAJOR_7,
+            'minor7': ChordQualityType.MINOR_7,
+            'diminished7': ChordQualityType.DIMINISHED_7,
+            'half_diminished7': ChordQualityType.HALF_DIMINISHED_7,
+            'major_seventh': ChordQualityType.MAJOR_SEVENTH,
+            'minor_seventh': ChordQualityType.MINOR_SEVENTH,
+            'diminished_seventh': ChordQualityType.DIMINISHED_SEVENTH,
+        }
+        quality_type = quality_map.get(quality_str.lower(), ChordQualityType.MAJOR)
+        return cls(quality_type=quality_type)
+
+
+class Chord(BaseModel):
+    """Model for a musical chord."""
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    root: Note
+    quality: ChordQualityType = Field(default=ChordQualityType.MAJOR)
+    notes: List[Note] = Field(default_factory=list)
+    inversion: int = Field(default=0)
+
+    QUALITY_INTERVALS: Dict[ChordQualityType, List[int]] = {
+        ChordQualityType.MAJOR: [0, 4, 7],
+        ChordQualityType.MINOR: [0, 3, 7],
+        ChordQualityType.DIMINISHED: [0, 3, 6],
+        ChordQualityType.AUGMENTED: [0, 4, 8],
+        ChordQualityType.DOMINANT: [0, 4, 7, 10],
+        ChordQualityType.MAJOR_7: [0, 4, 7, 11],
+        ChordQualityType.MINOR_7: [0, 3, 7, 10],
+    }
+
+
+
+    def __init__(self, **data: Any) -> None:
+        """Initialize chord and generate notes."""
+        super().__init__(**data)
+        if not self.notes:
+            self.notes = self.generate_chord_notes()
+
+
+    def _generate_notes(self) -> List[Note]:
+        """Generate the notes of the chord based on quality and inversion."""
+        intervals = self.QUALITY_INTERVALS[self.quality]
+        base_midi = self.root.midi_number
+        notes = []
+        
+        # Generate notes based on intervals
+        for interval in intervals:
+            note_midi = base_midi + interval
+            notes.append(Note(midi_number=note_midi))
+            
+        # Apply inversion if specified
+        for _ in range(self.inversion):
+            first_note = notes.pop(0)
+            first_note.midi_number += 12  # Move up an octave
+            notes.append(first_note)
+            
+        return notes
+
+    @classmethod
+    def from_quality(cls, root: Note, quality: str) -> "Chord":
+        """Create a chord from a root note and quality."""
+        try:
+            quality = ChordQualityType(quality)
+        except ValueError:
+            raise ValueError("Input should be 'major', 'minor', 'diminished', 'augmented', 'dominant', 'major7', or 'minor7'")
+        return cls(root=root, quality=quality)
 
     def generate_chord_notes(self) -> List[Note]:
-        """Generate notes for the chord based on its quality and root."""
+        """Generate the notes of the chord based on quality and inversion."""
         intervals = {
-            "major": [0, 4, 7],
-            "minor": [0, 3, 7],
-            "diminished": [0, 3, 6],
-            "augmented": [0, 4, 8],
+            ChordQualityType.MAJOR: [0, 4, 7],
+            ChordQualityType.MINOR: [0, 3, 7],
+            ChordQualityType.DIMINISHED: [0, 3, 6],
+            ChordQualityType.AUGMENTED: [0, 4, 8],
         }
-        if self.quality not in intervals:
-            return []  # Return empty if quality is invalid
-        return [self.root.transpose(interval) for interval in intervals[self.quality]]
 
-    def transpose(self, semitones: int) -> "Chord":
-        """Transpose the chord by a given number of semitones."""
-        transposed_notes = [note.transpose(semitones) for note in self.notes]
-        return Chord(
-            root=self.root.transpose(semitones),
-            quality=self.quality,
-            notes=transposed_notes,
-        )
+        base_intervals = intervals.get(self.quality, intervals[ChordQualityType.MAJOR])
+        notes = []
+        for interval in base_intervals:
+            note = Note(
+                midi_number=self.root.midi_number + interval,
+                velocity=self.root.velocity,
+                duration=self.root.duration
+            )
+            notes.append(note)
 
-    def __str__(self) -> str:
-        return f"Chord(root={self.root}, quality={self.quality})"
+        # Apply inversion
+        if self.inversion > 0:
+            for _ in range(self.inversion):
+                first = notes.pop(0)
+                first = Note(
+                    midi_number=first.midi_number + 12,
+                    velocity=first.velocity,
+                    duration=first.duration
+                )
+                notes.append(first)
 
+        return notes
 
-# Add other foundational classes as necessary

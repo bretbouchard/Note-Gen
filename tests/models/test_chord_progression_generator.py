@@ -5,6 +5,7 @@ from src.note_gen.models.scale_info import ScaleInfo
 from src.note_gen.models.chord_progression_generator import ChordProgressionGenerator, ProgressionPattern
 from src.note_gen.models.musical_elements import Chord, Note
 from src.note_gen.models.chord_progression import ChordProgression
+from src.note_gen.models.chord_quality import ChordQualityType
 from pydantic import ValidationError
 
 
@@ -12,9 +13,13 @@ from pydantic import ValidationError
 def setup_scale_info() -> ScaleInfo:
     scale_info = MagicMock(spec=ScaleInfo)
     scale_info.get_scale_degree = MagicMock(side_effect=lambda degree: 
-        Note(name='C', octave=4) if degree == 1 
-        else Note(name='F', octave=4) if degree == 4 
-        else Note(name='G', octave=4) if degree == 5 
+        Note(note_name='C', octave=4, midi_number=60) if degree == 1 
+        else Note(note_name='D', octave=4, midi_number=62) if degree == 2 
+        else Note(note_name='E', octave=4, midi_number=64) if degree == 3 
+        else Note(note_name='F', octave=4, midi_number=65) if degree == 4 
+        else Note(note_name='G', octave=4, midi_number=67) if degree == 5 
+        else Note(note_name='A', octave=4, midi_number=69) if degree == 6 
+        else Note(note_name='B', octave=4, midi_number=71) if degree == 7 
         else None
     )
     scale_info.scale_degrees = [1, 2, 3, 4, 5, 6, 7]
@@ -56,11 +61,11 @@ def test_invalid_progression_length(setup_scale_info: ScaleInfo) -> None:
 
 def test_chord_with_empty_notes() -> None:
     with pytest.raises(ValueError, match="Chord notes cannot be empty"):
-        Chord(root=Note(name='C', octave=4), quality=ChordQualityType.MAJOR, notes=[])
+        Chord(root=Note(note_name='C', octave=4, midi_number=60), quality=ChordQualityType.MAJOR, notes=[])
 
 
 def test_progression_with_empty_chords() -> None:
-    scale_info = ScaleInfo(root=Note(name='C', octave=4))
+    scale_info = ScaleInfo(root=Note(note_name='C', octave=4, midi_number=60))
     with pytest.raises(ValueError, match="Chords cannot be empty"):
         ChordProgression(scale_info=scale_info, chords=[])
 
@@ -79,7 +84,7 @@ def test_scale_info_validation() -> None:
 
 
 def test_generate_progression_with_valid_patterns() -> None:
-    scale_info: ScaleInfo = ScaleInfo(root=Note(name='C', octave=4))
+    scale_info: ScaleInfo = ScaleInfo(root=Note(note_name='C', octave=4 , midi_number=60))
     generator: ChordProgressionGenerator = ChordProgressionGenerator(scale_info=scale_info, progression_length=4, pattern=ProgressionPattern.BASIC_I_IV_V_I)
     progression: ChordProgression = generator.generate(pattern=ProgressionPattern.BASIC_I_IV_V_I)
     assert progression is not None
@@ -88,7 +93,7 @@ def test_generate_progression_with_valid_patterns() -> None:
 
 
 def test_generate_progression_with_invalid_patterns() -> None:
-    scale_info: ScaleInfo = ScaleInfo(root=Note(name='C', octave=4))
+    scale_info: ScaleInfo = ScaleInfo(root=Note(note_name='C', octave=4 , midi_number=60))
     generator: ChordProgressionGenerator = ChordProgressionGenerator(scale_info=scale_info, progression_length=4, pattern=None)
     with pytest.raises(ValueError):
         generator.generate(pattern=None)

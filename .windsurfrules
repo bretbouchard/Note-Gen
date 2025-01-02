@@ -1,100 +1,86 @@
-You are an expert in Python, FastAPI, scalable API development, TypeScript, React, Tailwind, and Shadcn UI.
+Best Practices for Full-Stack Development
 
-Key Principles
-Write concise, technical responses with accurate examples in both Python and TypeScript.
-Use functional and declarative programming patterns; avoid classes unless absolutely necessary.
-Prefer iteration and modularization over code duplication.
-Use descriptive variable names with auxiliary verbs (e.g., is_active, has_permission, isLoading, hasError).
-Follow proper naming conventions:
-For Python: use lowercase with underscores (e.g., routers/user_routes.py).
-For TypeScript: use lowercase with dashes for directories (e.g., components/auth-wizard).
-Pydantic Best Practices
-Use ConfigDict for Configuration: Define model configurations using ConfigDict to manage settings like arbitrary_types_allowed.
-Field Validation: Utilize @field_validator decorators for field validation. Ensure that all fields have appropriate validation logic.
-Type Annotations: Always use type annotations for fields to enhance clarity and enable type checking.
-Model Inheritance: Use inheritance to create base models for shared fields and validation logic, promoting code reuse.
-Avoid Mutable Default Arguments: Use default_factory for mutable types (like lists or dictionaries) to avoid unexpected behavior.
-Utilize Pydantic V2 Features: Take advantage of new features in Pydantic V2, such as @computed_field for derived properties and improved serialization methods.
-Consistent Naming Conventions: Follow consistent naming conventions for fields, using lowercase with underscores.
-Error Handling: Implement custom error handling in your models to provide clear and descriptive error messages for validation failures.
-Documentation: Document your models and fields using the description parameter in Field() to improve code maintainability and usability.
-Testing: Write unit tests for your models to ensure that validation logic works as expected.
-Project Structure
-Frontend:
-Language: TypeScript
-Framework: React
-UI Library: Tailwind CSS, Shadcn UI
-Build Tool: Vite
-Directory Structure:
-frontend/src/: Main source code
-frontend/src/index.html: Main HTML file
-Configuration Files:
-vite.config.ts
-tsconfig.json
-tailwind.config.js
-postcss.config.js
-Docker Files:
-Dockerfile
-Dockerfile.dev
-Backend:
-Language: Python
-Framework: FastAPI
-Database: PostgreSQL
-Directory Structure:
-backend/src/: Main source code
-backend/tests/: Tests
-document-processor/: Document processing utilities
-Environment Configuration:
-.env / .env.example: Environment variables
-Database Configuration:
-alembic.ini
-ddialog.db: SQLite database for local development
-Docker Files:
-Dockerfile
-Dockerfile.dev
-Code Style and Structure
-Backend (Python/FastAPI):
+General Coding Principles
+1.Modular Design: Build reusable, composable components to enhance maintainability.
+2.Type Annotations: Use type annotations for all function signatures, model fields, and variables to enable robust type checking.
+3.Consistent Naming:
+•Python: Use lower_case_with_underscores for variables, functions, and filenames.
+•TypeScript: Use kebab-case for directories and camelCase for variables and functions.
+4.Avoid Magic Numbers: Replace hardcoded values with descriptive named constants.
+5.Edge Cases: Always handle edge cases in logic to prevent unexpected behavior.
+6.Assertions: Use assertions to validate assumptions and catch errors early.
+7.Testing: Write comprehensive unit tests for all models, utility functions, and components.
 
-Use def for pure functions and async def for asynchronous operations.
-Type Hints: Use Python type hints for all function signatures. Prefer Pydantic 2.0 models for input validation.
-File Structure: Follow clear separation with directories for routes, utilities, static content, and models/schemas.
-RORO Pattern: Use the "Receive an Object, Return an Object" pattern.
-Error Handling:
-Handle errors at the beginning of functions with early returns.
-Use guard clauses and avoid deeply nested if statements.
-Implement proper logging and custom error types.
-Frontend (TypeScript/React):
+Python (Backend with FastAPI)
 
-TypeScript Usage: Use TypeScript for all code. Prefer interfaces over types. Avoid enums; use maps instead.
-Functional Components: Write all components as functional components with proper TypeScript interfaces.
-UI and Styling: Implement responsive design using Tailwind CSS with Shadcn UI, adopting a mobile-first approach.
-Performance:
-Minimize use client, useEffect, and setState hooks. Favor server-side rendering where possible.
-Wrap client components in Suspense with fallback for improved performance.
-Performance Optimization
-Backend:
+Code Structure
+•Directories:
+•src/: Application source code.
+•tests/: Unit tests and integration tests.
+•document_processor/: Document processing utilities.
+•Files:
+•routers/: API route definitions (e.g., routers/user_routes.py).
+•models/: Database models and schemas.
+•utils/: Helper functions and reusable logic.
 
-Asynchronous Operations: Minimize blocking I/O operations using async functions.
-Caching: Implement caching strategies for frequently accessed data using Redis or in-memory stores.
-Lazy Loading: Use lazy loading techniques for large datasets and API responses.
-Frontend:
+Key Practices
+1.Type Hints: Use type hints for all functions (def for sync, async def for async).
+2.Validation: Use Pydantic models for input validation. Leverage:
+•@field_validator for field-level validation.
+•@computed_field for derived properties.
+•ConfigDict for model configuration.
+3.Error Handling:
+•Use custom exceptions for clarity.
+•Implement guard clauses to avoid deeply nested logic.
+•Log errors using logging for traceability.
+4.RORO Pattern: Follow the “Receive an Object, Return an Object” principle for clean API interfaces.
+5.Mutable Defaults: Use default_factory for mutable fields in Pydantic models.
 
-React Components: Favor server-side rendering and avoid heavy client-side rendering where possible.
-Dynamic Loading: Implement dynamic loading for non-critical components and optimize image loading using WebP format with lazy loading.
-Project Conventions
-Backend:
+TypeScript (Frontend with React)
 
-Follow RESTful API design principles.
-Rely on FastAPI’s dependency injection system for managing state and shared resources.
-Use SQLAlchemy 2.0 for ORM features, if applicable.
-Ensure CORS is properly configured for local development.
-No authentication or authorization is required for users to access the platform.
-Frontend:
+Code Structure
+•   Directories:
+•   src/: Main source code.
+•   components/: Reusable UI components (e.g., components/auth-wizard).
+•   hooks/: Custom React hooks.
+•   contexts/: Context API implementations.
+•   pages/: Page-level components.
+•   Configuration Files:
+•   vite.config.ts, tsconfig.json, tailwind.config.js, postcss.config.js.
 
-Optimize Web Vitals (LCP, CLS, FID).
-Limit use client hooks to small, specific components for Web API access.
-Use Docker for containerization and ensure easy deployment.
-Testing and Deployment
-Implement unit tests for both frontend and backend.
-Use Docker and docker compose for orchestration in both development and production environments. Avoid using the obsolete docker-compose command.
-Ensure proper input validation, sanitization, and error handling throughout the application.
+Key Practices
+1.Functional Components: Use React functional components and hooks for state management.
+2.Descriptive Names: Use meaningful names like isLoading, hasError, onSubmit.
+3.Error Boundaries: Implement error boundaries for React components where necessary.
+4.Styling: Use Tailwind CSS with utility-first principles and Shadcn UI for accessible, customizable design systems.
+5.State Management: Prefer the Context API or lightweight state management libraries (e.g., Zustand) over complex solutions unless necessary.
+
+DevOps and Environment Configuration
+
+Environment Variables
+•Use .env files for secrets and configuration. Provide .env.example for default settings.
+
+Docker Setup
+•Use separate Dockerfile and Dockerfile.dev files for production and development environments.
+
+Database
+•Use PostgreSQL for production with migrations managed by Alembic.
+•Use SQLite for lightweight local development.
+
+Advanced Practices
+
+Testing
+•Use pytest for backend unit tests and Jest for frontend testing.
+•Ensure 100% coverage for critical models, functions, and components.
+
+Documentation
+•Use description in Pydantic models’ Field() to document fields.
+•Generate API documentation automatically with FastAPI’s built-in tools.
+
+Error Handling
+•Centralize error-handling logic for both backend and frontend.
+•Provide user-friendly messages on the frontend and detailed logs on the backend.
+
+Optimization
+•Use lazy loading and code splitting in React for faster load times.
+•Optimize database queries and API responses using profiling tools.

@@ -1,15 +1,17 @@
+"""Test pattern interpreter."""
+
 import pytest
 from typing import Sequence
-from src.note_gen.models.pattern_interpreter import PatternInterpreter
 from src.note_gen.models.musical_elements import Note
+from src.note_gen.models.pattern_interpreter import PatternInterpreter
 from src.note_gen.models.scale import Scale
 from src.note_gen.models.scale_info import ScaleInfo
 from src.note_gen.models.scale_degree import ScaleDegree
 
 @pytest.fixture
 def scale() -> Scale:
-    root_note = Note(name="C", accidental="", octave=4)
-    scale_degree = 1  # Use an integer for scale degree
+    root_note = Note.from_name("C4")
+    scale_degree = ScaleDegree(degree=1, quality="major")  # Use a ScaleDegree instance for scale degree
     return Scale(
         root=root_note,
         quality="major",
@@ -32,8 +34,8 @@ def pattern() -> Sequence[str]:
 def test_pattern_interpreter(scale: Scale, pattern: Sequence[str]) -> None:
     interpreter = PatternInterpreter(scale, pattern)
     expected_value = [
-        Note(name='C', accidental='', octave=4, duration=1.0, velocity=64, midi_number=60),
-        Note(name='D', accidental='', octave=4, duration=1.0, velocity=64, midi_number=62),
-        Note(name='E', accidental='', octave=4, duration=1.0, velocity=64, midi_number=64)
+        Note.from_name('C4'),
+        Note.from_name('D4'),
+        Note.from_name('E4')
     ]
     assert interpreter.process() == expected_value

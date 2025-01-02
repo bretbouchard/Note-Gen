@@ -1,38 +1,45 @@
 import logging
 
-from src.note_gen.models.musical_elements import Note, Chord
-from src.note_gen.models import roman_numeral
+from src.note_gen.models.note import Note
+from src.note_gen.models.chord import Chord
+from src.note_gen.models.roman_numeral import RomanNumeral
 from src.note_gen.models.key import Key
 
-__all__ = ["get_roman_numeral_from_chord", "get_chord_from_roman_numeral"]
+__all__ = ["get_roman_numeral_from_chord", "get_chord_from_roman_numeral", "get_root_note_from_roman_numeral"]
 
 logger = logging.getLogger(__name__)
 
 
-def get_roman_numeral_from_chord(chord: Chord) -> str:
-    """Convert a chord to a roman numeral."""
-    if not chord:
-        raise ValueError("Chord cannot be empty")
+def get_roman_numeral_from_chord(chord: Chord, key_note: Note) -> str:
+    """Get a roman numeral from a chord in a given key."""
+    # Calculate the interval between the key note and chord root
+    interval = (chord.root.midi_number - key_note.midi_number) % 12
+    # Convert interval to scale degree
+    scale_degree = interval + 1
+    # Ensure scale degree is valid
+    if scale_degree < 1 or scale_degree > 7:
+        raise ValueError(f"Calculated scale degree {scale_degree} is out of valid range (1-7).")
+    # Convert scale degree to roman numeral
+    numerals = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII']
+    if 1 <= scale_degree <= 7:
+        return numerals[scale_degree - 1]
+    else:
+        raise ValueError(f"Calculated scale degree {scale_degree} is out of valid range (1-7).")
 
-    # Basic implementation
-    roman_numeral = "I"  # Default to I if no other logic
 
-    # Add inversion if present
-    if chord.inversion > 0 and chord.bass:
-        roman_numeral += f"/{chord.bass.name}"
-
-    return roman_numeral
-
-
-def get_chord_from_roman_numeral(roman_numeral: str, key_note: Note) -> Chord:
+def get_chord_from_roman_numeral(numeral: str, key_note: Note) -> Chord:
     """Get a chord from a roman numeral in a given key."""
     # Create a RomanNumeral object from the string
-    roman = roman_numeral.RomanNumeral.from_str(roman_numeral)
-
-    # Convert the RomanNumeral to a Chord
-    chord = roman.to_chord(key_note)
-
-    return chord
+    roman = RomanNumeral.from_str(numeral)
+    # Get the scale degree
+    scale_degree = roman.to_int()
+    # Calculate the interval
+    interval = scale_degree - 1
+    # Create the root note
+    root_midi = key_note.midi_number + interval
+    root = Note.from_midi(root_midi)
+    # Create and return the chord
+    return Chord(root=root)
 
 
 def get_root_note_from_roman_numeral(roman_numeral: str, key: Key) -> Note:

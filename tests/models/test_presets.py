@@ -17,7 +17,7 @@ DEFAULT_RHYTHM_PATTERN = [1, 1, 1, 1, 1, 1]
 
 @pytest.fixture
 def scale() -> Scale:
-    root_note = Note(name="C", accidental="", octave=4)
+    root_note = Note.from_name("C4")
     scale_degree = 1  # Use an integer for scale degree
     return Scale(
         root=root_note,
@@ -36,7 +36,7 @@ def scale() -> Scale:
 
 @pytest.fixture
 def root_note():
-    return Note(name='C', accidental='', octave=4)
+    return Note.from_name('C4')
 
 def test_get_default_chord_progression(scale: Scale) -> None:
     progression = get_default_chord_progression(scale.root, scale)

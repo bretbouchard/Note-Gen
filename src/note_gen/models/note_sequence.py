@@ -10,22 +10,28 @@ from src.note_gen.models.note_event import NoteEvent
 
 
 class NoteSequence(BaseModel):
-    """A sequence of musical notes with timing information."""
+    """A sequence of musical notes."""
 
-    notes: List[Note] = Field(description="List of notes")
+    notes: List[Union[Note, int]] = Field(description="List of notes")
     events: List[NoteEvent] = Field(
         default_factory=list, description="List of note events"
     )
     duration: float = Field(default=0.0, description="Duration of the note sequence")
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    @field_validator("notes")
-    def validate_notes(cls, v):
-        if not v:
-            raise ValueError("Notes list cannot be empty")
-        if not all(isinstance(note, Note) for note in v):
-            raise ValueError("All notes must be Note instances.")
-        return v
+    @field_validator('notes')
+    @classmethod
+    def validate_notes(cls, v: List[Union[Note, int]]) -> List[Note]:
+        """Validate notes in the sequence."""
+        validated_notes = []
+        for note in v:
+            if isinstance(note, int):
+                validated_notes.append(Note.from_midi(note))
+            elif isinstance(note, Note):
+                validated_notes.append(note)
+            else:
+                raise ValueError(f"Invalid note type: {type(note)}")
+        return validated_notes
 
     @field_validator("events", mode="before")
     def check_events(cls, value) -> List[NoteEvent]:
@@ -35,12 +41,14 @@ class NoteSequence(BaseModel):
 
     def add_note(
         self,
-        note: Union[str, Note, ScaleDegree, Chord],
+        note: Union[str, Note, ScaleDegree, Chord, int],
         position: float = 0.0,
         duration: float = 1.0,
         velocity: int = 100,
     ) -> None:
         """Add a note to the sequence."""
+        if isinstance(note, int):
+            note = Note.from_midi(note)
         event = NoteEvent(
             note=note, position=position, duration=duration, velocity=velocity
         )

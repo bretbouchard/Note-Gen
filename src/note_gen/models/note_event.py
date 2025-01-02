@@ -1,11 +1,10 @@
-"""Module for defining note events in a musical sequence."""
+"""Module for note event models."""
 
 import logging
 from pydantic import BaseModel, Field, ConfigDict, field_validator
 from typing import Union
 
-from src.note_gen.models.musical_elements import Note
-from src.note_gen.models.chord import Chord
+from src.note_gen.models.musical_elements import Note, Chord
 from src.note_gen.models.scale_degree import ScaleDegree
 
 # Set up logging

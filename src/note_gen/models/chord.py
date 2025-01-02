@@ -1,138 +1,133 @@
+"""Module for handling chords."""
+
 from __future__ import annotations
 import logging
-from typing import TypeAlias, Literal, List, Optional, TYPE_CHECKING, Any, Union
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from typing import List, Optional, Any, Dict, ClassVar
+from pydantic import BaseModel, Field, field_validator, model_validator, validator
+from .musical_elements import Note
+from .chord_quality import ChordQualityType
 
-from src.note_gen.models.musical_elements import Note
-from src.note_gen.models.base_types import MusicalBase
-from src.note_gen.models.chord_base import ChordBase
-from src.note_gen.models.enums import ChordQualityType
+logger = logging.getLogger(__name__)
 
-if TYPE_CHECKING:
-    pass
+class Chord(BaseModel):
+    """A class representing a musical chord."""
+    root: Note
+    quality: ChordQualityType = Field(..., description="The quality of the chord (e.g., major, minor)")
+    notes: List[Note] = Field(default_factory=list)
+    inversion: int = Field(default=0, ge=0)
 
-# Define Literal types for warnings and modes
-Modes: TypeAlias = Literal["json", "python"]
-Warnings: TypeAlias = Literal["none", "warn", "error"]
+    VALID_QUALITIES: ClassVar[List[ChordQualityType]] = [
+        ChordQualityType.MAJOR,
+        ChordQualityType.MINOR,
+        ChordQualityType.DIMINISHED,
+        ChordQualityType.AUGMENTED,
+        ChordQualityType.DOMINANT_7,
+        ChordQualityType.MAJOR_7,
+        ChordQualityType.MINOR_7,
+        ChordQualityType.DIMINISHED_7,
+        ChordQualityType.HALF_DIMINISHED_7,
+    ]
+
+    @field_validator('root', 'quality', 'inversion')
+    def validate_root_quality_inversion(cls, v, values):
+        logger.debug(f"Validating {v} with value: {v}")
+        if v == 'root' and not values.get('root'):
+            logger.error("Root cannot be empty")
+            raise ValueError("Root cannot be empty")
+        if v == 'quality' and values.get('quality') not in cls.VALID_QUALITIES:
+            logger.error(f"Invalid quality: {values.get('quality')}")
+            raise ValueError(f"Invalid quality: {values.get('quality')}")
+        if v == 'inversion' and values.get('inversion') < 0:
+            logger.error("Inversion cannot be negative")
+            raise ValueError("Inversion cannot be negative")
+        logger.debug(f"Exiting validation for {v} with value: {v}")
+        return v
+
+    @field_validator('notes')
+    def validate_notes(cls, v):
+        logger.debug(f"Entering validate_notes method with notes: {v}")
+        if not v or len(v) == 0:
+            logger.error("Chord notes cannot be empty")
+            raise ValueError("Chord notes cannot be empty")
+        logger.debug(f"Exiting validate_notes method with notes: {v}")
+        return v
+
+    def generate_chord_notes(self, root: Note, quality: ChordQualityType, inversion: int = 0) -> List[Note]:
+        """Generate the notes for this chord based on its root and quality."""
+        logger.debug(f"Entering generate_chord_notes method with root: {root}, quality: {quality}, inversion: {inversion}")
+        logger.debug(f"Input values: root={root}, quality={quality}, inversion={inversion}")
+        logger.debug(f"Input values: root={root}, quality={quality}, inversion={inversion}")
+        logger.debug(f"Intervals for quality '{quality}': {intervals.get(quality, 'Unknown quality')}")
+        logger.debug(f"Intervals for quality '{quality}': {intervals.get(quality, 'Unknown quality')}")
+        if not root:
+            raise ValueError("Root note is required")
+        
+        # Base intervals for different chord qualities
+        intervals = {
+            ChordQualityType.MAJOR: [0, 4, 7],
+            ChordQualityType.MINOR: [0, 3, 7],
+            ChordQualityType.DIMINISHED: [0, 3, 6],
+            ChordQualityType.AUGMENTED: [0, 4, 8],
+            ChordQualityType.DOMINANT_7: [0, 4, 7, 10],
+            ChordQualityType.MAJOR_7: [0, 4, 7, 11],
+            ChordQualityType.MINOR_7: [0, 3, 7, 10],
+            ChordQualityType.DIMINISHED_7: [0, 3, 6, 9],
+            ChordQualityType.HALF_DIMINISHED_7: [0, 3, 6, 10],
+        }
+
+        if quality not in intervals:
+            raise ValueError(f"Invalid chord quality: {quality}")
+
+        base_intervals = intervals[quality]
+        notes = []
+        for interval in base_intervals:
+            # Create a new note at the specified interval
+            midi_num = root.midi_number + interval
+            new_note = Note.from_midi(midi_number=midi_num)
+            notes.append(Note(midi_number=midi_num, name=new_note.name, octave=new_note.octave, accidental=new_note.accidental))
+
+        # Apply inversion if specified
+        if inversion > 0:
+            for i in range(inversion):
+                if i < len(notes):
+                    notes[i] = Note(
+                        name=notes[i].name,
+                        octave=notes[i].octave + 1,
+                        midi_number=notes[i].midi_number + 12,
+                        accidental=notes[i].accidental
+                    )
+
+        logger.debug(f"Exiting generate_chord_notes method with notes: {notes}")
+        return notes
+
+
+    def transpose(self, interval: int) -> None:
+        """Transpose the chord by a given interval in semitones."""
+        if self.root:
+            new_midi_number = self.root.midi_number + interval
+            self.root = Note.from_midi(midi_number=new_midi_number)  # Update root note
+            self.notes = self.generate_chord_notes(self.root, self.quality, self.inversion)  # Regenerate chord notes
+
+    @classmethod
+    def from_quality(cls, root: Note, quality: ChordQualityType | str) -> 'Chord':
+        """Create a chord from a root note and quality."""
+        if isinstance(quality, str):
+            try:
+                quality = ChordQualityType(quality)
+            except ValueError:
+                raise ValueError("Input should be 'major', 'minor', 'diminished', 'augmented'")
+
+        logger.debug(f"Creating chord with root: {root}, quality: {quality}")
+        logger.debug(f"Quality being passed: {quality}")
+        chord = cls(root=root, quality=quality)
+        chord.notes = chord.generate_chord_notes(chord.root, chord.quality, 0)  # Generate chord notes
+        return chord
+
+    def __str__(self) -> str:
+        return f"Chord(root={self.root.name} in octave {self.root.octave}, quality={self.quality})"
 
 # Configure logging to output to console
 logging.basicConfig(
     level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
-
-
-class Chord(BaseModel):
-    root: Note
-    notes: List[Note]
-    quality: ChordQualityType = Field(default=ChordQualityType.MAJOR)
-    inversion: Optional[int] = Field(default=None, description="Inversion of the chord")
-
-    def __init__(self, root: Note, notes: List[Note], quality: ChordQualityType = ChordQualityType.MAJOR, inversion: Optional[int] = None):
-        logging.debug(f"Initializing Chord with root: {root}, notes: {notes}, quality: {quality}, inversion: {inversion}")
-        self.root = Chord.validate_root(root)
-        self.notes = Chord.validate_notes(notes)
-        self.quality = Chord.validate_quality(quality)  # Ensure correct type is returned
-        self.inversion = Chord.validate_inversion(inversion)
-        logging.debug(f"Post-init quality: {self.quality}")
-        logging.debug(f"Post-init inversion: {self.inversion}")
-
-    @field_validator("notes")
-    def validate_notes(cls, v: List[Note]) -> List[Note]:
-        if not v:
-            raise ValueError("Notes list cannot be empty.")
-        if len(v) < 3:
-            raise ValueError("A chord must have at least three notes.")
-        return v
-
-    @field_validator("root")
-    def validate_root(cls, v: Note) -> Note:
-        if not isinstance(v, Note):
-            raise ValueError('Root must be a Note instance')
-        return v
-
-    @classmethod
-    def validate_quality(cls, v: Any) -> ChordQualityType:
-        if not isinstance(v, ChordQualityType):
-            raise ValueError("Quality must be a valid ChordQualityType")
-        return v
-
-    @field_validator("inversion")
-    def validate_inversion(cls, v: Optional[int]) -> Optional[int]:
-        if v is not None and not isinstance(v, int):
-            raise ValueError("Inversion must be an integer or None")
-        return v
-
-    @classmethod
-    def from_base(cls, base: ChordBase) -> 'Chord':
-        quality = cls.validate_quality(getattr(base, 'quality', ChordQualityType.MAJOR))
-        inversion = getattr(base, 'inversion', 0)
-        root = cls.validate_root(base.root)  # Validate root first
-        instance = cls(root=root, quality=quality, inversion=inversion)  # Create an instance
-        instance.notes = instance.generate_chord_notes(root=instance.root, quality=instance.quality, inversion=instance.inversion)  # Call on the instance and assign generated notes to the instance
-        return instance
-
-    def generate_chord_notes(self, root: Note, quality: ChordQualityType, inversion: Optional[int] = None) -> List[Note]:
-        """Generate notes for the chord based on its quality and root."""
-        if quality is None:
-            raise ValueError("Chord quality must be specified.")
-        if not isinstance(root, Note):
-            raise ValueError("Root must be a Note instance")
-
-        # Generate chord notes based on quality
-        if quality == ChordQualityType.MAJOR:
-            return [
-                root,
-                Note(name="E", octave=root.octave),  # Major third
-                Note(name="G", octave=root.octave),  # Perfect fifth
-            ]
-        elif quality == ChordQualityType.MINOR:
-            return [
-                root,
-                Note(name="D", octave=root.octave),  # Minor third
-                Note(name="G", octave=root.octave),  # Perfect fifth
-            ]
-        elif quality == ChordQualityType.DIMINISHED:
-            return [
-                root,
-                Note(name="D", octave=root.octave),  # Minor third
-                Note(name="F", octave=root.octave),  # Diminished fifth
-            ]
-        # Add additional quality cases as needed
-        return []  # Default case if no quality matches
-
-    def transpose(self, semitones: int) -> "Chord":
-        """Transpose the chord by a given number of semitones."""
-        if not isinstance(self.root, Note):
-            raise ValueError("Root note cannot be None")
-        if not self.quality:
-            raise ValueError("Quality must be a string instance")
-
-        self.root.transpose(semitones)
-        for note in self.notes:
-            note.transpose(semitones)
-        return self
-
-    def __str__(self) -> str:
-        return f"Chord(root={self.root}, quality={self.quality})"
-
-    def _apply_inversion(self, notes: List[Note], inversion: int) -> List[Note]:
-        """Apply inversion to the chord notes."""
-        if not notes:
-            return notes
-
-        effective_inversion = inversion % len(notes)
-        if effective_inversion == 0:
-            return notes.copy()
-
-        inverted_notes = notes.copy()
-        for _ in range(effective_inversion):
-            first_note = inverted_notes.pop(0)
-            inverted_notes.append(first_note)
-
-        return inverted_notes
-
-
-Chord.model_rebuild()
-
-# Example instantiation for testing
