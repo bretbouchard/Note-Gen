@@ -1,7 +1,7 @@
 """Module for note event models."""
 
 import logging
-from pydantic import BaseModel, Field, ConfigDict, field_validator
+from pydantic import BaseModel, Field, ConfigDict, field_validator , model_validator
 from typing import Union
 
 from src.note_gen.models.musical_elements import Note, Chord
@@ -52,6 +52,12 @@ class NoteEvent(BaseModel):
             self.note = self.note.transpose(semitones)
         elif isinstance(self.note, Chord):
             self.note = self.note.transpose(semitones)
+
+    @model_validator(mode="after")
+    def validate_velocity(self) -> "NoteEvent":
+        if not (0 <= self.velocity <= 127):
+            raise ValueError("MIDI velocity must be between 0 and 127.")
+        return self
 
     def __str__(self) -> str:
         return f"NoteEvent(note={self.note}, position={self.position}, duration={self.duration})"

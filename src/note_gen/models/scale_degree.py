@@ -1,10 +1,8 @@
-"""
-Module for scale degree models.
-"""
+# src/note_gen/models/scale_degree.py
 
 from __future__ import annotations
 
-from typing import Any, Dict, TYPE_CHECKING, Optional
+from typing import Any, Dict, Optional
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 import logging
 
@@ -20,9 +18,9 @@ class ScaleDegree(BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    degree: int = Field(..., description="Degree of the scale (1-7)")
-    note: Optional[Note] = Field(None, description="Note associated with the scale degree")
-
+    degree: int
+    note: Note
+    
     @field_validator("degree")
     def validate_degree(cls, value: int) -> int:
         if value < 1 or value > 7:

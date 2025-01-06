@@ -3,7 +3,6 @@ import logging
 import sys
 from typing import List, Optional
 from pydantic import BaseModel, Field, field_validator
-from src.note_gen.models.scale import Scale
 
 # Configure logging
 logging.basicConfig(

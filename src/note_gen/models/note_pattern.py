@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from typing import Any, Literal, Optional, Union, List, Dict
+from typing import Literal, Union, List
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from src.note_gen.models.musical_elements import Note, Chord
-from src.note_gen.models.scale_degree import ScaleDegree
+from .musical_elements import Note, Chord
+from .scale_degree import ScaleDegree
 
 
 # Type aliases
@@ -18,7 +18,7 @@ NoteType = Union[Note, ScaleDegree, Chord]
 class NotePattern(BaseModel):
     """A pattern of musical notes."""
     name: str
-    data: List[int]
+    data: List[Union[int, List[int]]] = Field(...)
     notes: List[Note] = Field(default_factory=list)
     description: str = ""
     tags: List[str] = Field(default_factory=list)
@@ -28,10 +28,16 @@ class NotePattern(BaseModel):
     @field_validator("notes")
     @classmethod
     def validate_notes(cls, v: List[Note]) -> List[Note]:
-        """Validate notes list."""
+        # Ensure all items in the list are instances of Note
         if not all(isinstance(note, Note) for note in v):
-            raise ValueError("All items in notes must be instances of Note")
+            raise ValueError(f"Invalid note type: {v}")
         return v
+
+    @field_validator("data", mode="before")
+    def validate_data(cls, value: List[Union[int, List[int]]]) -> List[Union[int, List[int]]]:
+        if not value or (isinstance(value, list) and not all(isinstance(item, int) or isinstance(item, list) for item in value)):
+            raise ValueError("Data must be a non-empty list of integers or nested lists")
+        return value
 
     @property
     def total_duration(self) -> float:

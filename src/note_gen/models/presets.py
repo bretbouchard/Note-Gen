@@ -1,3 +1,5 @@
+# src/note_gen/models/presets.py
+
 """Presets for chord progressions, note patterns, and rhythm patterns."""
 
 from typing import Dict, List
@@ -12,8 +14,7 @@ from src.note_gen.models.rhythm_pattern import (
     RhythmNote,
 )
 from src.note_gen.models.scale import Scale
-
-# Module for handling default presets in music theory
+from src.note_gen.models.scale_info import ScaleInfo 
 
 # Default values for musical components
 DEFAULT_KEY = "C"
@@ -134,15 +135,12 @@ RHYTHM_PATTERNS: Dict[str, RhythmPatternData] = {
     ),
 }
 
-
 def get_default_chord_progression(root_note: Note, scale: Scale) -> ChordProgression:
     """Get the default chord progression."""
     from .chord_progression_generator import ChordProgressionGenerator
-    from .scale_info import ScaleInfo
 
     scale_info = ScaleInfo(root=root_note, scale_type=scale.scale_type)
-
-    # Pass scale_info to the generator
+    scale_info.compute_scale_degrees()  # Ensure degrees are populated
     generator = ChordProgressionGenerator(scale_info=scale_info)
 
     numerals = COMMON_PROGRESSIONS[DEFAULT_CHORD_PROGRESSION]
@@ -152,30 +150,25 @@ def get_default_chord_progression(root_note: Note, scale: Scale) -> ChordProgres
         chords.append(chord)
     return ChordProgression(scale_info=scale_info, chords=chords)
 
-
 def get_default_note_pattern() -> NotePattern:
     """Get the default note pattern."""
     return NotePattern(
         name=DEFAULT_NOTE_PATTERN, data=NOTE_PATTERNS[DEFAULT_NOTE_PATTERN]
     )
 
-
 def get_default_rhythm_pattern() -> RhythmPattern:
-    """Get the default rhythm pattern."""
     return RhythmPattern(
-        name=DEFAULT_RHYTHM_PATTERN_NAME, data=RHYTHM_PATTERNS[DEFAULT_RHYTHM_PATTERN]
+        name=DEFAULT_RHYTHM_PATTERN_NAME,
+        data=RHYTHM_PATTERNS["quarter_notes"]
     )
-
 
 def get_available_chord_progressions() -> List[str]:
     """Get a list of available chord progression names."""
     return list(COMMON_PROGRESSIONS.keys())
 
-
 def get_available_note_patterns() -> List[str]:
     """Get a list of available note pattern names."""
     return list(NOTE_PATTERNS.keys())
-
 
 def get_available_rhythm_patterns() -> List[str]:
     """Get a list of available rhythm pattern names."""

@@ -1,129 +1,88 @@
-"""
-Module for handling musical scales.
-"""
+from typing import List
+from src.note_gen.models.note import Note
+from src.note_gen.models.enums import ScaleType
 
-from __future__ import annotations
-import logging
-from typing import List, Optional, Dict
-from pydantic import BaseModel, Field, ConfigDict, field_validator
-from .musical_elements import Note
-from .scale_type import ScaleType
-from .scale_degree import ScaleDegree
-from .scale_info import ScaleInfo
-from .chord import Chord  # Import Chord class
-
-logger = logging.getLogger(__name__)
-
-
-class Scale(BaseModel):
-    """A musical scale."""
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-
-    root: Note
-    quality: str = Field('major', description="Scale quality (e.g., major, minor)")
-    scale_type: str = Field('major', description="Scale type (e.g., major, minor)")
-    notes: List[Note] = Field(default_factory=list)
-    intervals: List[int] = Field(default_factory=list)
-    scale_degree: int = Field(1, description="Scale degree (1-7)")
-    numeral: str = Field(default="I")
-    numeral_str: str = Field(default="")
-    is_major: bool = Field(default=False)
-    is_diminished: bool = Field(default=False)
-    is_augmented: bool = Field(default=False)
-    is_half_diminished: bool = Field(default=False)
-    has_seventh: bool = Field(default=False)
-    has_ninth: bool = Field(default=False)
-    has_eleventh: bool = Field(default=False)
-    inversion: int = Field(default=0)
-    scale_info_v2: Optional[ScaleInfo] = None
-
-    SCALE_INTERVALS: Dict[str, List[int]] = {
-        'major': [0, 2, 4, 5, 7, 9, 11],
-        'minor': [0, 2, 3, 5, 7, 8, 10]
-    }
-
-    @field_validator("quality")
-    @classmethod
-    def validate_quality(cls, v: str) -> str:
-        valid_qualities = ["major", "minor", "diminished", "augmented"]
-        if v not in valid_qualities:
-            raise ValueError(f"Invalid scale quality: {v}")
-        return v
-
-    @field_validator("scale_type")
-    @classmethod
-    def validate_scale_type(cls, v: str) -> str:
-        valid_types = ["major", "minor", "harmonic_minor", "melodic_minor"]
-        if v not in valid_types:
-            raise ValueError(f"Invalid scale type: {v}")
-        return v
+class Scale:
+    def __init__(self, root: Note, scale_type: ScaleType):
+        self.root = root
+        self.scale_type = scale_type
+        self.intervals = scale_type.get_intervals()
 
     def get_notes(self) -> List[Note]:
-        """Get all notes in the scale."""
-        if not self.notes:
-            self.notes = self._generate_scale_notes()
-        return self.notes
-
-    def _generate_scale_notes(self) -> List[Note]:
-        """Generate notes for the scale."""
-        notes = []
-        base_midi = self.root.midi_number
-        intervals = self.SCALE_INTERVALS.get(self.quality.lower(), self.SCALE_INTERVALS['major'])
-        
-        for interval in intervals:
-            midi_number = base_midi + interval
-            if 0 <= midi_number <= 127:
-                notes.append(Note.from_midi(midi_number))
+        notes = [self.root]
+        current_midi = self.root.midi_number
+        for interval in self.intervals:
+            current_midi += interval
+            notes.append(Note.from_midi(current_midi))
         return notes
 
-    def get_scale_degree(self, degree: int) -> Optional[Note]:
-        """Get the note at a specific scale degree."""
-        if not 1 <= degree <= 7:
-            return None
-        # Calculate the midi number based on the root note and the degree
-        intervals = self.SCALE_INTERVALS[self.scale_type]
-        midi_number = self.root.midi_number + intervals[degree - 1]
-        note_name = Note.from_midi(midi_number).note_name
-        octave = Note.from_midi(midi_number).octave
-        return Note(note_name=note_name, octave=octave, midi_number=midi_number)
+    def get_scale_degree(self, degree: int) -> Note:
+        if not (1 <= degree <= len(self.intervals) + 1):
+            raise ValueError(f"Scale degree must be between 1 and {len(self.intervals) + 1}.")
+        return self.get_notes()[degree - 1]
 
-    def get_chord_at(self, degree: int) -> Chord:
-        """Get the chord at a specific scale degree."""
-        if not 1 <= degree <= 7:
-            raise ValueError("Scale degree must be between 1 and 7")
 
-        # Calculate the root note for the chord based on the scale degree
-        chord_root = self.get_scale_degree(degree)
-        if chord_root is None:
-            raise ValueError("No note found for the specified scale degree")
+class ScaleType(str, Enum):
+    """Enum representing different scale types."""
 
-        # Create and return the chord using the chord quality
-        return Chord(root=chord_root, quality=self.quality) 
+    MAJOR = "major"
+    NATURAL_MINOR = "natural_minor"
+    HARMONIC_MINOR = "harmonic_minor"
+    MELODIC_MINOR = "melodic_minor"
+    DORIAN = "dorian"
+    PHRYGIAN = "phrygian"
+    LYDIAN = "lydian"
+    MIXOLYDIAN = "mixolydian"
+    LOCRIAN = "locrian"
+    PENTATONIC_MAJOR = "pentatonic_major"
+    PENTATONIC_MINOR = "pentatonic_minor"
+    BLUES = "blues"
+    CHROMATIC = "chromatic"
+    WHOLE_TONE = "whole_tone"
 
-    @classmethod
-    def create_default(cls, root: Note, quality: str = "major", scale_degree: int = 1, numeral: str = "I") -> 'Scale':
-        """Create a default scale."""
-        return cls(
-            root=root,
-            quality=quality,
-            scale_type=quality,
-            numeral=numeral,
-            scale_degree=scale_degree,
-            is_major=quality == "major"
-        )
+    def get_intervals(self) -> List[int]:
+        """Get the intervals for this scale type."""
+        intervals_map: dict[ScaleType, List[int]] = {
+            ScaleType.MAJOR: [2, 2, 1, 2, 2, 2, 1],
+            ScaleType.NATURAL_MINOR: [2, 1, 2, 2, 1, 2, 2],
+            ScaleType.HARMONIC_MINOR: [2, 1, 2, 2, 1, 3, 1],
+            ScaleType.MELODIC_MINOR: [2, 1, 2, 2, 2, 2, 1],
+            ScaleType.DORIAN: [2, 1, 2, 2, 2, 1, 2],
+            ScaleType.PHRYGIAN: [1, 2, 2, 2, 1, 2, 2],
+            ScaleType.LYDIAN: [2, 2, 2, 1, 2, 2, 1],
+            ScaleType.MIXOLYDIAN: [2, 2, 1, 2, 2, 1, 2],
+            ScaleType.LOCRIAN: [1, 2, 2, 1, 2, 2, 2],
+            ScaleType.PENTATONIC_MAJOR: [2, 2, 3, 2, 3],
+            ScaleType.PENTATONIC_MINOR: [3, 2, 2, 3, 2],
+            ScaleType.BLUES: [3, 2, 1, 1, 3, 2],
+            ScaleType.CHROMATIC: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+            ScaleType.WHOLE_TONE: [2, 2, 2, 2, 2, 2],
+        }
+        logger.debug(f"Getting intervals for scale type: {self.name}")
+        return intervals_map[self]
 
-    @classmethod
-    def from_scale_info(cls, scale_info: ScaleInfo, numeral: str = 'I', scale_degree: int = 1) -> 'Scale':
-        """Create a scale from ScaleInfo."""
-        scale = cls.create_default(
-            root=scale_info.root,
-            quality='major',
-            scale_degree=scale_degree,
-            numeral=numeral
-        )
-        scale.scale_info_v2 = scale_info
-        return scale
+    def validate_degree(self, degree: int) -> bool:
+        """Validate if a scale degree is valid for this scale type."""
+        intervals = self.get_intervals()
+        if degree < 1 or degree > len(intervals) + 1:
+            logger.error(
+                f"Invalid scale degree: {degree}. Must be between 1 and {len(intervals) + 1}."
+            )
+            raise ValueError(
+                f"Invalid scale degree: {degree}. Must be between 1 and {len(intervals) + 1}."
+            )
+        return True
 
-    def __str__(self) -> str:
-        """String representation of the scale."""
-        return f"{self.root.full_note_name} {self.quality}"
+    @property
+    def degree_count(self) -> int:
+        """Get the number of degrees in this scale type."""
+        return len(self.get_intervals())
+
+    @property
+    def is_diatonic(self) -> bool:
+        """Check if the scale is diatonic (7 notes)."""
+        return self.degree_count == 7
+
+    def get_scale_degrees(self) -> List[int]:
+        """Get the scale degrees for this scale type."""
+        return list(range(1, len(self.get_intervals()) + 1))

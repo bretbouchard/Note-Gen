@@ -8,9 +8,6 @@ logger = logging.getLogger(__name__)
 class ScaleType(str, Enum):
     """Enum representing different scale types."""
 
-    def __init__(self, value: str) -> None:
-        super().__init__(value)
-
     MAJOR = "major"
     NATURAL_MINOR = "natural_minor"
     HARMONIC_MINOR = "harmonic_minor"
