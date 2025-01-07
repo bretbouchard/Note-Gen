@@ -11,5 +11,6 @@ def test_chord_with_note_event_integration() -> None:
         for i, note in enumerate(chord.notes)
     ]
     assert len(events) == len(chord.notes)
-    assert events[0].note.note_name == "C"
+    assert isinstance(events[0].note, Note)  # Ensure note is of type Note
+    assert events[0].note.note_name == chord.notes[0].note_name
     assert events[1].position == 0.5

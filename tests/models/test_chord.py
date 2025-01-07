@@ -2,7 +2,8 @@ import logging
 import pytest
 from src.note_gen.models.musical_elements import Chord, Note
 from src.note_gen.models.enums import ChordQualityType
-from pydantic import ValidationError
+from typing import Any
+from pydantic import ValidationError, validator
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -21,11 +22,17 @@ def test_invalid_quality() -> None:
 
     with pytest.raises(ValidationError):
         Chord(root=root_note, quality=invalid_quality)
-
+ 
 def test_invalid_root() -> None:
-    with pytest.raises(ValueError, match="Root must be a valid Note instance."):
-        Chord.from_quality(root=None, quality=ChordQualityType.MAJOR)
+    class InvalidNote(Note):
+        note_name: str = "Invalid"
+        octave: int = 0
+        duration: float = -1.0
+        velocity: int = -1
 
+    # Now we match the *actual* Pydantic error message about 'Unrecognized note name'
+    with pytest.raises(ValidationError, match="Unrecognized note name"):
+        Chord.from_quality(root=InvalidNote(), quality=ChordQualityType.MAJOR)
 
 def test_chord_diminished_quality() -> None:
     root_note = Note.from_name("C4")
@@ -41,7 +48,7 @@ def test_chord_inversion() -> None:
     chord = Chord(root=root_note, quality=ChordQualityType.MAJOR, inversion=1)
     assert chord.notes[0].note_name == "E"
     assert chord.notes[1].note_name == "G"
-    assert chord.notes[2].note_name == "C"
+    assert chord.notes[2].note_name == "C" 
 
 def test_chord_invalid_inversion() -> None:
     """Test that an invalid inversion raises an error."""

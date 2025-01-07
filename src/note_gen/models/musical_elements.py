@@ -4,8 +4,8 @@ from typing import List, Dict, Any
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 import logging
 
-# Configure logging
-logging.basicConfig(level=logging.DEBUG)
+# Configure logging to write to a file
+logging.basicConfig(filename='logs/debug.log', level=logging.DEBUG, filemode='a')
 logger = logging.getLogger(__name__)
 
 from src.note_gen.models.enums import ChordQualityType
@@ -114,6 +114,8 @@ class Chord(BaseModel):
         """Create a chord from a root note and quality."""
         if not isinstance(root, Note):
             raise ValueError("Root must be a valid Note instance.")
+        if quality is None:
+            raise ValueError("Quality must be a valid ChordQualityType.")
         chord_quality = ChordQuality.from_str(quality)
         return cls(root=root, quality=chord_quality.quality_type)
 

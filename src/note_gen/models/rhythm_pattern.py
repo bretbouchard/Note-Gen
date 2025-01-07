@@ -92,7 +92,7 @@ class RhythmPatternData(BaseModel):
     def __init__(
         self,
         *,
-        notes: List[RhythmNote] = None,
+        notes: List[RhythmNote] = [],
         time_signature: str = "4/4",
         swing_enabled: bool = False,
         humanize_amount: float = 0.0,
@@ -101,7 +101,7 @@ class RhythmPatternData(BaseModel):
         default_duration: float = 1.0,
     ) -> None:
         super().__init__(
-            notes=notes or [],
+            notes=notes,
             time_signature=time_signature,
             swing_enabled=swing_enabled,
             humanize_amount=humanize_amount,

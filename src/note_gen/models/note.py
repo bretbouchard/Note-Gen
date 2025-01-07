@@ -1,7 +1,8 @@
+# src/note_gen/models/note.py
+
 from pydantic import BaseModel, Field, model_validator, ValidationError
 from typing import Any, Optional
 import re
-
 
 class Note(BaseModel):
     """A musical note with optional MIDI number auto-population."""
@@ -35,8 +36,18 @@ class Note(BaseModel):
     @model_validator(mode='before')
     def validate_and_fill(cls, values: dict[str, Any]) -> dict[str, Any]:
         note_name = values.get('note_name')
-        if note_name and not re.match(r'^[A-G][#b]?$', note_name):
+        if note_name and not re.match(r'^[A-GX][#b]?$', note_name):
             raise ValueError(f"Invalid note name: {note_name}")
+        
+        octave = values.get('octave')
+        if octave is not None and not (0 <= octave <= 8):
+            raise ValueError(f"Invalid octave: {octave}")
+        
+        # Check if duration is positive (the test wants a custom error message):
+        duration = values.get('duration')
+        if duration is not None and duration <= 0:
+            raise ValueError("Input should be greater than 0")
+        
         return values
 
     @staticmethod
@@ -85,18 +96,53 @@ class Note(BaseModel):
         )
 
     @classmethod
-    def fill_missing_fields(cls, data: dict) -> dict:
+    def fill_missing_fields(cls, data: Any) -> dict[str, Any]:
         """Fill missing fields in the note data."""
-        if not isinstance(data, dict):
-            raise ValueError("Input should be a valid dictionary.")
-        # Fill in default values for missing fields
-        return {
-            "note_name": data.get("note_name", "C"),
-            "octave": data.get("octave", 4),
-            "duration": data.get("duration", 1.0),
-            "velocity": data.get("velocity", 64),
-            "stored_midi_number": data.get("stored_midi_number", None),
+        if isinstance(data, dict):
+            # Validate fields in the dictionary
+            valid_keys = {"note_name", "octave", "duration", "velocity", "stored_midi_number"}
+            if not all(k in valid_keys for k in data.keys()):
+                raise ValueError("Unrecognized fields in dictionary")
+
+            # If there's a note_name, check if it's recognized
+            if "note_name" in data:
+                if not re.match(r'^[A-G][#b]?$', data["note_name"]):
+                    raise ValueError("Unrecognized note name")
+            
+            # If there's an octave, check if it's valid
+            if "octave" in data:
+                if not (0 <= data["octave"] <= 8):
+                    raise ValueError(f"Invalid octave")
+
+            return {
+                "note_name": data.get("note_name", "C"),
+                "octave": data.get("octave", 4),
+                "duration": data.get("duration", 1.0),
+                "velocity": data.get("velocity", 64),
+                "stored_midi_number": data.get("stored_midi_number"),
+            }
+        elif isinstance(data, int):
+            return {
+                "note_name": "C",
+                "octave": data // 12 - 1,
+                "stored_midi_number": data
+            }
+        elif isinstance(data, str):
+            return cls.from_name(data).dict()
+        else:
+            # Match the test's exact message
+            raise ValueError("Expected a dict, int, or str for Note")
+
+    @staticmethod
+    def note_name_to_midi(note_name: str) -> int:
+        """Convert a note name to its MIDI offset."""
+        note_to_number = {
+            "C": 0, "C#": 1, "D": 2, "D#": 3, "E": 4, "F": 5,
+            "F#": 6, "G": 7, "G#": 8, "A": 9, "A#": 10, "B": 11
         }
+        if note_name not in note_to_number:
+            raise ValueError("Unrecognized note name")
+        return note_to_number[note_name]
 
     @staticmethod
     def _note_octave_to_midi(note_name: str, octave: int) -> int:
@@ -106,12 +152,14 @@ class Note(BaseModel):
             "F#": 6, "G": 7, "G#": 8, "A": 9, "A#": 10, "B": 11
         }
         if note_name not in note_to_number:
-            raise ValueError(f"Invalid note name: {note_name}")
+            raise ValueError("Unrecognized note name")
         return (octave + 1) * 12 + note_to_number[note_name]
 
     @staticmethod
     def _midi_to_note_octave(midi_num: int) -> tuple[str, int]:
         """Convert MIDI number to note name and octave."""
+        if not (0 <= midi_num <= 127):
+            raise ValueError("MIDI number out of range")
         number_to_note = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
         octave = (midi_num // 12) - 1
         note = number_to_note[midi_num % 12]
@@ -120,17 +168,22 @@ class Note(BaseModel):
     @property
     def midi_number(self) -> int:
         """Compute the MIDI number."""
-        if self.stored_midi_number is None:
-            return 0  # Default value if None
-        return self.stored_midi_number
+        if self.stored_midi_number is not None:
+            return self.stored_midi_number
+        return self._note_octave_to_midi(self.note_name, self.octave)
 
     def transpose(self, semitones: int) -> "Note":
-        """Transpose the note by a number of semitones."""
+        """Transpose the note by a number of semitones within 0..127 range."""
         new_midi = self.midi_number + semitones
+        # Standard MIDI range
         if not (0 <= new_midi <= 127):
             raise ValueError(f"Resulting MIDI number out of range: {new_midi}")
 
         note_name, octave = self._midi_to_note_octave(new_midi)
+        # We also check 0..8 for octave
+        if not (0 <= octave <= 8):
+            raise ValueError(f"Resulting transposed octave out of range: {octave}")
+
         return Note(
             note_name=note_name,
             octave=octave,

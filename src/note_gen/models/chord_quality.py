@@ -37,10 +37,7 @@ class ChordQuality(BaseModel):
             "sus4": ChordQualityType.SUS4,
             "seven_sus4": ChordQualityType.SEVEN_SUS4,
         }
-        quality = quality_dict.get(quality_str.lower())
-        if quality is None:
-            logging.warning(
-                f"Unknown chord quality '{quality_str}' provided. Defaulting to MAJOR."
-            )
-            quality = ChordQualityType.MAJOR  # Default to MAJOR if not found
+        if quality_str is None or quality_str.lower() not in quality_dict:
+            raise ValueError(f"Invalid chord quality: '{quality_str}'")
+        quality = quality_dict[quality_str.lower()]
         return cls(quality=quality)

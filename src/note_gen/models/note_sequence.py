@@ -1,9 +1,9 @@
 """Module for handling sequences of musical notes."""
 
-from typing import List, Optional, Sequence, Union, Any
+from typing import List, Optional, Sequence, Union, Any, Dict
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from src.note_gen.models.musical_elements import Note, Chord
+from src.note_gen.models.musical_elements import Note
 from src.note_gen.models.scale_degree import ScaleDegree
 from src.note_gen.models.scale import Scale
 from src.note_gen.models.note_event import NoteEvent
@@ -34,26 +34,33 @@ class NoteSequence(BaseModel):
         return validated_notes
 
     @field_validator("events", mode="before")
-    def check_events(cls, value) -> List[NoteEvent]:
+    def check_events(cls, value: List[NoteEvent]) -> List[NoteEvent]:
+        """Validate that all events are instances of NoteEvent."""
         if not all(isinstance(event, NoteEvent) for event in value):
             raise ValueError("All events must be NoteEvent instances.")
         return value
 
     def add_note(
         self,
-        note: Union[str, Note, ScaleDegree, Chord, int],
+        note: Union[str, Note, int],
         position: float = 0.0,
         duration: float = 1.0,
         velocity: int = 100,
     ) -> None:
         """Add a note to the sequence."""
-        if isinstance(note, int):
+        if isinstance(note, Note):
+            transposed_note = note.transpose(0)  # Assuming 0 semitones for simplicity
+            event = NoteEvent(
+                note=transposed_note, position=position, duration=duration, velocity=velocity
+            )
+        elif isinstance(note, int):
             note = Note.from_midi(note)
-        event = NoteEvent(
-            note=note, position=position, duration=duration, velocity=velocity
-        )
-        self.events.append(event)
-        self._update_duration()  # Ensure duration is updated correctly
+            event = NoteEvent(
+                note=note, position=position, duration=duration, velocity=velocity
+            )
+        else:
+            raise TypeError("Invalid note type")
+        self.events.append(event)  
 
     def _update_duration(self) -> None:
         if self.events:
@@ -72,21 +79,16 @@ class NoteSequence(BaseModel):
         self.events.clear()
         self.duration = 0.0
 
-    def transpose(self, semitones: int) -> "NoteSequence":
+    def transpose(self, semitones: int) -> None:
         """Transpose the note sequence by the given number of semitones."""
-        transposed_notes = [note.transpose(semitones) for note in self.notes]
-        transposed_events = [
-            NoteEvent(
-                note=event.note.transpose(semitones),
-                position=event.position,
-                duration=event.duration,
-                velocity=event.velocity,
-            )
-            for event in self.events
-        ]
-        return NoteSequence(
-            notes=transposed_notes, events=transposed_events, duration=self.duration
-        )
+        for event in self.events:
+            if isinstance(event.note, Note):
+                event.note.transpose(semitones)
+            elif isinstance(event.note, int):
+                # Handle int case appropriately, if needed
+                pass
+            else:
+                raise TypeError("Invalid note type in sequence")
 
 
 class PatternInterpreter(BaseModel):
@@ -125,11 +127,13 @@ class ScalePatternInterpreter(PatternInterpreter):
 
 
 def create_pattern_interpreter(
-    pattern: Sequence[Union[int, str, Note, ScaleDegree, dict[str, Any]]],
+    pattern: Sequence[Union[int, str, Note, ScaleDegree, Dict[str, Any]]],
     scale: Optional[Scale] = None,
-    **kwargs: Any
+    **kwargs: Optional[Dict[str, Any]]
 ) -> PatternInterpreter:
     """Create an appropriate pattern interpreter for the given pattern."""
-    if scale is not None:
+    # Determine which interpreter to create based on the pattern type
+    if isinstance(pattern, list) and all(isinstance(p, int) for p in pattern):
         return ScalePatternInterpreter(pattern=pattern, scale=scale, **kwargs)
-    return PatternInterpreter(pattern=pattern)
+    # Add additional conditions for other pattern types as needed
+    return PatternInterpreter(pattern=pattern, **kwargs)

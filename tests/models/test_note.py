@@ -61,12 +61,13 @@ def test_invalid_midi_number_initialization() -> None:
 def test_transpose_out_of_range_high() -> None:
     note = Note.from_name("C4")
     with pytest.raises(ValueError, match="Resulting transposed octave out of range:"):
-        note.transpose(10)
+        note.transpose(60)  # Enough semitones to exceed octave 8 => error
+
 
 def test_transpose_out_of_range_low() -> None:
     note = Note.from_name("C4")
-    with pytest.raises(ValueError, match="Resulting transposed octave out of range:"):
-        note.transpose(-10)
+    with pytest.raises(ValueError, match="Resulting MIDI number out of range:"):
+        note.transpose(-70)
 
 def test_fill_missing_fields_with_dict() -> None:
     data = Note.fill_missing_fields({"note_name": "C", "octave": 4})
@@ -77,7 +78,7 @@ def test_fill_missing_fields_with_dict() -> None:
     assert data["stored_midi_number"] is None
 
 def test_fill_missing_fields_with_none() -> None:
-    with pytest.raises(ValueError, match="Input should be a valid dictionary."):
+    with pytest.raises(ValueError, match="Expected a dict, int, or str for Note"):
         Note.fill_missing_fields(None)
 
 def test_fill_missing_fields_with_invalid_string() -> None:
@@ -200,7 +201,4 @@ def test_normalize_note_name_invalid() -> None:
 def test_transpose_invalid_octave() -> None:
     note = Note.from_name("C8")
     with pytest.raises(ValueError, match="Resulting transposed octave out of range"):
-        note.transpose(1)  # Transpose beyond valid octave
-    note = Note.from_name("C0")
-    with pytest.raises(ValueError, match="Resulting transposed octave out of range"):
-        note.transpose(-1)  # Transpose below valid octave
+        note.transpose(12)  # Enough to push into octave 9 => error

@@ -76,8 +76,7 @@ class PatternInterpreter(BaseModel):
             if isinstance(element, Note):
                 result.append(element)
             elif isinstance(element, ScaleDegree):
-                note = self.scale.get_scale_degree(element.value)
-                result.append(note)
+                note = self.scale.get_scale_degree(int(element.value)) if isinstance(element.value, str) and element.value.isdigit() else None
             elif isinstance(element, int):
                 note = Note.from_midi(
                     element
@@ -94,27 +93,33 @@ class PatternInterpreter(BaseModel):
         return result
 
     def _interpret_current_element(self) -> Note:
-        """Interpret the current element in the pattern.
-
-        Returns:
-            Note: The interpreted note.
-
-        Raises:
-            ValueError: If the current element is None or invalid.
-        """
         element = self.pattern[self._current_index]
         if element is None:
             raise ValueError("Current element cannot be None")
 
+        # If it’s already a Note instance, just return it
         if isinstance(element, Note):
             return element
 
+        # If it’s a ScaleDegree, interpret element.value as the scale degree
         if isinstance(element, ScaleDegree):
             if element.value is None:
                 raise ValueError("ScaleDegree value cannot be None")
-            return self.scale.get_scale_degree(element.value)
+            return self.scale.get_scale_degree(int(element.value))
 
-        return self.scale.get_scale_degree(1)
+        # If it’s an int, treat it as a direct MIDI or a scale degree (depending on your design)
+        if isinstance(element, int):
+            # If you want it to mean "the nth scale degree," do:
+            return self.scale.get_scale_degree(element)
+            # OR, if you want it to be “MIDI number,” do:
+            # return Note.from_midi(element)
+
+        # If it’s a str, parse it into a Note:
+        if isinstance(element, str):
+            return Note.from_full_name(element)
+
+        # If it's something else, raise an error
+        raise ValueError(f"Unsupported pattern element type: {type(element)}")
 
 
 class ScalePatternInterpreter(PatternInterpreter):

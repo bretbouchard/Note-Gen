@@ -4,8 +4,9 @@ from typing import List, Any, Dict
 from pydantic import BaseModel, Field, ConfigDict, field_validator
 from src.note_gen.models.musical_elements import Note, Chord
 from src.note_gen.models.scale_info import ScaleInfo
-from src.note_gen.models.roman_numeral import get_roman_numeral_from_chord
+from src.note_gen.models.roman_numeral import RomanNumeral
 from src.note_gen.models.enums import ChordQualityType
+from src.note_gen.models.scale import Scale, ScaleType
 import logging
 
 logger = logging.getLogger(__name__)
@@ -18,12 +19,12 @@ class ChordProgression(BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    @field_validator("chords")
-    def validate_chords(cls, v: List[Any]) -> List[Chord]:
+    @field_validator("chords", mode="before")
+    def validate_chords(cls, v: list[Any]) -> list[Chord]:
         if not v:
             raise ValueError("Chords cannot be empty.")
-        for chord in v:
-            if not isinstance(chord, Chord):
+        for item in v:
+            if not isinstance(item, Chord):
                 raise ValueError("All items in chords must be instances of Chord.")
         return v
 
@@ -38,9 +39,11 @@ class ChordProgression(BaseModel):
         return self.chords
 
     def get_chord_names(self) -> List[str]:
-        """Return the list of chord names in Roman numeral notation."""
-        key_note = self.scale_info.root
-        return [get_roman_numeral_from_chord(chord, key_note) for chord in self.chords]
+        scale = Scale(self.scale_info.root, self.scale_info.scale_type)
+        return [
+            RomanNumeral.get_roman_numeral_from_chord(chord, scale)
+            for chord in self.chords
+        ]
 
     def transpose(self, interval: int) -> None:
         logger.debug(f"Transposing progression by {interval} semitones")

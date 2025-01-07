@@ -20,6 +20,7 @@ class ScaleDegree(BaseModel):
 
     degree: int
     note: Note
+    value: Optional[str] = Field(default=None, description="The note value associated with the scale degree.")
     
     @field_validator("degree")
     def validate_degree(cls, value: int) -> int:

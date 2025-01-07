@@ -10,15 +10,6 @@ class AccidentalType(StrEnum):
     DOUBLE_FLAT = "bb"
 
 
-class ScaleType(str, Enum):
-    MAJOR = "major"
-    MINOR = "minor"
-
-    def get_intervals(self) -> List[int]:
-        return {
-            ScaleType.MAJOR: [2, 2, 1, 2, 2, 2, 1],
-            ScaleType.MINOR: [2, 1, 2, 2, 1, 2, 2],
-        }[self]
 
 class ChordQualityType(str, Enum):
     """Enum for chord quality types in UPPERCASE so `ChordQualityType[quality.upper()]` works."""
@@ -57,3 +48,21 @@ class ChordQualityType(str, Enum):
             ChordQualityType.DIMINISHED: [0, 3, 6],
             ChordQualityType.AUGMENTED: [0, 4, 8],
         }[self]
+
+
+class ScaleType(Enum):
+    """Enum representing different scale types."""
+    MAJOR = "major"
+    NATURAL_MINOR = "natural_minor"
+    HARMONIC_MINOR = "harmonic_minor"
+    MELODIC_MINOR = "melodic_minor"
+    DORIAN = "dorian"
+    PHRYGIAN = "phrygian"
+    LYDIAN = "lydian"
+    MIXOLYDIAN = "mixolydian"
+    LOCRIAN = "locrian"
+    PENTATONIC_MAJOR = "pentatonic_major"
+    PENTATONIC_MINOR = "pentatonic_minor"
+    BLUES = "blues"
+    CHROMATIC = "chromatic"
+    WHOLE_TONE = "whole_tone"

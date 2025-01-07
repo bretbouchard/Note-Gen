@@ -6,9 +6,11 @@ from src.note_gen.models.musical_elements import Note, Chord
 from src.note_gen.models.scale_info import ScaleInfo
 from src.note_gen.models.enums import ChordQualityType
 from src.note_gen.models.chord_progression import ChordProgression
+from src.note_gen.models.roman_numeral import RomanNumeral
 
 import logging
 import random
+from typing import cast
 
 logger = logging.getLogger(__name__)
 
@@ -101,7 +103,7 @@ class ChordProgressionGenerator(BaseModel):
 
         if not all(p in self.PROGRESSION_PATTERNS for p in pattern):
             logger.error(f"Invalid pattern: {pattern}")
-            raise ValidationError(f"Invalid pattern: {pattern}")
+            raise ValueError(f"Invalid pattern: {pattern}")
 
         logger.debug(f"Generating progression with pattern: {pattern}")
         chords = []
@@ -145,7 +147,7 @@ class ChordProgressionGenerator(BaseModel):
                 raise ValueError(f"Invalid scale degree: {degree}")
 
             # Handle extended qualities like major7, minor7, dominant7
-            quality_enum = ChordQualityType.get(quality.upper())
+            quality_enum = ChordQualityType[quality.upper()]
             if not quality_enum:
                 logger.error(f"Unknown chord quality: {quality}")
                 raise ValueError(f"Unknown chord quality: {quality}")
@@ -219,21 +221,11 @@ class ChordProgressionGenerator(BaseModel):
 
     def _parse_numeral(self, numeral: str) -> Optional[int]:
         """Parse a Roman numeral to a scale degree."""
-        import re  # Local import to prevent circular dependency
+        return RomanNumeral.to_scale_degree(numeral)  # Call the method directly on the class
 
-        # Remove any modifiers like 'o', '+', '7', etc.
-        base_numeral = re.match(r'^[IVX]+', numeral.upper())
-        if not base_numeral:
+    def get_scale_degree_note(self, degree: int) -> Optional[Note]:
+        """Get the note for a scale degree."""
+        notes = self.scale_info.get_scale_notes()
+        if degree < 1 or degree > len(notes):
             return None
-        base_numeral = base_numeral.group()
-
-        numeral_map = {
-            "I": 1,
-            "II": 2,
-            "III": 3,
-            "IV": 4,
-            "V": 5,
-            "VI": 6,
-            "VII": 7,
-        }
-        return numeral_map.get(base_numeral)
+        return notes[degree - 1]
