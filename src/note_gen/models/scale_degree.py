@@ -21,12 +21,17 @@ class ScaleDegree(BaseModel):
     degree: int
     note: Note
     value: Optional[str] = Field(default=None, description="The note value associated with the scale degree.")
-    
+    midi_number: int = Field(init=False)
+
     @field_validator("degree")
     def validate_degree(cls, value: int) -> int:
         if value < 1 or value > 7:
             raise ValueError("Degree must be between 1 and 7.")
         return value
+
+    def __init__(self, **data: Any) -> None:
+        super().__init__(**data)
+        self.midi_number = self.note.midi_number
 
     def __str__(self) -> str:
         return f"ScaleDegree(degree={self.degree}, note={self.note})"

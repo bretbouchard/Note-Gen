@@ -155,6 +155,27 @@ class RhythmPattern(BaseModel):
     complexity: float = Field(1.0, description="Pattern complexity score (1-10)")
     style: Optional[str] = Field(None, description="Musical style (e.g., jazz, rock)")
 
+    def __init__(
+        self,
+        *,
+        name: str,
+        data: RhythmPatternData,
+        description: Optional[str] = "",
+        tags: List[str] = [],
+        complexity: float = 1.0,
+        style: Optional[str] = None,
+    ) -> None:
+        if not isinstance(data, RhythmPatternData):
+            raise TypeError("data must be an instance of RhythmPatternData")
+        super().__init__(
+            name=name,
+            data=data,
+            description=description,
+            tags=tags,
+            complexity=complexity,
+            style=style,
+        )
+
     @field_validator("name")
     def validate_name(cls, value: str) -> str:
         if not value.strip():

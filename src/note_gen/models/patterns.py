@@ -30,13 +30,12 @@ class RhythmPatternData(BaseModel):
         return v
 
     @field_validator("time_signature")
-    @classmethod
-    def validate_time_signature(cls, v: str) -> str:
-        if v not in ["4/4", "3/4", "2/4"]:
-            raise ValueError(
-                "Invalid time signature. Must be one of: '4/4', '3/4', '2/4'."
-            )
-        return v
+    def validate_time_signature(cls, value: str) -> str:
+        # Simple validation: check if numerator/denominator are common values
+        valid_signatures = {"4/4", "3/4", "2/4", "6/8"}  # Extend as needed
+        if value not in valid_signatures:
+            raise ValueError("Invalid time signature")
+        return value
 
     @field_validator("swing_ratio")
     @classmethod

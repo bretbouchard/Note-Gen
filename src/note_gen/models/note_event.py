@@ -48,10 +48,17 @@ class NoteEvent(BaseModel):
 
     def transpose(self, semitones: int) -> None:
         """Transpose the note by the given number of semitones."""
+        logger.debug(f"Transposing NoteEvent with MIDI: {self.note} by {semitones} semitones.")
         if isinstance(self.note, Note):
             self.note = self.note.transpose(semitones)
         elif isinstance(self.note, Chord):
-            self.note = self.note.transpose(semitones)
+            # Transpose the root of the chord
+            root_note = self.note.root
+            if isinstance(root_note, Note):
+                self.note.root = root_note.transpose(semitones)
+        else:
+            raise TypeError("Invalid note type in NoteEvent.")
+        print(f"NoteEvent updated MIDI: {self.note}")
 
     @model_validator(mode="after")
     def validate_velocity(self) -> "NoteEvent":

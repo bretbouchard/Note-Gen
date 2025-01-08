@@ -1,6 +1,7 @@
 from __future__ import annotations
 from pydantic import BaseModel, ConfigDict
 from src.note_gen.models.musical_elements import Note
+from src.note_gen.models.note_event import NoteEvent
 from src.note_gen.models.scale_degree import ScaleDegree
 from src.note_gen.models.scale import Scale
 
@@ -140,6 +141,27 @@ class ScalePatternInterpreter(PatternInterpreter):
             pattern (Sequence[Union[int, str, Note, ScaleDegree, Dict[str, Any]]]): The pattern to interpret.
         """
         super().__init__(scale=scale, pattern=pattern)
+
+    def interpret(self, pattern: Sequence[Union[int, str, Note, ScaleDegree]], chord: Any, scale_info: Any) -> List[NoteEvent]:       
+        note_events = []
+        for element in pattern:
+            if isinstance(element, Note):
+                note_events.append(NoteEvent(note=element))  # Create NoteEvent from Note
+            elif isinstance(element, ScaleDegree):
+                if element.value is not None:
+                    note = scale_info.get_scale_degree(int(element.value))
+                    note_events.append(NoteEvent(note=note))  # Create NoteEvent from ScaleDegree
+                else:
+                    raise ValueError("ScaleDegree value cannot be None")
+            elif isinstance(element, int):
+                note = Note.from_midi(element)  # Assuming int is a MIDI number
+                note_events.append(NoteEvent(note=note))  # Create NoteEvent from MIDI
+            elif isinstance(element, str):
+                note = Note.from_full_name(element)  # Assuming str is a note name
+                note_events.append(NoteEvent(note=note))  # Create NoteEvent from Note
+            else:
+                raise ValueError(f"Unsupported element type: {type(element)}")
+        return note_events  # Return NoteEvent instances
 
 
 class ArpeggioPatternInterpreter(PatternInterpreter):

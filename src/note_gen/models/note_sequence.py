@@ -1,7 +1,7 @@
 """Module for handling sequences of musical notes."""
 
 from typing import List, Optional, Sequence, Union, Any, Dict
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from src.note_gen.models.musical_elements import Note
 from src.note_gen.models.scale_degree import ScaleDegree
@@ -19,10 +19,22 @@ class NoteSequence(BaseModel):
     duration: float = Field(default=0.0, description="Duration of the note sequence")
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
+    @model_validator(mode='before')
+    def check_notes_field(cls, values: dict[str, Any]) -> dict[str, Any]:
+        notes = values.get('notes')
+        if notes is not None:
+            validated = []
+            for note in notes:
+                if isinstance(note, (Note, int)):
+                    validated.append(note)
+                else:
+                    raise ValueError(f"Invalid note type: {type(note)}")
+            values['notes'] = validated
+        return values
+
     @field_validator('notes')
     @classmethod
     def validate_notes(cls, v: List[Union[Note, int]]) -> List[Note]:
-        """Validate notes in the sequence."""
         validated_notes = []
         for note in v:
             if isinstance(note, int):
@@ -30,7 +42,7 @@ class NoteSequence(BaseModel):
             elif isinstance(note, Note):
                 validated_notes.append(note)
             else:
-                raise ValueError(f"Invalid note type: {type(note)}")
+                raise ValueError("All notes must be instances of Note.")
         return validated_notes
 
     @field_validator("events", mode="before")
@@ -46,10 +58,11 @@ class NoteSequence(BaseModel):
         position: float = 0.0,
         duration: float = 1.0,
         velocity: int = 100,
+        semitones: int = 0,
     ) -> None:
         """Add a note to the sequence."""
         if isinstance(note, Note):
-            transposed_note = note.transpose(0)  # Assuming 0 semitones for simplicity
+            transposed_note = note.transpose(semitones)
             event = NoteEvent(
                 note=transposed_note, position=position, duration=duration, velocity=velocity
             )
@@ -81,59 +94,14 @@ class NoteSequence(BaseModel):
 
     def transpose(self, semitones: int) -> None:
         """Transpose the note sequence by the given number of semitones."""
+        print(f"Transposing NoteSequence with events: {[event.note for event in self.events]}")
         for event in self.events:
             if isinstance(event.note, Note):
+                print(f"Before transposition: {event.note}")
                 event.note.transpose(semitones)
+                print(f"After transposition: {event.note}")
             elif isinstance(event.note, int):
                 # Handle int case appropriately, if needed
                 pass
             else:
-                raise TypeError("Invalid note type in sequence")
-
-
-class PatternInterpreter(BaseModel):
-    """Base class for pattern interpreters."""
-
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-
-    pattern: Sequence[Union[int, str, Note, ScaleDegree, dict[str, Any]]]
-
-    def interpret(self, position: float = 0.0) -> NoteSequence:
-        """Interpret the pattern and return a note sequence."""
-        raise NotImplementedError
-
-
-class ScalePatternInterpreter(PatternInterpreter):
-    """Interpreter for scale-based patterns."""
-
-    scale: Scale
-    octave: int = 4
-
-    def interpret(self, position: float = 0.0) -> NoteSequence:
-        """Interpret the pattern and return a note sequence."""
-        sequence = NoteSequence(notes=[])  # Initialize with an empty list of notes
-        for i, step in enumerate(self.pattern):
-            if isinstance(step, (int, str)):
-                # Get notes from scale
-                notes = self.scale.get_notes()  # Remove octave parameter
-                if notes:
-                    scale_degree = int(step) % len(notes)
-                    note = notes[scale_degree]
-                    # Set the octave after getting the note
-                    if hasattr(note, "octave"):
-                        note.octave = self.octave
-                    sequence.add_note(note, position + i)
-        return sequence
-
-
-def create_pattern_interpreter(
-    pattern: Sequence[Union[int, str, Note, ScaleDegree, Dict[str, Any]]],
-    scale: Optional[Scale] = None,
-    **kwargs: Optional[Dict[str, Any]]
-) -> PatternInterpreter:
-    """Create an appropriate pattern interpreter for the given pattern."""
-    # Determine which interpreter to create based on the pattern type
-    if isinstance(pattern, list) and all(isinstance(p, int) for p in pattern):
-        return ScalePatternInterpreter(pattern=pattern, scale=scale, **kwargs)
-    # Add additional conditions for other pattern types as needed
-    return PatternInterpreter(pattern=pattern, **kwargs)
+                raise TypeError("Invalid note type in NoteSequence.")

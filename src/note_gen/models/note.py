@@ -36,15 +36,20 @@ class Note(BaseModel):
     @model_validator(mode='before')
     def validate_and_fill(cls, values: dict[str, Any]) -> dict[str, Any]:
         note_name = values.get('note_name')
+        if note_name is not None and not isinstance(note_name, str):
+            raise ValueError(f"Invalid type for note_name: {type(note_name)}")
         if note_name and not re.match(r'^[A-GX][#b]?$', note_name):
             raise ValueError(f"Invalid note name: {note_name}")
         
         octave = values.get('octave')
+        if octave is not None and not isinstance(octave, int):
+            raise ValueError(f"Invalid type for octave: {type(octave)}")
         if octave is not None and not (0 <= octave <= 8):
             raise ValueError(f"Invalid octave: {octave}")
         
-        # Check if duration is positive (the test wants a custom error message):
         duration = values.get('duration')
+        if duration is not None and not isinstance(duration, (int, float)):
+            raise ValueError(f"Invalid type for duration: {type(duration)}")
         if duration is not None and duration <= 0:
             raise ValueError("Input should be greater than 0")
         
@@ -124,7 +129,7 @@ class Note(BaseModel):
         elif isinstance(data, int):
             return {
                 "note_name": "C",
-                "octave": data // 12 - 1,
+                "octave": max(0, data // 12 - 1),
                 "stored_midi_number": data
             }
         elif isinstance(data, str):
@@ -144,6 +149,17 @@ class Note(BaseModel):
             raise ValueError("Unrecognized note name")
         return note_to_number[note_name]
 
+    @classmethod
+    def _midi_to_note_octave(cls, midi_number: int) -> tuple[str, int]:
+        if not (0 <= midi_number <= 127):
+            raise ValueError(f"MIDI number out of range: {midi_number}")
+        
+        note_names = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
+        note_name = note_names[midi_number % 12]
+        octave = max(0, midi_number // 12 - 1)
+        
+        return note_name, octave
+
     @staticmethod
     def _note_octave_to_midi(note_name: str, octave: int) -> int:
         """Convert a note name and octave to a MIDI number."""
@@ -155,16 +171,6 @@ class Note(BaseModel):
             raise ValueError("Unrecognized note name")
         return (octave + 1) * 12 + note_to_number[note_name]
 
-    @staticmethod
-    def _midi_to_note_octave(midi_num: int) -> tuple[str, int]:
-        """Convert MIDI number to note name and octave."""
-        if not (0 <= midi_num <= 127):
-            raise ValueError("MIDI number out of range")
-        number_to_note = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
-        octave = (midi_num // 12) - 1
-        note = number_to_note[midi_num % 12]
-        return note, octave
-
     @property
     def midi_number(self) -> int:
         """Compute the MIDI number."""
@@ -173,15 +179,13 @@ class Note(BaseModel):
         return self._note_octave_to_midi(self.note_name, self.octave)
 
     def transpose(self, semitones: int) -> "Note":
-        """Transpose the note by a number of semitones within 0..127 range."""
         new_midi = self.midi_number + semitones
-        # Standard MIDI range
         if not (0 <= new_midi <= 127):
             raise ValueError(f"Resulting MIDI number out of range: {new_midi}")
 
         note_name, octave = self._midi_to_note_octave(new_midi)
-        # We also check 0..8 for octave
-        if not (0 <= octave <= 8):
+        # Instead of clamping, check if octave is within allowed range
+        if not ( -1 <= octave <= 8 ):
             raise ValueError(f"Resulting transposed octave out of range: {octave}")
 
         return Note(

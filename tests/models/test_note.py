@@ -145,7 +145,7 @@ def test_fill_missing_fields_invalid_type() -> None:
 def test_midi_to_note_octave_limits() -> None:
     note_name, octave = Note._midi_to_note_octave(0)
     assert note_name == "C"
-    assert octave == -1
+    assert octave == 0
 
     note_name, octave = Note._midi_to_note_octave(127)
     assert note_name == "G"

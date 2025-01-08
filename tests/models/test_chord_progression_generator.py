@@ -19,10 +19,9 @@ class FakeScaleInfo(ScaleInfo):
             6: Note(note_name="A"),
             7: Note(note_name="B"),
         }
-        return note_map.get(degree, Note(note_name="C"))  # Default to C if degree not found
+        return note_map.get(degree, Note(note_name="C"))
 
     def get_chord_quality_for_degree(self, degree: int) -> str:
-        # Pretend it returns "major" or "minor" depending on parity
         return "major" if degree % 2 == 1 else "minor"
 
     def get_scale_notes(self) -> list[Note]:
@@ -30,10 +29,11 @@ class FakeScaleInfo(ScaleInfo):
 
 class TestChordProgressionGenerator(unittest.TestCase):
     def test_no_pattern_provided_raises_error(self) -> None:
-        scale_info = FakeScaleInfo(root=Note(note_name="C"), scale_type=ScaleType.MAJOR)
+        scale_info = FakeScaleInfo(root=Note(note_name="C", octave=4), scale_type=ScaleType.MAJOR)
         gen = ChordProgressionGenerator(scale_info=scale_info)
         with self.assertRaises(ValueError):
             gen.generate(pattern=None)
+
 
     def test_invalid_pattern_raises_validation_error(self) -> None:
         scale_info = FakeScaleInfo(root=Note(note_name="C"), scale_type=ScaleType.MAJOR)
