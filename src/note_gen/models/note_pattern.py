@@ -48,5 +48,9 @@ class NotePattern(BaseModel):
         """Get the list of notes in the pattern."""
         return self.notes
 
+    def get_duration(self) -> float:
+        """Get the total duration of the notes in the pattern."""
+        return sum(note.duration for note in self.notes)
+
     def __str__(self) -> str:
         return f"NotePattern(name={self.name}, data={self.data})"

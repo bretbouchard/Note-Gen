@@ -1,0 +1,249 @@
+import pytest
+from src.note_gen.models.rhythm_pattern import RhythmPatternData
+from src.note_gen.models.rhythm_pattern import RhythmNote
+from pydantic import ValidationError
+from typing import Type
+
+
+def test_rhythm_pattern_data_initialization_empty_notes() -> None:
+    with pytest.raises(ValueError, match="Notes cannot be empty."):
+        RhythmPatternData(notes=[])
+
+
+def test_rhythm_pattern_data_initialization_valid_notes() -> None:
+    valid_notes = [RhythmNote(position=0, duration=1.0)]
+    rhythm_pattern_data = RhythmPatternData(notes=valid_notes)
+    assert rhythm_pattern_data.notes == valid_notes
+
+
+def test_validate_duration() -> None:
+    rhythm_pattern_data = RhythmPatternData(notes=[RhythmNote(position=0, duration=1.0)])
+    rhythm_pattern_data.duration = 2.0
+    assert rhythm_pattern_data.duration == 2.0
+    print("Attempting to create RhythmPatternData with negative duration...")
+    with pytest.raises(ValueError, match="Duration must be non-negative"):
+        RhythmPatternData(notes=[RhythmNote(position=0, duration=1.0)], duration=-1.0)
+        print("ValueError raised as expected.")
+
+
+def test_validate_duration_negative() -> None:
+    with pytest.raises(ValueError, match="Duration must be non-negative"):
+        RhythmPatternData(notes=[RhythmNote(position=0, duration=1.0)], duration=-1.0)
+
+
+def test_validate_time_signature_invalid() -> None:
+    from pydantic import ValidationError
+    invalid_signatures = ["5/4", "7/8", "0/4", "4/2"]
+    for signature in invalid_signatures:
+        try:
+            RhythmPatternData(notes=[RhythmNote(position=0, duration=1.0)], time_signature=signature)
+        except ValidationError as e:
+            # Check that the error includes the field name 'time_signature'
+            # rather than relying on a specific error message.
+            errors = e.errors()
+            # Confirm at least one error is related to time_signature field
+            assert any(err.get("loc") == ("time_signature",) for err in errors), \
+                f"Validation error not raised for time_signature with value {signature}"
+        else:
+            assert False, f"Expected ValidationError was not raised for {signature}."
+
+
+def test_validate_swing_ratio_out_of_bounds() -> None:
+    with pytest.raises(ValueError, match="Swing ratio must be between 0.5 and 0.75."):
+        RhythmPatternData(swing_ratio=0.4, notes=[RhythmNote()])
+    with pytest.raises(ValueError, match="Swing ratio must be between 0.5 and 0.75."):
+        RhythmPatternData(swing_ratio=0.8, notes=[RhythmNote()])
+
+
+def test_validate_humanize_amount_out_of_bounds() -> None:
+    with pytest.raises(ValueError, match="Humanize amount must be between 0 and 1. Invalid value found."):
+        RhythmPatternData(humanize_amount=1.5, notes=[RhythmNote()])
+    with pytest.raises(ValueError, match="Humanize amount must be between 0 and 1. Invalid value found."):
+        RhythmPatternData(humanize_amount=-0.1, notes=[RhythmNote()])
+
+
+def test_recalculate_pattern_duration() -> None:
+    notes = [
+        RhythmNote(position=0, duration=1.0),
+        RhythmNote(position=1.0, duration=1.5),
+    ]
+    rhythm_pattern_data = RhythmPatternData(notes=notes)
+    rhythm_pattern_data.calculate_total_duration()
+    print("Calculating total duration:")
+    for note in notes:
+        print(f"Note Position: {note.position}, Duration: {note.duration}")
+    print(f"Calculated Total Duration: {rhythm_pattern_data.total_duration}")
+    assert rhythm_pattern_data.total_duration == 2.5
+
+
+def test_model_post_init() -> None:
+    notes = [
+        RhythmNote(position=0, duration=1.0),
+        RhythmNote(position=1.0, duration=1.5),
+    ]
+    rhythm_pattern_data = RhythmPatternData(notes=notes)
+    assert rhythm_pattern_data.total_duration == 2.5  # Check total_duration after initialization
+
+
+def test_validate_duration_negative_2() -> None:
+    with pytest.raises(ValueError, match="Duration must be non-negative"):
+        RhythmPatternData(duration=-1.0, notes=[])
+
+
+def test_validate_swing_ratio_out_of_bounds_2() -> None:
+    with pytest.raises(ValueError, match="Swing ratio must be between 0.5 and 0.75."):
+        RhythmPatternData(swing_ratio=0.4, notes=[RhythmNote()])
+    with pytest.raises(ValueError, match="Swing ratio must be between 0.5 and 0.75."):
+        RhythmPatternData(swing_ratio=0.8, notes=[RhythmNote()])
+
+
+def test_validate_humanize_amount_out_of_bounds_2() -> None:
+    with pytest.raises(ValueError, match="Humanize amount must be between 0 and 1. Invalid value found."):
+        RhythmPatternData(humanize_amount=1.5, notes=[RhythmNote()])
+    with pytest.raises(ValueError, match="Humanize amount must be between 0 and 1. Invalid value found."):
+        RhythmPatternData(humanize_amount=-0.1, notes=[RhythmNote()])
+
+
+def test_allow_empty_notes() -> None:
+    with pytest.raises(ValueError, match="Notes cannot be empty."):
+        RhythmPatternData(notes=[])
+
+
+def test_validate_duration_negative_unique() -> None:
+    with pytest.raises(ValueError, match="Duration must be non-negative"):
+        RhythmPatternData(duration=-1.0, notes=[])
+
+
+def test_validate_swing_ratio_out_of_bounds_unique() -> None:
+    with pytest.raises(ValueError, match="Swing ratio must be between 0.5 and 0.75."):
+        RhythmPatternData(swing_ratio=0.4, notes=[RhythmNote()])
+    with pytest.raises(ValueError, match="Swing ratio must be between 0.5 and 0.75."):
+        RhythmPatternData(swing_ratio=0.8, notes=[RhythmNote()])
+
+
+def test_validate_humanize_amount_out_of_bounds_unique() -> None:
+    with pytest.raises(ValueError, match="Humanize amount must be between 0 and 1. Invalid value found."):
+        RhythmPatternData(humanize_amount=1.5, notes=[RhythmNote()])
+    with pytest.raises(ValueError, match="Humanize amount must be between 0 and 1. Invalid value found."):
+        RhythmPatternData(humanize_amount=-0.1, notes=[RhythmNote()])
+
+
+def test_allow_empty_notes_unique() -> None:
+    with pytest.raises(ValueError, match="Notes cannot be empty."):
+        RhythmPatternData(notes=[])
+
+
+def test_validate_duration_negative_unique_2() -> None:
+    with pytest.raises(ValueError, match="Duration must be non-negative"):
+        RhythmPatternData(duration=-1.0, notes=[])
+
+
+def test_validate_swing_ratio_out_of_bounds_unique_2() -> None:
+    with pytest.raises(ValueError, match="Swing ratio must be between 0.5 and 0.75."):
+        RhythmPatternData(swing_ratio=0.4, notes=[RhythmNote()])
+    with pytest.raises(ValueError, match="Swing ratio must be between 0.5 and 0.75."):
+        RhythmPatternData(swing_ratio=0.8, notes=[RhythmNote()])
+
+
+def test_validate_humanize_amount_out_of_bounds_unique_2() -> None:
+    with pytest.raises(ValueError, match="Humanize amount must be between 0 and 1. Invalid value found."):
+        RhythmPatternData(humanize_amount=1.5, notes=[RhythmNote()])
+    with pytest.raises(ValueError, match="Humanize amount must be between 0 and 1. Invalid value found."):
+        RhythmPatternData(humanize_amount=-0.1, notes=[RhythmNote()])
+
+
+def test_allow_empty_notes_unique_2() -> None:
+    with pytest.raises(ValueError, match="Notes cannot be empty."):
+        RhythmPatternData(notes=[])
+
+
+def test_validate_duration_negative_unique_3() -> None:
+    with pytest.raises(ValueError, match="Duration must be non-negative"):
+        RhythmPatternData(duration=-1.0, notes=[])
+
+
+def test_validate_swing_ratio_out_of_bounds_unique_3() -> None:
+    with pytest.raises(ValueError, match="Swing ratio must be between 0.5 and 0.75."):
+        RhythmPatternData(swing_ratio=0.4, notes=[RhythmNote()])
+    with pytest.raises(ValueError, match="Swing ratio must be between 0.5 and 0.75."):
+        RhythmPatternData(swing_ratio=0.8, notes=[RhythmNote()])
+
+
+def test_validate_humanize_amount_out_of_bounds_unique_3() -> None:
+    with pytest.raises(ValueError, match="Humanize amount must be between 0 and 1. Invalid value found."):
+        RhythmPatternData(humanize_amount=1.5, notes=[RhythmNote()])
+    with pytest.raises(ValueError, match="Humanize amount must be between 0 and 1. Invalid value found."):
+        RhythmPatternData(humanize_amount=-0.1, notes=[RhythmNote()])
+
+
+def test_allow_empty_notes_unique_3() -> None:
+    with pytest.raises(ValueError, match="Notes cannot be empty."):
+        RhythmPatternData(notes=[])
+
+
+def test_validate_duration_negative_unique_4() -> None:
+    with pytest.raises(ValueError, match="Duration must be non-negative"):
+        RhythmPatternData(duration=-1.0, notes=[])
+
+
+def test_validate_swing_ratio_out_of_bounds_unique_4() -> None:
+    with pytest.raises(ValueError, match="Swing ratio must be between 0.5 and 0.75."):
+        RhythmPatternData(swing_ratio=0.4, notes=[RhythmNote()])
+    with pytest.raises(ValueError, match="Swing ratio must be between 0.5 and 0.75."):
+        RhythmPatternData(swing_ratio=0.8, notes=[RhythmNote()])
+
+
+def test_validate_humanize_amount_out_of_bounds_unique_4() -> None:
+    with pytest.raises(ValueError, match="Humanize amount must be between 0 and 1. Invalid value found."):
+        RhythmPatternData(humanize_amount=1.5, notes=[RhythmNote()])
+    with pytest.raises(ValueError, match="Humanize amount must be between 0 and 1. Invalid value found."):
+        RhythmPatternData(humanize_amount=-0.1, notes=[RhythmNote()])
+
+
+def test_allow_empty_notes_unique_4() -> None:
+    with pytest.raises(ValueError, match="Notes cannot be empty."):
+        RhythmPatternData(notes=[])
+
+
+def test_validate_duration_negative_unique_5() -> None:
+    with pytest.raises(ValueError, match="Duration must be non-negative"):
+        RhythmPatternData(duration=-1.0, notes=[])
+
+
+def test_validate_swing_ratio_out_of_bounds_unique_5() -> None:
+    with pytest.raises(ValueError, match="Swing ratio must be between 0.5 and 0.75."):
+        RhythmPatternData(swing_ratio=0.4, notes=[RhythmNote()])
+    with pytest.raises(ValueError, match="Swing ratio must be between 0.5 and 0.75."):
+        RhythmPatternData(swing_ratio=0.8, notes=[RhythmNote()])
+
+
+def test_validate_humanize_amount_out_of_bounds_unique_5() -> None:
+    with pytest.raises(ValueError, match="Humanize amount must be between 0 and 1. Invalid value found."):
+        RhythmPatternData(humanize_amount=1.5, notes=[RhythmNote()])
+    with pytest.raises(ValueError, match="Humanize amount must be between 0 and 1. Invalid value found."):
+        RhythmPatternData(humanize_amount=-0.1, notes=[RhythmNote()])
+
+
+def test_allow_empty_notes_unique_5() -> None:
+    with pytest.raises(ValueError, match="Notes cannot be empty."):
+        RhythmPatternData(notes=[])
+
+
+def test_validate_duration_negative_unique_6() -> None:
+    with pytest.raises(ValueError, match="Duration must be non-negative"):
+        RhythmPatternData(duration=-1.0, notes=[])
+
+
+def test_validate_swing_ratio_out_of_bounds_unique_6() -> None:
+    with pytest.raises(ValueError, match="Swing ratio must be between 0.5 and 0.75."):
+        RhythmPatternData(swing_ratio=0.4, notes=[RhythmNote()])
+    with pytest.raises(ValueError, match="Swing ratio must be between 0.5 and 0.75."):
+        RhythmPatternData(swing_ratio=0.8, notes=[RhythmNote()])
+
+
+def test_validate_humanize_amount_out_of_bounds_unique_6() -> None:
+    with pytest.raises(ValueError, match="Humanize amount must be between 0 and 1. Invalid value found."):
+        RhythmPatternData(humanize_amount=1.5, notes=[RhythmNote()])
+    with pytest.raises(ValueError, match="Humanize amount must be between 0 and 1. Invalid value found."):
+
+        RhythmPatternData(humanize_amount=-0.1, notes=[RhythmNote()])

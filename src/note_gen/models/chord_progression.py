@@ -69,10 +69,10 @@ class ChordProgression(BaseModel):
                     f"Transposed chord: root={new_root.note_name}, quality={new_quality}"
                 )
 
-    def dict(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:
-        d = super().dict(*args, **kwargs)
-        d["chords"] = [chord.dict() for chord in self.chords]
-        d["scale_info"] = self.scale_info.dict()
+    def model_dump(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:
+        d = super().model_dump(*args, **kwargs)
+        d["chords"] = [chord.model_dump() for chord in self.chords]
+        d["scale_info"] = self.scale_info.model_dump()
         return d
 
     def generate_chord_notes(self, root: Note, quality: ChordQualityType, inversion: int) -> List[Note]:

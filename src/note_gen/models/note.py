@@ -133,7 +133,7 @@ class Note(BaseModel):
                 "stored_midi_number": data
             }
         elif isinstance(data, str):
-            return cls.from_name(data).dict()
+            return cls.from_name(data).model_dump()
         else:
             # Match the test's exact message
             raise ValueError("Expected a dict, int, or str for Note")

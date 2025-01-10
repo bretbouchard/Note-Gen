@@ -9,10 +9,14 @@ from src.note_gen.models.chord_progression import ChordProgression
 from src.note_gen.models.roman_numeral import RomanNumeral
 
 import logging
+import sys
 import random
 from typing import cast
 
-logger = logging.getLogger(__name__)
+# Change logger to print to stdout for test visibility
+logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)  # Set up logging to print to stdout
+
+logger = logging.getLogger(__name__)  # Keep the logger configuration
 
 class ChordProgressionGenerator(BaseModel):
     """Generator for chord progressions."""
@@ -93,41 +97,66 @@ class ChordProgressionGenerator(BaseModel):
                 raise
         return chord_notes
 
-    def generate(
-        self, pattern: Optional[List[str]] = None, progression_length: int = 4
-    ) -> ChordProgression:
+    def generate(self, pattern: Optional[List[str]] = None, progression_length: int = 4) -> ChordProgression:
+        # Validate the progression length
+        if progression_length <= 0:
+            logger.error("Progression length must be a positive integer.")
+            raise ValueError("Progression length must be a positive integer.")
+
+        # Validate the provided pattern against known patterns
         if pattern is None:
-            if self.pattern is None:
-                raise ValueError("No progression pattern provided.")
             pattern = self.pattern
 
-        if not all(p in self.PROGRESSION_PATTERNS for p in pattern):
-            logger.error(f"Invalid pattern: {pattern}")
-            raise ValueError(f"Invalid pattern: {pattern}")
+        if pattern is None or len(pattern) == 0:
+            logger.error("No progression pattern provided or provided pattern is empty.")
+            raise ValueError("No progression pattern provided or provided pattern cannot be empty.")
 
-        logger.debug(f"Generating progression with pattern: {pattern}")
-        chords = []
         for p in pattern:
-            scale_degrees = self.PROGRESSION_PATTERNS[p]
-            for degree, quality in scale_degrees:
-                logger.debug(f"Generating chord for degree: {degree}, quality: {quality}")
-                chord_quality = quality
-                root_note = self.scale_info.get_scale_degree_note(degree)
-                if not root_note:
-                    logger.error(f"Invalid scale degree: {degree}")
-                    raise ValueError(f"Invalid scale degree: {degree}")
+            if p not in self.PROGRESSION_PATTERNS:
+                logger.error(f"Invalid progression pattern: {p}")
+                raise ValueError(f"Invalid progression pattern: {p}")
 
-                # Handle extended qualities like major7, minor7, dominant7
-                quality_enum = ChordQualityType[quality.upper()]
+        chords: List[Chord] = []  # Specify the type for chords
+        logger.debug(f"Generating chords for pattern: {pattern}")
 
-                # Create the chord
-                chord = Chord(root=root_note, quality=quality_enum)
-                chords.append(chord)
-                logger.debug(f"Generated chord: {chord}")
+        # Calculate how many full patterns we can use
+        full_patterns = progression_length // len(pattern)
+        remaining_chords = progression_length % len(pattern)
 
-        progression = ChordProgression(scale_info=self.scale_info, chords=chords)
+        logger.debug(f"Full patterns: {full_patterns}, Remaining chords: {remaining_chords}")  # Log the number of full patterns and remaining chords
+
+        # Generate chords for the full patterns
+        for _ in range(full_patterns):
+            for p in pattern:
+                logger.debug(f"Processing pattern: {p}")  # Log the current pattern being processed
+                pattern_degrees = self.PROGRESSION_PATTERNS[p]
+                for degree, quality in pattern_degrees:
+                    if len(chords) >= progression_length:
+                        break
+                    logger.debug(f"Generating chord for degree: {degree}, quality: {quality}")
+                    root_note = self.scale_info.get_scale_degree_note(degree)
+                    logger.debug(f"Root note for degree {degree}: {root_note.note_name if root_note else 'None'}")  # Log the root note
+
+                    if not root_note:
+                        logger.error(f"Invalid scale degree: {degree}")
+                        raise ValueError(f"Invalid scale degree: {degree}")
+
+                    logger.debug(f"Validating chord quality: {quality}")
+                    if quality not in [q.value for q in ChordQualityType]:
+                        logger.error(f"Unsupported chord type: {quality}")
+                        raise ValueError(f"Unsupported chord type: {quality}")
+                    quality_enum = ChordQualityType(quality)
+                    logger.debug(f"Chord quality validated: {quality_enum}")
+
+                    # Create the chord
+                    chord_notes = self._generate_chord_notes(root_note, quality)
+                    logger.debug(f"Generated chord notes for degree {degree}: {chord_notes}")  # Log the generated chord notes
+                    chords.append(Chord(root=root_note, quality=quality_enum, notes=chord_notes))
+                    logger.debug(f"Chord added: {chords[-1]}")
+
         logger.info(f"Final chords generated: {len(chords)}")
-        return progression
+        logger.debug(f"Generated chords: {[str(chord) for chord in chords]}")  # Log the generated chords before returning
+        return ChordProgression(scale_info=self.scale_info, chords=chords)
 
     def generate_custom(
         self, degrees: List[int], qualities: List[str]
@@ -137,29 +166,34 @@ class ChordProgressionGenerator(BaseModel):
             logger.error("Degrees and qualities lists must be of the same length.")
             raise ValueError("Degrees and qualities lists must be of the same length.")
 
-        chords = []
+        chords: List[Chord] = []
+        logger.debug(f"Generating custom chord progression for degrees: {degrees}, qualities: {qualities}")  # Log the custom progression details
         for degree, quality in zip(degrees, qualities):
             logger.debug(f"Generating chord for degree: {degree}, quality: {quality}")
-            chord_quality = quality
+            logger.debug(f"Quality before validation: {quality}")  # Log the quality before validation
             root_note = self.scale_info.get_scale_degree_note(degree)
             if not root_note:
                 logger.error(f"Invalid scale degree: {degree}")
                 raise ValueError(f"Invalid scale degree: {degree}")
 
-            # Handle extended qualities like major7, minor7, dominant7
-            quality_enum = ChordQualityType[quality.upper()]
-            if not quality_enum:
-                logger.error(f"Unknown chord quality: {quality}")
-                raise ValueError(f"Unknown chord quality: {quality}")
-
+            logger.debug(f"Validating chord quality: {quality}")
+            if quality not in [q.value for q in ChordQualityType]:
+                logger.error(f"Unsupported chord type: {quality}")
+                raise ValueError(f"Unsupported chord type: {quality}")
+            quality_enum = ChordQualityType(quality)
+            logger.debug(f"Chord quality validated: {quality_enum}")
             # Create the chord
-            chord = Chord(root=root_note, quality=quality_enum)
-            chords.append(chord)
-            logger.debug(f"Generated chord: {chord}")
+            chord_notes = self._generate_chord_notes(root_note, quality)
+            logger.debug(f"Generated chord notes for degree {degree}: {chord_notes}")  # Log the generated chord notes
+            logger.debug(f"Generated chords so far: {len(chords)}")
+            chords.append(Chord(root=root_note, quality=quality_enum, notes=chord_notes))
+            logger.debug(f"Chord added: {chords[-1]}")
+            logger.debug(f"Generated chords so far: {chords}")  # Log the generated chords so far
 
-        progression = ChordProgression(scale_info=self.scale_info, chords=chords)
         logger.info(f"Final chords generated: {len(chords)}")
-        return progression
+        logger.debug(f"Generated chords: {[str(chord) for chord in chords]}")  # Log the generated chords before returning
+        progression = ChordProgression(scale_info=self.scale_info, chords=chords)
+        return progression  # Modified return statement
 
     def generate_random(self, length: int) -> ChordProgression:
         """Generate a random chord progression of the specified length."""
@@ -167,7 +201,8 @@ class ChordProgressionGenerator(BaseModel):
             logger.error("Length must be a positive integer.")
             raise ValueError("Length must be a positive integer.")
 
-        chords = []
+        chords: List[Chord] = []
+        logger.debug(f"Generating random chord progression of length: {length}")  # Log the random progression details
         for _ in range(length):
             degree = random.choice(list(self.MAJOR_SCALE_QUALITIES.keys()))
             quality = random.choice(list(self.MAJOR_SCALE_QUALITIES.values()))
@@ -178,15 +213,24 @@ class ChordProgressionGenerator(BaseModel):
                 logger.error(f"Invalid scale degree: {degree}")
                 raise ValueError(f"Invalid scale degree: {degree}")
 
-            quality_enum = ChordQualityType[quality.upper()]
+            logger.debug(f"Validating chord quality: {quality}")
+            if quality not in [q.value for q in ChordQualityType]:
+                logger.error(f"Unsupported chord type: {quality}")
+                raise ValueError(f"Unsupported chord type: {quality}")
+            quality_enum = ChordQualityType(quality)
+            logger.debug(f"Chord quality validated: {quality_enum}")
 
             # Create the chord
-            chord = Chord(root=root_note, quality=quality_enum)
-            chords.append(chord)
-            logger.debug(f"Generated chord: {chord}")
+            chord_notes = self._generate_chord_notes(root_note, quality)
+            logger.debug(f"Generated chord notes for degree {degree}: {chord_notes}")  # Log the generated chord notes
+            logger.debug(f"Generated chords so far: {len(chords)}")
+            chords.append(Chord(root=root_note, quality=quality_enum, notes=chord_notes))
+            logger.debug(f"Chord added: {chords[-1]}")
+            logger.debug(f"Generated chords so far: {chords}")  # Log the generated chords so far
 
-        progression = ChordProgression(scale_info=self.scale_info, chords=chords)
         logger.info(f"Final chords generated: {len(chords)}")
+        logger.debug(f"Generated chords: {[str(chord) for chord in chords]}")  # Log the generated chords before returning
+        progression = ChordProgression(scale_info=self.scale_info, chords=chords)
         return progression
 
     def generate_chord(self, numeral: str) -> Chord:
@@ -199,6 +243,9 @@ class ChordProgressionGenerator(BaseModel):
             raise ValueError(f"Invalid numeral: {numeral}")
 
         quality = self.scale_info.get_chord_quality_for_degree(degree)
+        logger.debug(f"Retrieved chord quality for degree {degree}: {quality}")  # Log the retrieved quality
+        logger.debug(f"Quality before validation: {quality}")  # Log the quality before validation
+
         if not quality:
             logger.error(f"Cannot determine chord quality for degree: {degree}")
             raise ValueError(f"Cannot determine chord quality for degree: {degree}")
@@ -208,15 +255,16 @@ class ChordProgressionGenerator(BaseModel):
             logger.error(f"No root note found for degree: {degree}")
             raise ValueError(f"No root note found for degree: {degree}")
 
-        # Handle extended qualities like major7, minor7, dominant7
-        try:
-            quality_enum = ChordQualityType[quality.upper()]
-        except KeyError:
-            logger.error(f"Unknown chord quality: {quality}")
-            raise ValueError(f"Unknown chord quality: {quality}")
+        logger.debug(f"Validating chord quality: {quality}")
+        if quality not in [q.value for q in ChordQualityType]:
+            logger.error(f"Unsupported chord type: {quality}")
+            raise ValueError(f"Unsupported chord type: {quality}")
 
-        chord = Chord(root=root_note, quality=quality_enum)
-        logger.debug("Generated chord: %s", chord)
+        # Create the chord
+        chord_notes = self._generate_chord_notes(root_note, quality)
+        logger.debug(f"Generated chord notes for degree {degree}: {chord_notes}")
+        chord = Chord(root=root_note, notes=chord_notes, quality=ChordQualityType(quality))
+        logger.debug(f"Generated chord: {chord}")
         return chord
 
     def _parse_numeral(self, numeral: str) -> Optional[int]:

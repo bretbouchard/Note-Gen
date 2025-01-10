@@ -25,11 +25,6 @@ DEFAULT_RHYTHM_PATTERN = "quarter_notes"
 DEFAULT_RHYTHM_PATTERN_NAME = "Quarter Notes"
 
 
-class Presets(BaseModel):
-    # Define your fields here
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-
-
 # Common chord progressions in Roman numeral notation
 COMMON_PROGRESSIONS: Dict[str, List[str]] = {
     # Standard Progressions
@@ -89,6 +84,17 @@ COMMON_PROGRESSIONS: Dict[str, List[str]] = {
     "EDM Build": ["i", "V", "vi", "III"],
     "Pop Minor": ["i", "VI", "III", "VII"],
 }
+
+class Presets(BaseModel):
+    common_progressions: Dict[str, List[str]] = COMMON_PROGRESSIONS
+    default_key: str = DEFAULT_KEY
+    default_scale_type: str = DEFAULT_SCALE_TYPE
+
+    @classmethod
+    def load(cls) -> List['Presets']:
+        # Implement loading logic here
+        return [cls()]  # Example return, replace with actual loading logic
+
 
 # Note patterns
 NOTE_PATTERNS: Dict[str, List[int]] = {
