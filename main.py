@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException      
 from pydantic import BaseModel  
 from typing import List, Optional
+from src.note_gen.routers.user_routes import router as user_router
 
 import logging
 
@@ -44,6 +45,9 @@ class ChordProgressionGenerator(BaseModel):
 # ChordProgressionGenerator.model_rebuild()
 
 app = FastAPI()
+
+# Include the user routes
+app.include_router(user_router)
 
 # Initialize your generators
 root_note = 'C'  # Example root note

@@ -129,3 +129,7 @@ class Chord(BaseModel):
             f"inversion={self.inversion}"
             f")"
         )
+
+    def __repr__(self) -> str:
+        return (f"Chord(root={self.root}, quality={self.quality}, "
+                f"notes={self.notes}, inversion={self.inversion})")

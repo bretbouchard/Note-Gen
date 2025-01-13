@@ -38,20 +38,7 @@ COMMON_PROGRESSIONS: Dict[str, List[str]] = {
     # Jazz Progressions
     "Autumn Leaves": ["ii7", "V7", "Imaj7", "IV7", "vii°7", "III7", "vi7"],
     "Giant Steps": ["Imaj7", "III7", "vi7", "II7", "V7", "VII7", "III7"],
-    "12-Bar Blues": [
-        "I7",
-        "I7",
-        "I7",
-        "I7",
-        "IV7",
-        "IV7",
-        "I7",
-        "I7",
-        "V7",
-        "IV7",
-        "I7",
-        "V7",
-    ],
+    "12-Bar Blues": ["I7","I7","I7","I7","IV7","IV7","I7","I7","V7","IV7","I7","V7"],
     "i vi ii V": ["i", "vi", "ii", "V"],
     "Minor Scale Ascension": ["i", "ii", "III", "iv", "v", "VI", "VII", "i"],
     "II-V-I in C Major": ["Dm7", "G7", "Cmaj7"],
@@ -144,7 +131,7 @@ RHYTHM_PATTERNS: Dict[str, RhythmPatternData] = {
 def get_default_chord_progression(root_note: Note, scale: Scale) -> ChordProgression:
     """Get the default chord progression."""
     from .chord_progression_generator import ChordProgressionGenerator
-
+    from .enums import ChordQualityType
     scale_info = ScaleInfo(root=root_note, scale_type=scale.scale_type)
     scale_info.compute_scale_degrees()  # Ensure degrees are populated
     generator = ChordProgressionGenerator(scale_info=scale_info)

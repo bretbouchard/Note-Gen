@@ -1,6 +1,6 @@
 # src/note_gen/models/chord_progression.py
 
-from typing import List, Any, Dict
+from typing import List, Any, Dict, Optional
 from pydantic import BaseModel, Field, ConfigDict, field_validator
 from src.note_gen.models.musical_elements import Note, Chord
 from src.note_gen.models.scale_info import ScaleInfo
@@ -16,6 +16,7 @@ class ChordProgression(BaseModel):
 
     scale_info: ScaleInfo
     chords: List[Chord] = Field(default_factory=list)
+    root: Optional[Note] = None
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -90,3 +91,7 @@ class ChordProgression(BaseModel):
         if inversion:
             chord_notes = chord_notes[inversion:] + chord_notes[:inversion]
         return chord_notes
+
+    def __repr__(self) -> str:
+        return (f"ChordProgression(scale_info: {self.scale_info.__class__.__name__}={self.scale_info!r}, "
+                f"chords: List[{self.chords[0].__class__.__name__}]={self.chords!r})")

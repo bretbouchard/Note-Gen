@@ -27,3 +27,6 @@ class ScaleInfo(BaseModel):
         """Get the notes of the scale based on the root and scale type."""
         # Placeholder logic for returning scale notes
         return [self.root]  # This should return actual scale notes based on the scale type
+
+    def __repr__(self) -> str:
+        return f"ScaleInfo(root={self.root}, scale_type={self.scale_type})"
