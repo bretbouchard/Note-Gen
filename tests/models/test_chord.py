@@ -20,18 +20,18 @@ def test_invalid_quality() -> None:
     invalid_quality = "invalid_quality"
     logger.debug(f"Sending root_note={root_note}, quality={invalid_quality}")
 
-    with pytest.raises(ValidationError):
+    with pytest.raises(ValueError, match="'invalid_quality' is not a valid ChordQualityType"):
         Chord(root=root_note, quality=invalid_quality)
  
 def test_invalid_root() -> None:
     class InvalidNote(Note):
-        note_name: str = "Invalid"
-        octave: int = 0
-        duration: float = -1.0
-        velocity: int = -1
+        note_name: str = "InvalidNoteName"
+        octave: int = 4
+        duration: float = 1.0
+        velocity: int = 100
 
     # Now we match the *actual* Pydantic error message about 'Unrecognized note name'
-    with pytest.raises(ValidationError, match="Unrecognized note name"):
+    with pytest.raises(KeyError, match="InvalidNoteName"):
         Chord.from_quality(root=InvalidNote(), quality=ChordQualityType.MAJOR)
 
 def test_chord_diminished_quality() -> None:

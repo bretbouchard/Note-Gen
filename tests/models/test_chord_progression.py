@@ -9,8 +9,10 @@ import logging
 
 logging.basicConfig(level=logging.DEBUG)
 
+
 class FakeScaleInfo(ScaleInfo):
     """A fake ScaleInfo that returns placeholder notes for scale degrees."""
+
     def get_scale_degree_note(self, degree: int) -> Note:
         # Just map 1->C, 2->D, etc. If out of range, raise ValueError.
         note_map = {
@@ -47,22 +49,22 @@ class TestChordProgression(unittest.TestCase):
     def test_empty_chords_raises_error(self) -> None:
         scale_info = FakeScaleInfo(root=Note(note_name="C"), scale_type=ScaleType.MAJOR)
         with self.assertRaises(ValueError):
-            ChordProgression(scale_info=scale_info, chords=[])
+            ChordProgression(name="Test Progression", scale_info=scale_info, chords=[], key="C")
 
     def test_chords_must_be_chord_instances(self) -> None:
         scale_info = FakeScaleInfo(root=Note(note_name="C"), scale_type=ScaleType.MAJOR)
         with self.assertRaises(ValueError):
-            ChordProgression(scale_info=scale_info, chords=["not a chord"])
+            ChordProgression(name="Test Progression", scale_info=scale_info, chords=["not a chord"], key="C")
 
     def test_add_and_get_chord(self) -> None:
         scale_info = FakeScaleInfo(root=Note(note_name="C"), scale_type=ScaleType.MAJOR)
         chord1 = Chord(root=Note(note_name="C"), quality=ChordQualityType.MAJOR)
-        progression = ChordProgression(scale_info=scale_info, chords=[chord1])
-        self.assertIs(progression.get_chord_at(0), chord1)
+        progression = ChordProgression(name="Test Progression", scale_info=scale_info, chords=[chord1.dict()], key="C")
+        self.assertEqual(progression.get_chord_at(0), chord1.dict())
 
         chord2 = Chord(root=Note(note_name="D"), quality=ChordQualityType.MINOR)
-        progression.add_chord(chord2)
-        self.assertIs(progression.get_chord_at(1), chord2)
+        progression.add_chord(chord2.dict())
+        self.assertEqual(progression.get_chord_at(1), chord2.dict())
 
     def test_get_all_chords(self) -> None:
         scale_info = FakeScaleInfo(root=Note(note_name="C"), scale_type=ScaleType.MAJOR)
@@ -70,8 +72,8 @@ class TestChordProgression(unittest.TestCase):
             Chord(root=Note(note_name="C"), quality=ChordQualityType.MAJOR),
             Chord(root=Note(note_name="G"), quality=ChordQualityType.MAJOR),
         ]
-        progression = ChordProgression(scale_info=scale_info, chords=chords)
-        self.assertEqual(progression.get_all_chords(), chords)
+        progression = ChordProgression(name="Test Progression", scale_info=scale_info, chords=[c.dict() for c in chords], key="C")
+        self.assertEqual(progression.get_all_chords(), [c.dict() for c in chords])
 
     def test_get_chord_names(self) -> None:
         scale_info = FakeScaleInfo(root=Note(note_name="C"), scale_type=ScaleType.MAJOR)
@@ -79,7 +81,7 @@ class TestChordProgression(unittest.TestCase):
             Chord(root=Note(note_name="C"), quality=ChordQualityType.MAJOR),
             Chord(root=Note(note_name="D"), quality=ChordQualityType.MINOR),
         ]
-        progression = ChordProgression(scale_info=scale_info, chords=chords)
+        progression = ChordProgression(name="Test Progression", scale_info=scale_info, chords=[c.dict() for c in chords], key="C")
         expected_names = ["I", "ii"]  # Update expected names based on Roman numeral logic
         self.assertEqual(progression.get_chord_names(), expected_names)
 
@@ -89,7 +91,7 @@ class TestChordProgression(unittest.TestCase):
             Chord(root=Note(note_name="C"), quality=ChordQualityType.MAJOR),
             Chord(root=Note(note_name="D"), quality=ChordQualityType.MINOR),
         ]
-        progression = ChordProgression(scale_info=scale_info, chords=chords)
+        progression = ChordProgression(name="Test Progression", scale_info=scale_info, chords=[c.dict() for c in chords], key="C")
         actual_repr = repr(progression)
 
         expected_repr = (
@@ -98,43 +100,35 @@ class TestChordProgression(unittest.TestCase):
             "notes=[Note(note_name='C', octave=4, duration=1.0, velocity=64, stored_midi_number=60), Note(note_name='E', octave=4, duration=1.0, velocity=64, stored_midi_number=64), "
             "Note(note_name='G', octave=4, duration=1.0, velocity=64, stored_midi_number=67)], inversion=0, QUALITY_INTERVALS={<ChordQualityType.MAJOR: 'major'>: [0, 4, 7], "
             "<ChordQualityType.MINOR: 'minor'>: [0, 3, 7], <ChordQualityType.DIMINISHED: 'diminished'>: [0, 3, 6], <ChordQualityType.AUGMENTED: 'augmented'>: [0, 4, 8], "
-            "<ChordQualityType.DOMINANT: 'dominant'>: [0, 4, 7, 10], <ChordQualityType.MAJOR_7: 'major7'>: [0, 4, 7, 11], <ChordQualityType.MINOR_7: 'minor7'>: [0, 3, 7, 10]})]), "
-            "Chord(root=Note(note_name='D', octave=4, duration=1.0, velocity=64, stored_midi_number=None), quality=<ChordQualityType.MINOR: 'minor'>, "
-            "notes=[Note(note_name='D', octave=4, duration=1.0, velocity=64, stored_midi_number=62), Note(note_name='F', octave=4, duration=1.0, velocity=64, stored_midi_number=65), "
-            "Note(note_name='A', octave=4, duration=1.0, velocity=64, stored_midi_number=69)], inversion=0, QUALITY_INTERVALS={<ChordQualityType.MAJOR: 'major'>: [0, 4, 7], "
-            "<ChordQualityType.MINOR: 'minor'>: [0, 3, 7], <ChordQualityType.DIMINISHED: 'diminished'>: [0, 3, 6], <ChordQualityType.AUGMENTED: 'augmented'>: [0, 4, 8], "
-            "<ChordQualityType.DOMINANT: 'dominant'>: [0, 4, 7, 10], <ChordQualityType.MAJOR_7: 'major7'>: [0, 4, 7, 11], <ChordQualityType.MINOR_7: 'minor7'>: [0, 3, 7, 10]})])"
+            "<ChordQualityType.DOMINANT: 'dominant'>: [0, 4, 7, 10], <ChordQualityType.MAJOR_7: 'major_7'>: [0, 4, 7, 11], <ChordQualityType.MINOR_7: 'minor_7'>: [0, 3, 7, 10], "
+            "<ChordQualityType.HALF_DIMINISHED: 'half_diminished'>: [0, 3, 6, 10], <ChordQualityType.FULLY_DIMINISHED: 'fully_diminished'>: [0, 3, 6, 9]})])"
         )
 
-        print(f"Actual repr: {actual_repr}")  # Print the actual representation
-        print(f"Expected repr: {expected_repr}")  # Print the expected representation
-        try:
-            self.assertEqual(actual_repr, expected_repr)
-        except AssertionError:
-            pass
+        self.assertEqual(actual_repr, expected_repr)
+
+    def test_dict_representation(self) -> None:
+        scale_info = FakeScaleInfo(root=Note(note_name="C"), scale_type=ScaleType.MAJOR)
+        chord = Chord(root=Note(note_name="C"), quality=ChordQualityType.MAJOR)
+        progression = ChordProgression(name="Test Progression", scale_info=scale_info, chords=[chord.dict()], key="C")
+        expected_dict = {
+            "scale_info": scale_info.dict(),
+            "chords": [chord.dict()]
+        }
+        self.assertEqual(progression.to_dict(), expected_dict)
 
     def test_transpose_progression(self) -> None:
         scale_info = FakeScaleInfo(root=Note(note_name="C"), scale_type=ScaleType.MAJOR)
         chord_c = Chord(root=Note(note_name="C", octave=4), quality=ChordQualityType.MAJOR)
         chord_d = Chord(root=Note(note_name="D", octave=4), quality=ChordQualityType.MINOR)
-        progression = ChordProgression(scale_info=scale_info, chords=[chord_c, chord_d])
-        
-        progression.transpose(interval=2)  # Transpose up 2 semitones
-        # C4 -> D4, D4 -> E4
-        self.assertEqual(progression.chords[0].root.note_name, "D")
-        self.assertEqual(progression.chords[1].root.note_name, "E")
-        # Qualities remain the same
-        self.assertEqual(progression.chords[0].quality, ChordQualityType.MAJOR)
-        self.assertEqual(progression.chords[1].quality, ChordQualityType.MINOR)
+        progression = ChordProgression(name="Test Progression", scale_info=scale_info, chords=[chord_c.dict(), chord_d.dict()], key="C")
 
-    def test_dict_representation(self) -> None:
-        scale_info = FakeScaleInfo(root=Note(note_name="C"), scale_type=ScaleType.MAJOR)
-        chord = Chord(root=Note(note_name="C"), quality=ChordQualityType.MAJOR)
-        progression = ChordProgression(scale_info=scale_info, chords=[chord])
-        d = progression.model_dump()
-        self.assertIn("chords", d)
-        self.assertIn("scale_info", d)
-        self.assertEqual(d["scale_info"]["root"]["note_name"], "C")
+        # Transpose up a major third (4 semitones)
+        progression.transpose(4)
+
+        # Check that the chords have been transposed correctly
+        transposed_chords = progression.get_all_chords()
+        self.assertEqual(transposed_chords[0]["root"]["note_name"], "E")  # C -> E
+        self.assertEqual(transposed_chords[1]["root"]["note_name"], "F#")  # D -> F#
 
 if __name__ == "__main__":
     unittest.main()

@@ -141,3 +141,10 @@ class Scale:
             if scale_note.midi_number == note.midi_number:
                 return i
         raise ValueError(f"{note} not found in {self.scale_type} scale with root {self.root}")
+
+    def get_note_at_degree(self, degree: int) -> Note:
+        """Get the note at a specific scale degree."""
+        notes = self.get_notes()
+        if not (1 <= degree <= len(notes)):
+            raise ValueError(f"Scale degree must be between 1 and {len(notes)}.")
+        return notes[degree - 1]

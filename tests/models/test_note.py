@@ -60,13 +60,12 @@ def test_invalid_midi_number_initialization() -> None:
 
 def test_transpose_out_of_range_high() -> None:
     note = Note.from_name("C4")
-    with pytest.raises(ValueError, match="Resulting transposed octave out of range:"):
+    with pytest.raises(ValueError, match="MIDI number out of range"):
         note.transpose(60)  # Enough semitones to exceed octave 8 => error
-
 
 def test_transpose_out_of_range_low() -> None:
     note = Note.from_name("C4")
-    with pytest.raises(ValueError, match="Resulting MIDI number out of range:"):
+    with pytest.raises(ValueError, match="MIDI number out of range"):
         note.transpose(-70)
 
 def test_fill_missing_fields_with_dict() -> None:
@@ -165,7 +164,7 @@ def test_transpose_to_limits() -> None:
     assert transposed_note.note_name == "C"
 
     # Transpose beyond the valid range should raise an error
-    with pytest.raises(ValueError, match="Resulting transposed octave out of range"):
+    with pytest.raises(ValueError, match="MIDI number out of range"):
         note.transpose(60)  # Transpose too high, exceeds octave 8
 
 def test_normalize_note_name_edge_cases() -> None:
@@ -200,5 +199,5 @@ def test_normalize_note_name_invalid() -> None:
 
 def test_transpose_invalid_octave() -> None:
     note = Note.from_name("C8")
-    with pytest.raises(ValueError, match="Resulting transposed octave out of range"):
+    with pytest.raises(ValueError, match="MIDI number out of range"):
         note.transpose(12)  # Enough to push into octave 9 => error

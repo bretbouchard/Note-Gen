@@ -1,7 +1,7 @@
 # src/note_gen/models/note.py
 
 from pydantic import BaseModel, Field, model_validator, ValidationError
-from typing import Any, Optional
+from typing import Any, Optional, ClassVar
 import re
 
 class Note(BaseModel):
@@ -32,6 +32,25 @@ class Note(BaseModel):
         default=None,
         description="Stored MIDI number, overrides note_name and octave."
     )
+
+    # Maps note names to their semitone values
+    NOTE_TO_SEMITONE: ClassVar[dict[str, int]] = {
+        'C': 0, 'C#': 1, 'Db': 1,
+        'D': 2, 'D#': 3, 'Eb': 3,
+        'E': 4,
+        'F': 5, 'F#': 6, 'Gb': 6,
+        'G': 7, 'G#': 8, 'Ab': 8,
+        'A': 9, 'A#': 10, 'Bb': 10,
+        'B': 11
+    }
+
+    # Maps semitone values to their note names (using sharps)
+    SEMITONE_TO_NOTE: ClassVar[dict[int, str]] = {
+        0: 'C', 1: 'C#', 2: 'D',
+        3: 'D#', 4: 'E', 5: 'F',
+        6: 'F#', 7: 'G', 8: 'G#',
+        9: 'A', 10: 'A#', 11: 'B'
+    }
 
     @model_validator(mode='before')
     def validate_and_fill(cls, values: dict[str, Any]) -> dict[str, Any]:
@@ -149,56 +168,68 @@ class Note(BaseModel):
             raise ValueError("Unrecognized note name")
         return note_to_number[note_name]
 
-    @classmethod
-    def _midi_to_note_octave(cls, midi_number: int) -> tuple[str, int]:
-        if not (0 <= midi_number <= 127):
-            raise ValueError(f"MIDI number out of range: {midi_number}")
-        
-        note_names = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
-        note_name = note_names[midi_number % 12]
-        octave = max(0, midi_number // 12 - 1)
-        
-        return note_name, octave
-
-    @staticmethod
-    def _note_octave_to_midi(note_name: str, octave: int) -> int:
-        """Convert a note name and octave to a MIDI number."""
-        note_to_number = {
-            "C": 0, "C#": 1, "D": 2, "D#": 3, "E": 4, "F": 5,
-            "F#": 6, "G": 7, "G#": 8, "A": 9, "A#": 10, "B": 11
-        }
-        if note_name not in note_to_number:
-            raise ValueError("Unrecognized note name")
-        return (octave + 1) * 12 + note_to_number[note_name]
-
     @property
     def midi_number(self) -> int:
-        """Compute the MIDI number."""
+        """Get the MIDI number for this note."""
         if self.stored_midi_number is not None:
             return self.stored_midi_number
         return self._note_octave_to_midi(self.note_name, self.octave)
 
-    def transpose(self, semitones: int) -> "Note":
-        new_midi = self.midi_number + semitones
-        if not (0 <= new_midi <= 127):
-            raise ValueError(f"Resulting MIDI number out of range: {new_midi}")
+    @classmethod
+    def _midi_to_note_octave(cls, midi_number: int) -> tuple[str, int]:
+        """Convert a MIDI number to a note name and octave."""
+        if not (0 <= midi_number <= 127):
+            raise ValueError("MIDI number out of range")
+        semitone_to_note = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
+        octave = (midi_number // 12) - 1
+        note_index = midi_number % 12
+        # Handle edge cases for octave 0
+        if octave < 0:
+            octave = 0
+        # For MIDI number 127, we should allow octave 10
+        if octave > 10:
+            raise ValueError("MIDI number out of range")
+        return semitone_to_note[note_index], octave
 
-        note_name, octave = self._midi_to_note_octave(new_midi)
-        # Instead of clamping, check if octave is within allowed range
-        if not ( -1 <= octave <= 8 ):
-            raise ValueError(f"Resulting transposed octave out of range: {octave}")
+    @staticmethod
+    def _note_octave_to_midi(note_name: str, octave: int) -> int:
+        """Convert a note name and octave to a MIDI number."""
+        if not (0 <= octave <= 8):
+            raise ValueError("Octave must be between 0 and 8")
+        note_to_semitone = {'C': 0, 'C#': 1, 'D': 2, 'D#': 3, 'E': 4, 'F': 5,
+                           'F#': 6, 'G': 7, 'G#': 8, 'A': 9, 'A#': 10, 'B': 11}
+        if note_name not in note_to_semitone:
+            raise ValueError("Unrecognized note name")
+        midi_number = (octave + 1) * 12 + note_to_semitone[note_name]
+        if not (0 <= midi_number <= 127):
+            raise ValueError("MIDI number out of range")
+        return midi_number
 
-        return Note(
-            note_name=note_name,
-            octave=octave,
-            duration=self.duration,
-            velocity=self.velocity,
-            stored_midi_number=new_midi
-        )
+    def get_note_at_interval(self, interval: int) -> str:
+        """Get the note name at the specified interval from this note."""
+        base_semitone = self.NOTE_TO_SEMITONE[self.note_name]
+        new_semitone = (base_semitone + interval) % 12
+        return self.SEMITONE_TO_NOTE[new_semitone]
+
+    def transpose(self, semitones: int) -> 'Note':
+        """Transpose the note by a number of semitones."""
+        try:
+            new_midi = self.midi_number + semitones
+            if not (0 <= new_midi <= 127):
+                raise ValueError("MIDI number out of range")
+            note_name, octave = self._midi_to_note_octave(new_midi)
+            if octave > 8:
+                raise ValueError("MIDI number out of range")
+            return Note(note_name=note_name, octave=octave, duration=self.duration, velocity=self.velocity)
+        except (ValueError, ValidationError):
+            raise ValueError("MIDI number out of range")
 
     def full_note_name(self) -> str:
         """Return the full note name."""
         return f"{self.note_name}{self.octave}"
+
+    def __init__(self, **data):
+        super().__init__(**data)
 
     def __str__(self) -> str:
         return self.full_note_name()

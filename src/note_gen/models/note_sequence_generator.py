@@ -1,40 +1,122 @@
+from __future__ import annotations
 from typing import List, Optional
-from src.note_gen.models.chord_progression import ChordProgression
-from src.note_gen.models.note_sequence import NoteSequence
-from src.note_gen.models.rhythm_pattern import RhythmPattern
+from pydantic import BaseModel, Field
+
 from src.note_gen.models.note import Note
-from src.note_gen.models.scale import Scale, ScaleType
+from src.note_gen.models.chord_progression import ChordProgression
+from src.note_gen.models.rhythm_pattern import RhythmPattern
+from src.note_gen.models.note_sequence import NoteSequence
+from src.note_gen.models.note_event import NoteEvent
+from src.note_gen.models.musical_elements import Chord
 
-class NoteSequenceGenerator:
-    """Generates a sequence of notes based on a chord progression, note sequence, and rhythm sequence."""
-
-    def __init__(self, chord_progression: ChordProgression, note_sequence: NoteSequence, rhythm_sequence: RhythmPattern, key_scale: Optional[str] = "C Major") -> None:
-        self.chord_progression = chord_progression
-        self.note_sequence = note_sequence
-        self.rhythm_sequence = rhythm_sequence
-        self.key_scale = ScaleType(key_scale) if key_scale else None  # Convert key_scale to ScaleType before storing
-
-    def generate_sequence(self) -> List[Note]:
-        """Generate a sequence of notes based on the provided inputs."""
-        generated_notes: List[Note] = []
-        for i, chord in enumerate(self.chord_progression.get_all_chords()):
+class NoteSequenceGenerator(BaseModel):
+    """Generator for creating note sequences from chord progressions and rhythm patterns."""
+    
+    chord_progression: ChordProgression
+    rhythm_pattern: Optional[RhythmPattern] = None
+    
+    def generate(self) -> List[Note]:
+        """Generate a sequence of notes based on the chord progression and rhythm pattern.
+        
+        Returns:
+            List[Note]: The generated sequence of notes
+        """
+        if not self.rhythm_pattern:
+            return self._generate_basic_sequence()
+            
+        return self._generate_rhythmic_sequence()
+    
+    def _generate_basic_sequence(self) -> List[Note]:
+        """Generate a basic sequence without rhythm pattern."""
+        sequence = []
+        for chord in self.chord_progression.chords:
+            # Only use the root note
+            sequence.append(chord.root)
+        return sequence
+    
+    def _generate_rhythmic_sequence(self) -> List[Note]:
+        """Generate a sequence using the rhythm pattern."""
+        if not self.rhythm_pattern:
+            raise ValueError("Rhythm pattern is required for rhythmic sequence generation")
+            
+        sequence = []
+        durations = self.rhythm_pattern.get_durations()
+        chord_idx = 0
+        
+        for duration in durations:
+            if chord_idx >= len(self.chord_progression.chords):
+                chord_idx = 0  # Loop back to start of progression
+                
+            chord = self.chord_progression.chords[chord_idx]
+            note = Note(
+                note_name=chord.root.note_name,
+                octave=chord.root.octave,
+                duration=duration,
+                velocity=chord.root.velocity
+            )
+            sequence.append(note)
+            chord_idx += 1
+            
+        return sequence
+    
+    def generate_sequence(self) -> NoteSequence:
+        """Generate a note sequence from the chord progression and patterns."""
+        sequence = NoteSequence(notes=[], events=[])  # Initialize with both fields
+        
+        if not self.rhythm_pattern:
+            raise ValueError("Rhythm pattern is required for sequence generation")
+            
+        # For each chord in the progression
+        for chord in self.chord_progression.chords:
+            # Get the root note from the chord
             root_note = self.get_root_note_from_chord(chord)
-            chord_quality = chord.chord.quality  # Access quality from the Chord instance
-            rhythm_note = self.rhythm_sequence.data[i % len(self.rhythm_sequence.data)]  # Get the corresponding rhythm note
-            duration = rhythm_note.duration  # Use the duration from the rhythm note
-            generated_notes.append(Note(pitch=root_note, duration=duration))
-            print(f"Generated note: {root_note} with duration: {duration} for chord: {chord}")
-        return generated_notes
-
-    def get_root_note_from_chord(self, chord) -> Note:
-        """Determine the root note based on the current chord and key/scale."""
-        root = chord.root
-        if root is None:
-            raise ValueError("The root note cannot be None.")
-        if self.key_scale is None:
-            raise ValueError("scale_type cannot be None")
-        scale = Scale(root=root, scale_type=self.key_scale)
-        scale_notes = scale.get_notes()  # Get the notes of the scale
-        root_note = scale_notes[chord.chord.quality - 1]  # Assuming chord.quality corresponds to scale degree
-        print(f"Determined root note: {root_note} for chord: {chord}")
-        return Note(pitch=root_note)
+            if not root_note:
+                continue
+                
+            # Create note events based on the rhythm pattern
+            if self.rhythm_pattern is not None:
+                for rhythm_note in self.rhythm_pattern.data.notes:
+                    note_event = NoteEvent(
+                        note=root_note,
+                        position=rhythm_note.position,
+                        duration=rhythm_note.duration,
+                        velocity=rhythm_note.velocity,
+                        is_rest=rhythm_note.is_rest
+                    )
+                    sequence.events.append(note_event)
+                    sequence.notes.append(root_note)  # Add note to notes list
+                
+        # Update sequence duration based on events
+        if sequence.events:
+            sequence.duration = max(event.end_position for event in sequence.events)
+                
+        return sequence
+    
+    def get_root_note_from_chord(self, chord: Chord) -> Optional[Note]:
+        """Get the root note from a chord.
+        
+        Args:
+            chord: The chord to get the root note from
+            
+        Returns:
+            Optional[Note]: The root note of the chord, or None if not found
+        """
+        if hasattr(chord, 'root') and isinstance(chord.root, Note):
+            return chord.root
+        return None
+    
+    def set_rhythm_pattern(self, pattern: RhythmPattern) -> None:
+        """Set a new rhythm pattern.
+        
+        Args:
+            pattern: The new rhythm pattern to use
+        """
+        self.rhythm_pattern = pattern
+    
+    def set_chord_progression(self, progression: ChordProgression) -> None:
+        """Set a new chord progression.
+        
+        Args:
+            progression: The new chord progression to use
+        """
+        self.chord_progression = progression

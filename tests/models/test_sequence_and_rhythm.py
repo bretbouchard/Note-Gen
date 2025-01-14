@@ -207,23 +207,34 @@ class TestRhythmPattern(unittest.TestCase):
             default_duration=1.0
         )
         self.pattern = RhythmPattern(
+            id="test_pattern",  # Add id field
             name="Test Pattern",
             data=data,
             description="A test rhythm pattern",
             tags=["test"],
             complexity=1.0,
-            style="rock"
+            style="rock",
+            pattern="1---2---3---4---"  # Provide a valid pattern string
         )
 
     def test_validate_name_empty(self) -> None:
         with self.assertRaises(ValueError):
-            RhythmPattern(name="  ", data=self.pattern.data)
+            RhythmPattern(
+                id="test_pattern",  # Add id field
+                name="  ", 
+                data=self.pattern.data
+            )
 
     def test_validate_data_wrong_type(self) -> None:
         # This test should check for a valid RhythmPatternData instance
         rhythm_note = RhythmNote(position=0.0, duration=1.0)
         rhythm_pattern_data = RhythmPatternData(notes=[rhythm_note])  # Valid notes
-        RhythmPattern(name="Valid", data=rhythm_pattern_data)  # Should not raise TypeError
+        RhythmPattern(
+            id="test_pattern",  # Add id field
+            name="Valid",
+            data=rhythm_pattern_data,
+            pattern="1---2---3---4---"  # Provide a valid pattern string
+        )  # Should not raise TypeError
 
     def test_get_events_in_range(self) -> None:
         events = self.pattern.get_events_in_range(0.5, 1.5)

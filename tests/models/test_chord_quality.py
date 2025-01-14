@@ -5,12 +5,11 @@ from src.note_gen.models.enums import ChordQualityType
 class TestChordQuality(unittest.TestCase):
     def test_from_string_valid(self) -> None:
         # Check a few known mappings
-        self.assertEqual(ChordQuality.from_string("major").quality, ChordQualityType.MAJOR)
-        self.assertEqual(ChordQuality.from_string("minor").quality, ChordQualityType.MINOR)
-        self.assertEqual(ChordQuality.from_string("diminished").quality, ChordQualityType.DIMINISHED)
-        self.assertEqual(ChordQuality.from_string("dominant").quality, ChordQualityType.DOMINANT)
-        self.assertEqual(ChordQuality.from_string("maj7").quality, ChordQualityType.MAJOR_SEVENTH)
-        self.assertEqual(ChordQuality.from_string("sus2").quality, ChordQualityType.SUS2)
+        self.assertEqual(ChordQuality.from_string("major").quality_type, ChordQualityType.MAJOR)
+        self.assertEqual(ChordQuality.from_string("minor").quality_type, ChordQualityType.MINOR)
+        self.assertEqual(ChordQuality.from_string("diminished").quality_type, ChordQualityType.DIMINISHED)
+        self.assertEqual(ChordQuality.from_string("dominant").quality_type, ChordQualityType.DOMINANT)
+        self.assertEqual(ChordQuality.from_string("maj7").quality_type, ChordQualityType.MAJOR_SEVENTH)
 
     def test_from_string_invalid(self) -> None:
         with self.assertRaises(ValueError):

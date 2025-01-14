@@ -1,5 +1,8 @@
 import pymongo
 from pymongo.errors import ConnectionFailure, ServerSelectionTimeoutError
+import logging
+
+logger = logging.getLogger(__name__)
 
 from src.note_gen.models.presets import DEFAULT_CHORD_PROGRESSION, DEFAULT_NOTE_PATTERN, COMMON_PROGRESSIONS, NOTE_PATTERNS, RHYTHM_PATTERNS
 from src.note_gen.models.chord_progression import ChordProgression
@@ -11,6 +14,24 @@ from typing import List, Any, Optional, Dict
 # MongoDB connection setup
 client: pymongo.MongoClient = pymongo.MongoClient("mongodb://localhost:27017/")
 db = client["note_gen"]
+
+# Create unique indexes if they don't exist
+def ensure_indexes(database=None):
+    target_db = database if database is not None else db
+    try:
+        target_db.chord_progressions.create_index("name", unique=True)
+    except Exception as e:
+        logger.warning(f"Index already exists or error creating index on chord_progressions: {e}")
+
+    try:
+        target_db.note_patterns.create_index("name", unique=True)
+    except Exception as e:
+        logger.warning(f"Index already exists or error creating index on note_patterns: {e}")
+
+    try:
+        target_db.rhythm_patterns.create_index("name", unique=True)
+    except Exception as e:
+        logger.warning(f"Index already exists or error creating index on rhythm_patterns: {e}")
 
 def serialize_rhythm_pattern(pattern: RhythmPatternData) -> Dict[str, Any]:
     return {
@@ -44,38 +65,62 @@ def clear_existing_data() -> None:
     db.rhythm_patterns.delete_many({})
 
 # Function to import chord progressions
-def import_chord_progressions() -> None:
+def import_chord_progressions(database=None) -> None:
+    target_db = database if database is not None else db
     for i, (name, progression) in enumerate(COMMON_PROGRESSIONS.items(), start=1):
-        db.chord_progressions.insert_one({
+        target_db.chord_progressions.insert_one({
             'id': i,
             'name': name,
             'progression': progression
         })
 
 # Function to import note patterns
-def import_note_patterns() -> None:
+def import_note_patterns(database=None) -> None:
+    target_db = database if database is not None else db
     for i, (name, pattern) in enumerate(NOTE_PATTERNS.items(), start=1):
-        db.note_patterns.insert_one({
+        target_db.note_patterns.insert_one({
             'id': i,
             'name': name,
             'pattern': pattern
         })
 
 # Function to import rhythm patterns
-def import_rhythm_patterns() -> None:
+def import_rhythm_patterns(database=None) -> None:
+    target_db = database if database is not None else db
     for i, (name, pattern) in enumerate(RHYTHM_PATTERNS.items(), start=1):
         serialized_pattern = serialize_rhythm_pattern(pattern)
-        db.rhythm_patterns.insert_one({
+        target_db.rhythm_patterns.insert_one({
             'id': i,
             'name': name,
             'pattern': serialized_pattern
         })
+
+async def import_presets_if_empty(database=None):
+    """Import presets if collections are empty."""
+    target_db = database if database is not None else db
+    try:
+        if target_db.chord_progressions.count_documents({}) == 0:
+            import_chord_progressions(target_db)
+            logger.info("Imported chord progressions")
+            
+        if target_db.note_patterns.count_documents({}) == 0:
+            import_note_patterns(target_db)
+            logger.info("Imported note patterns")
+            
+        if target_db.rhythm_patterns.count_documents({}) == 0:
+            import_rhythm_patterns(target_db)
+            logger.info("Imported rhythm patterns")
+    except Exception as e:
+        logger.error(f"Error checking/importing presets: {e}")
 
 # Main function to run the import
 if __name__ == '__main__':
     try:
         print("Clearing existing data...")
         clear_existing_data()
+        
+        print("Creating indexes...")
+        ensure_indexes()
         
         print("Importing chord progressions...")
         import_chord_progressions()

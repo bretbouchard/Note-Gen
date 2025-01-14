@@ -94,14 +94,32 @@ class NoteSequence(BaseModel):
 
     def transpose(self, semitones: int) -> None:
         """Transpose the note sequence by the given number of semitones."""
-        print(f"Transposing NoteSequence with events: {[event.note for event in self.events]}")
         for event in self.events:
-            if isinstance(event.note, Note):
-                print(f"Before transposition: {event.note}")
-                event.note.transpose(semitones)
-                print(f"After transposition: {event.note}")
-            elif isinstance(event.note, int):
-                # Handle int case appropriately, if needed
-                pass
-            else:
-                raise TypeError("Invalid note type in NoteSequence.")
+            try:
+                event.transpose(semitones)
+            except ValueError as e:
+                raise ValueError(f"Error transposing event: {e}")
+            except TypeError as e:
+                raise TypeError(f"Error transposing event: {e}")
+
+
+class SimpleNoteSequence(BaseModel):
+    """Model for a sequence of notes."""
+    
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+    
+    notes: List[Note] = Field(default_factory=list, description="List of notes in the sequence")
+    
+    def add_note(self, note: Note) -> None:
+        """Add a note to the sequence."""
+        self.notes.append(note)
+    
+    def get_note_at(self, index: int) -> Note:
+        """Get note at specified index."""
+        return self.notes[index]
+    
+    def __len__(self) -> int:
+        return len(self.notes)
+    
+    def __str__(self) -> str:
+        return f"NoteSequence(notes={[str(note) for note in self.notes]})"

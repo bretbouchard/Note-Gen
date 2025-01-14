@@ -47,6 +47,24 @@ class ChordQualityType(str, Enum):
             ChordQualityType.MINOR: [0, 3, 7],
             ChordQualityType.DIMINISHED: [0, 3, 6],
             ChordQualityType.AUGMENTED: [0, 4, 8],
+            ChordQualityType.DOMINANT: [0, 4, 7, 10],
+            ChordQualityType.DOMINANT_7: [0, 4, 7, 10],
+            ChordQualityType.MAJOR_7: [0, 4, 7, 11],
+            ChordQualityType.MINOR_7: [0, 3, 7, 10],
+            ChordQualityType.DIMINISHED_7: [0, 3, 6, 9],
+            ChordQualityType.HALF_DIMINISHED_7: [0, 3, 6, 10],
+            ChordQualityType.AUGMENTED_7: [0, 4, 8, 10],
+            ChordQualityType.MAJOR_9: [0, 4, 7, 11, 14],
+            ChordQualityType.MINOR_9: [0, 3, 7, 10, 14],
+            ChordQualityType.DOMINANT_9: [0, 4, 7, 10, 14],
+            ChordQualityType.MAJOR_11: [0, 4, 7, 11, 14, 17],
+            ChordQualityType.MINOR_11: [0, 3, 7, 10, 14, 17],
+            ChordQualityType.SUS2: [0, 2, 7],
+            ChordQualityType.SUS4: [0, 5, 7],
+            ChordQualityType.HALF_DIMINISHED: [0, 3, 6, 10],
+            ChordQualityType.SEVEN_SUS4: [0, 5, 7, 10],
+            ChordQualityType.AUGMENTED_DIMINISHED: [0, 3, 6, 8],
+            ChordQualityType.AUGMENTED_DIMINISHED_7: [0, 3, 6, 8, 10]
         }[self]
 
 

@@ -21,8 +21,8 @@ DEFAULT_KEY = "C"
 DEFAULT_SCALE_TYPE = "major"
 DEFAULT_CHORD_PROGRESSION = "I-IV-V-I"
 DEFAULT_NOTE_PATTERN = "Simple Triad"
-DEFAULT_RHYTHM_PATTERN = "quarter_notes"
-DEFAULT_RHYTHM_PATTERN_NAME = "Quarter Notes"
+DEFAULT_RHYTHM_PATTERN = "basic"
+DEFAULT_RHYTHM_PATTERN_NAME = "Basic"
 
 
 # Common chord progressions in Roman numeral notation
@@ -94,38 +94,100 @@ NOTE_PATTERNS: Dict[str, List[int]] = {
 
 # Rhythm patterns
 RHYTHM_PATTERNS: Dict[str, RhythmPatternData] = {
-    "quarter_notes": RhythmPatternData(
-        notes=[
-            RhythmNote(position=float(0.0), duration=float(1.0)),
-            RhythmNote(position=float(1.0), duration=float(1.0)),
-            RhythmNote(position=float(2.0), duration=float(1.0)),
-            RhythmNote(position=float(3.0), duration=float(1.0)),
-        ]
+    "basic": RhythmPatternData(
+        notes=[RhythmNote(position=0.0, duration=1.0, velocity=100, is_rest=False)],
+        time_signature="4/4",
+        swing_enabled=False,
+        humanize_amount=0.0,
+        swing_ratio=0.67,
+        default_duration=1.0,
+        total_duration=4.0,
+        accent_pattern=[],
+        groove_type="straight",
+        variation_probability=0.0,
+        duration=1.0,
+        style="basic"
     ),
-    "eighth_notes": RhythmPatternData(
+    "jazz": RhythmPatternData(
         notes=[
-            RhythmNote(position=float(0.0), duration=float(0.5)),
-            RhythmNote(position=float(0.5), duration=float(0.5)),
-            RhythmNote(position=float(1.0), duration=float(0.5)),
-            RhythmNote(position=float(1.5), duration=float(0.5)),
-            RhythmNote(position=float(2.0), duration=float(0.5)),
-            RhythmNote(position=float(2.5), duration=float(0.5)),
-        ]
+            RhythmNote(position=0.0, duration=0.5, velocity=100, is_rest=False),
+            RhythmNote(position=0.5, duration=0.5, velocity=80, is_rest=False),
+            RhythmNote(position=1.0, duration=0.5, velocity=90, is_rest=False),
+            RhythmNote(position=1.5, duration=0.5, velocity=70, is_rest=False)
+        ],
+        time_signature="4/4",
+        swing_enabled=True,
+        humanize_amount=0.1,
+        swing_ratio=0.67,
+        default_duration=0.5,
+        total_duration=4.0,
+        accent_pattern=[1.0, 0.8, 0.9, 0.7],
+        groove_type="swing",
+        variation_probability=0.2,
+        duration=2.0,
+        style="jazz"
     ),
-    "syncopated": RhythmPatternData(
+    "latin": RhythmPatternData(
         notes=[
-            RhythmNote(position=float(0.0), duration=float(1.5)),
-            RhythmNote(position=float(1.5), duration=float(1.0)),
-            RhythmNote(position=float(2.0), duration=float(0.5)),
-        ]
+            RhythmNote(position=0.0, duration=0.25, velocity=100, is_rest=False),
+            RhythmNote(position=0.25, duration=0.25, velocity=80, is_rest=False),
+            RhythmNote(position=0.5, duration=0.25, velocity=90, is_rest=False),
+            RhythmNote(position=0.75, duration=0.25, velocity=70, is_rest=False)
+        ],
+        time_signature="4/4",
+        swing_enabled=False,
+        humanize_amount=0.05,
+        swing_ratio=0.67,
+        default_duration=0.25,
+        total_duration=4.0,
+        accent_pattern=[1.0, 0.8, 0.9, 0.7],
+        groove_type="straight",
+        variation_probability=0.1,
+        duration=1.0,
+        style="latin"
     ),
-    "dotted_quarter": RhythmPatternData(
+    "rock": RhythmPatternData(
         notes=[
-            RhythmNote(position=float(0.0), duration=float(1.5)),
-            RhythmNote(position=float(1.5), duration=float(1.5)),
-            RhythmNote(position=float(3.0), duration=float(1.0)),
-        ]
+            RhythmNote(position=0.0, duration=0.5, velocity=100, is_rest=False),
+            RhythmNote(position=0.5, duration=0.5, velocity=80, is_rest=False),
+            RhythmNote(position=1.0, duration=0.5, velocity=90, is_rest=False),
+            RhythmNote(position=1.5, duration=0.5, velocity=70, is_rest=False)
+        ],
+        time_signature="4/4",
+        swing_enabled=False,
+        humanize_amount=0.02,
+        swing_ratio=0.67,
+        default_duration=0.5,
+        total_duration=4.0,
+        accent_pattern=[1.0, 0.8, 0.9, 0.7],
+        groove_type="straight",
+        variation_probability=0.05,
+        duration=2.0,
+        style="rock"
     ),
+    "funk": RhythmPatternData(
+        notes=[
+            RhythmNote(position=0.0, duration=0.25, velocity=100, is_rest=False),
+            RhythmNote(position=0.25, duration=0.25, velocity=80, is_rest=False),
+            RhythmNote(position=0.5, duration=0.25, velocity=90, is_rest=False),
+            RhythmNote(position=0.75, duration=0.25, velocity=70, is_rest=False),
+            RhythmNote(position=1.0, duration=0.25, velocity=85, is_rest=False),
+            RhythmNote(position=1.25, duration=0.25, velocity=75, is_rest=False),
+            RhythmNote(position=1.5, duration=0.25, velocity=95, is_rest=False),
+            RhythmNote(position=1.75, duration=0.25, velocity=65, is_rest=False)
+        ],
+        time_signature="4/4",
+        swing_enabled=False,
+        humanize_amount=0.1,
+        swing_ratio=0.67,
+        default_duration=0.25,
+        total_duration=4.0,
+        accent_pattern=[1.0, 0.8, 0.9, 0.7, 0.85, 0.75, 0.95, 0.65],
+        groove_type="straight",
+        variation_probability=0.15,
+        duration=2.0,
+        style="funk"
+    )
 }
 
 def get_default_chord_progression(root_note: Note, scale: Scale) -> ChordProgression:
@@ -152,7 +214,7 @@ def get_default_note_pattern() -> NotePattern:
 def get_default_rhythm_pattern() -> RhythmPattern:
     return RhythmPattern(
         name=DEFAULT_RHYTHM_PATTERN_NAME,
-        data=RHYTHM_PATTERNS["quarter_notes"]
+        data=RHYTHM_PATTERNS[DEFAULT_RHYTHM_PATTERN]
     )
 
 def get_available_chord_progressions() -> List[str]:

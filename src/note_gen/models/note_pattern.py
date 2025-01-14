@@ -22,8 +22,16 @@ class NotePattern(BaseModel):
     notes: List[Note] = Field(default_factory=list)
     description: str = ""
     tags: List[str] = Field(default_factory=list)
+    is_test: bool = Field(default=False)
 
-    model_config = ConfigDict(arbitrary_types_allowed=True)
+    class Config:
+        schema_extra = {
+            'example': {
+                'name': 'Simple Triad',
+                'data': [0, 2, 4]
+            }
+        }
+        arbitrary_types_allowed = True
 
     @field_validator("notes")
     @classmethod

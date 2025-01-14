@@ -18,44 +18,47 @@ db = client["note_gen"]  # Use your database name
 
 def fetch_chord_progressions() -> List[ChordProgression]:
     try:
-        documents = [ChordProgression(**doc) for doc in db.chord_progressions.find()]
-        logger.debug(f'Retrieved {len(documents)} chord progressions.')
-        return documents
+        documents = db.chord_progressions.find()
+        logger.debug(f"Fetched chord progressions: {list(documents)}")
+        return [ChordProgression(scale_info=doc['scale_info'], chords=doc['chords']) for doc in documents if 'scale_info' in doc and 'chords' in doc]
     except Exception as e:
-        logger.error(f'Error fetching chord progressions: {e}')
+        logger.error(f"Error fetching chord progressions: {e}")
         return []
 
 # Function to fetch note patterns
 
 def fetch_note_patterns() -> List[NotePattern]:
     try:
-        documents = [NotePattern(**doc) for doc in db.note_patterns.find()]
-        logger.debug(f'Retrieved {len(documents)} note patterns from the database.')
-        logger.info(f'Number of note patterns retrieved: {len(documents)}')
-        return documents
+        documents = db.note_patterns.find()
+        logger.debug(f"Fetched note patterns: {list(documents)}")
+        return [NotePattern(name=doc['name'], data=doc['data']) for doc in documents if 'name' in doc and 'data' in doc]
     except Exception as e:
-        logger.error(f'Error fetching note patterns: {e}')
+        logger.error(f"Error fetching note patterns: {e}")
         return []
 
 # Function to fetch rhythm patterns
 
 def fetch_rhythm_patterns() -> List[RhythmPattern]:
     try:
-        documents = [RhythmPattern(**doc) for doc in db.rhythm_patterns.find()]
-        logger.debug(f'Retrieved {len(documents)} rhythm patterns.')
-        return documents
+        documents = db.rhythm_patterns.find()
+        logger.debug(f"Fetched rhythm patterns: {list(documents)}")
+        return [RhythmPattern(id=str(doc['_id']), name=doc['name'], data=RhythmPatternData(**doc['data'])) for doc in documents if 'name' in doc and 'data' in doc]
     except Exception as e:
-        logger.error(f'Error fetching rhythm patterns: {e}')
+        logger.error(f"Error fetching rhythm patterns: {e}")
         return []
 
 # Function to fetch chord progression by ID
 
 def fetch_chord_progression_by_id(id: int) -> Optional[ChordProgression]:
     try:
-        document = db.chord_progressions.find_one({"id": str(id)})  # Adjusting query to match string ID
+        document = db.chord_progressions.find_one({"id": id})
         if document:
             logger.debug(f'Fetched chord progression with ID {id}.')
-            return ChordProgression(**document)
+            return ChordProgression(
+                scale_info=document['scale_info'],
+                chords=document['progression'],
+                root=document.get('root')
+            )
         else:
             logger.warning(f'No chord progression found with ID {id}.')
             return None
@@ -67,10 +70,15 @@ def fetch_chord_progression_by_id(id: int) -> Optional[ChordProgression]:
 
 def fetch_note_pattern_by_id(id: int) -> Optional[NotePattern]:
     try:
-        document = db.note_patterns.find_one({"id": id})  # Adjust the query as necessary
+        document = db.note_patterns.find_one({"id": id})
         if document:
             logger.debug(f'Fetched note pattern with ID {id}.')
-            return NotePattern(**document)
+            return NotePattern(
+                name=document['name'],
+                data=document['pattern'],
+                description=document.get('description', ''),
+                tags=document.get('tags', [])
+            )
         else:
             logger.warning(f'No note pattern found with ID {id}.')
             return None
@@ -82,11 +90,33 @@ def fetch_note_pattern_by_id(id: int) -> Optional[NotePattern]:
 
 def fetch_rhythm_pattern_by_id(id: int) -> Optional[RhythmPattern]:
     try:
-        document = db.rhythm_patterns.find_one({"id": str(id)})  # Adjusting query to match string ID
+        document = db.rhythm_patterns.find_one({"id": id})
         if document:
             logger.debug(f'Fetched rhythm pattern with ID {id}.')
-            rhythm_data = RhythmPatternData(**document['data'])
-            return RhythmPattern(name=document['name'], data=rhythm_data, description=document.get('description', ''), tags=document.get('tags', []))
+            rhythm_data = RhythmPatternData(
+                notes=document['pattern'].get('notes', []),
+                time_signature=document['pattern'].get('time_signature', '4/4'),
+                swing_enabled=document['pattern'].get('swing_enabled', False),
+                humanize_amount=document['pattern'].get('humanize_amount', 0.0),
+                swing_ratio=document['pattern'].get('swing_ratio', 0.67),
+                style=document['pattern'].get('style'),
+                default_duration=document['pattern'].get('default_duration', 1.0),
+                total_duration=document['pattern'].get('total_duration', 0.0),
+                accent_pattern=document['pattern'].get('accent_pattern'),
+                groove_type=document['pattern'].get('groove_type'),
+                variation_probability=document['pattern'].get('variation_probability', 0.0),
+                duration=document['pattern'].get('duration', 1.0)
+            )
+            return RhythmPattern(
+                id=str(document['id']),
+                name=document['name'],
+                data=rhythm_data,
+                description=document.get('description', ''),
+                tags=document.get('tags', []),
+                complexity=document.get('complexity', 1.0),
+                style=document.get('style'),
+                pattern=document.get('pattern', '')
+            )
         else:
             logger.warning(f'No rhythm pattern found with ID {id}.')
             return None

@@ -10,12 +10,14 @@ import threading
 import logging
 from typing import Any, Generator
 from fastapi.testclient import TestClient
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 # Add the project root directory to Python path
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, project_root)
 
-from src.note_gen.routers.user_routes import app, get_db
+from src.note_gen.routers.user_routes import router, get_db
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -28,13 +30,30 @@ def get_test_db() -> Generator[Database[Any], None, None]:
     yield db
     client.close()
 
-@pytest.fixture(scope="session")
-def test_client() -> TestClient:
-    """Provides a FastAPI test client for testing."""
+def create_test_app() -> FastAPI:
+    """Create a FastAPI app for testing."""
+    app = FastAPI()
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+    app.include_router(router)
     app.dependency_overrides[get_db] = get_test_db
-    client = TestClient(app)
-    yield client
-    app.dependency_overrides = {}
+    return app
+
+@pytest.fixture(scope="session")
+def test_app() -> FastAPI:
+    """Provides a FastAPI app for testing."""
+    return create_test_app()
+
+@pytest.fixture(scope="session")
+def test_client(test_app: FastAPI) -> TestClient:
+    """Provides a FastAPI test client for testing."""
+    with TestClient(test_app) as client:
+        yield client
 
 @pytest.fixture(scope="session")
 def mock_db() -> Database[Any]:
@@ -55,16 +74,3 @@ def setup_test_db(mock_db: Database[Any]) -> Generator[None, None, None]:
     
     pymongo.MongoClient = original_client  # Restore the original client
     logger.debug("Mock MongoDB client restored.")
-
-@pytest.fixture(scope="session", autouse=True)
-def start_server() -> Generator[None, None, None]:
-    """Starts the FastAPI server in a separate thread."""
-    server = threading.Thread(target=uvicorn.run, args=(app,), kwargs={'host': 'localhost', 'port': 8000})
-    server.start()
-    logger.debug("FastAPI server started.")
-    
-    yield
-    
-    app.dependency_overrides = {}  # Clear dependency overrides
-    server.join()
-    logger.debug("FastAPI server stopped.")

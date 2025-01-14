@@ -1,32 +1,67 @@
-from pydantic import BaseModel
-from typing import List
-from src.note_gen.models.musical_elements import Note
-from src.note_gen.models.scale import ScaleType
+from typing import List, Optional, Dict, ClassVar
+from pydantic import BaseModel, Field
+
+from src.note_gen.models.note import Note
+from src.note_gen.models.scale import Scale, ScaleType
+from src.note_gen.models.chord_quality import ChordQualityType
 
 class ScaleInfo(BaseModel):
-    """Class for handling scale information."""
+    """Information about a musical scale."""
     root: Note
-    scale_type: ScaleType
+    scale_type: Optional[str] = "major"
 
-    def compute_scale_degrees(self) -> List[Note]:
-        """Compute and return the scale degrees based on the scale type."""
-        # Placeholder for scale degree computation logic
-        return []
+    # Define chord qualities for major and minor scales
+    MAJOR_SCALE_QUALITIES: ClassVar[Dict[int, ChordQualityType]] = {
+        1: ChordQualityType.MAJOR,      # I
+        2: ChordQualityType.MINOR,      # ii
+        3: ChordQualityType.MINOR,      # iii
+        4: ChordQualityType.MAJOR,      # IV
+        5: ChordQualityType.MAJOR,      # V
+        6: ChordQualityType.MINOR,      # vi
+        7: ChordQualityType.DIMINISHED  # vii°
+    }
 
-    def get_scale_degree_note(self, degree: int) -> Note:
-        """Get the note corresponding to the given scale degree."""
-        # Placeholder for logic to return the note for the given degree
-        return self.root  # This is a placeholder, should return the actual note based on the degree
+    MINOR_SCALE_QUALITIES: ClassVar[Dict[int, ChordQualityType]] = {
+        1: ChordQualityType.MINOR,      # i
+        2: ChordQualityType.DIMINISHED, # ii°
+        3: ChordQualityType.MAJOR,      # III
+        4: ChordQualityType.MINOR,      # iv
+        5: ChordQualityType.MINOR,      # v
+        6: ChordQualityType.MAJOR,      # VI
+        7: ChordQualityType.MAJOR       # VII
+    }
 
-    def get_chord_quality_for_degree(self, degree: int) -> str:
+    def get_note_for_degree(self, degree: int) -> Optional[Note]:
+        """Get the note for a given scale degree."""
+        if degree < 1 or degree > 7:
+            return None
+            
+        if not self.scale_type:
+            return None
+
+        scale = Scale(root=self.root, scale_type=ScaleType(self.scale_type))
+        notes = scale.get_notes()
+        return notes[degree - 1] if notes else None
+
+    def get_scale_note_at_degree(self, degree: int) -> Note:
+        """Get the note at a given scale degree."""
+        scale = Scale(root=self.root, scale_type=ScaleType(self.scale_type))
+        return scale.get_note_at_degree(degree)
+
+    def get_chord_quality_for_degree(self, degree: int) -> ChordQualityType:
         """Get the chord quality for a given scale degree."""
-        # Placeholder logic for determining chord quality based on degree
-        return "major" if degree % 2 == 0 else "minor"
+        if not isinstance(degree, int):
+            raise ValueError(f"Degree must be an integer, got {type(degree)}")
+            
+        if degree < 1 or degree > 7:
+            raise ValueError(f"Invalid scale degree: {degree}")
+            
+        if not self.scale_type:
+            raise ValueError("scale_type cannot be None")
 
-    def get_scale_notes(self) -> List[Note]:
-        """Get the notes of the scale based on the root and scale type."""
-        # Placeholder logic for returning scale notes
-        return [self.root]  # This should return actual scale notes based on the scale type
-
-    def __repr__(self) -> str:
-        return f"ScaleInfo(root={self.root}, scale_type={self.scale_type})"
+        qualities = (
+            self.MAJOR_SCALE_QUALITIES if self.scale_type == "major"
+            else self.MINOR_SCALE_QUALITIES
+        )
+        
+        return qualities[degree]
