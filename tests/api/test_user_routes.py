@@ -1,11 +1,11 @@
 import pytest
 from fastapi.testclient import TestClient
-from src.note_gen.routers.user_routes import app, get_db
-from src.note_gen.models.rhythm_pattern import RhythmPattern, RhythmPatternData, RhythmNote
-from src.note_gen.models.note import Note
-from src.note_gen.models.chord_progression import ChordProgression
-from src.note_gen.models.scale_info import ScaleInfo
-from src.note_gen.models.note_pattern import NotePattern
+from note_gen.routers.user_routes import app, get_db
+from note_gen.models.rhythm_pattern import RhythmPattern, RhythmPatternData, RhythmNote
+from note_gen.models.note import Note
+from note_gen.models.chord_progression import ChordProgression
+from note_gen.models.scale_info import ScaleInfo
+from note_gen.models.note_pattern import NotePattern
 import logging
 from typing import Generator, Any, Dict, List, cast
 from mongomock import MongoClient
@@ -195,15 +195,42 @@ def test_get_rhythm_pattern_by_id(test_client: TestClient, setup_test_data: Dict
     assert data['name'] == 'Quarter Notes'
     assert len(data['data']['notes']) == 1
 
-def test_get_chord_progressions(test_client: TestClient, setup_test_data: Dict[str, str]) -> None:
-    """Test GET /chord-progressions endpoint."""
-    response = test_client.get('/chord-progressions')
+async def test_get_chord_progressions() -> None:
+    from fastapi.testclient import TestClient
+    from main import app
+    
+    client = TestClient(app)
+    
+    # Create some chord progressions first
+    progressions = [
+        {
+            "id": "test_id_1",
+            "name": "Test Progression 1",
+            "chords": ["C", "F", "G"],
+            "key": "C",
+            "scale_type": "major",
+            "complexity": 0.5
+        },
+        {
+            "id": "test_id_2",
+            "name": "Test Progression 2",
+            "chords": ["Am", "Dm", "E"],
+            "key": "A",
+            "scale_type": "minor",
+            "complexity": 0.7
+        }
+    ]
+    
+    for progression in progressions:
+        response = client.post("/chord-progressions", json=progression)
+        assert response.status_code == 200
+    
+    # Get all progressions
+    response = client.get("/chord-progressions")
     assert response.status_code == 200
     data = response.json()
-    assert isinstance(data, list)
-    assert len(data) == 2
-    assert data[0]['name'] == 'I-IV-V'
-    assert data[1]['name'] == 'ii-V-I'
+    assert len(data) == len(progressions)
+    assert all(prog in data for prog in progressions)
 
 def test_get_chord_progression_by_id(test_client: TestClient, setup_test_data: Dict[str, str]) -> None:
     """Test GET /chord-progressions/{id} endpoint."""

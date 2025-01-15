@@ -1,8 +1,8 @@
 from fastapi import FastAPI, HTTPException      
 from pydantic import BaseModel  
 from typing import List, Optional
-from src.note_gen.routers.user_routes import router as user_router
-from src.note_gen.import_presets import ensure_indexes, import_presets_if_empty
+from note_gen.routers.user_routes import router as user_router
+from note_gen.import_presets import ensure_indexes, import_presets_if_empty
 from pymongo import MongoClient
 
 import logging
@@ -57,12 +57,13 @@ scale = 'major'  # Example scale type
 scale_info = ScaleInfo(root=root_note, scale=scale)
 chord_generator = ChordProgressionGenerator(scale_info=scale_info)
 
-# Initialize database with presets if empty
 @app.on_event("startup")
-async def startup_event():
+async def startup_event() -> None:
     """Initialize database with presets on startup."""
-    ensure_indexes()
-    await import_presets_if_empty()
+    client = MongoClient('mongodb://localhost:27017/')  # Adjust connection string as needed
+    db = client['note_gen']  # Replace with your database name
+    ensure_indexes(db)
+    import_presets_if_empty(db)
 
 @app.post("/generate_progression/")
 async def generate_progression(request: ChordProgressionRequest) -> List[ScaleDegree]:

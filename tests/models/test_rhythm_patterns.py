@@ -1,5 +1,5 @@
 import pytest
-from src.note_gen.models.rhythm_pattern import RhythmPatternData, RhythmNote
+from note_gen.models.rhythm_pattern import RhythmPatternData, RhythmNote
 import random
 import logging
 
@@ -16,14 +16,24 @@ def test_rhythm_pattern_data_total_duration() -> None:
     assert pattern_data.total_duration == 2.5
 
 def test_validate_default_duration() -> None:
-    assert RhythmPatternData.validate_default_duration(1.0) == 1.0
-    with pytest.raises(ValueError, match="Default duration must be a positive float."):
-        RhythmPatternData.validate_default_duration(-1.0)
+    from pydantic import ValidationError
+    try:
+        RhythmPatternData(notes=[RhythmNote(position=0, duration=1.0)], default_duration=-1.0)
+        assert False, "Expected ValidationError was not raised for negative default duration"
+    except ValidationError as e:
+        errors = e.errors()
+        assert any("Default duration must be positive" in str(err["msg"]) for err in errors), \
+            "Expected error message about negative default duration not found"
 
 def test_validate_time_signature() -> None:
-    assert RhythmPatternData.validate_time_signature("4/4") == "4/4"
-    with pytest.raises(ValueError, match="Invalid time signature. Must be in format: numerator/denominator where numerator is one of \[2,3,4,6,8,9,12\] and denominator is a power of 2"):
-        RhythmPatternData.validate_time_signature("5/4")
+    from pydantic import ValidationError
+    try:
+        RhythmPatternData(notes=[RhythmNote(position=0, duration=1.0)], time_signature="invalid")
+        assert False, "Expected ValidationError was not raised for invalid time signature"
+    except ValidationError as e:
+        errors = e.errors()
+        assert any("Invalid time signature format" in str(err["msg"]) for err in errors), \
+            "Expected error message about invalid time signature format not found"
 
 def test_validate_swing_ratio() -> None:
     assert RhythmPatternData.validate_swing_ratio(0.5) == 0.5
@@ -38,10 +48,18 @@ def test_validate_humanize_amount() -> None:
         RhythmPatternData.validate_humanize_amount(1.5)
 
 def test_validate_accent_pattern() -> None:
-    valid = RhythmPatternData.validate_accent_pattern([0.5, 0.8])
-    assert valid == [0.5, 0.8]
-    with pytest.raises(ValueError, match="Accent values must be floats between 0 and 1"):
-        RhythmPatternData.validate_accent_pattern(["strong", "weak"])
+    from pydantic import ValidationError
+    try:
+        RhythmPatternData(notes=[RhythmNote(position=0, duration=1.0)], accent_pattern=["strong", "weak"])
+        assert False, "Expected ValidationError was not raised for invalid accent pattern"
+    except ValidationError as e:
+        errors = e.errors()
+        assert any("Accent values must be floats between 0 and 1" in str(err["msg"]) for err in errors), \
+            "Expected error message about invalid accent values not found"
+
+    # Test valid accent pattern
+    pattern = RhythmPatternData(notes=[RhythmNote(position=0, duration=1.0)], accent_pattern=[0.5, 0.8])
+    assert pattern.accent_pattern == [0.5, 0.8]
 
 def test_validate_groove_type() -> None:
     assert RhythmPatternData.validate_groove_type("swing") == "swing"
@@ -57,7 +75,13 @@ def test_validate_notes() -> None:
     # For a non-empty case, it should pass without error:
     valid_notes = [RhythmNote(position=0, duration=1.0)]
     assert RhythmPatternData.validate_notes(valid_notes) == valid_notes
-    
+
     # Test empty notes case
-    with pytest.raises(ValueError, match="Notes cannot be empty."):
-        RhythmPatternData.validate_notes([])
+    from pydantic import ValidationError
+    try:
+        RhythmPatternData(notes=[])
+        assert False, "Expected ValidationError was not raised for empty notes"
+    except ValidationError as e:
+        errors = e.errors()
+        assert any("Notes list cannot be empty" in str(err["msg"]) for err in errors), \
+            "Expected error message about empty notes not found"

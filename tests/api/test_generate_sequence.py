@@ -3,7 +3,7 @@ from fastapi.testclient import TestClient
 from pymongo import MongoClient
 from pymongo.database import Database
 
-from src.note_gen.routers.user_routes import router
+from note_gen.routers.user_routes import router
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware

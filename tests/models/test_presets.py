@@ -1,5 +1,5 @@
 import pytest
-from src.note_gen.models.presets import Presets
+from note_gen.models.presets import Presets
 
 def test_preset_initialization() -> None:
     preset = Presets()  # Instantiate the Presets model

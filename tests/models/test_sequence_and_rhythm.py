@@ -2,16 +2,16 @@ import unittest
 from typing import List
 from pydantic import ValidationError
 
-from src.note_gen.models.note import Note
-from src.note_gen.models.note_sequence import NoteSequence
-from src.note_gen.models.pattern_interpreter import PatternInterpreter, ScalePatternInterpreter
-from src.note_gen.models.rhythm_pattern import RhythmNote, RhythmPatternData, RhythmPattern
-from src.note_gen.models.musical_elements import Chord 
-from src.note_gen.models.note_event import NoteEvent
-from src.note_gen.models.scale import Scale, ScaleType
-from src.note_gen.models.scale_info import ScaleInfo
-from src.note_gen.models.scale_degree import ScaleDegree
-from src.note_gen.models.note_pattern import NotePattern  # Import NotePattern
+from note_gen.models.note import Note
+from note_gen.models.note_sequence import NoteSequence
+from note_gen.models.pattern_interpreter import PatternInterpreter, ScalePatternInterpreter
+from note_gen.models.rhythm_pattern import RhythmNote, RhythmPatternData, RhythmPattern
+from note_gen.models.musical_elements import Chord 
+from note_gen.models.note_event import NoteEvent
+from note_gen.models.scale import Scale, ScaleType
+from note_gen.models.scale_info import ScaleInfo
+from note_gen.models.scale_degree import ScaleDegree
+from note_gen.models.note_pattern import NotePattern  # Import NotePattern
 
 
 class FakeScale(Scale):
@@ -218,12 +218,14 @@ class TestRhythmPattern(unittest.TestCase):
         )
 
     def test_validate_name_empty(self) -> None:
-        with self.assertRaises(ValueError):
-            RhythmPattern(
-                id="test_pattern",  # Add id field
-                name="  ", 
-                data=self.pattern.data
-            )
+        from pydantic import ValidationError
+        try:
+            RhythmPattern(id="1", name="", data=RhythmPatternData(notes=[RhythmNote(position=0, duration=1.0)]), pattern="4 4 4")
+            assert False, "Expected ValidationError was not raised for empty name"
+        except ValidationError as e:
+            errors = e.errors()
+            assert any("name cannot be empty" in str(err["msg"]).lower() for err in errors), \
+                "Expected error message about empty name not found"
 
     def test_validate_data_wrong_type(self) -> None:
         # This test should check for a valid RhythmPatternData instance

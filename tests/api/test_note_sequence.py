@@ -1,7 +1,7 @@
 import pytest
 from fastapi.testclient import TestClient
 from main import app  # Adjust the import based on your app structure
-from src.note_gen.routers.user_routes import get_note_name, get_octave
+from note_gen.routers.user_routes import get_note_name, get_octave
 
 client = TestClient(app)
 

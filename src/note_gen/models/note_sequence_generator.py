@@ -30,8 +30,9 @@ class NoteSequenceGenerator(BaseModel):
         """Generate a basic sequence without rhythm pattern."""
         sequence = []
         for chord in self.chord_progression.chords:
-            # Only use the root note
-            sequence.append(chord.root)
+            # Generate all notes in the chord (not just the root)
+            chord_notes = chord.generate_chord_notes()
+            sequence.extend(chord_notes)  # Add all notes of the chord to the sequence
         return sequence
     
     def _generate_rhythmic_sequence(self) -> List[Note]:

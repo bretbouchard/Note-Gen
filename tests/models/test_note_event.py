@@ -1,6 +1,6 @@
 import pytest
-from src.note_gen.models.note import Note
-from src.note_gen.models.note_event import NoteEvent
+from note_gen.models.note import Note
+from note_gen.models.note_event import NoteEvent
 from pydantic import ValidationError
 
 def test_create_note_event() -> None:

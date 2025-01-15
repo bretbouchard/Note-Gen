@@ -5,25 +5,37 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def validate_note(note: Dict[str, Any]) -> bool:
+class Note:
+    def __init__(self, octave: int, note_name: str, duration: float):
+        self.octave = octave
+        self.note_name = note_name
+        self.duration = duration
+
+class RhythmNote:
+    def __init__(self, position: float, duration: float, velocity: int):
+        self.position = position
+        self.duration = duration
+        self.velocity = velocity
+
+def validate_note(note: Note) -> bool:
     """Validate a note object."""
     valid_note_names = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
     
-    if not isinstance(note.get('octave'), int) or not (0 <= note['octave'] <= 8):
+    if not isinstance(note.octave, int) or not (0 <= note.octave <= 8):
         return False
-    if note.get('note_name') not in valid_note_names:
+    if note.note_name not in valid_note_names:
         return False
-    if not isinstance(note.get('duration'), (int, float)) or note['duration'] <= 0:
+    if not isinstance(note.duration, (int, float)) or note.duration <= 0:
         return False
     return True
 
-def validate_rhythm_note(note: Dict[str, Any]) -> bool:
+def validate_rhythm_note(note: Note) -> bool:
     """Validate a rhythm note object."""
-    if not isinstance(note.get('position'), (int, float)) or note['position'] < 0:
+    if not isinstance(note.position, (int, float)) or note.position < 0:
         return False
-    if not isinstance(note.get('duration'), (int, float)) or note['duration'] <= 0:
+    if not isinstance(note.duration, (int, float)) or note.duration <= 0:
         return False
-    if not isinstance(note.get('velocity'), int) or not (0 <= note['velocity'] <= 127):
+    if not isinstance(note.velocity, int) or not (0 <= note.velocity <= 127):
         return False
     return True
 
@@ -35,7 +47,7 @@ def validate_note_pattern(pattern: Dict[str, Any]) -> bool:
         
     if not pattern.get('notes') or not isinstance(pattern['notes'], list):
         return False
-    if not all(validate_note(note) for note in pattern['notes']):
+    if not all(validate_note(Note(**note)) for note in pattern['notes']):
         return False
     if pattern.get('pattern_type') not in ['melodic', 'harmonic', 'rhythmic']:
         return False
@@ -52,7 +64,7 @@ def validate_rhythm_pattern(pattern: Dict[str, Any]) -> bool:
     data = pattern.get('data', {})
     if not data.get('notes') or not isinstance(data['notes'], list):
         return False
-    if not all(validate_rhythm_note(note) for note in data['notes']):
+    if not all(validate_rhythm_note(RhythmNote(**note)) for note in data['notes']):
         return False
     if not isinstance(data.get('humanize_amount'), (int, float)) or not (0 <= data['humanize_amount'] <= 1):
         return False

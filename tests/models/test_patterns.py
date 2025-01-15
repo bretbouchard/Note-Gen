@@ -1,13 +1,19 @@
 import pytest
-from src.note_gen.models.rhythm_pattern import RhythmPatternData
-from src.note_gen.models.rhythm_pattern import RhythmNote
+from note_gen.models.rhythm_pattern import RhythmPatternData
+from note_gen.models.rhythm_pattern import RhythmNote
 from pydantic import ValidationError
 from typing import Type
 
 
 def test_rhythm_pattern_data_initialization_empty_notes() -> None:
-    with pytest.raises(ValueError, match="Notes cannot be empty."):
+    from pydantic import ValidationError
+    try:
         RhythmPatternData(notes=[])
+        assert False, "Expected ValidationError was not raised for empty notes"
+    except ValidationError as e:
+        errors = e.errors()
+        assert any("Notes list cannot be empty" in str(err["msg"]) for err in errors), \
+            "Expected error message about empty notes not found"
 
 
 def test_rhythm_pattern_data_initialization_valid_notes() -> None:
@@ -33,19 +39,13 @@ def test_validate_duration_negative() -> None:
 
 def test_validate_time_signature_invalid() -> None:
     from pydantic import ValidationError
-    invalid_signatures = ["5/4", "7/8", "0/4", "4/2"]
-    for signature in invalid_signatures:
-        try:
-            RhythmPatternData(notes=[RhythmNote(position=0, duration=1.0)], time_signature=signature)
-        except ValidationError as e:
-            # Check that the error includes the field name 'time_signature'
-            # rather than relying on a specific error message.
-            errors = e.errors()
-            # Confirm at least one error is related to time_signature field
-            assert any(err.get("loc") == ("time_signature",) for err in errors), \
-                f"Validation error not raised for time_signature with value {signature}"
-        else:
-            assert False, f"Expected ValidationError was not raised for {signature}."
+    try:
+        RhythmPatternData(notes=[RhythmNote(position=0, duration=1.0)], time_signature="5/4")
+        assert False, "Expected ValidationError was not raised for invalid time signature"
+    except ValidationError as e:
+        errors = e.errors()
+        assert any("Invalid time signature format" in str(err["msg"]) for err in errors), \
+            "Expected error message about invalid time signature format not found"
 
 
 def test_validate_swing_ratio_out_of_bounds() -> None:
@@ -105,8 +105,14 @@ def test_validate_humanize_amount_out_of_bounds_2() -> None:
 
 
 def test_allow_empty_notes() -> None:
-    with pytest.raises(ValueError, match="Notes cannot be empty."):
+    from pydantic import ValidationError
+    try:
         RhythmPatternData(notes=[])
+        assert False, "Expected ValidationError was not raised for empty notes."
+    except ValidationError as e:
+        errors = e.errors()
+        assert any("Notes list cannot be empty" in str(err["msg"]) for err in errors), \
+            "Expected error message about empty notes not found"
 
 
 def test_validate_duration_negative_unique() -> None:

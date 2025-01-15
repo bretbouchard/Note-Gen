@@ -1,6 +1,6 @@
 import pytest
-from src.note_gen.models.note import Note
-from src.note_gen.models.scale import Scale, ScaleType
+from note_gen.models.note import Note
+from note_gen.models.scale import Scale, ScaleType
 
 @pytest.mark.parametrize(
     "root_name, scale_type",

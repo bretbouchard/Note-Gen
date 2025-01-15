@@ -1,11 +1,11 @@
 import unittest
 from unittest.mock import patch
-from src.note_gen.models.chord_progression_generator import ChordProgressionGenerator
-from src.note_gen.models.scale_info import ScaleInfo
-from src.note_gen.models.enums import ChordQualityType
-from src.note_gen.models.musical_elements import Note, Chord
-from src.note_gen.models.scale import Scale, ScaleType
-from src.note_gen.models.chord_progression import ChordProgression
+from note_gen.models.chord_progression_generator import ChordProgressionGenerator
+from note_gen.models.scale_info import ScaleInfo
+from note_gen.models.enums import ChordQualityType
+from note_gen.models.musical_elements import Note, Chord
+from note_gen.models.scale import Scale, ScaleType
+from note_gen.models.chord_progression import ChordProgression
 import random
 import logging
 

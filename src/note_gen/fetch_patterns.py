@@ -1,128 +1,128 @@
-import pymongo
-import logging
-from src.note_gen.models.presets import DEFAULT_CHORD_PROGRESSION, DEFAULT_NOTE_PATTERN, COMMON_PROGRESSIONS, NOTE_PATTERNS, RHYTHM_PATTERNS
-from src.note_gen.models.chord_progression import ChordProgression
-from src.note_gen.models.note_pattern import NotePattern  # Import NotePattern
-from src.note_gen.models.rhythm_pattern import RhythmPattern, RhythmPatternData  # Import RhythmPattern and RhythmPatternData
-from typing import List, Any, Optional
+"""Functions for fetching patterns from the database."""
 
-# Configure logging
-logging.basicConfig(level=logging.DEBUG)
+from typing import List, Optional, Dict, Any
+from note_gen.models.chord_progression import ChordProgression
+from note_gen.models.rhythm_pattern import RhythmPattern, RhythmNote
+from note_gen.models.musical_elements import Chord, Note
+from note_gen.models.scale_info import ScaleInfo
+from note_gen.models.enums import ChordQualityType
+from note_gen.models.note_pattern import NotePattern
+from note_gen.database import get_db
+import logging
+from bson import ObjectId
+
 logger = logging.getLogger(__name__)
 
-# MongoDB connection
-client: pymongo.MongoClient = pymongo.MongoClient("mongodb://localhost:27017/")  # type: ignore
-db = client["note_gen"]  # Use your database name
+async def fetch_chord_progressions() -> List[ChordProgression]:
+    """Fetch all chord progressions from the database."""
+    async with get_db() as db:
+        try:
+            chord_progressions = []
+            async for doc in db.chord_progressions.find({}):
+                try:
+                    # Convert chord quality strings to enum values
+                    for chord in doc.get('chords', []):
+                        if isinstance(chord, dict) and 'quality' in chord:
+                            chord['quality'] = ChordQualityType[chord['quality']]
+                    
+                    progression = ChordProgression(**doc)
+                    chord_progressions.append(progression)
+                except Exception as e:
+                    logger.error(f"Error creating ChordProgression from document: {e}")
+                    continue
+            return chord_progressions
+        except Exception as e:
+            logger.error(f"Error fetching chord progressions: {e}")
+            return []
 
-# Function to fetch chord progressions
-
-def fetch_chord_progressions() -> List[ChordProgression]:
-    try:
-        documents = db.chord_progressions.find()
-        logger.debug(f"Fetched chord progressions: {list(documents)}")
-        return [ChordProgression(scale_info=doc['scale_info'], chords=doc['chords']) for doc in documents if 'scale_info' in doc and 'chords' in doc]
-    except Exception as e:
-        logger.error(f"Error fetching chord progressions: {e}")
-        return []
-
-# Function to fetch note patterns
-
-def fetch_note_patterns() -> List[NotePattern]:
-    try:
-        documents = db.note_patterns.find()
-        logger.debug(f"Fetched note patterns: {list(documents)}")
-        return [NotePattern(name=doc['name'], data=doc['data']) for doc in documents if 'name' in doc and 'data' in doc]
-    except Exception as e:
-        logger.error(f"Error fetching note patterns: {e}")
-        return []
-
-# Function to fetch rhythm patterns
-
-def fetch_rhythm_patterns() -> List[RhythmPattern]:
-    try:
-        documents = db.rhythm_patterns.find()
-        logger.debug(f"Fetched rhythm patterns: {list(documents)}")
-        return [RhythmPattern(id=str(doc['_id']), name=doc['name'], data=RhythmPatternData(**doc['data'])) for doc in documents if 'name' in doc and 'data' in doc]
-    except Exception as e:
-        logger.error(f"Error fetching rhythm patterns: {e}")
-        return []
-
-# Function to fetch chord progression by ID
-
-def fetch_chord_progression_by_id(id: int) -> Optional[ChordProgression]:
-    try:
-        document = db.chord_progressions.find_one({"id": id})
-        if document:
-            logger.debug(f'Fetched chord progression with ID {id}.')
-            return ChordProgression(
-                scale_info=document['scale_info'],
-                chords=document['progression'],
-                root=document.get('root')
-            )
-        else:
-            logger.warning(f'No chord progression found with ID {id}.')
-            return None
-    except Exception as e:
-        logger.error(f'Error fetching chord progression by ID {id}: {e}')
+async def fetch_chord_progression_by_id(progression_id: str) -> Optional[ChordProgression]:
+    """Fetch a chord progression by its ID."""
+    async with get_db() as db:
+        try:
+            doc = await db.chord_progressions.find_one({"id": progression_id})
+            if doc:
+                # Convert chord quality strings to enum values
+                for chord in doc.get('chords', []):
+                    if isinstance(chord, dict) and 'quality' in chord:
+                        chord['quality'] = ChordQualityType[chord['quality']]
+                
+                return ChordProgression(**doc)
+        except Exception as e:
+            logger.error(f"Error fetching chord progression {progression_id}: {e}")
+        
         return None
 
-# Function to fetch note pattern by ID
+async def fetch_rhythm_patterns() -> List[RhythmPattern]:
+    """Fetch all rhythm patterns from the database."""
+    async with get_db() as db:
+        try:
+            rhythm_patterns = []
+            async for doc in db.rhythm_patterns.find({}):
+                try:
+                    # Convert pattern list to RhythmNote objects
+                    if 'pattern' in doc and isinstance(doc['pattern'], list):
+                        doc['pattern'] = [
+                            RhythmNote(**note) if isinstance(note, dict) else note
+                            for note in doc['pattern']
+                        ]
+                    
+                    pattern = RhythmPattern(**doc)
+                    rhythm_patterns.append(pattern)
+                except Exception as e:
+                    logger.error(f"Error creating RhythmPattern from document: {e}")
+                    continue
+            return rhythm_patterns
+        except Exception as e:
+            logger.error(f"Error fetching rhythm patterns: {e}")
+            return []
 
-def fetch_note_pattern_by_id(id: int) -> Optional[NotePattern]:
-    try:
-        document = db.note_patterns.find_one({"id": id})
-        if document:
-            logger.debug(f'Fetched note pattern with ID {id}.')
-            return NotePattern(
-                name=document['name'],
-                data=document['pattern'],
-                description=document.get('description', ''),
-                tags=document.get('tags', [])
-            )
-        else:
-            logger.warning(f'No note pattern found with ID {id}.')
-            return None
-    except Exception as e:
-        logger.error(f'Error fetching note pattern by ID {id}: {e}')
+async def fetch_rhythm_pattern_by_id(pattern_id: str) -> Optional[RhythmPattern]:
+    """Fetch a rhythm pattern by its ID."""
+    async with get_db() as db:
+        try:
+            doc = await db.rhythm_patterns.find_one({"id": pattern_id})
+            if doc:
+                # Convert pattern list to RhythmNote objects
+                if 'pattern' in doc and isinstance(doc['pattern'], list):
+                    doc['pattern'] = [
+                        RhythmNote(**note) if isinstance(note, dict) else note
+                        for note in doc['pattern']
+                    ]
+                
+                return RhythmPattern(**doc)
+        except Exception as e:
+            logger.error(f"Error fetching rhythm pattern {pattern_id}: {e}")
+        
         return None
 
-# Function to fetch rhythm pattern by ID
+async def fetch_note_patterns() -> List[NotePattern]:
+    """Fetch all note patterns from the database."""
+    async with get_db() as db:
+        try:
+            cursor = db.note_patterns.find({})
+            documents = await cursor.to_list(None)
+            return [NotePattern(**doc) for doc in documents]
+        except Exception as e:
+            logger.error(f"Error fetching note patterns: {e}")
+            return []
 
-def fetch_rhythm_pattern_by_id(id: int) -> Optional[RhythmPattern]:
-    try:
-        document = db.rhythm_patterns.find_one({"id": id})
-        if document:
-            logger.debug(f'Fetched rhythm pattern with ID {id}.')
-            rhythm_data = RhythmPatternData(
-                notes=document['pattern'].get('notes', []),
-                time_signature=document['pattern'].get('time_signature', '4/4'),
-                swing_enabled=document['pattern'].get('swing_enabled', False),
-                humanize_amount=document['pattern'].get('humanize_amount', 0.0),
-                swing_ratio=document['pattern'].get('swing_ratio', 0.67),
-                style=document['pattern'].get('style'),
-                default_duration=document['pattern'].get('default_duration', 1.0),
-                total_duration=document['pattern'].get('total_duration', 0.0),
-                accent_pattern=document['pattern'].get('accent_pattern'),
-                groove_type=document['pattern'].get('groove_type'),
-                variation_probability=document['pattern'].get('variation_probability', 0.0),
-                duration=document['pattern'].get('duration', 1.0)
-            )
-            return RhythmPattern(
-                id=str(document['id']),
-                name=document['name'],
-                data=rhythm_data,
-                description=document.get('description', ''),
-                tags=document.get('tags', []),
-                complexity=document.get('complexity', 1.0),
-                style=document.get('style'),
-                pattern=document.get('pattern', '')
-            )
-        else:
-            logger.warning(f'No rhythm pattern found with ID {id}.')
+async def fetch_note_pattern_by_id(pattern_id: str) -> Optional[NotePattern]:
+    """
+    Fetch a note pattern by its ID from the database.
+    
+    Args:
+        pattern_id: The ID of the pattern to fetch
+        
+    Returns:
+        Optional[NotePattern]: The note pattern if found, None otherwise
+    """
+    async with get_db() as db:
+        try:
+            pattern = await db.note_patterns.find_one({"id": pattern_id})
+            return NotePattern(**pattern) if pattern else None
+        except Exception as e:
+            logger.error(f"Error fetching note pattern by ID: {e}")
             return None
-    except Exception as e:
-        logger.error(f'Error fetching rhythm pattern by ID {id}: {e}')
-        return None
 
 # Main execution
 if __name__ == "__main__":

@@ -1,9 +1,9 @@
 import unittest
 
-from src.note_gen.models.enums import ChordQualityType
-from src.note_gen.models.musical_elements import Chord, Note
-from src.note_gen.models.scale import Scale, ScaleType
-from src.note_gen.models.roman_numeral import RomanNumeral
+from note_gen.models.enums import ChordQualityType
+from note_gen.models.musical_elements import Chord, Note
+from note_gen.models.scale import Scale, ScaleType
+from note_gen.models.roman_numeral import RomanNumeral
 from unittest.mock import patch
 
 

@@ -1,6 +1,6 @@
 import unittest
-from src.note_gen.models.chord_quality import ChordQuality
-from src.note_gen.models.enums import ChordQualityType
+from note_gen.models.chord_quality import ChordQuality
+from note_gen.models.enums import ChordQualityType
 
 class TestChordQuality(unittest.TestCase):
     def test_from_string_valid(self) -> None:

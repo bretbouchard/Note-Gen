@@ -1,5 +1,5 @@
 import pytest
-from src.note_gen.models.pattern_type import PatternType
+from note_gen.models.pattern_type import PatternType
 
 
 def test_pattern_ascending() -> None:

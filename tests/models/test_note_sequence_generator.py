@@ -1,12 +1,12 @@
 import pytest
-from src.note_gen.models.note_sequence_generator import NoteSequenceGenerator
-from src.note_gen.models.chord_progression import ChordProgression
-from src.note_gen.models.note_sequence import NoteSequence
-from src.note_gen.models.rhythm_pattern import RhythmPattern, RhythmPatternData, RhythmNote
-from src.note_gen.models.note import Note
-from src.note_gen.models.scale_info import ScaleInfo
-from src.note_gen.models.musical_elements import Chord
-from src.note_gen.models.enums import ChordQualityType
+from note_gen.models.note_sequence_generator import NoteSequenceGenerator
+from note_gen.models.chord_progression import ChordProgression
+from note_gen.models.note_sequence import NoteSequence
+from note_gen.models.rhythm_pattern import RhythmPattern, RhythmPatternData, RhythmNote
+from note_gen.models.note import Note
+from note_gen.models.scale_info import ScaleInfo
+from note_gen.models.musical_elements import Chord
+from note_gen.models.enums import ChordQualityType
 from typing import List
 
 @pytest.fixture
@@ -86,17 +86,16 @@ def test_note_sequence_generator_i_iv_v_i() -> None:
     scale_info = ScaleInfo(root={"note_name": "C", "octave": 4}, scale_type="major")
     
     # Create chord progression (I-IV-V-I in C major)
-    chords = [
-        Chord(root={"note_name": "C", "octave": 4}, quality=ChordQualityType.MAJOR),  # I
-        Chord(root={"note_name": "F", "octave": 4}, quality=ChordQualityType.MAJOR),  # IV
-        Chord(root={"note_name": "G", "octave": 4}, quality=ChordQualityType.MAJOR),  # V
-        Chord(root={"note_name": "C", "octave": 4}, quality=ChordQualityType.MAJOR),  # I
-    ]
+    chord1 = Chord(root={'note_name': 'C', 'octave': 4}, quality=ChordQualityType.MAJOR)
+    chord2 = Chord(root={'note_name': 'F', 'octave': 4}, quality=ChordQualityType.MAJOR)
+    chord3 = Chord(root={'note_name': 'G', 'octave': 4}, quality=ChordQualityType.MAJOR)
+    chord4 = Chord(root={'note_name': 'C', 'octave': 4}, quality=ChordQualityType.MAJOR)
+    chords = [chord1, chord2, chord3, chord4]  # Updated to include all chords
     chord_progression = ChordProgression(
         scale_info=scale_info,
-        chords=[chord1, chord2],
-        name='Test Progression',  # Add this line
-        key='C'                  # Add this line
+        chords=chords,
+        name='Test Progression',
+        key='C'
     )
     # Create note sequence (simple sequence following chord roots)
     notes = [
@@ -120,7 +119,7 @@ def test_note_sequence_generator_i_iv_v_i() -> None:
         groove_type="straight",
         variation_probability=0.0,
         duration=4.0,
-        style="test"
+        style="basic"  # Updated to valid style
     )
     
     rhythm_pattern = RhythmPattern(

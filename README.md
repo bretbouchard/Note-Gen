@@ -104,6 +104,21 @@ Start the FastAPI server:
 
 ```bash
 uvicorn main:app --reload
+
+PYTHONPATH=src uvicorn main:app --reload
+```
+
+Start the MongoDB database:
+
+```bash
+mongosh
+use note_gen
+```
+
+Tests:
+
+```bash
+PYTHONPATH=/Users/bretbouchard/apps/Note-Gen/backend python -m pytest . -s -v
 ```
 
 Access the API documentation:

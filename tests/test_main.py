@@ -2,8 +2,8 @@ import pytest
 from fastapi.testclient import TestClient
 from pymongo import MongoClient
 from main import app, startup_event, ensure_indexes, import_presets_if_empty
-from src.note_gen.models.presets import COMMON_PROGRESSIONS, NOTE_PATTERNS, RHYTHM_PATTERNS
-from src.note_gen.import_presets import client, db
+from note_gen.models.presets import COMMON_PROGRESSIONS, NOTE_PATTERNS, RHYTHM_PATTERNS
+from note_gen.import_presets import client, db
 
 @pytest.fixture
 def test_client():

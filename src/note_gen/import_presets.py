@@ -1,13 +1,15 @@
 import pymongo
 from pymongo.errors import ConnectionFailure, ServerSelectionTimeoutError
+from pymongo.database import Database
 import logging
+import uuid
 
 logger = logging.getLogger(__name__)
 
-from src.note_gen.models.presets import DEFAULT_CHORD_PROGRESSION, DEFAULT_NOTE_PATTERN, COMMON_PROGRESSIONS, NOTE_PATTERNS, RHYTHM_PATTERNS
-from src.note_gen.models.chord_progression import ChordProgression
-from src.note_gen.models.note_pattern import NotePattern
-from src.note_gen.models.rhythm_pattern import RhythmPattern, RhythmPatternData
+from note_gen.models.presets import DEFAULT_CHORD_PROGRESSION, DEFAULT_NOTE_PATTERN, COMMON_PROGRESSIONS, NOTE_PATTERNS, RHYTHM_PATTERNS
+from note_gen.models.chord_progression import ChordProgression
+from note_gen.models.note_pattern import NotePattern
+from note_gen.models.rhythm_pattern import RhythmPattern, RhythmPatternData
 from typing import List, Any, Optional, Dict
 
 
@@ -69,9 +71,10 @@ def import_chord_progressions(database=None) -> None:
     target_db = database if database is not None else db
     for i, (name, progression) in enumerate(COMMON_PROGRESSIONS.items(), start=1):
         target_db.chord_progressions.insert_one({
-            'id': i,
+            'id': str(i),  # Use string for consistency with UUIDs
             'name': name,
-            'progression': progression
+            'scale_info': progression['scale_info'],  # Include scale_info
+            'chords': progression['chords']  # Include chords
         })
 
 # Function to import note patterns
@@ -79,9 +82,13 @@ def import_note_patterns(database=None) -> None:
     target_db = database if database is not None else db
     for i, (name, pattern) in enumerate(NOTE_PATTERNS.items(), start=1):
         target_db.note_patterns.insert_one({
-            'id': i,
+            'id': str(i),  # Use string for consistency with UUIDs
             'name': name,
-            'pattern': pattern
+            'data': pattern['data'],  # Include data
+            'notes': pattern['notes'],  # Include notes
+            'description': pattern.get('description', ''),  # Optional field
+            'tags': pattern.get('tags', []),  # Optional field
+            'is_test': pattern.get('is_test', False)  # Optional field
         })
 
 # Function to import rhythm patterns
@@ -90,26 +97,28 @@ def import_rhythm_patterns(database=None) -> None:
     for i, (name, pattern) in enumerate(RHYTHM_PATTERNS.items(), start=1):
         serialized_pattern = serialize_rhythm_pattern(pattern)
         target_db.rhythm_patterns.insert_one({
-            'id': i,
+            'id': str(i),  # Use string for consistency with UUIDs
             'name': name,
-            'pattern': serialized_pattern
+            'data': serialized_pattern  # Include data
         })
 
-async def import_presets_if_empty(database=None):
+async def import_presets_if_empty(db: Database) -> None:
     """Import presets if collections are empty."""
-    target_db = database if database is not None else db
     try:
-        if target_db.chord_progressions.count_documents({}) == 0:
-            import_chord_progressions(target_db)
-            logger.info("Imported chord progressions")
-            
-        if target_db.note_patterns.count_documents({}) == 0:
-            import_note_patterns(target_db)
-            logger.info("Imported note patterns")
-            
-        if target_db.rhythm_patterns.count_documents({}) == 0:
-            import_rhythm_patterns(target_db)
-            logger.info("Imported rhythm patterns")
+        # Check if chord progressions collection is empty
+        if db.chord_progressions.count_documents({}) == 0:
+            # Import chord progressions
+            for name, chords in COMMON_PROGRESSIONS.items():
+                progression = {
+                    "id": str(uuid.uuid4()),
+                    "name": name,
+                    "chords": chords,
+                    "key": "C",
+                    "scale_type": "major",
+                    "complexity": 0.5
+                }
+                db.chord_progressions.insert_one(progression)
+                logger.info(f"Imported chord progression: {name}")
     except Exception as e:
         logger.error(f"Error checking/importing presets: {e}")
 

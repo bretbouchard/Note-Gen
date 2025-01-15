@@ -1,0 +1,7 @@
+Metadata-Version: 2.2
+Name: note_gen
+Version: 0.2.0
+Summary: Note Generation API
+Requires-Python: >=3.8
+License-File: LICENSE
+Dynamic: requires-python

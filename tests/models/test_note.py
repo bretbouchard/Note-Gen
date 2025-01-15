@@ -1,5 +1,5 @@
 import pytest
-from src.note_gen.models.note import Note
+from note_gen.models.note import Note
 
 def test_note_initialization() -> None:
     note = Note(note_name="C", octave=4)

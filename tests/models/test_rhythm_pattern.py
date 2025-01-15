@@ -1,6 +1,6 @@
 import pytest
-from src.note_gen.models.rhythm_pattern import RhythmPatternData, RhythmPattern
-from src.note_gen.models.rhythm_pattern import RhythmNote
+from note_gen.models.rhythm_pattern import RhythmPatternData, RhythmPattern
+from note_gen.models.rhythm_pattern import RhythmNote
 
 
 def test_validate_time_signature_valid():
@@ -10,8 +10,9 @@ def test_validate_time_signature_valid():
 
 
 def test_validate_time_signature_invalid():
-    with pytest.raises(ValueError, match="Invalid time signature. Must be in format: numerator/denominator where numerator is one of \[2,3,4,6,8,9,12\] and denominator is a power of 2"):
+    with pytest.raises(ValueError) as exc_info:
         RhythmPatternData(notes=[RhythmNote(position=0, duration=1.0)], time_signature="5/4")
+    assert "Invalid time signature. Must be in format: numerator/denominator where numerator is one of [2, 3, 4, 6, 8, 9, 12] and denominator is a power of 2" in str(exc_info.value)
 
 
 def test_validate_groove_type_valid():
@@ -32,8 +33,9 @@ def test_validate_notes_valid():
 
 
 def test_validate_notes_empty():
-    with pytest.raises(ValueError, match="Notes cannot be empty."):
+    with pytest.raises(ValueError) as exc_info:
         RhythmPatternData(notes=[])
+    assert "Notes list cannot be empty" in str(exc_info.value)
 
 
 def test_validate_default_duration_valid():
@@ -42,8 +44,9 @@ def test_validate_default_duration_valid():
 
 
 def test_validate_default_duration_invalid():
-    with pytest.raises(ValueError, match="Default duration must be a positive float."):
+    with pytest.raises(ValueError) as exc_info:
         RhythmPatternData(notes=[RhythmNote(position=0, duration=1.0)], default_duration=0.0)
+    assert "Default duration must be positive" in str(exc_info.value)
 
 
 def test_validate_name_valid():
@@ -63,8 +66,9 @@ def test_validate_data_valid():
 
 
 def test_validate_data_invalid():
-    with pytest.raises(TypeError, match="data must be an instance of RhythmPatternData"):
+    with pytest.raises(ValueError) as exc_info:
         RhythmPattern(id="1", name="Test Pattern", data="Invalid Data", pattern="4 4 4")
+    assert "Input should be a valid dictionary or instance of RhythmPatternData" in str(exc_info.value)
 
 
 def test_validate_pattern_valid():
@@ -75,8 +79,7 @@ def test_validate_pattern_valid():
 def test_validate_pattern_invalid():
     with pytest.raises(ValueError) as exc_info:
         RhythmPattern(id="1", name="Test Pattern", data=RhythmPatternData(notes=[RhythmNote(position=0, duration=1.0)]), pattern="invalid_pattern").validate_pattern("invalid_pattern")
-    print(exc_info.value)  # Print the actual error message
-    assert str(exc_info.value) == "1 validation error for RhythmPattern\npattern\n  Value error, Pattern can only contain numbers 1-9, dots (.), hyphens (-), and spaces. [type=value_error, input_value='invalid_pattern', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.9/v/value_error"
+    assert "Pattern can only contain numbers 1-9, dots (.), hyphens (-), and spaces." in str(exc_info.value)
 
 
 def test_rhythm_pattern_initialization_valid():

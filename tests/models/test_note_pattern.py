@@ -1,8 +1,8 @@
 import unittest
 import pytest
 from pydantic import ValidationError
-from src.note_gen.models.note_pattern import NotePattern
-from src.note_gen.models.note import Note
+from note_gen.models.note_pattern import NotePattern
+from note_gen.models.note import Note
 
 # Unittest-based tests
 class TestNotePattern(unittest.TestCase):

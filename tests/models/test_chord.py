@@ -1,7 +1,7 @@
 import logging
 import pytest
-from src.note_gen.models.musical_elements import Chord, Note
-from src.note_gen.models.enums import ChordQualityType
+from note_gen.models.musical_elements import Chord, Note
+from note_gen.models.enums import ChordQualityType
 from typing import Any
 from pydantic import ValidationError, validator
 

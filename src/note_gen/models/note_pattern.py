@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from typing import Literal, Union, List
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+import uuid
 
-from .musical_elements import Note, Chord
-from .scale_degree import ScaleDegree
+from src.note_gen.models.musical_elements import Note, Chord
+from src.note_gen.models.scale_degree import ScaleDegree
 
 
 # Type aliases
@@ -17,6 +18,7 @@ NoteType = Union[Note, ScaleDegree, Chord]
 
 class NotePattern(BaseModel):
     """A pattern of musical notes."""
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     name: str
     data: List[Union[int, List[int]]] = Field(...)
     notes: List[Note] = Field(default_factory=list)
@@ -24,7 +26,7 @@ class NotePattern(BaseModel):
     tags: List[str] = Field(default_factory=list)
     is_test: bool = Field(default=False)
 
-    class Config:
+    class ConfigDict:
         schema_extra = {
             'example': {
                 'name': 'Simple Triad',
@@ -49,7 +51,7 @@ class NotePattern(BaseModel):
 
     @property
     def total_duration(self) -> float:
-        """Calculate total duration of the pattern."""
+        """Calculate the total duration of the pattern."""
         return sum(note.duration for note in self.notes)
 
     def get_notes(self) -> List[Note]:

@@ -1,30 +1,23 @@
 import pytest
-import unittest
-from unittest.mock import patch, MagicMock
-from src.note_gen.models.chord_progression_generator import ChordProgressionGenerator
-from src.note_gen.models.scale_info import ScaleInfo
-from src.note_gen.models.enums import ChordQualityType
-from src.note_gen.models.musical_elements import Note, Chord
-from src.note_gen.models.scale import Scale, ScaleType
-from src.note_gen.models.chord_progression import ChordProgression
-import random
-import logging
 from fastapi.testclient import TestClient
-from src.note_gen.routers.user_routes import app, get_db
-
-client = TestClient(app)
+from note_gen.routers.user_routes import app, get_db
+from unittest.mock import MagicMock, AsyncMock
+from bson import ObjectId
+import asyncio
+from typing import List
 
 @pytest.fixture(scope="module")
 def test_db():
+    """Create a mock database for testing."""
     db = MagicMock()
-    db.chord_progressions = MagicMock()
-    db.note_patterns = MagicMock()
-    db.rhythm_patterns = MagicMock()
+    db.chord_progressions = AsyncMock()
+    db.note_patterns = AsyncMock()
+    db.rhythm_patterns = AsyncMock()
     
     # Setup mock data
-    db.chord_progressions.find.return_value = [
+    mock_chord_progressions = [
         {
-            "_id": "test_id_1",
+            "_id": ObjectId(),
             "name": "Test Progression",
             "scale_info": {
                 "root": {"note_name": "C", "octave": 4},
@@ -43,64 +36,79 @@ def test_db():
             "complexity": 1
         }
     ]
-    db.note_patterns.find.return_value = [
+    mock_note_patterns = [
         {
-            "_id": "test_id_2",
+            "_id": ObjectId(),
             "name": "Test Pattern",
-            "notes": [
-                {
-                    "note_name": "C",
-                    "octave": 4,
-                    "duration": 1.0,
-                    "velocity": 64,
-                    "stored_midi_number": 60
-                }
-            ],
+            "notes": [{"note_name": "C", "octave": 4, "duration": 1.0}],
             "pattern_type": "melodic",
-            "description": "Test pattern description",
+            "description": "Test pattern",
             "tags": ["test"],
-            "complexity": 1.0
+            "complexity": 0.5
         }
     ]
-    db.rhythm_patterns.find.return_value = [
+    mock_rhythm_patterns = [
         {
-            "_id": "test_id_3",
-            "name": "Test Pattern",
+            "_id": ObjectId(),
+            "name": "Test Rhythm",
             "description": "Test rhythm pattern",
             "tags": ["test"],
-            "complexity": 1.0,
+            "complexity": 0.5,
             "style": "rock",
             "data": {
-                "notes": [
-                    {
-                        "position": 0.0,
-                        "duration": 1.0,
-                        "velocity": 100,
-                        "is_rest": False
-                    }
-                ],
+                "notes": [{"duration": 1.0, "velocity": 100}],
                 "time_signature": "4/4",
                 "swing_enabled": False,
-                "humanize_amount": 0.0,
-                "swing_ratio": 0.67,
+                "humanize_amount": 0.1,
+                "swing_ratio": 0.5,
                 "default_duration": 1.0,
                 "total_duration": 4.0,
-                "accent_pattern": [],
+                "accent_pattern": [1.0],
                 "groove_type": "straight",
-                "variation_probability": 0.0,
+                "variation_probability": 0.1,
                 "duration": 1.0,
                 "style": "rock"
             }
         }
     ]
+
+    # Mock MongoDB cursor methods
+    class MockCursor:
+        def __init__(self, items: List[dict]):
+            self.items = items
+
+        async def to_list(self, length=None):
+            return self.items
+
+        def skip(self, n):
+            return self
+
+        def limit(self, n):
+            return self
+
+    # Setup mock methods
+    db.chord_progressions.find.return_value = MockCursor(mock_chord_progressions)
+    db.note_patterns.find.return_value = MockCursor(mock_note_patterns)
+    db.rhythm_patterns.find.return_value = MockCursor(mock_rhythm_patterns)
+
+    # Mock insert_one to return ObjectId
+    async def mock_insert_one(doc):
+        return MagicMock(inserted_id=ObjectId())
+
+    db.chord_progressions.insert_one.side_effect = mock_insert_one
+    db.note_patterns.insert_one.side_effect = mock_insert_one
+    db.rhythm_patterns.insert_one.side_effect = mock_insert_one
+
     return db
 
 @pytest.fixture(scope="module")
 def test_client(test_db):
-    def override_get_db():
-        return test_db
+    """Create a test client with a mock database."""
+    async def override_get_db():
+        yield test_db
     app.dependency_overrides[get_db] = override_get_db
-    yield client
+    with TestClient(app) as client:
+        yield client
     app.dependency_overrides.clear()
 
 def test_get_chord_progressions(test_client):

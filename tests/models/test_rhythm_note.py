@@ -1,5 +1,5 @@
 import pytest
-from src.note_gen.models.rhythm_pattern import RhythmNote
+from note_gen.models.rhythm_pattern import RhythmNote
 
 
 def test_validate_velocity_valid():
