@@ -1,5 +1,4 @@
 from pymongo import MongoClient
-from bson import ObjectId
 import uuid
 
 # Import the actual presets
@@ -15,6 +14,8 @@ from src.note_gen.models.rhythm_pattern import RhythmPatternData
 # MongoDB connection
 client = MongoClient('mongodb://localhost:27017/')
 db = client['note_gen']
+print(f"Connected to MongoDB client: {client}")
+print(f"Connected to database: {db.name}")
 
 # Clear existing data
 db.chord_progressions.delete_many({})
@@ -82,7 +83,7 @@ def format_note_pattern(name: str, pattern: list) -> dict:
         'id': str(uuid.uuid4()),
         'name': name,
         'data': pattern,
-        'notes': [{'note_name': 'C', 'octave': 4, 'duration': 1.0} for _ in pattern],
+        'notes': [{'note_name': 'C', 'octave': 4, 'duration': 1.0, 'velocity': 100} for _ in pattern],
         'description': f'Pattern: {name}',
         'tags': ['preset'],
         'is_test': False

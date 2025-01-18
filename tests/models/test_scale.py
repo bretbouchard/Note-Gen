@@ -1,6 +1,6 @@
 import pytest
-from note_gen.models.note import Note
-from note_gen.models.scale import Scale, ScaleType
+from src.note_gen.models.note import Note
+from src.note_gen.models.scale import Scale, ScaleType
 
 @pytest.mark.parametrize(
     "root_name, scale_type",
@@ -34,9 +34,15 @@ def test_scale_creation_and_notes(root_name: str, scale_type: ScaleType) -> None
     """
     Test creating various Scales and generating their notes.
     """
-    root_note = Note.from_name(root_name)
+    root_note = Note.from_name(root_name, duration=1)  # Explicitly pass duration
     scale = Scale(root_note, scale_type)
     notes = scale.get_notes()
+
+    # Debugging information
+    print(f"Root Note: {root_note}")
+    print(f"Scale: {scale}")
+    print(f"Generated Notes: {[note.note_name for note in notes]}")
+    print(f"Generated Notes MIDI Numbers: {[note.midi_number for note in notes]}")
 
     # Basic checks:
     assert notes[0] == root_note, "First note of scale should be the root."
@@ -51,6 +57,21 @@ def test_scale_creation_and_notes(root_name: str, scale_type: ScaleType) -> None
         assert note.midi_number == current_midi, (
             f"Scale note does not match interval step {interval}."
         )
+
+
+def test_scale_creation_and_notes(self):
+    root = Note(note_name="C", octave=4, duration=1, velocity=100)
+    scale = Scale(
+        root=root,
+        scale_type=ScaleType.MAJOR,
+        notes=[Note(note_name=n, octave=4, duration=1, velocity=100) for n in ["C", "D", "E", "F", "G", "A", "B"]]
+    )
+    self.assertEqual(scale.root, root)
+    self.assertEqual(scale.scale_type, ScaleType.MAJOR)
+    self.assertEqual(len(scale.notes), 7)
+    self.assertTrue(all(note.octave == 4 for note in scale.notes), "All notes should be in the same octave")
+    self.assertTrue(all(note.duration == 1 for note in scale.notes), "All notes should have the same duration")
+    self.assertTrue(all(note.note_name in ["C", "D", "E", "F", "G", "A", "B"] for note in scale.notes), "All notes should have valid note names")
 
 
 @pytest.mark.parametrize(

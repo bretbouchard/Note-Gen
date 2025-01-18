@@ -1,5 +1,5 @@
 from pymongo import MongoClient
-from typing import List, Dict, Any
+from typing import Dict, Any
 import logging
 
 logging.basicConfig(level=logging.INFO)
@@ -97,7 +97,7 @@ def validate_chord_progression(progression: Dict[str, Any]) -> bool:
         return False
     return True
 
-def cleanup_database():
+def cleanup_database() -> None:
     """Clean up invalid patterns in the database."""
     client = MongoClient('mongodb://localhost:27017/')
     db = client.note_gen

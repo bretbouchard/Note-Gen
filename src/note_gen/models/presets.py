@@ -3,16 +3,12 @@
 """Presets for chord progressions, note patterns, and rhythm patterns."""
 
 from typing import Dict, List
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel
 
 from src.note_gen.models.chord_progression import ChordProgression
 from src.note_gen.models.musical_elements import Note
 from src.note_gen.models.note_pattern import NotePattern
-from src.note_gen.models.rhythm_pattern import (
-    RhythmPattern,
-    RhythmPatternData,
-    RhythmNote,
-)
+from src.note_gen.models.rhythm_pattern import (RhythmPattern,RhythmPatternData,RhythmNote,)
 from src.note_gen.models.scale import Scale
 from src.note_gen.models.scale_info import ScaleInfo 
 
@@ -82,6 +78,29 @@ class Presets(BaseModel):
         # Implement loading logic here
         return [cls()]  # Example return, replace with actual loading logic
 
+    def get_default_chord_progression(self, root_note: Note, scale: Scale) -> ChordProgression:
+        """Get the default chord progression."""
+        return ChordProgression(name="Default Progression", root=root_note, scale=scale, progression=DEFAULT_CHORD_PROGRESSION)
+
+    def get_default_note_pattern(self) -> NotePattern:
+        """Get the default note pattern."""
+        return NotePattern(name="Default Pattern", description="A simple pattern", tags=["default"], data=NOTE_PATTERNS[DEFAULT_NOTE_PATTERN])
+
+    def get_default_rhythm_pattern(self) -> RhythmPattern:
+        """Get the default rhythm pattern."""
+        return RhythmPattern(name="Default Rhythm Pattern", data=RHYTHM_PATTERNS[DEFAULT_RHYTHM_PATTERN])
+
+    def get_available_chord_progressions(self) -> List[str]:
+        """Get a list of available chord progression names."""
+        return list(COMMON_PROGRESSIONS.keys())
+
+    def get_available_note_patterns(self) -> List[str]:
+        """Get a list of available note pattern names."""
+        return list(NOTE_PATTERNS.keys())
+
+    def get_available_rhythm_patterns(self) -> List[str]:
+        """Get a list of available rhythm pattern names."""
+        return list(RHYTHM_PATTERNS.keys())
 
 # Note patterns
 NOTE_PATTERNS: Dict[str, List[int]] = {
@@ -193,7 +212,6 @@ RHYTHM_PATTERNS: Dict[str, RhythmPatternData] = {
 def get_default_chord_progression(root_note: Note, scale: Scale) -> ChordProgression:
     """Get the default chord progression."""
     from .chord_progression_generator import ChordProgressionGenerator
-    from .enums import ChordQualityType
     scale_info = ScaleInfo(root=root_note, scale_type=scale.scale_type)
     scale_info.compute_scale_degrees()  # Ensure degrees are populated
     generator = ChordProgressionGenerator(scale_info=scale_info)
@@ -203,19 +221,14 @@ def get_default_chord_progression(root_note: Note, scale: Scale) -> ChordProgres
     for numeral in numerals:
         chord = generator.generate_chord(numeral)
         chords.append(chord)
-    return ChordProgression(scale_info=scale_info, chords=chords)
+    return ChordProgression(name="Default Progression", root=root_note, scale=scale, progression=DEFAULT_CHORD_PROGRESSION, chords=chords)
 
 def get_default_note_pattern() -> NotePattern:
     """Get the default note pattern."""
-    return NotePattern(
-        name=DEFAULT_NOTE_PATTERN, data=NOTE_PATTERNS[DEFAULT_NOTE_PATTERN]
-    )
+    return NotePattern(name="Default Pattern", description="A simple pattern", tags=["default"], data=NOTE_PATTERNS[DEFAULT_NOTE_PATTERN])
 
 def get_default_rhythm_pattern() -> RhythmPattern:
-    return RhythmPattern(
-        name=DEFAULT_RHYTHM_PATTERN_NAME,
-        data=RHYTHM_PATTERNS[DEFAULT_RHYTHM_PATTERN]
-    )
+    return RhythmPattern(name="Default Rhythm Pattern", data=RHYTHM_PATTERNS[DEFAULT_RHYTHM_PATTERN])
 
 def get_available_chord_progressions() -> List[str]:
     """Get a list of available chord progression names."""

@@ -1,4 +1,6 @@
 """Type stubs for patterns module."""
+from __future__ import annotations
+
 from typing import List, Any, Optional, Union, Literal, ClassVar
 
 from pydantic import BaseModel, ConfigDict

@@ -1,10 +1,10 @@
 import unittest
 from typing import List
-from note_gen.models.chord_progression import ChordProgression
-from note_gen.models.scale_info import ScaleInfo
-from note_gen.models.enums import ChordQualityType
-from note_gen.models.musical_elements import Chord, Note
-from note_gen.models.scale import ScaleType
+from src.note_gen.models.chord_progression import ChordProgression
+from src.note_gen.models.scale_info import ScaleInfo
+from src.note_gen.models.enums import ChordQualityType
+from src.note_gen.models.musical_elements import Note, Chord
+from src.note_gen.models.chord_progression import ChordProgression
 import logging
 
 logging.basicConfig(level=logging.DEBUG)
@@ -16,13 +16,13 @@ class FakeScaleInfo(ScaleInfo):
     def get_scale_degree_note(self, degree: int) -> Note:
         # Just map 1->C, 2->D, etc. If out of range, raise ValueError.
         note_map = {
-            1: Note(note_name="C"),
-            2: Note(note_name="D"),
-            3: Note(note_name="E"),
-            4: Note(note_name="F"),
-            5: Note(note_name="G"),
-            6: Note(note_name="A"),
-            7: Note(note_name="B"),
+            1: Note(note_name="C", octave=4, duration=1.0, velocity=100),
+            2: Note(note_name="D", octave=4, duration=1.0, velocity=100),
+            3: Note(note_name="E", octave=4, duration=1.0, velocity=100),
+            4: Note(note_name="F", octave=4, duration=1.0, velocity=100),
+            5: Note(note_name="G", octave=4, duration=1.0, velocity=100),
+            6: Note(note_name="A", octave=4, duration=1.0, velocity=100),
+            7: Note(note_name="B", octave=4, duration=1.0, velocity=100),
         }
         if degree not in note_map:
             raise ValueError(f"Invalid degree: {degree}")
@@ -35,27 +35,33 @@ class FakeScaleInfo(ScaleInfo):
     def get_scale_notes(self) -> List[Note]:
         # Just return the classic 7 notes for test
         return [
-            Note(note_name="C"),
-            Note(note_name="D"),
-            Note(note_name="E"),
-            Note(note_name="F"),
-            Note(note_name="G"),
-            Note(note_name="A"),
-            Note(note_name="B"),
+            Note(note_name="C", octave=4, duration=1.0, velocity=100),
+            Note(note_name="D", octave=4, duration=1.0, velocity=100),
+            Note(note_name="E", octave=4, duration=1.0, velocity=100),
+            Note(note_name="F", octave=4, duration=1.0, velocity=100),
+            Note(note_name="G", octave=4, duration=1.0, velocity=100),
+            Note(note_name="A", octave=4, duration=1.0, velocity=100),
+            Note(note_name="B", octave=4, duration=1.0, velocity=100),
         ]
 
 
 class TestChordProgression(unittest.TestCase):
     def test_create_chord_progression(self):
+        chords = [
+            Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
+            Chord(root=Note(note_name="F", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
+            Chord(root=Note(note_name="G", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR)
+        ]
         progression = ChordProgression(
             name="Test Progression",
-            chords=["C", "F", "G"],
+            chords=chords,
             key="C",
             scale_type="major",
             complexity=0.5
         )
+        logging.debug(f"Progression: {progression}")
         assert progression.name == "Test Progression"
-        assert progression.chords == ["C", "F", "G"]
+        assert progression.chords == chords
         assert progression.key == "C"
         assert progression.scale_type == "major"
         assert progression.complexity == 0.5
@@ -63,101 +69,156 @@ class TestChordProgression(unittest.TestCase):
     def test_add_chord(self):
         progression = ChordProgression(
             name="Test Progression",
-            chords=["C", "F"],
+            chords=[
+                Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
+                Chord(root=Note(note_name="F", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR)
+            ],
             key="C",
             scale_type="major",
             complexity=0.5
         )
-        progression.add_chord("G")
-        assert progression.chords == ["C", "F", "G"]
+        progression.add_chord(Chord(root=Note(note_name="G", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR))
+        logging.debug(f"Progression after adding chord: {progression}")
+        assert progression.chords == [
+            Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
+            Chord(root=Note(note_name="F", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
+            Chord(root=Note(note_name="G", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR)
+        ]
 
     def test_get_chord_at(self):
         progression = ChordProgression(
             name="Test Progression",
-            chords=["C", "F", "G"],
+            chords=[
+                Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
+                Chord(root=Note(note_name="F", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
+                Chord(root=Note(note_name="G", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR)
+            ],
             key="C",
             scale_type="major",
             complexity=0.5
         )
-        assert progression.get_chord_at(0) == "C"
-        assert progression.get_chord_at(1) == "F"
-        assert progression.get_chord_at(2) == "G"
+        logging.debug(f"Chord at 0: {progression.get_chord_at(0)}")
+        assert progression.get_chord_at(0) == Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR)
+        logging.debug(f"Chord at 1: {progression.get_chord_at(1)}")
+        assert progression.get_chord_at(1) == Chord(root=Note(note_name="F", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR)
+        logging.debug(f"Chord at 2: {progression.get_chord_at(2)}")
+        assert progression.get_chord_at(2) == Chord(root=Note(note_name="G", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR)
 
     def test_get_all_chords(self):
         progression = ChordProgression(
             name="Test Progression",
-            chords=["C", "F", "G"],
+            chords=[
+                Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
+                Chord(root=Note(note_name="F", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
+                Chord(root=Note(note_name="G", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR)
+            ],
             key="C",
             scale_type="major",
             complexity=0.5
         )
-        assert progression.get_all_chords() == ["C", "F", "G"]
+        logging.debug(f"All chords: {progression.get_all_chords()}")
+        assert progression.get_all_chords() == [
+            Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
+            Chord(root=Note(note_name="F", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
+            Chord(root=Note(note_name="G", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR)
+        ]
 
     def test_get_chord_names(self):
         progression = ChordProgression(
             name="Test Progression",
-            chords=["C", "F", "G"],
+            chords=[
+                Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
+                Chord(root=Note(note_name="F", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
+                Chord(root=Note(note_name="G", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR)
+            ],
             key="C",
             scale_type="major",
             complexity=0.5
         )
-        assert progression.get_chord_names() == ["C", "F", "G"]
+        actual_names = progression.get_chord_names()
+        logging.debug(f"Actual chord names: {actual_names}")
+        assert actual_names == ["C major", "F major", "G major"]
 
     def test_to_dict(self):
         progression = ChordProgression(
             name="Test Progression",
-            chords=["C", "F", "G"],
+            chords=[
+                Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
+                Chord(root=Note(note_name="F", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
+                Chord(root=Note(note_name="G", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR)
+            ],
             key="C",
             scale_type="major",
             complexity=0.5
         )
         progression_dict = progression.to_dict()
-        assert progression_dict["chords"] == ["C", "F", "G"]
+        logging.debug(f"Progression dict: {progression_dict}")
+        assert progression_dict["chords"] == ["C major", "F major", "G major"]
 
     def test_model_dump(self):
         progression = ChordProgression(
             name="Test Progression",
-            chords=["C", "F", "G"],
+            chords=[
+                Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
+                Chord(root=Note(note_name="F", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
+                Chord(root=Note(note_name="G", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR)
+            ],
             key="C",
             scale_type="major",
             complexity=0.5
         )
         dumped = progression.model_dump()
-        assert dumped["chords"] == ["C", "F", "G"]
+        logging.debug(f"Dumped model: {dumped}")
+        assert dumped["chords"] == ["C major", "F major", "G major"]
         assert dumped["name"] == "Test Progression"
         assert dumped["key"] == "C"
         assert dumped["scale_type"] == "major"
         assert dumped["complexity"] == 0.5
 
     def test_invalid_chords(self):
-        with self.assertRaises(ValueError):
-            ChordProgression(
+        try:
+            progression = ChordProgression(
                 name="Test Progression",
-                chords=[1, 2, 3],  # Invalid chord types
+                chords=[
+                    Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
+                    Chord(root=Note(note_name="D", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MINOR),
+                    2,  # Invalid chord type
+                    Chord(root=Note(note_name="G", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR)
+                ],
                 key="C",
                 scale_type="major",
                 complexity=0.5
             )
+        except ValueError:
+            logging.debug('Caught ValueError as expected for invalid chord type.')  # Log the expected error
+            return  # Pass the test if ValueError is raised
+        self.fail('ValueError not raised for invalid chord type.')  # Fail the test if no error is raised
 
     def test_empty_chords(self):
         with self.assertRaises(ValueError):
             ChordProgression(
                 name="Test Progression",
-                chords=[],  # Empty chords list
+                chords=[],  
                 key="C",
                 scale_type="major",
                 complexity=0.5
             )
+            logging.debug("Empty chords")
 
     def test_invalid_complexity(self):
         with self.assertRaises(ValueError):
             ChordProgression(
                 name="Test Progression",
-                chords=["C", "F", "G"],
+                chords=[
+                    Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
+                    Chord(root=Note(note_name="F", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
+                    Chord(root=Note(note_name="G", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR)
+                ],
                 key="C",
                 scale_type="major",
-                complexity=2.0  # Invalid complexity value
+                complexity=2.0  
             )
+            logging.debug("Invalid complexity")
 
 if __name__ == "__main__":
     unittest.main()

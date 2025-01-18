@@ -1,10 +1,12 @@
 import pytest
 from fastapi.testclient import TestClient
-from note_gen.routers.user_routes import app, get_db
+from main import app
+from src.note_gen.routers.user_routes import get_db
 from unittest.mock import MagicMock, AsyncMock
 from bson import ObjectId
-import asyncio
 from typing import List
+import logging
+logger = logging.getLogger(__name__)
 
 @pytest.fixture(scope="module")
 def test_db():
@@ -111,12 +113,27 @@ def test_client(test_db):
         yield client
     app.dependency_overrides.clear()
 
-def test_get_chord_progressions(test_client):
-    response = test_client.get('/chord-progressions')
-    assert response.status_code == 200
-    assert isinstance(response.json(), list)
-    data = response.json()
-    assert len(data) > 0
+
+@pytest.mark.asyncio
+async def test_post_invalid_data(test_client):
+    logger.info("Testing post invalid data")
+    invalid_data = {"invalid_field": "test"}
+    response = test_client.post('/generate-chord-progression', json=invalid_data)
+    assert response.status_code == 422
+    error_data = response.json()
+    assert "detail" in error_data
+
+
+
+@pytest.mark.asyncio
+async def test_get_chord_progressions(test_client):
+    async with httpx.AsyncClient(base_url="http://127.0.0.1:8000") as client:
+        response = await client.get('/chord-progressions')
+        assert response.status_code == 200
+        data = response.json()
+        assert isinstance(data, list)
+        assert len(data) > 0  # Ensure the list is not empty
+        assert data[0]['name'] is not None  # Check if the name is not None
 
 def test_get_note_patterns(test_client):
     response = test_client.get('/note-patterns')
@@ -145,9 +162,15 @@ def test_post_endpoint(test_client):
     assert response.status_code == 200
     data = response.json()
     assert "id" in data
-    assert "name" in data
-    assert "chords" in data
+    assert data["name"] == "Generated Chord Progression"
+    assert len(data["chords"]) == 4
+    for chord in data["chords"]:
+        assert "root" in chord
+        assert "quality" in chord
 
 def test_invalid_endpoint(test_client):
     response = test_client.get('/invalid-endpoint')
     assert response.status_code == 404
+    error_data = response.json()
+    assert "detail" in error_data
+    assert error_data["detail"] == "Not Found"

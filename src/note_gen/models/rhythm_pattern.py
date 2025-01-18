@@ -2,8 +2,8 @@ from __future__ import annotations
 import logging
 import sys
 import re
-from typing import List, Optional, Type, Any, Dict
-from pydantic import BaseModel, Field, validator, field_validator, model_validator
+from typing import List, Optional, Any, Dict
+from pydantic import BaseModel, Field, field_validator, model_validator
 import uuid
 
 # Configure logging
@@ -76,7 +76,12 @@ class RhythmNote(BaseModel):
 class RhythmPatternData(BaseModel):
     """Data class for rhythm pattern data."""
     notes: List[RhythmNote]
-    time_signature: str = "4/4"
+    time_signature: str = Field(
+        "4/4", 
+        description="Time signature in format 'numerator/denominator'",
+        pattern=r'^\d+/\d+$',
+        frozen=True
+    )
     swing_enabled: bool = False
     humanize_amount: float = 0.0
     swing_ratio: float = 0.67
@@ -88,11 +93,23 @@ class RhythmPatternData(BaseModel):
     duration: float = 1.0
     style: str = "basic"
 
-    def calculate_total_duration(self) -> float:
-        """Calculate and update the total duration based on note positions and durations."""
-        if not self.notes:
-            return 0.0
-        return max(note.position + note.duration for note in self.notes)
+    @field_validator("time_signature")
+    @classmethod
+    def validate_time_signature(cls, value: str) -> str:
+        try:
+            numerator, denominator = map(int, value.split('/'))
+            # Check if numerator is positive
+            if numerator <= 0:
+                raise ValueError("Time signature numerator must be positive")
+            
+            # Check if denominator is a power of 2
+            if denominator <= 0 or (denominator & (denominator - 1)) != 0:
+                raise ValueError("Time signature denominator must be a positive power of 2")
+            return value
+        except ValueError as e:
+            if str(e).startswith("Time signature"):
+                raise
+            raise ValueError("Invalid time signature format")
 
     @model_validator(mode='after')
     def validate_model(self) -> 'RhythmPatternData':
@@ -100,28 +117,13 @@ class RhythmPatternData(BaseModel):
         self.total_duration = self.calculate_total_duration()
         return self
 
-    @field_validator("time_signature")
-    def validate_time_signature(cls, v: str) -> str:
-        """Validate time signature format."""
-        valid_numerators = list(range(2, 13))  # Allow numerators from 2 to 12
-        pattern = r"^(\d+)/(\d+)$"
-        match = re.match(pattern, v)
-    
-        if not match:
-            raise ValueError("Invalid time signature format")
-            
-        numerator = int(match.group(1))
-        denominator = int(match.group(2))
-        
-        if numerator not in valid_numerators:
-            raise ValueError(f"Invalid time signature. Must be in format: numerator/denominator where numerator is one of {valid_numerators} and denominator is a power of 2")
-            
-        if denominator not in [2, 4, 8, 16, 32, 64]:  # Check if denominator is power of 2
-            raise ValueError(f"Invalid time signature. Must be in format: numerator/denominator where numerator is one of {valid_numerators} and denominator is a power of 2")
-            
-        return v
+    def calculate_total_duration(self) -> float:
+        """Calculate and update the total duration based on note positions and durations."""
+        if not self.notes:
+            return 0.0
+        return max(note.position + note.duration for note in self.notes)
 
-    @field_validator("groove_type")
+    @field_validator('groove_type')
     def validate_groove_type(cls, v: str) -> str:
         """Validate groove type."""
         valid_types = ["straight", "swing"]
@@ -172,12 +174,16 @@ class RhythmPatternData(BaseModel):
             raise ValueError(f"Invalid style. Must be one of {valid_styles}")
         return v
 
-    @field_validator("accent_pattern")
-    def validate_accent_pattern(cls, v: List[float]) -> List[float]:
+    @field_validator("accent_pattern", mode="before")
+    def validate_accent_pattern(cls, v: List[Any]) -> List[float]:
         """Validate accent pattern."""
-        if any(not 0.0 <= x <= 1.0 for x in v):
-            raise ValueError("Accent values must be between 0 and 1")
-        return v
+        try:
+            values = [float(x) for x in v]
+            if any(not 0.0 <= x <= 1.0 for x in values):
+                raise ValueError("Accent values must be floats between 0 and 1")
+            return values
+        except (ValueError, TypeError):
+            raise ValueError("Accent values must be floats between 0 and 1")
 
     @field_validator("variation_probability")
     def validate_variation_probability(cls, v: float) -> float:

@@ -1,7 +1,8 @@
 import pytest
 from fastapi.testclient import TestClient
+from httpx import AsyncClient
 from main import app  # Adjust the import based on your app structure
-from note_gen.routers.user_routes import get_note_name, get_octave
+from src.note_gen.models.note import Note
 
 client = TestClient(app)
 
@@ -26,5 +27,16 @@ def test_note_sequence():
     root_note = 60  # MIDI number for C4
     for i, note in enumerate(data["notes"]):
         expected_pitch = root_note + expected_intervals[i % len(expected_intervals)]
-        assert note["note_name"] == get_note_name(expected_pitch)
-        assert note["octave"] == get_octave(expected_pitch)
+        expected_note = Note.from_midi(expected_pitch)
+        assert note["note_name"] == expected_note.note_name
+        assert note["octave"] == expected_note.octave
+
+@pytest.mark.asyncio
+async def test_get_note_sequences() -> None:
+    async with AsyncClient(base_url="http://127.0.0.1:8000") as client:
+        response = await client.get('/note-sequences')
+        assert response.status_code == 200
+        assert isinstance(response.json(), list)
+        data = response.json()
+        assert len(data) > 0  # Ensure the list is not empty
+        assert data[0]['name'] is not None  # Check if the name is not None

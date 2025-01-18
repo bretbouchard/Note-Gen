@@ -6,6 +6,7 @@ src/note_gen/__init__.py
 src/note_gen/database.py
 src/note_gen/fetch_patterns.py
 src/note_gen/import_presets.py
+src/note_gen/main.py
 src/note_gen/populate_db.py
 src/note_gen/py.typed
 src/note_gen.egg-info/PKG-INFO
@@ -49,4 +50,5 @@ src/note_gen/typings/rhythm_pattern.pyi
 src/note_gen/typings/roman_numeral.pyi
 src/note_gen/typings/scale_degree.pyi
 src/note_gen/typings/scale_info.pyi
+tests/test_fetch_patterns.py
 tests/test_main.py

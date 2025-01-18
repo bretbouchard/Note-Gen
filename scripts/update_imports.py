@@ -3,7 +3,7 @@
 import os
 import re
 
-def update_imports(root_dir):
+def update_imports(root_dir: str) -> None:
     """Update imports from src.note_gen to note_gen."""
     pattern = r'from src\.note_gen\.'
     replacement = 'from note_gen.'

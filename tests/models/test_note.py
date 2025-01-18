@@ -1,8 +1,8 @@
 import pytest
-from note_gen.models.note import Note
+from src.note_gen.models.note import Note
 
 def test_note_initialization() -> None:
-    note = Note(note_name="C", octave=4)
+    note = Note(note_name="C", octave=4, duration=1.0, velocity=64)
     assert note.note_name == "C"
     assert note.octave == 4
     assert note.duration == 1.0
@@ -10,7 +10,7 @@ def test_note_initialization() -> None:
     assert note.stored_midi_number is None
 
 def test_note_midi_computation() -> None:
-    note = Note(note_name="C", octave=4)
+    note = Note(note_name="C", octave=4, duration=1.0, velocity=64)
     assert note.midi_number == 60
 
 def test_note_from_name() -> None:

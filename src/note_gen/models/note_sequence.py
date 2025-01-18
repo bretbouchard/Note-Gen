@@ -1,11 +1,9 @@
 """Module for handling sequences of musical notes."""
 
-from typing import List, Optional, Sequence, Union, Any, Dict
+from typing import List, Union, Any
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from src.note_gen.models.musical_elements import Note
-from src.note_gen.models.scale_degree import ScaleDegree
-from src.note_gen.models.scale import Scale
 from src.note_gen.models.note_event import NoteEvent
 
 

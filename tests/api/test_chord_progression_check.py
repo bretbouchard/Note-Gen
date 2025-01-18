@@ -2,9 +2,10 @@ import asyncio
 import pytest
 import pytest_asyncio
 import uuid
+from main import app
 from fastapi.testclient import TestClient
-from note_gen.database import get_db
-from note_gen.routers.user_routes import app
+from src.note_gen.database import get_db
+
 
 @pytest.fixture(scope="session")
 def event_loop():

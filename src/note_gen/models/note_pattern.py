@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Literal, Union, List
-from pydantic import BaseModel, ConfigDict, Field, field_validator
-import uuid
+from typing import List, Optional, Union, Literal
+from pydantic import BaseModel, Field, field_validator
 
 from src.note_gen.models.musical_elements import Note, Chord
 from src.note_gen.models.scale_degree import ScaleDegree
@@ -18,15 +17,20 @@ NoteType = Union[Note, ScaleDegree, Chord]
 
 class NotePattern(BaseModel):
     """A pattern of musical notes."""
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    name: str
-    data: List[Union[int, List[int]]] = Field(...)
-    notes: List[Note] = Field(default_factory=list)
-    description: str = ""
-    tags: List[str] = Field(default_factory=list)
-    is_test: bool = Field(default=False)
+    id: Optional[str] = Field(None, description="ID of the note pattern")
+    name: str = Field(description="Name of the note pattern")
+    notes: Optional[List[Note]] = Field(None, description="List of notes in the pattern")
+    pattern_type: Optional[str] = Field(None, description="Type of pattern")
+    description: str = Field(description="Pattern description")
+    tags: List[str] = Field(description="Pattern tags")
+    complexity: Optional[float] = Field(None, description="Pattern complexity")
+    data: Optional[List[int]] = Field(default=None, description="Additional pattern data")
+    is_test: Optional[bool] = Field(default=None, description="Test flag")
 
-    class ConfigDict:
+
+
+
+    class Config:
         schema_extra = {
             'example': {
                 'name': 'Simple Triad',

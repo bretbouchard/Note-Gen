@@ -1,37 +1,39 @@
-import pymongo
+"""Module for importing preset data into MongoDB."""
+
 from pymongo.errors import ConnectionFailure, ServerSelectionTimeoutError
 from pymongo.database import Database
 import logging
-import uuid
+import os
+from pymongo import MongoClient
+from motor.motor_asyncio import AsyncIOMotorDatabase
 
 logger = logging.getLogger(__name__)
 
-from note_gen.models.presets import DEFAULT_CHORD_PROGRESSION, DEFAULT_NOTE_PATTERN, COMMON_PROGRESSIONS, NOTE_PATTERNS, RHYTHM_PATTERNS
-from note_gen.models.chord_progression import ChordProgression
-from note_gen.models.note_pattern import NotePattern
-from note_gen.models.rhythm_pattern import RhythmPattern, RhythmPatternData
-from typing import List, Any, Optional, Dict
-
+from src.note_gen.models.presets import COMMON_PROGRESSIONS, NOTE_PATTERNS, RHYTHM_PATTERNS
+from src.note_gen.models.rhythm_pattern import RhythmPatternData
+from typing import Any, Optional, Dict
 
 # MongoDB connection setup
-client: pymongo.MongoClient = pymongo.MongoClient("mongodb://localhost:27017/")
-db = client["note_gen"]
+client: MongoClient[str] = MongoClient("mongodb://localhost:27017/")
+db: Database = client["note_gen"]
 
 # Create unique indexes if they don't exist
-def ensure_indexes(database=None):
-    target_db = database if database is not None else db
+async def ensure_indexes(database: AsyncIOMotorDatabase) -> None:
+    if database is None:
+        raise ValueError("Database must be provided")
+    target_db: AsyncIOMotorDatabase = database
     try:
-        target_db.chord_progressions.create_index("name", unique=True)
+        await target_db.chord_progressions.create_index("name", unique=True)
     except Exception as e:
         logger.warning(f"Index already exists or error creating index on chord_progressions: {e}")
 
     try:
-        target_db.note_patterns.create_index("name", unique=True)
+        await target_db.note_patterns.create_index("name", unique=True)
     except Exception as e:
         logger.warning(f"Index already exists or error creating index on note_patterns: {e}")
 
     try:
-        target_db.rhythm_patterns.create_index("name", unique=True)
+        await target_db.rhythm_patterns.create_index("name", unique=True)
     except Exception as e:
         logger.warning(f"Index already exists or error creating index on rhythm_patterns: {e}")
 
@@ -67,8 +69,8 @@ def clear_existing_data() -> None:
     db.rhythm_patterns.delete_many({})
 
 # Function to import chord progressions
-def import_chord_progressions(database=None) -> None:
-    target_db = database if database is not None else db
+def import_chord_progressions(database: Optional[Database] = None) -> None:
+    target_db: Database = database if database is not None else db
     for i, (name, progression) in enumerate(COMMON_PROGRESSIONS.items(), start=1):
         target_db.chord_progressions.insert_one({
             'id': str(i),  # Use string for consistency with UUIDs
@@ -78,8 +80,8 @@ def import_chord_progressions(database=None) -> None:
         })
 
 # Function to import note patterns
-def import_note_patterns(database=None) -> None:
-    target_db = database if database is not None else db
+def import_note_patterns(database: Optional[Database] = None) -> None:
+    target_db: Database = database if database is not None else db
     for i, (name, pattern) in enumerate(NOTE_PATTERNS.items(), start=1):
         target_db.note_patterns.insert_one({
             'id': str(i),  # Use string for consistency with UUIDs
@@ -92,56 +94,59 @@ def import_note_patterns(database=None) -> None:
         })
 
 # Function to import rhythm patterns
-def import_rhythm_patterns(database=None) -> None:
-    target_db = database if database is not None else db
+def import_rhythm_patterns(database: Optional[Database] = None) -> None:
+    target_db: Database = database if database is not None else db
     for i, (name, pattern) in enumerate(RHYTHM_PATTERNS.items(), start=1):
         serialized_pattern = serialize_rhythm_pattern(pattern)
         target_db.rhythm_patterns.insert_one({
             'id': str(i),  # Use string for consistency with UUIDs
             'name': name,
-            'data': serialized_pattern  # Include data
+            'data': serialized_pattern,  # Include serialized pattern data
+            'description': pattern.get('description', ''),  # Optional field
+            'tags': pattern.get('tags', []),  # Optional field
+            'is_test': pattern.get('is_test', False)  # Optional field
         })
 
-async def import_presets_if_empty(db: Database) -> None:
-    """Import presets if collections are empty."""
-    try:
-        # Check if chord progressions collection is empty
-        if db.chord_progressions.count_documents({}) == 0:
-            # Import chord progressions
-            for name, chords in COMMON_PROGRESSIONS.items():
-                progression = {
-                    "id": str(uuid.uuid4()),
-                    "name": name,
-                    "chords": chords,
-                    "key": "C",
-                    "scale_type": "major",
-                    "complexity": 0.5
-                }
-                db.chord_progressions.insert_one(progression)
-                logger.info(f"Imported chord progression: {name}")
-    except Exception as e:
-        logger.error(f"Error checking/importing presets: {e}")
+async def import_presets_if_empty(database: AsyncIOMotorDatabase) -> None:
+    """Import presets if collections are empty and not in test mode."""
+    # Skip import if in test mode
+    if os.getenv("TESTING"):
+        logger.info("Skipping preset import in test mode")
+        return
+
+    # Check if collections are empty
+    chord_count = await database.chord_progressions.count_documents({})
+    note_count = await database.note_patterns.count_documents({})
+    rhythm_count = await database.rhythm_patterns.count_documents({})
+
+    if chord_count == 0 and note_count == 0 and rhythm_count == 0:
+        logger.info("Collections are empty, importing presets...")
+        try:
+            # Import presets
+            import_chord_progressions()
+            import_note_patterns()
+            import_rhythm_patterns()
+            logger.info("Successfully imported presets")
+        except Exception as e:
+            logger.error(f"Error importing presets: {e}")
+    else:
+        logger.info("Collections already contain data, skipping preset import")
 
 # Main function to run the import
 if __name__ == '__main__':
     try:
         print("Clearing existing data...")
         clear_existing_data()
-        
         print("Creating indexes...")
-        ensure_indexes()
-        
-        print("Importing chord progressions...")
-        import_chord_progressions()
-        
-        print("Importing note patterns...")
-        import_note_patterns()
-        
-        print("Importing rhythm patterns...")
-        import_rhythm_patterns()
-        
-        print("Import completed successfully!")
-    except (ConnectionFailure, ServerSelectionTimeoutError):
-        print("Error: Could not connect to MongoDB. Make sure MongoDB is running.")
+        ensure_indexes(AsyncIOMotorDatabase(client, "note_gen"))
+        print("Importing presets...")
+        import_presets_if_empty(AsyncIOMotorDatabase(client, "note_gen"))        
+        print("Done!")
+    except ConnectionFailure:
+        print("Failed to connect to MongoDB")
+    except ServerSelectionTimeoutError:
+        print("Could not connect to MongoDB server")
     except Exception as e:
-        print(f"An error occurred during import: {str(e)}")
+        print(f"An error occurred: {e}")
+    finally:
+        client.close()

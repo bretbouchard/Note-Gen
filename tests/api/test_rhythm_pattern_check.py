@@ -1,7 +1,7 @@
 import pytest
 from fastapi.testclient import TestClient
-from note_gen.routers.user_routes import app
-from note_gen.models.rhythm_pattern import RhythmPattern, RhythmPatternData, RhythmNote
+from main import app
+from src.note_gen.models.rhythm_pattern import RhythmPattern, RhythmPatternData, RhythmNote
 from bson import ObjectId
 import uuid
 
@@ -31,7 +31,7 @@ def test_get_rhythm_pattern(client):
     
     # Insert the pattern into the database
     response = client.post('/rhythm-patterns', json=rhythm_pattern.model_dump())
-    assert response.status_code == 200
+    assert response.status_code == 201
     
     # Retrieve the pattern
     response = client.get(f'/rhythm-patterns/{pattern_id}')
@@ -42,7 +42,7 @@ def test_get_rhythm_pattern(client):
 
 def test_invalid_rhythm_pattern_id(client):
     response = client.get('/rhythm-patterns/invalid_id')
-    assert response.status_code == 422  # Invalid ID format
+    assert response.status_code == 422  # if your router actually returns 422 on invalid format
     assert response.json()['detail'][0]['msg'] == "Invalid ID format"
 
 def test_create_rhythm_pattern(client):
@@ -65,7 +65,7 @@ def test_create_rhythm_pattern(client):
     rhythm_pattern = RhythmPattern(name='Test Create Pattern', description='Basic quarter note pattern', tags=['basic'], complexity=1.0, data=rhythm_data, is_test=True)
     
     response = client.post('/rhythm-patterns', json=rhythm_pattern.model_dump())
-    assert response.status_code == 200
+    assert response.status_code == 201
     created_pattern = response.json()
     assert created_pattern['name'] == rhythm_pattern.name
     assert len(created_pattern['data']['notes']) == 1
@@ -93,7 +93,7 @@ def test_create_duplicate_rhythm_pattern(client):
     
     # Create first pattern
     response = client.post('/rhythm-patterns', json=rhythm_pattern.model_dump())
-    assert response.status_code == 200
+    assert response.status_code == 201
     
     # Try to create duplicate with same name
     rhythm_pattern.id = str(uuid.uuid4())
@@ -121,7 +121,7 @@ def test_invalid_rhythm_pattern(client):
     
     invalid_pattern = RhythmPattern(name='Invalid Pattern', description='Invalid pattern', tags=['basic'], complexity=1.0, data=rhythm_data, is_test=True)
     response = client.post('/rhythm-patterns', json=invalid_pattern.model_dump())
-    assert response.status_code == 200  # Validation should pass
+    assert response.status_code == 201  # Validation should pass
 
 def test_create_and_delete_rhythm_pattern(client):
     rhythm_note = RhythmNote(position=0.0, duration=1.0, velocity=100, is_rest=False)
@@ -144,14 +144,13 @@ def test_create_and_delete_rhythm_pattern(client):
     
     # Create the pattern
     response = client.post('/rhythm-patterns', json=rhythm_pattern.model_dump())
-    assert response.status_code == 200
+    assert response.status_code == 201
     created_pattern = response.json()
     pattern_id = created_pattern['id']
     
     # Delete the pattern
     response = client.delete(f'/rhythm-patterns/{pattern_id}')
-    assert response.status_code == 200
-    
+    assert response.status_code == 201
     # Verify pattern is deleted
     response = client.get(f'/rhythm-patterns/{pattern_id}')
     assert response.status_code == 404

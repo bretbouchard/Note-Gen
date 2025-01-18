@@ -1,86 +1,122 @@
-Best Practices for Full-Stack Development
 
-General Coding Principles
-1.Modular Design: Build reusable, composable components to enhance maintainability.
-2.Type Annotations: Use type annotations for all function signatures, model fields, and variables to enable robust type checking.
-3.Consistent Naming:
-•Python: Use lower_case_with_underscores for variables, functions, and filenames.
-•TypeScript: Use kebab-case for directories and camelCase for variables and functions.
-4.Avoid Magic Numbers: Replace hardcoded values with descriptive named constants.
-5.Edge Cases: Always handle edge cases in logic to prevent unexpected behavior.
-6.Assertions: Use assertions to validate assumptions and catch errors early.
-7.Testing: Write comprehensive unit tests for all models, utility functions, and components.
+## Application Overview
 
-Python (Backend with FastAPI)
+- **Purpose**: A FastAPI application for managing musical notes, chord progressions, and rhythm patterns.
+- **Main Features**: 
+  - CRUD operations for notes and chord progressions.
+  - Support for note patterns and rhythm patterns.
+  - API endpoints for user interactions.
 
-Code Structure
-•Directories:
-•src/: Application source code.
-•tests/: Unit tests and integration tests.
-•document_processor/: Document processing utilities.
-•Files:
-•routers/: API route definitions (e.g., routers/user_routes.py).
-•models/: Database models and schemas.
-•utils/: Helper functions and reusable logic.
+## Key Classes
+### 1. Note
+- **Fields**:
+  - `note_name: str` (required) - The name of the note (e.g., C, D, E).
+  - `octave: int` (required) - The octave of the note.
+  - `duration: int` (required) - Duration of the note in beats.
+  - `NOTE_TO_SEMITONE: ClassVar[dict[str, int]]` - Maps note names to their semitone values.
+  - `SEMITONE_TO_NOTE: ClassVar[dict[int, str]]` - Maps semitone values to their note names.
 
-Key Practices
-1.Type Hints: Use type hints for all functions (def for sync, async def for async).
-2.Validation: Use Pydantic models for input validation. Leverage:
-•@field_validator for field-level validation.
-•@computed_field for derived properties.
-•ConfigDict for model configuration.
-3.Error Handling:
-•Use custom exceptions for clarity.
-•Implement guard clauses to avoid deeply nested logic.
-•Log errors using logging for traceability.
-4.RORO Pattern: Follow the “Receive an Object, Return an Object” principle for clean API interfaces.
-5.Mutable Defaults: Use default_factory for mutable fields in Pydantic models.
+### 2. ChordProgression
+- **Fields**:
+  - `id: str` (optional) - Unique identifier for the chord progression.
+  - `name: str` (required) - Name of the chord progression.
+  - `chords: List[Chord]` (required) - List of chords in the progression.
+  - `key: str` (required) - Key of the chord progression.
+  - `scale_type: str` (required) - Type of scale (e.g., major, minor).
+  - `complexity: float` (optional) - Complexity rating between 0 and 1.
 
-TypeScript (Frontend with React)
+### 3. ChordQuality
+- **Fields**:
+  - `quality_type: ChordQualityType` (optional) - Type of chord quality (default is `ChordQualityType.MAJOR`).
 
-Code Structure
-•   Directories:
-•   src/: Main source code.
-•   components/: Reusable UI components (e.g., components/auth-wizard).
-•   hooks/: Custom React hooks.
-•   contexts/: Context API implementations.
-•   pages/: Page-level components.
-•   Configuration Files:
-•   vite.config.ts, tsconfig.json, tailwind.config.js, postcss.config.js.
+### 4. RomanNumeral
+- **Fields**:
+  - `scale_degree: int` (optional) - Scale degree.
+  - `quality: ChordQualityType` (optional) - Quality of the chord (default is `ChordQualityType.MAJOR`).
 
-Key Practices
-1.Functional Components: Use React functional components and hooks for state management.
-2.Descriptive Names: Use meaningful names like isLoading, hasError, onSubmit.
-3.Error Boundaries: Implement error boundaries for React components where necessary.
-4.Styling: Use Tailwind CSS with utility-first principles and Shadcn UI for accessible, customizable design systems.
-5.State Management: Prefer the Context API or lightweight state management libraries (e.g., Zustand) over complex solutions unless necessary.
+### 5. ScaleInfo
+- **Fields**:
+  - `root: Note` (required) - Root note of the scale.
+  - `scale_type: Optional[str]` (optional) - Type of scale (default is "major").
+  - `MAJOR_SCALE_QUALITIES: ClassVar[Dict[int, ChordQualityType]]` - Chord qualities for major scales.
+  - `MINOR_SCALE_QUALITIES: ClassVar[Dict[int, ChordQualityType]]` - Chord qualities for minor scales.
 
-DevOps and Environment Configuration
+### 6. ChordProgressionGenerator
+- **Fields**:
+  - `scale_info: ScaleInfo` (required) - Information about the scale.
+  - `INT_TO_ROMAN: ClassVar[Dict[int, str]]` - Mapping from integers to Roman numerals.
 
-Environment Variables
-•Use .env files for secrets and configuration. Provide .env.example for default settings.
+### 7. NoteSequence
+- **Fields**:
+  - `notes: List[Union[Note, int]]` (required) - List of notes.
+  - `events: List[NoteEvent]` (optional) - List of note events (default is an empty list).
+  - `duration: float` (optional) - Duration of the note sequence (default is 0.0).
 
-Docker Setup
-•Use separate Dockerfile and Dockerfile.dev files for production and development environments.
+### 8. ChordQualityType
+- **Fields**: (List of chord qualities)
 
-Database
-•Use PostgreSQL for production with migrations managed by Alembic.
-•Use SQLite for lightweight local development.
+### 9. Chord
+- **Fields**:
+  - `root: Note` (required) - The root note of the chord.
+  - `quality: ChordQualityType` (optional) - Quality of the chord (default is `ChordQualityType.MAJOR`).
+  - `notes: List[Note]` (optional) - List of notes in the chord (default is an empty list).
+  - `inversion: int` (optional) - Chord inversion (default is 0).
 
-Advanced Practices
+### 10. Scale
+- **Fields**:
+  - `root: Note` (required) - The root note of the scale.
+  - `scale_type: ScaleType` (required) - The type of scale (e.g., major, minor).
+  - `notes: List[Note]` (optional) - List of notes in the scale (default is an empty list).
 
-Testing
-•Use pytest for backend unit tests and Jest for frontend testing.
-•Ensure 100% coverage for critical models, functions, and components.
+### 11. ScaleDegree
+- **Fields**:
+  - `value: int` (required) - The degree value of the scale.
 
-Documentation
-•Use description in Pydantic models’ Field() to document fields.
-•Generate API documentation automatically with FastAPI’s built-in tools.
+### 11. ScaleDegree
+- **Fields:**
+  - `value: int` (required) - The degree value of the scale.
 
-Error Handling
-•Centralize error-handling logic for both backend and frontend.
-•Provide user-friendly messages on the frontend and detailed logs on the backend.
+### 12. ScaleType
+- **Fields:**
+  - `MAJOR = "major"`
+  - `MINOR = "minor"`
 
-Optimization
-•Use lazy loading and code splitting in React for faster load times.
-•Optimize database queries and API responses using profiling tools.
+### 13. NoteEvent
+- **Fields:**
+  - `note: Union[Note, ScaleDegree, Chord]` (required) - The note associated with the event.
+  - `position: float` (optional) - Position of the note event (default is 0.0).
+  - `duration: float` (optional) - Duration of the note event (default is 1.0).
+  - `velocity: int` (optional) - Velocity of the note event (default is 100).
+  - `channel: int` (optional) - MIDI channel (default is 0).
+  - `is_rest: bool` (optional) - Indicates if the event is a rest (default is False).
+
+### 14. PatternInterpreter
+- **Fields:**
+  - `scale: Scale` (required) - The scale to use for interpretation.
+  - `pattern: Sequence[Union[int, str, Note, ScaleDegree, Dict[str, Any]]` (required) - The pattern to interpret.
+  - `_current_index: int` (optional) - The current index in the pattern (default is 0).
+
+### 15. NotePattern
+- **Fields:**
+  - `id: Optional[str]` (optional) - ID of the note pattern.
+  - `name: str` (required) - Name of the note pattern.
+  - `notes: Optional[List[Note]]` (optional) - List of notes in the pattern.
+  - `pattern_type: Optional[str]` (optional) - Type of pattern.
+  - `description: str` (required) - Pattern description.
+  - `tags: List[str]` (required) - Pattern tags.
+  - `complexity: Optional[float]` (optional) - Pattern complexity.
+  - `data: Optional[List[int]]` (optional) - Additional pattern data.
+  - `is_test: Optional[bool]` (optional) - Test flag.
+
+## API Routes
+- **Routes**: Refer to @[src/note_gen/routers/user_routes.py] for a complete list of API routes.
+
+## Testing
+- **Test Framework**: pytest
+- **Key Tests**: Ensure to cover the creation and retrieval of notes, chord progressions, and other core functionalities.
+
+## Additional Notes
+- **Dependencies**: FastAPI, Pydantic, Motor, etc.
+- **Environment Variables**:  AsyncIOMotorClient[Any] = AsyncIOMotorClient('mongodb://localhost:27017/')
+
+    db: AsyncIOMotorDatabase[Any] = client['note_gen']  # Replace with your database name

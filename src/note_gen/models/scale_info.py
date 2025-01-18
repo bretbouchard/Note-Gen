@@ -1,5 +1,5 @@
-from typing import List, Optional, Dict, ClassVar
-from pydantic import BaseModel, Field
+from typing import Optional, Dict, ClassVar
+from pydantic import BaseModel
 
 from src.note_gen.models.note import Note
 from src.note_gen.models.scale import Scale, ScaleType

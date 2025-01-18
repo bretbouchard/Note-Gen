@@ -1,17 +1,15 @@
 import unittest
 from typing import List
-from pydantic import ValidationError
 
-from note_gen.models.note import Note
-from note_gen.models.note_sequence import NoteSequence
-from note_gen.models.pattern_interpreter import PatternInterpreter, ScalePatternInterpreter
-from note_gen.models.rhythm_pattern import RhythmNote, RhythmPatternData, RhythmPattern
-from note_gen.models.musical_elements import Chord 
-from note_gen.models.note_event import NoteEvent
-from note_gen.models.scale import Scale, ScaleType
-from note_gen.models.scale_info import ScaleInfo
-from note_gen.models.scale_degree import ScaleDegree
-from note_gen.models.note_pattern import NotePattern  # Import NotePattern
+from src.note_gen.models.note import Note
+from src.note_gen.models.note_sequence import NoteSequence
+from src.note_gen.models.pattern_interpreter import ScalePatternInterpreter
+from src.note_gen.models.rhythm_pattern import RhythmNote, RhythmPatternData, RhythmPattern
+from src.note_gen.models.musical_elements import Chord 
+from src.note_gen.models.note_event import NoteEvent
+from src.note_gen.models.scale import Scale, ScaleType
+from src.note_gen.models.scale_info import ScaleInfo
+from src.note_gen.models.note_pattern import NotePattern  # Import NotePattern
 
 
 class FakeScale(Scale):
@@ -44,14 +42,19 @@ class FakeScaleInfo(ScaleInfo):
         return "major"
 
     def get_scale_notes(self) -> List[Note]:
-        return [Note(note_name="C"), Note(note_name="D"), Note(note_name="E")]
+        return [Note(note_name="C", octave=4, duration=1, velocity=100), Note(note_name="D"), Note(note_name="E")]
 
 
 class TestNoteSequence(unittest.TestCase):
     def setUp(self) -> None:
-        self.sequence = NoteSequence(notes=[Note.from_midi(60), Note.from_midi(62), Note.from_midi(64)], events=[], duration=0.0)
-        self.chord = Chord(root=Note(note_name="C"), quality="major")  # Replace with actual chord instance
-        self.scale_info = FakeScaleInfo(root=Note(note_name="C"), scale_type=ScaleType.MAJOR)  # Updated to include required arguments
+        self.sequence = NoteSequence(notes=[
+            Note.from_midi(60, octave=4, duration=1.0, velocity=100), 
+            Note.from_midi(62, octave=4, duration=1.0, velocity=100), 
+            Note.from_midi(64, octave=4, duration=1.0, velocity=100)
+        ], events=[], duration=0.0)
+        self.chord = Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality="major")  # Replace with actual chord instance
+        self.scale_info = FakeScaleInfo(root=Note(note_name="C", octave=4, duration=1, velocity=100), scale_type=ScaleType.MAJOR)  # Updated to include required arguments
+        self.note = Note(note_name="C", octave=4)
 
     def test_validate_notes_converts_ints_to_notes(self) -> None:
         seq = NoteSequence(notes=[Note.from_midi(60), Note.from_midi(61)])
@@ -70,8 +73,8 @@ class TestNoteSequence(unittest.TestCase):
         self.assertIsInstance(event.note, Note)
 
     def test_get_notes_at_returns_correct_events(self) -> None:
-        note1 = Note(note_name="C")
-        note2 = Note(note_name="D")
+        note1 = Note(note_name="C", octave=4, duration=1.0, velocity=100)
+        note2 = Note(note_name="D", octave=4, duration=1.0, velocity=100)
         event1 = NoteEvent(note=note1, position=0.0, duration=1.0, velocity=100)
         event2 = NoteEvent(note=note2, position=1.0, duration=1.0, velocity=100)
         seq = NoteSequence(notes=[], events=[event1, event2], duration=0.0)
@@ -85,6 +88,30 @@ class TestNoteSequence(unittest.TestCase):
         self.assertEqual(len(self.sequence.events), 0)
         self.assertEqual(self.sequence.duration, 0.0)
 
+    def test_note_event_creation(self):
+        event = NoteEvent(
+            note=self.note,
+            position=0.0,
+            duration=1.0,
+            velocity=100,
+            channel=0,
+            is_rest=False
+        )
+        self.assertEqual(event.note, self.note)
+        self.assertEqual(event.duration, 1.0)
+        self.assertEqual(event.velocity, 100)
+        self.assertEqual(event.channel, 0)
+        self.assertFalse(event.is_rest)
+
+    def test_note_sequence(self):
+        sequence = NoteSequence(
+            notes=[self.note],
+            events=[],
+            duration=3.0
+        )
+        self.assertEqual(len(sequence.notes), 1)
+        self.assertEqual(sequence.duration, 3.0)
+
 
 
 class TestPatternInterpreter(unittest.TestCase):
@@ -92,8 +119,8 @@ class TestPatternInterpreter(unittest.TestCase):
         fake_scale = FakeScale()
         pattern = [1, 2, 3]
         self.interpreter = ScalePatternInterpreter(scale=fake_scale, pattern=pattern)
-        self.chord = Chord(root=Note(note_name="C"), quality="major")
-        self.scale_info = FakeScaleInfo(root=Note(note_name="C"), scale_type=ScaleType.MAJOR)  # Updated to include required arguments
+        self.chord = Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality="major")
+        self.scale_info = FakeScaleInfo(root=Note(note_name="C", octave=4, duration=1, velocity=100), scale_type=ScaleType.MAJOR)  # Updated to include required arguments
 
     def test_interpret_returns_note_sequence(self) -> None:
         sequence = self.interpreter.interpret(pattern=[1, 2, 3], chord=self.chord, scale_info=self.scale_info)        
@@ -101,7 +128,7 @@ class TestPatternInterpreter(unittest.TestCase):
 
     def test_get_next_note_cycles_through_pattern(self) -> None:
         scale = FakeScale()
-        pattern = [Note(note_name="C"), Note(note_name="D")]
+        pattern = [Note(note_name="C", octave=4, duration=1, velocity=100), Note(note_name="D", octave=4, duration=1, velocity=100)]
         interpreter = ScalePatternInterpreter(scale=scale, pattern=pattern)
         
         first_note = interpreter.get_next_note()
@@ -123,7 +150,7 @@ class TestPatternInterpreter(unittest.TestCase):
         rhythm_pattern = RhythmPatternData(notes=rhythm_notes)
 
         # Create a note pattern with MIDI numbers instead of Note instances
-        note_pattern = NotePattern(name="Test Pattern", data=[60, 62, 64], notes=[])
+        note_pattern = NotePattern(name="Test Pattern", data=[60, 62, 64], notes=[], description="", tags=[], is_test=True)
 
         # Flatten the note_pattern.data if it contains nested lists
         flat_pattern = [item for sublist in note_pattern.data for item in (sublist if isinstance(sublist, list) else [sublist])]
@@ -169,14 +196,15 @@ class TestRhythmPatternData(unittest.TestCase):
                 humanize_amount=0.5,
                 swing_ratio=0.67,
                 style="jazz",
-                default_duration=1.0,
-                duration=-1.0,  # Directly pass negative duration
+                default_duration=-1.0,  # Directly pass negative duration
             )
 
     def test_calculate_total_duration(self) -> None:
-        self.data.calculate_total_duration()
-        expected_duration = max(n.position + n.duration for n in self.notes)
-        self.assertEqual(self.data.total_duration, expected_duration)
+        total_duration = sum(note.duration for note in self.notes)
+        self.assertEqual(self.data.total_duration, total_duration, "Total duration should match the sum of note durations")
+        self.data.default_duration = 2.0
+        self.data.notes = [RhythmNote(position=0.0, duration=self.data.default_duration)]
+        self.assertEqual(self.data.total_duration, self.data.default_duration)
 
     def test_validate_swing_ratio_out_of_bounds(self) -> None:
         with self.assertRaises(ValueError):
@@ -188,6 +216,30 @@ class TestRhythmPatternData(unittest.TestCase):
                 swing_ratio=0.8,  # out of valid range (0.5 to 0.75)
                 style="jazz",
                 default_duration=1.0
+            )
+
+    def test_validate_duration_zero(self) -> None:
+        with self.assertRaises(ValueError):
+            RhythmPatternData(
+                notes=self.notes,
+                time_signature="4/4",
+                swing_enabled=False,
+                humanize_amount=0.5,
+                swing_ratio=0.67,
+                style="jazz",
+                default_duration=0.0,  # Directly pass zero duration
+            )
+
+    def test_validate_duration_non_numeric(self) -> None:
+        with self.assertRaises(ValueError):
+            RhythmPatternData(
+                notes=self.notes,
+                time_signature="4/4",
+                swing_enabled=False,
+                humanize_amount=0.5,
+                swing_ratio=0.67,
+                style="jazz",
+                default_duration="invalid",  # Directly pass non-numeric duration
             )
 
 
@@ -259,7 +311,7 @@ class TestPatternInterpreterExtended(unittest.TestCase):
         rhythm_pattern = RhythmPatternData(notes=rhythm_notes)
 
         # Create a note pattern with MIDI numbers instead of Note instances
-        note_pattern = NotePattern(name="Test Pattern", data=[60, 62, 64], notes=[])
+        note_pattern = NotePattern(name="Test Pattern", data=[60, 62, 64], notes=[], description="", tags=[], is_test=True)
 
         # Flatten the note_pattern.data if it contains nested lists
         flat_pattern = [item for sublist in note_pattern.data for item in (sublist if isinstance(sublist, list) else [sublist])]

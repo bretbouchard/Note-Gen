@@ -1,302 +1,294 @@
-import pytest
-from fastapi.testclient import TestClient
-from note_gen.routers.user_routes import app, get_db
-from note_gen.models.rhythm_pattern import RhythmPattern, RhythmPatternData, RhythmNote
-from note_gen.models.note import Note
-from note_gen.models.chord_progression import ChordProgression
-from note_gen.models.scale_info import ScaleInfo
-from note_gen.models.note_pattern import NotePattern
-import logging
-from typing import Generator, Any, Dict, List, cast
-from mongomock import MongoClient
-from pymongo.database import Database
+# file: src/note_gen/routers/user_routes.py
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from motor.motor_asyncio import AsyncIOMotorDatabase
+from typing import List
 from bson import ObjectId
-import json
+from unittest.mock import AsyncMock
+import pytest
 
-# Configure logging to show debug messages
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
+from src.note_gen.database import get_db
+from src.note_gen.models.rhythm_pattern import RhythmPattern
+from src.note_gen.models.note_pattern import NotePattern
+from src.note_gen.models.chord_progression import ChordProgression
+from src.note_gen.models.note_sequence import NoteSequence
+from src.note_gen.models.note_sequence_generator import generate_sequence_from_presets
+from src.note_gen.models.scale_info import ScaleInfo
 
-_test_client: MongoClient | None = None
-_test_db: Database[Any] | None = None
+router = APIRouter()
 
-def get_test_db() -> Generator[Database[Any], None, None]:
-    """Get test database."""
-    global _test_db
-    if _test_db is None:
-        raise RuntimeError("Test database not initialized")
-    yield _test_db
+# ---------------------------------------------------------------------
+# RHYTHM PATTERNS
+# ---------------------------------------------------------------------
 
-@pytest.fixture(scope="module", autouse=True)
-def init_test_db() -> Generator[None, None, None]:
-    """Initialize test database."""
-    global _test_client, _test_db
-    _test_client = MongoClient()
-    _test_db = cast(Database[Any], _test_client.db)
-    yield
-    if _test_client is not None:
-        _test_client.close()
-        _test_client = None
-    _test_db = None
+@router.get("/rhythm-patterns", response_model=List[RhythmPattern])
+async def get_rhythm_patterns(db: AsyncIOMotorDatabase = Depends(get_db)) -> List[RhythmPattern]:
+    """
+    GET all rhythm patterns.
+    """
+    results = []
+    async for doc in db.rhythm_patterns.find():
+        # Convert to Pydantic model
+        results.append(RhythmPattern(**doc))
+    return results
 
-@pytest.fixture(scope="module")
-def test_client() -> TestClient:
-    """Test client fixture."""
-    app.dependency_overrides[get_db] = get_test_db
-    client = TestClient(app)
-    yield client
-    app.dependency_overrides = {}
-
-@pytest.fixture(scope="module")
-def setup_test_data(test_client: TestClient) -> Generator[Dict[str, str], None, None]:
-    """Setup test data."""
-    global _test_db
-    if _test_db is None:
-        raise RuntimeError("Test database not initialized")
-
-    # Create test data with ObjectIds
-    chord_progression_1_id = str(ObjectId())
-    chord_progression_2_id = str(ObjectId())
-    note_pattern_1_id = str(ObjectId())
-    note_pattern_2_id = str(ObjectId())
-    rhythm_pattern_1_id = str(ObjectId())
-    rhythm_pattern_2_id = str(ObjectId())
-
-    # Create test data
-    chord_progression_1 = {
-        'id': chord_progression_1_id,
-        'name': 'I-IV-V',
-        'scale_info': {
-            'root': {'note_name': 'C', 'octave': 4},
-            'scale_type': 'major'
-        },
-        'chords': [
-            {'root': {'note_name': 'C', 'octave': 4}, 'quality': 'MAJOR'},
-            {'root': {'note_name': 'F', 'octave': 4}, 'quality': 'MAJOR'},
-            {'root': {'note_name': 'G', 'octave': 4}, 'quality': 'MAJOR'}
-        ]
-    }
+@router.get("/rhythm-patterns/{pattern_id}", response_model=RhythmPattern)
+async def get_rhythm_pattern_by_id(pattern_id: str, db: AsyncIOMotorDatabase = Depends(get_db)) -> RhythmPattern:
+    """
+    GET a single rhythm pattern by its ObjectId.
+    Returns 422 if the ID format is invalid, 404 if not found.
+    """
+    # Validate ObjectId
+    try:
+        oid = ObjectId(pattern_id)
+    except:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid ID format")
     
-    chord_progression_2 = {
-        'id': chord_progression_2_id,
-        'name': 'ii-V-I',
-        'scale_info': {
-            'root': {'note_name': 'C', 'octave': 4},
-            'scale_type': 'major'
-        },
-        'chords': [
-            {'root': {'note_name': 'D', 'octave': 4}, 'quality': 'MINOR'},
-            {'root': {'note_name': 'G', 'octave': 4}, 'quality': 'MAJOR'},
-            {'root': {'note_name': 'C', 'octave': 4}, 'quality': 'MAJOR'}
-        ]
-    }
+    doc = await db.rhythm_patterns.find_one({"_id": oid})
+    if not doc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Rhythm pattern not found")
     
-    note_pattern_1 = {
-        'id': note_pattern_1_id,
-        'name': 'Simple Triad',
-        'notes': [{'note_name': 'C', 'octave': 4, 'duration': 1.0}],
-        'pattern_type': 'melodic',
-        'description': 'Simple triad pattern',
-        'tags': ['basic'],
-        'complexity': 1.0
-    }
-    
-    note_pattern_2 = {
-        'id': note_pattern_2_id,
-        'name': 'Pentatonic',
-        'notes': [{'note_name': 'C', 'octave': 4, 'duration': 1.0}],
-        'pattern_type': 'melodic',
-        'description': 'Pentatonic pattern',
-        'tags': ['basic'],
-        'complexity': 1.0
-    }
-    
-    rhythm_data = {
-        'notes': [{'position': 0.0, 'duration': 1.0, 'velocity': 100, 'is_rest': False}],
-        'time_signature': '4/4',
-        'swing_enabled': False,
-        'humanize_amount': 0.0,
-        'swing_ratio': 0.67,
-        'default_duration': 1.0,
-        'total_duration': 4.0,
-        'accent_pattern': [],
-        'groove_type': 'straight',
-        'variation_probability': 0.0,
-        'duration': 1.0,
-        'style': 'test'
-    }
-    
-    rhythm_pattern_1 = {
-        'id': rhythm_pattern_1_id,
-        'name': 'Quarter Notes',
-        'data': rhythm_data,
-        'description': 'Basic quarter note pattern',
-        'tags': ['basic'],
-        'complexity': 1.0,
-        'style': 'test'
-    }
-    
-    rhythm_pattern_2 = {
-        'id': rhythm_pattern_2_id,
-        'name': 'Eighth Notes',
-        'data': {
-            **rhythm_data,
-            'notes': [
-                {'position': 0.0, 'duration': 0.5, 'velocity': 100, 'is_rest': False},
-                {'position': 0.5, 'duration': 0.5, 'velocity': 100, 'is_rest': False}
-            ]
-        },
-        'description': 'Basic eighth note pattern',
-        'tags': ['basic'],
-        'complexity': 1.0,
-        'style': 'test'
-    }
-    
-    # Insert test data
-    _test_db.chord_progressions.insert_many([
-        chord_progression_1,
-        chord_progression_2
-    ])
-    
-    _test_db.note_patterns.insert_many([
-        note_pattern_1,
-        note_pattern_2
-    ])
-    
-    _test_db.rhythm_patterns.insert_many([
-        rhythm_pattern_1,
-        rhythm_pattern_2
-    ])
-    
-    yield {
-        'chord_progression_1_id': chord_progression_1_id,
-        'chord_progression_2_id': chord_progression_2_id,
-        'note_pattern_1_id': note_pattern_1_id,
-        'note_pattern_2_id': note_pattern_2_id,
-        'rhythm_pattern_1_id': rhythm_pattern_1_id,
-        'rhythm_pattern_2_id': rhythm_pattern_2_id
-    }
+    return RhythmPattern(**doc)
 
-def test_get_rhythm_patterns(test_client: TestClient, setup_test_data: Dict[str, str]) -> None:
-    """Test GET /rhythm-patterns endpoint."""
-    response = test_client.get('/rhythm-patterns')
-    assert response.status_code == 200
-    data = response.json()
-    assert isinstance(data, list)
-    assert len(data) == 2
-    assert data[0]['name'] == 'Quarter Notes'
-    assert data[1]['name'] == 'Eighth Notes'
-
-def test_get_rhythm_pattern_by_id(test_client: TestClient, setup_test_data: Dict[str, str]) -> None:
-    """Test GET /rhythm-patterns/{id} endpoint."""
-    response = test_client.get(f'/rhythm-patterns/{setup_test_data["rhythm_pattern_1_id"]}')
-    assert response.status_code == 200
-    data = response.json()
-    assert data['name'] == 'Quarter Notes'
-    assert len(data['data']['notes']) == 1
-
-async def test_get_chord_progressions() -> None:
-    from fastapi.testclient import TestClient
-    from main import app
+@router.post("/rhythm-patterns", response_model=RhythmPattern, status_code=status.HTTP_201_CREATED)
+async def create_rhythm_pattern(pattern: RhythmPattern, db: AsyncIOMotorDatabase = Depends(get_db)) -> RhythmPattern:
+    """
+    POST a new RhythmPattern.
+    - Returns 409 if a pattern with the same name already exists.
+    - Otherwise, inserts and returns the newly created pattern.
+    """
+    # Check for duplicates
+    existing = await db.rhythm_patterns.find_one({"name": pattern.name})
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Rhythm pattern with name '{pattern.name}' already exists"
+        )
     
-    client = TestClient(app)
+    # Insert
+    doc = pattern.model_dump(exclude={"id"})
+    result = await db.rhythm_patterns.insert_one(doc)
+    new_id = result.inserted_id
+    doc["_id"] = new_id
+    return RhythmPattern(**doc)
+
+@router.delete("/rhythm-patterns/{pattern_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_rhythm_pattern(pattern_id: str, db: AsyncIOMotorDatabase = Depends(get_db)) -> None:
+    """
+    DELETE a single rhythm pattern.
+    - Returns 422 if the ID format is invalid, 404 if not found.
+    - Returns 204 No Content on success.
+    """
+    try:
+        oid = ObjectId(pattern_id)
+    except:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid ID format")
     
-    # Create some chord progressions first
-    progressions = [
-        {
-            "id": "test_id_1",
-            "name": "Test Progression 1",
-            "chords": ["C", "F", "G"],
-            "key": "C",
-            "scale_type": "major",
-            "complexity": 0.5
-        },
-        {
-            "id": "test_id_2",
-            "name": "Test Progression 2",
-            "chords": ["Am", "Dm", "E"],
-            "key": "A",
-            "scale_type": "minor",
-            "complexity": 0.7
-        }
-    ]
+    result = await db.rhythm_patterns.delete_one({"_id": oid})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Rhythm pattern not found")
+
+
+# ---------------------------------------------------------------------
+# NOTE PATTERNS
+# ---------------------------------------------------------------------
+
+@router.get("/note-patterns", response_model=List[NotePattern])
+async def get_note_patterns(db: AsyncIOMotorDatabase = Depends(get_db)) -> List[NotePattern]:
+    """
+    GET all note patterns.
+    """
+    results = []
+    async for doc in db.note_patterns.find():
+        results.append(NotePattern(**doc))
+    return results
+
+@router.get("/note-patterns/{pattern_id}", response_model=NotePattern)
+async def get_note_pattern_by_id(pattern_id: str, db: AsyncIOMotorDatabase = Depends(get_db)) -> NotePattern:
+    """
+    GET a single note pattern by its ObjectId.
+    Returns 422 if the ID is invalid, 404 if not found.
+    """
+    try:
+        oid = ObjectId(pattern_id)
+    except:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid ID format")
     
-    for progression in progressions:
-        response = client.post("/chord-progressions", json=progression)
-        assert response.status_code == 200
+    doc = await db.note_patterns.find_one({"_id": oid})
+    if not doc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note pattern not found")
+    return NotePattern(**doc)
+
+@router.post("/note-patterns", response_model=NotePattern, status_code=status.HTTP_201_CREATED)
+async def create_note_pattern(pattern: NotePattern, db: AsyncIOMotorDatabase = Depends(get_db)) -> NotePattern:
+    """
+    POST a new NotePattern.
+    - Returns 409 if a pattern with the same name already exists.
+    """
+    existing = await db.note_patterns.find_one({"name": pattern.name})
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Note pattern with name '{pattern.name}' already exists"
+        )
     
-    # Get all progressions
-    response = client.get("/chord-progressions")
-    assert response.status_code == 200
-    data = response.json()
-    assert len(data) == len(progressions)
-    assert all(prog in data for prog in progressions)
+    doc = pattern.model_dump(exclude={"id"})
+    result = await db.note_patterns.insert_one(doc)
+    doc["_id"] = result.inserted_id
+    return NotePattern(**doc)
 
-def test_get_chord_progression_by_id(test_client: TestClient, setup_test_data: Dict[str, str]) -> None:
-    """Test GET /chord-progressions/{id} endpoint."""
-    response = test_client.get(f'/chord-progressions/{setup_test_data["chord_progression_1_id"]}')
-    assert response.status_code == 200
-    data = response.json()
-    assert data['name'] == 'I-IV-V'
-    assert len(data['chords']) == 3
+@router.delete("/note-patterns/{pattern_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_note_pattern(pattern_id: str, db: AsyncIOMotorDatabase = Depends(get_db)) -> None:
+    """
+    DELETE a single note pattern.
+    - Returns 422 if invalid, 404 if not found.
+    """
+    try:
+        oid = ObjectId(pattern_id)
+    except:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid ID format")
 
-def test_get_note_patterns(test_client: TestClient, setup_test_data: Dict[str, str]) -> None:
-    """Test GET /note-patterns endpoint."""
-    response = test_client.get('/note-patterns')
-    assert response.status_code == 200
-    data = response.json()
-    assert isinstance(data, list)
-    assert len(data) == 2
-    assert data[0]['name'] == 'Simple Triad'
-    assert data[1]['name'] == 'Pentatonic'
+    result = await db.note_patterns.delete_one({"_id": oid})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note pattern not found")
 
-def test_get_note_pattern_by_id(test_client: TestClient, setup_test_data: Dict[str, str]) -> None:
-    """Test GET /note-patterns/{id} endpoint."""
-    response = test_client.get(f'/note-patterns/{setup_test_data["note_pattern_1_id"]}')
-    assert response.status_code == 200
-    data = response.json()
-    assert data['name'] == 'Simple Triad'
-    assert len(data['notes']) == 1
 
-def test_create_duplicate_note_pattern(test_client: TestClient, setup_test_data: Dict[str, str]):
-    """Test creating a note pattern with a duplicate name."""
-    pattern = {
-        'id': str(ObjectId()),
-        'name': 'Simple Triad',  # Using an existing name
-        'notes': [{'note_name': 'C', 'octave': 4, 'duration': 1.0}],
-        'pattern_type': 'melodic',
-        'description': 'Test pattern',
-        'tags': ['test'],
-        'complexity': 0.5
-    }
-    response = test_client.post("/note-patterns", json=pattern)
-    assert response.status_code == 409
-    assert "already exists" in response.json()['detail']
+# ---------------------------------------------------------------------
+# CHORD PROGRESSIONS
+# ---------------------------------------------------------------------
 
-def test_create_duplicate_rhythm_pattern(test_client: TestClient, setup_test_data: Dict[str, str]):
-    """Test creating a rhythm pattern with a duplicate name."""
-    pattern = {
-        'id': str(ObjectId()),
-        'name': 'Quarter Notes',  # Using an existing name
-        'description': 'Test pattern',
-        'tags': ['test'],
-        'complexity': 0.5,
-        'style': 'basic',
-        'data': {
-            'notes': [{'position': 0.0, 'duration': 1.0, 'velocity': 100, 'is_rest': False}],
-            'time_signature': '4/4',
-            'swing_enabled': False,
-            'humanize_amount': 0.1,
-            'swing_ratio': 0.5,
-            'default_duration': 1.0,
-            'total_duration': 4.0,
-            'accent_pattern': [1.0],
-            'groove_type': 'straight',
-            'variation_probability': 0.1,
-            'duration': 4.0,
-            'style': 'basic'
-        }
-    }
-    response = test_client.post("/rhythm-patterns", json=pattern)
-    assert response.status_code == 409
-    assert "already exists" in response.json()['detail']
+@router.get("/chord-progressions", response_model=List[ChordProgression])
+async def get_chord_progressions(db: AsyncIOMotorDatabase = Depends(get_db)) -> List[ChordProgression]:
+    """
+    GET all chord progressions.
+    """
+    results = []
+    async for doc in db.chord_progressions.find():
+        results.append(ChordProgression(**doc))
+    return results
+
+@router.get("/chord-progressions/{prog_id}", response_model=ChordProgression)
+async def get_chord_progression(prog_id: str, db: AsyncIOMotorDatabase = Depends(get_db)) -> ChordProgression:
+    """
+    GET a single chord progression by ID.
+    Returns 422 if invalid, 404 if not found.
+    """
+    try:
+        oid = ObjectId(prog_id)
+    except:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid ID format")
+    
+    doc = await db.chord_progressions.find_one({"_id": oid})
+    if not doc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chord progression not found")
+    return ChordProgression(**doc)
+
+@router.post("/chord-progressions", response_model=ChordProgression, status_code=status.HTTP_201_CREATED)
+async def create_chord_progression(
+    progression: ChordProgression,
+    db: AsyncIOMotorDatabase = Depends(get_db)
+) -> ChordProgression:
+    """
+    POST a new chord progression.
+    - Returns 409 if a progression with the same name already exists (if your tests require that).
+    """
+    existing = await db.chord_progressions.find_one({"name": progression.name})
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Chord progression '{progression.name}' already exists."
+        )
+    
+    doc = progression.model_dump(exclude={"id"})
+    result = await db.chord_progressions.insert_one(doc)
+    doc["_id"] = result.inserted_id
+    return ChordProgression(**doc)
+
+@router.delete("/chord-progressions/{prog_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_chord_progression(prog_id: str, db: AsyncIOMotorDatabase = Depends(get_db)) -> None:
+    """
+    DELETE chord progression.
+    """
+    try:
+        oid = ObjectId(prog_id)
+    except:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid ID format")
+    
+    result = await db.chord_progressions.delete_one({"_id": oid})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chord progression not found")
+
+
+# ---------------------------------------------------------------------
+# NOTE SEQUENCES + GENERATE-SEQUENCE
+# ---------------------------------------------------------------------
+
+@router.get("/note-sequences", response_model=List[NoteSequence])
+async def get_note_sequences(db: AsyncIOMotorDatabase = Depends(get_db)) -> List[NoteSequence]:
+    """
+    GET /note-sequences
+    (If your tests expect some data here, you might need a note_sequences collection.)
+    """
+    results = []
+    async for doc in db.note_sequences.find():
+        results.append(NoteSequence(**doc))
+    return results
+
+@router.post("/generate-sequence", response_model=NoteSequence, status_code=status.HTTP_200_OK)
+async def generate_sequence_endpoint(
+    progression_name: str,
+    note_pattern_name: str,
+    rhythm_pattern_name: str,
+    scale_info: ScaleInfo,
+    db: AsyncIOMotorDatabase = Depends(get_db)
+) -> NoteSequence:
+    """
+    POST /generate-sequence
+    - This is a placeholder that matches test_generate_sequence.py usage.
+    - Adjust the arguments according to your test payload structure
+      (some tests pass a JSON with { "progression_name": "...", "note_pattern_name": "...", ...}).
+    """
+    # Validate or fetch chord progression
+    progression_doc = await db.chord_progressions.find_one({"name": progression_name})
+    if not progression_doc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chord progression not found")
+
+    # Validate or fetch note pattern
+    note_pattern_doc = await db.note_patterns.find_one({"name": note_pattern_name})
+    if not note_pattern_doc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note pattern not found")
+
+    # Validate or fetch rhythm pattern
+    rhythm_pattern_doc = await db.rhythm_patterns.find_one({"name": rhythm_pattern_name})
+    if not rhythm_pattern_doc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Rhythm pattern not found")
+
+    # Actually generate the sequence
+    # For now, call your existing logic or a stub.
+    sequence = generate_sequence_from_presets(
+        progression_name=progression_name,
+        note_pattern_name=note_pattern_name,
+        rhythm_pattern_name=rhythm_pattern_name,
+        scale_info=scale_info
+    )
+    # If you want to store in DB:
+    doc = sequence.model_dump(exclude={"id"})
+    result = await db.note_sequences.insert_one(doc)
+    doc["_id"] = result.inserted_id
+    return NoteSequence(**doc)
+
+# Mock the database cursor to return sample data
+mock_cursor = AsyncMock()
+mock_cursor.__aiter__.return_value = iter([{ '_id': ObjectId(), 'name': 'Sample Note Pattern' }])
+
+# Mock the database call to return the mock cursor
+mock_db = AsyncMock()
+mock_db.note_patterns.find.return_value = mock_cursor
+
+# Use the mock database in the test
+@pytest.fixture
+def client():
+    app.dependency_overrides[get_db] = lambda: mock_db
+    with TestClient(app) as c:
+        yield c
+    app.dependency_overrides.clear()

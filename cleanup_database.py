@@ -5,12 +5,12 @@ client = MongoClient("mongodb://localhost:27017/")
 db = client["note_gen"]
 
 # Cleanup function for note_patterns
-def cleanup_note_patterns():
+def cleanup_note_patterns() -> None:
     result = db.note_patterns.delete_many({"id": {"$exists": False}})
     print(f"Removed {result.deleted_count} note patterns without an ID.")
 
 # Cleanup function for rhythm_patterns
-def cleanup_rhythm_patterns():
+def cleanup_rhythm_patterns() -> None:
     result = db.rhythm_patterns.delete_many({"id": {"$exists": False}})
     print(f"Removed {result.deleted_count} rhythm patterns without an ID.")
 

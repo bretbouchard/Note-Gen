@@ -1,9 +1,10 @@
 from fastapi import FastAPI, HTTPException      
 from pydantic import BaseModel  
 from typing import List, Optional
-from note_gen.routers.user_routes import router as user_router
-from note_gen.import_presets import ensure_indexes, import_presets_if_empty
-from pymongo import MongoClient
+from src.note_gen.routers.user_routes import router as user_router
+from src.note_gen.import_presets import ensure_indexes, import_presets_if_empty
+from typing import Any
+from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 
 import logging
 
@@ -46,10 +47,8 @@ class ChordProgressionGenerator(BaseModel):
 # Rebuild the model to ensure dependencies are recognized
 # ChordProgressionGenerator.model_rebuild()
 
-app = FastAPI()
-
-# Include the user routes
-app.include_router(user_router)
+app = FastAPI()  # <-- The main app
+app.include_router(user_router, prefix="", tags=["User Routes"])
 
 # Initialize your generators
 root_note = 'C'  # Example root note
@@ -60,10 +59,12 @@ chord_generator = ChordProgressionGenerator(scale_info=scale_info)
 @app.on_event("startup")
 async def startup_event() -> None:
     """Initialize database with presets on startup."""
-    client = MongoClient('mongodb://localhost:27017/')  # Adjust connection string as needed
-    db = client['note_gen']  # Replace with your database name
-    ensure_indexes(db)
-    import_presets_if_empty(db)
+
+    client: AsyncIOMotorClient[Any] = AsyncIOMotorClient('mongodb://localhost:27017/')
+
+    db: AsyncIOMotorDatabase[Any] = client['note_gen']  # Replace with your database name
+    await ensure_indexes(db) 
+    await import_presets_if_empty(db) 
 
 @app.post("/generate_progression/")
 async def generate_progression(request: ChordProgressionRequest) -> List[ScaleDegree]:
