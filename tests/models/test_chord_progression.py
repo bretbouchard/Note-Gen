@@ -53,6 +53,7 @@ class TestChordProgression(unittest.TestCase):
             Chord(root=Note(note_name="G", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR)
         ]
         progression = ChordProgression(
+            id="test_progression_id",
             name="Test Progression",
             chords=chords,
             key="C",
@@ -68,6 +69,7 @@ class TestChordProgression(unittest.TestCase):
 
     def test_add_chord(self):
         progression = ChordProgression(
+            id="test_progression_id",
             name="Test Progression",
             chords=[
                 Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
@@ -87,6 +89,7 @@ class TestChordProgression(unittest.TestCase):
 
     def test_get_chord_at(self):
         progression = ChordProgression(
+            id="test_progression_id",
             name="Test Progression",
             chords=[
                 Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
@@ -106,6 +109,7 @@ class TestChordProgression(unittest.TestCase):
 
     def test_get_all_chords(self):
         progression = ChordProgression(
+            id="test_progression_id",
             name="Test Progression",
             chords=[
                 Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
@@ -125,6 +129,7 @@ class TestChordProgression(unittest.TestCase):
 
     def test_get_chord_names(self):
         progression = ChordProgression(
+            id="test_progression_id",
             name="Test Progression",
             chords=[
                 Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
@@ -141,6 +146,7 @@ class TestChordProgression(unittest.TestCase):
 
     def test_to_dict(self):
         progression = ChordProgression(
+            id="test_progression_id",
             name="Test Progression",
             chords=[
                 Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
@@ -157,6 +163,7 @@ class TestChordProgression(unittest.TestCase):
 
     def test_model_dump(self):
         progression = ChordProgression(
+            id="test_progression_id",
             name="Test Progression",
             chords=[
                 Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
@@ -178,6 +185,7 @@ class TestChordProgression(unittest.TestCase):
     def test_invalid_chords(self):
         try:
             progression = ChordProgression(
+                id="test_progression_id",
                 name="Test Progression",
                 chords=[
                     Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
@@ -197,6 +205,7 @@ class TestChordProgression(unittest.TestCase):
     def test_empty_chords(self):
         with self.assertRaises(ValueError):
             ChordProgression(
+                id="test_progression_id",
                 name="Test Progression",
                 chords=[],  
                 key="C",
@@ -208,6 +217,7 @@ class TestChordProgression(unittest.TestCase):
     def test_invalid_complexity(self):
         with self.assertRaises(ValueError):
             ChordProgression(
+                id="test_progression_id",
                 name="Test Progression",
                 chords=[
                     Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),

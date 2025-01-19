@@ -64,6 +64,7 @@ async def get_db() -> AsyncGenerator[AsyncIOMotorDatabase[Any], None]:
     """Get the database connection as an async context manager."""
     client = AsyncIOMotorClient(MONGO_URL)
     db = client[DB_NAME]
+    logger.info("Database connection established: %s", db)
     try:
         yield db
     finally:

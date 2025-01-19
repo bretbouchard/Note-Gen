@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request
 from pydantic import BaseModel, Field
 from typing import Union, Optional, List, Dict, Any 
 import logging
@@ -11,8 +11,13 @@ from src.note_gen.models.chord_progression import ChordProgression
 from src.note_gen.models.scale_info import ScaleInfo
 from src.note_gen.models.note import Note
 from src.note_gen.models.patterns import NotePatternData
+from src.note_gen.models.rhythm_pattern import RhythmPattern
+from src.note_gen.models.note_pattern import NotePatternResponse
+from src.note_gen.models.rhythm_pattern import RhythmPatternResponse  
 
-# Configure logging
+
+
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -111,50 +116,43 @@ def get_octave(midi_number: int) -> int:
 # ------------------------------------------------------
 
 @router.get("/chord-progressions", response_model=List[ChordProgressionResponse])
-async def list_chord_progressions(
-    skip: int = 0, 
-    limit: int = 10, 
-    db: AsyncIOMotorDatabase[Dict[str, Any]] = Depends(get_db)
-) -> List[ChordProgressionResponse]:
+async def get_chord_progressions(db: AsyncIOMotorDatabase[Dict[str, Any]] = Depends(get_db)):
+    logger.info("Database instance type: %s", type(db))
     try:
-        cursor = db.chord_progressions.find().skip(skip).limit(limit)
-        patterns = await cursor.to_list(length=None)
-        return patterns
+        logger.info("Fetching chord progressions from the database.")
+        cursor = await db.chord_progressions.find()  # Fetch the cursor
+        progressions = await cursor.to_list()  # Use to_list to get the data
+        logger.info("Fetched chord progressions: %s", progressions)
+        return [ChordProgressionResponse(id=str(p["_id"]), **p) for p in progressions]
     except Exception as e:
-        logger.error(f"Error listing chord progressions: {e}")
+        logger.error(f"Error getting chord progressions: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
-@router.get("/chord-progressions", response_model=List[ChordProgressionResponse])
-async def list_chord_progressions(db: AsyncIOMotorDatabase[Dict[str, Any]] = Depends(get_db)):
-    try:
-        cursor = db.chord_progressions.find()
-        patterns = await cursor.to_list(length=None)
-        return patterns
-    except Exception as e:
-        logger.error(f"Error listing chord progressions: {e}")
-        raise HTTPException(status_code=500, detail="Internal Server Error")
-
-@router.get("/note-patterns", response_model=List[NotePattern])
+@router.get("/note-patterns", response_model=List[NotePatternResponse])
 async def get_note_patterns(db: AsyncIOMotorDatabase[Dict[str, Any]] = Depends(get_db)):
+    logger.info("Database instance type: %s", type(db))
     try:
-        cursor = db.note_patterns.find()
-        patterns = await cursor.to_list(length=None)
-        return patterns
+        logger.info("Fetching note patterns from the database.")
+        cursor = await db.note_patterns.find()  # Fetch the cursor
+        patterns = await cursor.to_list()  # Use to_list to get the data
+        logger.info(f"Fetched {len(patterns)} note patterns from the database.")
+        return patterns  # Return the existing NotePattern objects
     except Exception as e:
-        logger.error(f"Error getting note patterns: {e}")
+        logger.error(f"Error getting note patterns: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
-@router.get("/rhythm-patterns", response_model=List[ApiRhythmPattern])
+@router.get("/rhythm-patterns", response_model=List[RhythmPattern])
 async def get_rhythm_patterns(db: AsyncIOMotorDatabase[Dict[str, Any]] = Depends(get_db)):
+    logger.info("Database instance type: %s", type(db))
     try:
-        cursor = db.rhythm_patterns.find()
-        patterns = await cursor.to_list(length=None)
-        return patterns
+        logger.info("Fetching rhythm patterns from the database.")
+        cursor = await db.rhythm_patterns.find()  # Fetch the cursor
+        rhythms = await cursor.to_list()  # Use to_list to get the data
+        logger.info("Fetched rhythm patterns: %s", rhythms)
+        return rhythms
     except Exception as e:
         logger.error(f"Error getting rhythm patterns: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal Server Error")
-
-
 # ------------------------------------------------------
 # Existing chord progression create & get by ID
 # ------------------------------------------------------
@@ -315,3 +313,13 @@ async def get_rhythm_pattern(
     except Exception as e:
         logger.error(f"Error fetching rhythm pattern: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal Server Error")
+
+@router.post("/generate-chord-progression", response_model=List[ChordProgressionResponse])
+async def generate_chord_progression(request: Request, db: AsyncIOMotorDatabase[Dict[str, Any]] = Depends(get_db)):
+    logger.info("Database instance type: %s", type(db))
+    data = await request.json()
+    logger.info(f"Received data: {data}")
+    cursor = await db.chord_progressions.find()
+    progressions = await cursor.to_list()
+    logger.info("Fetched chord progressions: %s", progressions)
+    return [ChordProgressionResponse(id=str(p["_id"]), **p) for p in progressions]

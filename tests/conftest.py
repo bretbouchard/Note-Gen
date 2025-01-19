@@ -139,67 +139,100 @@ async def clean_test_db(mongo_client: AsyncIOMotorClient) -> None:
 
     return db
 
+class MockDatabase:
+    def __init__(self):
+        self.data = {
+            "note_patterns": [],
+            "chord_progressions": [],
+            "rhythm_patterns": [],
+        }
+
+    async def note_patterns(self):
+        return self.data["note_patterns"]
+
+    async def chord_progressions(self):
+        return self.data["chord_progressions"]
+
+    async def rhythm_patterns(self):
+        return self.data["rhythm_patterns"]
+
+    async def insert_many(self, collection_name, documents):
+        if collection_name in self.data:
+            self.data[collection_name].extend(documents)
+        else:
+            raise ValueError(f"Collection '{collection_name}' does not exist in the mock database.")
+
 @pytest_asyncio.fixture(scope="function")
 async def mock_db(clean_test_db):
     """Provide a mock database for testing."""
-    # Create a mock implementation of the database
-    class MockCursor:
-        def __init__(self, data):
-            self.data = data
-            self.index = 0
-    
-        async def __anext__(self):
-            if self.index < len(self.data):
-                result = self.data[self.index]
-                self.index += 1
-                await asyncio.sleep(0)  # Simulate async behavior
-                return result
-            else:
-                raise StopAsyncIteration
-    
-        def __aiter__(self):
-            return self
-
-    # Mock the database collections with sample data
+    mock_db = MockDatabase()
     mock_data = {
         "note_patterns": [
-            {"_id": "1", "name": "Pattern 1", "notes": []},
-            {"_id": "2", "name": "Pattern 2", "notes": []},
+            {
+                "_id": "mock_note_pattern_id",
+                "id": "mock_note_pattern_id",
+                "name": "Mock Note Pattern",
+                "data": "Mock data",
+                "notes": [
+                    {
+                        "note_name": "C",
+                        "octave": 4,
+                        "duration": 1,
+                        "velocity": 100
+                    }
+                ],
+                "description": "Mock description",
+                "tags": ["mock_tag"],
+                "is_test": True,
+            }
         ],
         "rhythm_patterns": [
-            {"_id": "1", "name": "Rhythm 1", "data": {}}
+            {
+                "_id": "mock_rhythm_pattern_id",
+                "id": "mock_rhythm_pattern_id",
+                "name": "Mock Rhythm Pattern",
+                "data": "Mock data",
+                "description": "Mock description",
+                "complexity": 1,
+                "style": "Mock style",
+                "pattern": "Mock pattern",
+                "is_test": True,
+            }
         ],
         "chord_progressions": [
-            {"_id": "1", "name": "Progression 1", "chords": []}
-        ],
+            {
+                "_id": "mock_chord_progression_id",
+                "id": "mock_chord_progression_id",
+                "name": "Mock Chord Progression",
+                "complexity": 1,
+                "key": "C",
+                "scale_type": "Major",
+                "chords": [
+                    {
+                        "root": {
+                            "note_name": "C",
+                            "octave": 4,
+                            "duration": 1,
+                            "velocity": 100
+                        },
+                        "quality": "Major",
+                        "notes": [
+                            {
+                                "note_name": "C",
+                                "octave": 4,
+                                "duration": 1,
+                                "velocity": 100
+                            }
+                        ],
+                    }
+                ],
+            }
+        ]
     }
 
-    # Mock the database methods
-    class MockDatabase:
-        def __init__(self, data):
-            self.data = data
-
-        async def note_patterns(self):
-            return MockCursor(self.data["note_patterns"])
-
-        async def rhythm_patterns(self):
-            return MockCursor(self.data["rhythm_patterns"])
-
-        async def chord_progressions(self):
-            return MockCursor(self.data["chord_progressions"])
-
-        async def find_one(self, query):
-            for doc in self.data["note_patterns"]:
-                if doc.get("_id") == query.get("_id"):
-                    return doc
-            return None
-
-        async def insert_one(self, doc):
-            self.data["note_patterns"].append(doc)
-            return doc
-
-    # Return the mock database instance
-    return MockDatabase(mock_data)
+    for collection_name, documents in mock_data.items():
+        await mock_db.insert_many(collection_name, documents)
+    return mock_db
 
 def pytest_sessionfinish(session, exitstatus):
     """Clean up after all tests are done."""

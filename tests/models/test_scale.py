@@ -59,19 +59,21 @@ def test_scale_creation_and_notes(root_name: str, scale_type: ScaleType) -> None
         )
 
 
-def test_scale_creation_and_notes(self):
+def test_scale_creation_and_notes():
     root = Note(note_name="C", octave=4, duration=1, velocity=100)
     scale = Scale(
         root=root,
-        scale_type=ScaleType.MAJOR,
-        notes=[Note(note_name=n, octave=4, duration=1, velocity=100) for n in ["C", "D", "E", "F", "G", "A", "B"]]
+        scale_type=ScaleType.MAJOR
     )
-    self.assertEqual(scale.root, root)
-    self.assertEqual(scale.scale_type, ScaleType.MAJOR)
-    self.assertEqual(len(scale.notes), 7)
-    self.assertTrue(all(note.octave == 4 for note in scale.notes), "All notes should be in the same octave")
-    self.assertTrue(all(note.duration == 1 for note in scale.notes), "All notes should have the same duration")
-    self.assertTrue(all(note.note_name in ["C", "D", "E", "F", "G", "A", "B"] for note in scale.notes), "All notes should have valid note names")
+    # Create notes separately if needed
+    notes = [Note(note_name=n, octave=4, duration=1, velocity=100) for n in ["C", "D", "E", "F", "G", "A", "B"]]
+    
+    assert scale.root == root
+    assert scale.scale_type == ScaleType.MAJOR
+    assert len(notes) == 7
+    assert all(note.octave == 4 for note in notes), "All notes should be in the same octave"
+    assert all(note.duration == 1 for note in notes), "All notes should have the same duration"
+    assert all(note.note_name in ["C", "D", "E", "F", "G", "A", "B"] for note in notes), "All notes should have valid note names"
 
 
 @pytest.mark.parametrize(

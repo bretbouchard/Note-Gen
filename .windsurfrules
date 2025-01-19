@@ -7,12 +7,27 @@
   - Support for note patterns and rhythm patterns.
   - API endpoints for user interactions.
 
+## code quality
+  - the fewer lines of code the better
+  - Proceed like a senior developer // 10x Engineer
+  - Do not stop working until you have implimented a feature fully and completly
+  - Start by writing three paragraphs analyzing the error. DO NO JUMP TO CONCLUSIONS
+  - Do not delete comments
+  - When adding a new function add a description.
+  - If refactored function no longer relcts description update desciption as well
+  - start files with a comment of file name and path
+  - be casrefule searc can have red harrings
+  - only include necesarry steps
+  - Pydantic V1 style `@validator` validators are deprecated. Use Pydantic V2 style `@field_validator` validators
+
+
 ## Key Classes
 ### 1. Note
 - **Fields**:
   - `note_name: str` (required) - The name of the note (e.g., C, D, E).
   - `octave: int` (required) - The octave of the note.
   - `duration: int` (required) - Duration of the note in beats.
+  - `velocity: int` (required) - Velocity of the note (0-127).
   - `NOTE_TO_SEMITONE: ClassVar[dict[str, int]]` - Maps note names to their semitone values.
   - `SEMITONE_TO_NOTE: ClassVar[dict[int, str]]` - Maps semitone values to their note names.
 

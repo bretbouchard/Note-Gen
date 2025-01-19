@@ -20,7 +20,6 @@ class ChordQualityType(StrEnum):
     DIMINISHED = "diminished"
     AUGMENTED = "augmented"
     
-    # Seventh chords
     DOMINANT_7 = "7"
     DOMINANT = "7"  # Alias for DOMINANT_7
     MAJOR_7 = "maj7"
@@ -28,21 +27,15 @@ class ChordQualityType(StrEnum):
     DIMINISHED_7 = "dim7"
     HALF_DIMINISHED_7 = "m7b5"
     AUGMENTED_7 = "aug7"
-    
-    # Extended chords
     MAJOR_9 = "maj9"
     MINOR_9 = "m9"
     DOMINANT_9 = "9"
     MAJOR_11 = "maj11"
     MINOR_11 = "m11"
     DOMINANT_11 = "11"
-    
-    # Suspended chords
     SUS2 = "sus2"
     SUS4 = "sus4"
     SEVEN_SUS4 = "7sus4"
-    
-    # Altered chords
     FLAT_5 = "b5"
     FLAT_7 = "b7"
     SHARP_5 = "#5"

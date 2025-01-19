@@ -27,9 +27,6 @@ class NotePattern(BaseModel):
     data: Optional[List[int]] = Field(default=None, description="Additional pattern data")
     is_test: Optional[bool] = Field(default=None, description="Test flag")
 
-
-
-
     class Config:
         schema_extra = {
             'example': {
@@ -68,3 +65,15 @@ class NotePattern(BaseModel):
 
     def __str__(self) -> str:
         return f"NotePattern(name={self.name}, data={self.data})"
+
+
+class NotePatternResponse(BaseModel):
+    id: Optional[str] = Field(None, description="ID of the note pattern")
+    name: str = Field(description="Name of the note pattern")
+    notes: Optional[List[Note]] = Field(None, description="List of notes in the pattern")
+    pattern_type: Optional[str] = Field(None, description="Type of pattern")
+    description: str = Field(description="Pattern description")
+    tags: List[str] = Field(..., description="Pattern tags")
+    complexity: Optional[float] = Field(None, description="Pattern complexity")
+    data: Optional[List[int]] = Field(None, description="Additional pattern data")
+    is_test: Optional[bool] = Field(None, description="Test flag")

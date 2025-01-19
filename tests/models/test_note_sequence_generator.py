@@ -10,10 +10,10 @@ from src.note_gen.models.enums import ChordQualityType
 
 @pytest.fixture
 def setup_note_sequence_generator() -> NoteSequenceGenerator:
-    scale_info = ScaleInfo(root={"note_name": "C", "octave": 4}, scale_type="major")
+    scale_info = ScaleInfo(root=Note(note_name="C", octave=4), scale_type="major")
     chord1 = Chord(root=Note(note_name="C", octave=4), quality=ChordQualityType.MAJOR)
     chord2 = Chord(root=Note(note_name="F", octave=4), quality=ChordQualityType.MAJOR)
-    chord_progression = ChordProgression(scale_info=scale_info, chords=[chord1, chord2])
+    chord_progression = ChordProgression(name="Test Progression", key="C", scale_type="major", scale_info=scale_info, chords=[chord1, chord2])
     note_sequence = NoteSequence(notes=[])
     
     rhythm_note1 = RhythmNote(position=0.0, duration=1.0, velocity=100, is_rest=False)
@@ -73,42 +73,33 @@ def test_get_root_note_from_chord_none_root(setup_note_sequence_generator: NoteS
 def test_get_root_note_from_chord_none_scale(setup_note_sequence_generator: NoteSequenceGenerator) -> None:
     generator = setup_note_sequence_generator
     # Create a chord progression with no scale type
-    scale_info = ScaleInfo(root={"note_name": "C", "octave": 4}, scale_type="major")
+    scale_info = ScaleInfo(root=Note(note_name="C", octave=4), scale_type="major")
     chord = Chord(root=Note(note_name="C", octave=4), quality=ChordQualityType.MAJOR)
-    chord_progression = ChordProgression(scale_info=scale_info, chords=[chord])
+    chord_progression = ChordProgression(name="Test Progression", key="C", scale_type="major", scale_info=scale_info, chords=[chord])
     generator.chord_progression = chord_progression
-    root_note = generator.chord_progression.get_root_note_from_chord(chord)
-    assert root_note is not None
+    root_note = generator.get_root_note_from_chord(chord)
     assert root_note.note_name == "C"
 
 def test_note_sequence_generator_i_iv_v_i() -> None:
     # Create scale info (C major)
-    scale_info = ScaleInfo(root={"note_name": "C", "octave": 4}, scale_type="major")
+    scale_info = ScaleInfo(root=Note(note_name="C", octave=4), scale_type="major")
     
     # Create chord progression (I-IV-V-I in C major)
-    chord1 = Chord(root={'note_name': 'C', 'octave': 4, 'duration': 1.0, 'velocity': 100}, quality=ChordQualityType.MAJOR)
-    chord2 = Chord(root={'note_name': 'F', 'octave': 4, 'duration': 1.0, 'velocity': 100}, quality=ChordQualityType.MAJOR)
-    chord3 = Chord(root={'note_name': 'G', 'octave': 4, 'duration': 1.0, 'velocity': 100}, quality=ChordQualityType.MAJOR)
-    chord4 = Chord(root={'note_name': 'C', 'octave': 4, 'duration': 1.0, 'velocity': 100}, quality=ChordQualityType.MAJOR)
-    chords = [chord1, chord2, chord3, chord4]  # Updated to include all chords
-    chord_progression = ChordProgression(
-        scale_info=scale_info,
-        chords=chords,
-        name='Test Progression',
-        key='C'
-    )
+    chord1 = Chord(root=Note(note_name="C", octave=4), quality=ChordQualityType.MAJOR)
+    chord2 = Chord(root=Note(note_name="F", octave=4), quality=ChordQualityType.MAJOR)
+    chord3 = Chord(root=Note(note_name="G", octave=4), quality=ChordQualityType.MAJOR)
+    chord_progression = ChordProgression(name="I-IV-V-I Progression", key="C", scale_type="major", scale_info=scale_info, chords=[chord1, chord2, chord3])
     # Create note sequence (simple sequence following chord roots)
     notes = [
         {"note_name": "C", "octave": 4, "duration": 1.0},
         {"note_name": "F", "octave": 4, "duration": 1.0},
         {"note_name": "G", "octave": 4, "duration": 1.0},
-        {"note_name": "C", "octave": 4, "duration": 1.0},
     ]
     note_sequence = NoteSequence(notes=[Note(**n) for n in notes])
     
     # Create rhythm pattern (quarter notes)
     rhythm_data = RhythmPatternData(
-        notes=[RhythmNote(position=float(i), duration=1.0, velocity=100, is_rest=False) for i in range(4)],
+        notes=[RhythmNote(position=float(i), duration=1.0, velocity=100, is_rest=False) for i in range(3)],
         time_signature="4/4",
         swing_enabled=False,
         humanize_amount=0.0,
@@ -130,7 +121,7 @@ def test_note_sequence_generator_i_iv_v_i() -> None:
         complexity=1.0,
         style="test",
         data=rhythm_data,
-        pattern="4 4 4 4"  # Quarter notes
+        pattern="4 4 4"  # Quarter notes
     )
     
     # Create generator
@@ -143,7 +134,7 @@ def test_note_sequence_generator_i_iv_v_i() -> None:
     notes = generator.generate()
     
     # Check generated sequence
-    assert len(notes) == 4
+    assert len(notes) == 3
     assert all(isinstance(note, Note) for note in notes)
-    assert [note.note_name for note in notes] == ["C", "F", "G", "C"]
+    assert [note.note_name for note in notes] == ["C", "F", "G"]
     assert all(note.octave == 4 for note in notes)

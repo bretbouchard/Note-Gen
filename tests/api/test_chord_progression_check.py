@@ -3,7 +3,7 @@ import pytest
 import pytest_asyncio
 import uuid
 from main import app
-from fastapi.testclient import TestClient
+from httpx import AsyncClient
 from src.note_gen.database import get_db
 
 
@@ -15,41 +15,47 @@ def event_loop():
     yield loop
     loop.close()
 
-@pytest.fixture(scope="session")
-def client():
-    return TestClient(app)
+@pytest_asyncio.fixture(scope="session")
+async def client():
+    async with AsyncClient() as ac:
+        yield ac
 
 @pytest_asyncio.fixture(scope="function")
 async def setup_database():
-    async for db in get_db():
-        try:
-            # Clear existing data
-            await db.chord_progressions.delete_many({})
-            
-            # Setup code to insert test data into the database
-            progression = {
-                'id': str(uuid.uuid4()),
-                'name': 'Test Base Progression',
-                'chords': ['C', 'G', 'Am', 'F'],
-                'key': 'C',
-                'scale_type': 'major',
-                'complexity': 0.5
-            }
-            await db.chord_progressions.insert_one(progression)
-            yield db
-        except Exception as e:
-            print(f"Error during database setup: {e}")
-            raise
-        finally:
-            # Cleanup
-            await db.chord_progressions.delete_many({})
+    db = await anext(get_db())
+    try:
+        # Clear existing data
+        await db.chord_progressions.delete_many({})
+        
+        # Setup code to insert test data into the database
+        progression = {
+            'id': str(uuid.uuid4()),
+            'name': 'Test Base Progression',
+            'chords': ['C', 'G', 'Am', 'F'],
+            'key': 'C',
+            'scale_type': 'major',
+            'complexity': 0.5
+        }
+        await db.chord_progressions.insert_one(progression)
+        yield db
+    except Exception as e:
+        print(f"Error during database setup: {e}")
+        raise
+    finally:
+        # Cleanup
+        await db.chord_progressions.delete_many({})
 
 @pytest.mark.asyncio
 async def test_create_chord_progression(client, setup_database):
     test_progression = {
         "id": str(uuid.uuid4()),
         "name": "Test Create Progression",
-        "chords": ["C", "F", "G", "C"],
+        "chords": [
+            {"root": {"note_name": "C", "octave": 4}, "quality": "major"},
+            {"root": {"note_name": "F", "octave": 4}, "quality": "major"},
+            {"root": {"note_name": "G", "octave": 4}, "quality": "major"},
+            {"root": {"note_name": "C", "octave": 4}, "quality": "major"}
+        ],
         "key": "C",
         "scale_type": "major",
         "complexity": 0.5

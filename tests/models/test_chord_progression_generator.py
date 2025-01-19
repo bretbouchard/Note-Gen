@@ -13,10 +13,10 @@ logger = logging.getLogger(__name__)
 
 class FakeScaleInfo(ScaleInfo):
     scale_type: ScaleType = ScaleType.MAJOR
-    root: Note = Note(note_name="C", octave=4, stored_midi_number=60, duration=1, velocity=64)  # Added velocity=64
-    key: str = 'C'  # Define key as a class attribute
+    root: Note = Note(note_name="C", octave=4, duration=1, velocity=64, stored_midi_number=60)
+    key: str = 'C'
 
-    def __init__(self, root: Note = Note(note_name='C', octave=4, duration=1, velocity=64), scale_type: ScaleType = ScaleType.MAJOR):
+    def __init__(self, root: Note = Note(note_name='C', octave=4, duration=1, velocity=64, stored_midi_number=60), scale_type: ScaleType = ScaleType.MAJOR):
         super().__init__(root=root, scale_type=scale_type)
 
     def get_scale_degree_note(self, degree: int) -> Note:
@@ -27,13 +27,25 @@ class FakeScaleInfo(ScaleInfo):
         return "major" if degree % 2 == 1 else "minor"
 
     def get_scale_notes(self) -> list[Note]:
-        return [Note(note_name="C", stored_midi_number=60, duration=1, velocity=64), Note(note_name="D", stored_midi_number=62, duration=1, velocity=64), Note(note_name="E", stored_midi_number=64, duration=1, velocity=64)]
+        return [Note(note_name="C", octave=4, stored_midi_number=60, duration=1, velocity=64), Note(note_name="D", octave=4, stored_midi_number=62, duration=1, velocity=64), Note(note_name="E", octave=4, stored_midi_number=64, duration=1, velocity=64)]
 
     def get_scale_note_at_degree(self, degree: int) -> Note:
-        notes = [Note(note_name='C', velocity=64), Note(note_name='D', velocity=64), Note(note_name='E', velocity=64), Note(note_name='F', velocity=64), Note(note_name='G', velocity=64), Note(note_name='A', velocity=64), Note(note_name='B', velocity=64)]
+        notes = [
+            Note(note_name='C', octave=4, stored_midi_number=60, duration=1, velocity=64),
+            Note(note_name='D', octave=4, stored_midi_number=62, duration=1, velocity=64),
+            Note(note_name='E', octave=4, stored_midi_number=64, duration=1, velocity=64),
+            Note(note_name='F', octave=4, stored_midi_number=65, duration=1, velocity=64),
+            Note(note_name='G', octave=4, stored_midi_number=67, duration=1, velocity=64),
+            Note(note_name='A', octave=4, stored_midi_number=69, duration=1, velocity=64),
+            Note(note_name='B', octave=4, stored_midi_number=71, duration=1, velocity=64)
+        ]
         if 1 <= degree <= len(notes):
             return notes[degree - 1]
         raise ValueError(f"Invalid scale degree: {degree}")
+
+    def get_chord_quality_for(self, degree: int) -> str:
+        return "major" if degree % 2 == 1 else "minor"
+
 
 class TestChordProgressionGenerator(unittest.TestCase):
     def test_no_pattern_provided_raises_error(self) -> None:
@@ -152,26 +164,26 @@ class TestChordProgressionGenerator(unittest.TestCase):
 
     def test_chord_inversions(self) -> None:
         # Test for a C major chord in root position
-        scale_info = ScaleInfo(root=Note(note_name="C", octave=4), scale_type="major")
+        scale_info = ScaleInfo(root=Note(note_name="C", octave=4, stored_midi_number=60, duration=1, velocity=100), scale_type="major")
         chords = [
-            Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
-            Chord(root=Note(note_name="F", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
-            Chord(root=Note(note_name="G", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.DOMINANT_7)
+            Chord(root=Note(note_name="C", octave=4, stored_midi_number=60, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
+            Chord(root=Note(note_name="F", octave=4, stored_midi_number=65, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
+            Chord(root=Note(note_name="G", octave=4, stored_midi_number=67, duration=1.0, velocity=100), quality=ChordQualityType.DOMINANT_7)
         ]
         progression = ChordProgressionGenerator(scale_info=scale_info, chords=chords)
         notes = progression.generate_chord_notes(chords[0].root, chords[0].quality, chords[0].inversion)
         print(f"Root position notes: {notes}")  # Debug output
-        assert notes == [Note(note_name="C", octave=4, duration=1.0, velocity=100), Note(note_name="E", octave=4, duration=1.0, velocity=100), Note(note_name="G", octave=4, duration=1.0, velocity=100)], "Root position notes do not match"
+        assert notes == [Note(note_name="C", octave=4, stored_midi_number=60, duration=1.0, velocity=100), Note(note_name="E", octave=4, stored_midi_number=64, duration=1.0, velocity=100), Note(note_name="G", octave=4, stored_midi_number=67, duration=1.0, velocity=100)], "Root position notes do not match"
 
-        chord = Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR, inversion=1)
+        chord = Chord(root=Note(note_name="C", octave=4, stored_midi_number=60, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR, inversion=1)
         notes = progression.generate_chord_notes(chord.root, chord.quality, chord.inversion)
         print(f"First inversion notes: {notes}")  # Debug output
-        assert notes == [Note(note_name="E", octave=4, duration=1.0, velocity=100), Note(note_name="G", octave=4, duration=1.0, velocity=100), Note(note_name="C", octave=5, duration=1.0, velocity=100)], "First inversion notes do not match"
+        assert notes == [Note(note_name="E", octave=4, stored_midi_number=64, duration=1.0, velocity=100), Note(note_name="G", octave=4, stored_midi_number=67, duration=1.0, velocity=100), Note(note_name="C", octave=5, stored_midi_number=72, duration=1.0, velocity=100)], "First inversion notes do not match"
 
-        chord = Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR, inversion=2)
+        chord = Chord(root=Note(note_name="C", octave=4, stored_midi_number=60, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR, inversion=2)
         notes = progression.generate_chord_notes(chord.root, chord.quality, chord.inversion)
         print(f"Second inversion notes: {notes}")  # Debug output
-        assert notes == [Note(note_name="G", octave=4, duration=1.0, velocity=100), Note(note_name="C", octave=5, duration=1.0, velocity=100), Note(note_name="E", octave=5, duration=1.0, velocity=100)], "Second inversion notes do not match"
+        assert notes == [Note(note_name="G", octave=4, stored_midi_number=67, duration=1.0, velocity=100), Note(note_name="C", octave=5, stored_midi_number=72, duration=1.0, velocity=100), Note(note_name="E", octave=5, stored_midi_number=76, duration=1.0, velocity=100)], "Second inversion notes do not match"
 
     def test_generate_chord_progression_with_pattern(self) -> None:
         pattern = ['I-IV-V']  # Define a valid pattern using Roman numerals
@@ -185,14 +197,14 @@ class TestChordProgressionGenerator(unittest.TestCase):
         self.assertIsInstance(progression.chords[2], Chord)
 
     def test_create_chord(self):
-        root_note = Note(note_name="C", octave=4, duration=1, velocity=100)
+        root_note = Note(note_name="C", octave=4, stored_midi_number=60, duration=1, velocity=100)
         chord = Chord(root=root_note, quality=ChordQualityType.MAJOR)
         self.assertEqual(chord.root, root_note)
 
     def test_invalid_quality(self):
-        root_note = Note(note_name="C", octave=4, duration=1, velocity=100)
+        root_note = Note(note_name="C", octave=4, stored_midi_number=60, duration=1, velocity=100)
         invalid_quality = "invalid_quality"  # Invalid value
-        with self.assertRaises(ValueError, match="'invalid_quality' is not a valid ChordQualityType"):
+        with self.assertRaises(ValueError):
             Chord(root=root_note, quality=invalid_quality)
 
     def test_invalid_root(self):
@@ -202,18 +214,18 @@ class TestChordProgressionGenerator(unittest.TestCase):
             duration = 1
             velocity = 100
 
-        with self.assertRaises(KeyError, match="InvalidNoteName"):
-            Chord.from_quality(root=InvalidNote(), quality=ChordQualityType.MAJOR)
+        with self.assertRaises(ValueError):
+            Chord(root=InvalidNote(), quality=ChordQualityType.MAJOR)
 
     def test_create_chord_valid(self):
-        root_note = Note(note_name="C", octave=4, duration=1, velocity=100)
+        root_note = Note(note_name="C", octave=4, stored_midi_number=60, duration=1, velocity=100)
         chord = Chord(root=root_note, quality=ChordQualityType.MAJOR)
         assert chord.root == root_note
 
     def test_create_chord_invalid_quality(self):
-        root_note = Note(note_name="C", octave=4, duration=1, velocity=100)
+        root_note = Note(note_name="C", octave=4, stored_midi_number=60, duration=1, velocity=100)
         invalid_quality = "invalid_quality"  # Invalid value
-        with self.assertRaises(ValueError, match="'invalid_quality' is not a valid ChordQualityType"):
+        with self.assertRaises(ValueError):
             Chord(root=root_note, quality=invalid_quality)
 
     def test_create_chord_invalid_root(self):
@@ -223,7 +235,7 @@ class TestChordProgressionGenerator(unittest.TestCase):
             duration = 1
             velocity = 100
 
-        with self.assertRaises(KeyError, match="InvalidNoteName"):
+        with self.assertRaises(ValueError):
             Chord.from_quality(root=InvalidNote(), quality=ChordQualityType.MAJOR)
 
 if __name__ == "__main__":

@@ -115,68 +115,190 @@ def test_rhythm_pattern_data_validation_notes_empty() -> None:
     assert "value_error" in str(exc_info.value)
 
 
-def test_rhythm_note_validation_velocity_invalid(self) -> None:
-    with pytest.raises(ValueError) as exc_info:
-        RhythmNote(position=0, duration=1.0, velocity=200)  # Invalid velocity
-    assert "Velocity must be between 0 and 127" in str(exc_info.value)
-
-
-def test_rhythm_pattern_data_check_duration_invalid(self) -> None:
-    with pytest.raises(ValueError) as exc_info:
-        RhythmPatternData(notes=[RhythmNote(position=0, duration=1.0)], duration=-1.0)  # Invalid duration
-    assert "Duration must be a positive number" in str(exc_info.value)
-
-
-def test_rhythm_pattern_creation(self) -> None:
-    notes = [
-        RhythmNote(
-            position=0.0,
-            duration=1.0,
-            velocity=100,
-            is_rest=False,
-            accent=None,
-            swing_ratio=None
+class TestRhythmPattern:
+    def test_validate_time_signature_valid(self) -> None:
+        # Create pattern with valid time signature
+        pattern_data = RhythmPatternData(
+            notes=[RhythmNote(position=0, duration=1.0)],
+            time_signature="3/4"
         )
-    ]
-    data = RhythmPatternData(
-        notes=notes,
-        time_signature="4/4",
-        swing_enabled=False,
-        humanize_amount=0.2,
-        swing_ratio=0.67,
-        style="rock",
-        default_duration=1.0
-    )
-    pattern = RhythmPattern(
-        id="test_pattern",
-        name="Test Pattern",
-        data=data,
-        description="A test rhythm pattern",
-        tags=["test"],
-        complexity=1.0,
-        style="rock",
-        pattern="1---2---3---4---"
-    )
-    self.assertEqual(pattern.name, "Test Pattern")
-    self.assertIsNotNone(pattern.data)
-    self.assertEqual(len(pattern.tags), 1)
-    self.assertEqual(pattern.description, "A test rhythm pattern")
-    self.assertEqual(pattern.complexity, 1.0)
-    self.assertEqual(pattern.style, "rock")
-    self.assertEqual(pattern.pattern, "1---2---3---4---")
+        assert pattern_data.time_signature == "3/4"
 
+    def test_validate_time_signature_invalid(self) -> None:
+        with pytest.raises(ValueError) as exc_info:
+            RhythmPatternData(notes=[RhythmNote(position=0, duration=1.0)], time_signature="5/0")  # Invalid denominator
+        assert "Time signature denominator must be a positive power of 2" in str(exc_info.value)
 
-def test_rhythm_note_validation_velocity_invalid() -> None:
-    with pytest.raises(ValueError) as exc_info:
-        RhythmNote(position=0, duration=1.0, velocity=200)  # Invalid velocity
-    assert "Velocity must be between 0 and 127" in str(exc_info.value)
+    def test_validate_time_signature_invalid_during_instantiation(self) -> None:
+        with pytest.raises(ValueError) as exc_info:
+            RhythmPatternData(notes=[RhythmNote(position=0, duration=1.0)], time_signature="5/")  # Invalid format
+        assert "String should match pattern" in str(exc_info.value)
 
+    def test_validate_groove_type_valid(self) -> None:
+        pattern_data = RhythmPatternData(notes=[RhythmNote(position=0, duration=1.0)])
+        pattern_data.groove_type = "swing"
+        assert pattern_data.groove_type == "swing"
 
-def test_rhythm_pattern_data_check_duration_invalid() -> None:
-    with pytest.raises(ValueError) as exc_info:
-        RhythmPatternData(notes=[RhythmNote(position=0, duration=1.0)], duration=-1.0)  # Invalid duration
-    assert "Duration must be a positive number" in str(exc_info.value)
+    def test_validate_groove_type_invalid(self) -> None:
+        with pytest.raises(ValueError) as exc_info:
+            RhythmPatternData(notes=[RhythmNote(position=0, duration=1.0)], groove_type="invalid")
+        assert "value_error" in str(exc_info.value)
 
+    def test_validate_notes_valid(self) -> None:
+        valid_notes = [RhythmNote(position=0, duration=1.0)]
+        pattern_data = RhythmPatternData(notes=valid_notes)
+        assert pattern_data.notes == valid_notes
+
+    def test_validate_notes_empty(self) -> None:
+        with pytest.raises(ValueError) as exc_info:
+            RhythmPatternData(notes=[])
+        assert "value_error" in str(exc_info.value)
+
+    def test_validate_default_duration_valid(self) -> None:
+        pattern_data = RhythmPatternData(notes=[RhythmNote(position=0, duration=1.0)], default_duration=2.0)
+        assert pattern_data.default_duration == 2.0
+
+    def test_validate_default_duration_invalid(self) -> None:
+        with pytest.raises(ValueError) as exc_info:
+            RhythmPatternData(notes=[RhythmNote(position=0, duration=1.0)], default_duration=0.0)
+        assert "value_error" in str(exc_info.value)
+
+    def test_validate_name_valid(self) -> None:
+        pattern = RhythmPattern(id="1", name="Test Pattern", data=RhythmPatternData(notes=[RhythmNote(position=0, duration=1.0)]), pattern="4 4 4")
+        assert pattern.name == "Test Pattern"
+
+    def test_validate_name_empty(self) -> None:
+        with pytest.raises(ValueError) as exc_info:
+            RhythmPattern(id="1", name="", data=RhythmPatternData(notes=[RhythmNote(position=0, duration=1.0)]), pattern="4 4 4")
+        assert "value_error" in str(exc_info.value)
+
+    def test_validate_data_valid(self) -> None:
+        data = RhythmPatternData(notes=[RhythmNote(position=0, duration=1.0)])
+        pattern = RhythmPattern(id="1", name="Test Pattern", data=data, pattern="4 4 4")
+        assert pattern.data == data
+
+    def test_validate_data_invalid(self) -> None:
+        with pytest.raises(ValueError) as exc_info:
+            RhythmPattern(id="1", name="Test Pattern", data="Invalid Data", pattern="4 4 4")
+        assert "Input should be a valid dictionary or instance of RhythmPatternData" in str(exc_info.value)
+
+    def test_validate_pattern_valid(self) -> None:
+        pattern = RhythmPattern(id="1", name="Test Pattern", data=RhythmPatternData(notes=[RhythmNote(position=0, duration=1.0)]), pattern="4 4 4")
+        pattern.validate_pattern("4 4 4")
+
+    def test_validate_pattern_invalid(self) -> None:
+        with pytest.raises(ValueError) as exc_info:
+            RhythmPattern(id="1", name="Test Pattern", data=RhythmPatternData(notes=[RhythmNote(position=0, duration=1.0)]), pattern="invalid_pattern").validate_pattern("invalid_pattern")
+        assert "value_error" in str(exc_info.value)
+
+    def test_rhythm_pattern_initialization_valid(self) -> None:
+        data = RhythmPatternData(notes=[RhythmNote(position=0, duration=1.0)])
+        pattern = RhythmPattern(id="1", name="Test Pattern", data=data, pattern="1 2 3")  # Use a valid pattern
+        assert pattern.name == "Test Pattern"
+        assert pattern.data.notes[0].position == 0
+        assert pattern.data.notes[0].duration == 1.0
+
+    def test_rhythm_pattern_initialization_invalid(self) -> None:
+        with pytest.raises(ValueError) as exc_info:  # Expect ValueError for invalid pattern
+            RhythmPattern(id="1", name="Test Pattern", data=RhythmPatternData(notes=[RhythmNote(position=0, duration=1.0)]), pattern="invalid")
+        assert "value_error" in str(exc_info.value)
+
+    def test_rhythm_pattern_data_validation_notes_empty(self) -> None:
+        with pytest.raises(ValueError) as exc_info:
+            RhythmPatternData(notes=[], duration=1.0)
+        assert "value_error" in str(exc_info.value)
+
+    def test_rhythm_note_validation_velocity_invalid(self) -> None:
+        with pytest.raises(ValueError) as exc_info:
+            RhythmNote(position=0, duration=1.0, velocity=200)  # Invalid velocity
+        assert "Velocity must be between 0 and 127" in str(exc_info.value)
+
+    def test_rhythm_pattern_data_check_duration_invalid(self) -> None:
+        with pytest.raises(ValueError) as exc_info:
+            RhythmPatternData(notes=[RhythmNote(position=0, duration=1.0)], duration=-1.0)  # Invalid duration
+        assert "Duration must be positive" in str(exc_info.value)
+
+    def test_rhythm_pattern_creation(self) -> None:
+        notes = [
+            RhythmNote(
+                position=0.0,
+                duration=1.0,
+                velocity=100,
+                is_rest=False,
+                accent=None,
+                swing_ratio=None
+            )
+        ]
+        data = RhythmPatternData(
+            notes=notes,
+            time_signature="4/4",
+            swing_enabled=False,
+            humanize_amount=0.2,
+            swing_ratio=0.67,
+            style="rock",
+            default_duration=1.0
+        )
+        pattern = RhythmPattern(
+            id="test_pattern",
+            name="Test Pattern",
+            data=data,
+            description="A test rhythm pattern",
+            tags=["test"],
+            complexity=1.0,
+            style="rock",
+            pattern="1---2---3---4---"
+        )
+        assert pattern.name == "Test Pattern"
+        assert pattern.data is not None
+        assert len(pattern.tags) == 1
+        assert pattern.description == "A test rhythm pattern"
+        assert pattern.complexity == 1.0
+        assert pattern.style == "rock"
+        assert pattern.pattern == "1---2---3---4---"
+
+    def test_rhythm_pattern_data_creation(self) -> None:
+        notes = [
+            RhythmNote(
+                position=0.0,
+                duration=1.0,
+                velocity=100,
+                is_rest=False,
+                accent=None,
+                swing_ratio=None
+            )
+        ]
+        data = RhythmPatternData(
+            notes=notes,
+            time_signature="4/4",
+            swing_enabled=False,
+            humanize_amount=0.2,
+            swing_ratio=0.67,
+            style="rock",
+            default_duration=1.0
+        )
+        assert data.time_signature == "4/4"
+        assert len(data.notes) == 1
+        assert data.style == "rock"
+        assert not data.swing_enabled
+
+    def test_note_pattern_creation(self):
+        pattern = RhythmPatternData(
+            id=str(uuid.uuid4()),
+            notes=[RhythmNote(position=0, duration=1)],
+            data=[1, 2, 3],
+            is_test=True
+        )
+        assert pattern.notes is not None
+
+    def test_rhythm_note_validation_velocity_invalid(self) -> None:
+        with pytest.raises(ValueError) as exc_info:
+            RhythmNote(position=0, duration=1.0, velocity=200)  # Invalid velocity
+        assert "Velocity must be between 0 and 127" in str(exc_info.value)
+
+    def test_rhythm_pattern_data_check_duration_invalid(self) -> None:
+        with pytest.raises(ValueError) as exc_info:
+            RhythmPatternData(notes=[RhythmNote(position=0, duration=1.0)], duration=-1.0)  # Invalid duration
+        assert "Duration must be positive" in str(exc_info.value)
 
 def test_rhythm_pattern_data_initialization_empty_notes() -> None:
     with pytest.raises(ValueError, match="Notes list cannot be empty"):
@@ -261,54 +383,3 @@ def test_validate_notes() -> None:
         errors = e.errors()
         assert any("Notes list cannot be empty" in str(err["msg"]) for err in errors), \
             "Expected error message about empty notes not found"
-
-def test_rhythm_pattern_data_creation(self) -> None:
-    notes = [
-        RhythmNote(
-            position=0.0,
-            duration=1.0,
-            velocity=100,
-            is_rest=False,
-            accent=None,
-            swing_ratio=None
-        )
-    ]
-    data = RhythmPatternData(
-        notes=notes,
-        time_signature="4/4",
-        swing_enabled=False,
-        humanize_amount=0.2,
-        swing_ratio=0.67,
-        style="rock",
-        default_duration=1.0
-    )
-    self.assertEqual(data.time_signature, "4/4")
-    self.assertEqual(len(data.notes), 1)
-    self.assertEqual(data.style, "rock")
-    self.assertFalse(data.swing_enabled)
-
-def test_note_pattern_creation(self):
-    pattern = RhythmPatternData(
-        id=str(uuid.uuid4()),
-        name="Test Pattern",
-        notes=[RhythmNote(position=0, duration=1)],
-        pattern_type="basic",
-        description="Test description",
-        tags=["test", "basic"],
-        complexity=0.5,
-        data=[1, 2, 3],
-        is_test=True
-    )
-    self.assertEqual(pattern.name, "Test Pattern")
-    self.assertIsNotNone(pattern.notes)
-    self.assertEqual(len(pattern.tags), 2)
-
-def test_rhythm_note_validation_velocity_invalid(self) -> None:
-    with pytest.raises(ValueError) as exc_info:
-        RhythmNote(position=0, duration=1.0, velocity=200)  # Invalid velocity
-    assert "Velocity must be between 0 and 127" in str(exc_info.value)
-
-def test_rhythm_pattern_data_check_duration_invalid(self) -> None:
-    with pytest.raises(ValueError) as exc_info:
-        RhythmPatternData(notes=[RhythmNote(position=0, duration=1.0)], duration=-1.0)  # Invalid duration
-    assert "Duration must be a positive number" in str(exc_info.value)

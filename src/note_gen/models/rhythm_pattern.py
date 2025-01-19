@@ -73,6 +73,7 @@ class RhythmNote(BaseModel):
         return value
 
 
+
 class RhythmPatternData(BaseModel):
     """Data class for rhythm pattern data."""
     notes: List[RhythmNote]
@@ -383,3 +384,11 @@ class RhythmPatternSimple(BaseModel):
     def __str__(self) -> str:
         """Get string representation of the rhythm pattern."""
         return f"{self.name}: {' '.join(str(note.duration) for note in self.pattern)}"
+
+class RhythmPatternResponse(BaseModel):
+    id: Optional[str] = Field(None, description="ID of the rhythm pattern")
+    name: str = Field(description="Name of the rhythm pattern")
+    pattern: List[Union[Note, int]] = Field(description="List of notes in the rhythm pattern")
+    description: str = Field(description="Description of the rhythm pattern")
+    tags: List[str] = Field(..., description="Tags for the rhythm pattern")
+    complexity: Optional[float] = Field(None, description="Complexity rating of the rhythm pattern")

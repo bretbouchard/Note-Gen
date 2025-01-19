@@ -2,15 +2,39 @@ from __future__ import annotations
 from typing import List, Dict, ClassVar, Optional
 import random
 import logging
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, ValidationError, Field
 
 from src.note_gen.models.scale_info import ScaleInfo
 from src.note_gen.models.musical_elements import Chord, Note
 from src.note_gen.models.chord_progression import ChordProgression
 from src.note_gen.models.chord_quality import ChordQualityType
 from src.note_gen.models.roman_numeral import RomanNumeral
+from src.note_gen.models.enums import ScaleType
 
 logger = logging.getLogger(__name__)
+
+class ScaleInfo(BaseModel):
+    """Base class for scale information."""
+    
+    root: Note
+    scale_type: ScaleType
+
+    def get_chord_quality_for_degree(self, degree: int) -> ChordQualityType:
+        """Return the chord quality for a given degree."""
+        # Logic to return chord quality based on degree
+        pass
+
+class ChordProgression(BaseModel):
+    """Base class for chord progressions."""
+    
+    name: str
+    chords: List[Chord]
+    key: str
+    scale_type: ScaleType
+
+    def example_method(self) -> None:
+        """Example method with proper return type and annotations."""
+        pass
 
 class ChordProgressionGenerator(BaseModel):
     """Generator for creating chord progressions."""
@@ -77,8 +101,8 @@ class ChordProgressionGenerator(BaseModel):
     
     def convert_roman_to_chord(self, numeral: str) -> Chord:
         roman = RomanNumeral.from_string(numeral)  # Convert numeral to scale degree
-        root = self.scale_info.get_note_for_degree(roman.scale_degree)  # Get root note
-        quality = self.scale_info.get_chord_quality_for(roman.quality)  # Get quality from scale
+        root = self.scale_info.root  # Get root note
+        quality = self.scale_info.get_chord_quality_for_degree(roman.scale_degree)  # Get quality from scale
         return Chord(root=root, quality=quality)  # Create Chord instance
 
     def generate_from_pattern(self, pattern: List[str]) -> ChordProgression:
@@ -87,21 +111,21 @@ class ChordProgressionGenerator(BaseModel):
         for numeral in pattern:
             try:
                 roman = RomanNumeral.from_string(numeral)  # Create RomanNumeral instance
-                root = self.scale_info.get_scale_note_at_degree(roman.scale_degree)  # Get scale degree as integer
+                root = self.scale_info.root  # Get scale degree as integer
                 chord = self.generate_chord(numeral)
                 chords.append(chord)  # Append the Chord instance directly
             except (ValueError, ValidationError) as e:
                 raise ValueError(f"Invalid Roman numeral in pattern: {numeral}") from e
 
-        return ChordProgression(name="Generated Progression", scale_info=self.scale_info, chords=chords, key=self.scale_info.key)
+        return ChordProgression(name="Generated Progression", chords=chords, key=self.scale_info.root.note_name, scale_type=self.scale_info.scale_type)
     
     def generate_chord(self, roman_numeral: str) -> Chord:
         """Generate a chord from a Roman numeral."""
         try:
             roman = RomanNumeral.from_string(roman_numeral)
-            root = self.scale_info.get_scale_note_at_degree(roman.scale_degree)
+            root = self.scale_info.root
             # Get quality from scale_info
-            quality = self.scale_info.get_chord_quality_for(roman.quality)
+            quality = self.scale_info.get_chord_quality_for_degree(roman.scale_degree)
             if root is None:
                 raise ValueError(f"Root note for {roman_numeral} cannot be None")
             if quality is None:
@@ -152,4 +176,38 @@ class ChordProgressionGenerator(BaseModel):
             chord = self.generate_chord(roman)
             chords.append(chord)  # Append the Chord instance directly
             
-        return ChordProgression(name="Custom Progression", scale_info=self.scale_info, chords=chords, key=self.scale_info.key)
+        return ChordProgression(name="Custom Progression", chords=chords, key=self.scale_info.root.note_name, scale_type=self.scale_info.scale_type)
+
+class FakeScaleInfo(ScaleInfo):
+    def __init__(self, root: Note = None, scale_type: ScaleType = ScaleType.MAJOR, key: str = 'C'):
+        super().__init__(root or Note(note_name='C', octave=4, duration=1, velocity=64), scale_type)
+
+    def get_chord_quality_for_degree(self, degree: int) -> ChordQualityType:
+        # Return a chord quality based on the degree
+        if degree < 1 or degree > 7:
+            raise ValueError("Degree must be between 1 and 7")
+        if degree == 1 or degree == 4:
+            return ChordQualityType.MAJOR
+        elif degree == 2 or degree == 3 or degree == 6:
+            return ChordQualityType.MINOR
+        elif degree == 5:
+            return ChordQualityType.DOMINANT_7
+        elif degree == 7:
+            return ChordQualityType.DIMINISHED
+        else:
+            raise ValueError("Invalid degree")
+
+class Chord(BaseModel):
+    root: Note
+    quality: ChordQualityType
+    notes: List[Note] = Field(default_factory=list)
+    inversion: int = 0
+
+    def __init__(self, root: Note, quality: str, notes: Optional[List[Note]] = None, inversion: int = 0):
+        if not isinstance(root, Note):
+            raise ValueError("Root must be a valid Note instance.")
+        try:
+            self.quality = ChordQualityType(quality)
+        except ValueError:
+            raise ValueError(f'Invalid quality: {quality}')  # Handle invalid quality here
+        super().__init__(root=root, quality=self.quality, notes=notes or [], inversion=inversion)

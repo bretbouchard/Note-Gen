@@ -1,4 +1,5 @@
 import pytest
+import logging
 from src.note_gen.models.note import Note
 
 def test_note_initialization() -> None:
@@ -14,12 +15,12 @@ def test_note_midi_computation() -> None:
     assert note.midi_number == 60
 
 def test_note_from_name() -> None:
-    note = Note.from_name("C#4")
+    note = Note.from_name("C#4", duration=1.0, velocity=64)
     assert note.note_name == "C#"
     assert note.octave == 4
 
 def test_note_from_midi() -> None:
-    note = Note.from_midi(60)
+    note = Note.from_midi(60, duration=1.0, velocity=64)
     assert note.note_name == "C"
     assert note.octave == 4
 
@@ -30,41 +31,41 @@ def test_note_normalization() -> None:
         Note.normalize_note_name("")
 
 def test_note_transpose() -> None:
-    note = Note.from_name("C4")
+    note = Note.from_name("C4", duration=1.0, velocity=64)
     transposed_note = note.transpose(2)
     assert transposed_note.note_name == "D"
     assert transposed_note.octave == 4
 
 def test_invalid_note_initialization() -> None:
     with pytest.raises(ValueError, match="Invalid note name:"):
-        Note(note_name="Invalid", octave=4)
+        Note(note_name="Invalid", octave=4, duration=1.0, velocity=64)
     with pytest.raises(ValueError, match="Invalid octave:"):
-        Note(note_name="C", octave=10)
+        Note(note_name="C", octave=10, duration=1.0, velocity=64)
 
 def test_full_note_name() -> None:
-    note = Note.from_name("C4")
+    note = Note.from_name("C4", duration=1.0, velocity=64)
     assert note.full_note_name() == "C4"
 
 def test_midi_conversion() -> None:
-    note = Note.from_name("C4")
+    note = Note.from_name("C4", duration=1.0, velocity=64)
     assert note.midi_number == 60
 
 def test_note_equality() -> None:
-    note1 = Note(note_name="C", octave=4)
-    note2 = Note(note_name="C", octave=4)
+    note1 = Note(note_name="C", octave=4, duration=1.0, velocity=64)
+    note2 = Note(note_name="C", octave=4, duration=1.0, velocity=64)
     assert note1 == note2
 
 def test_invalid_midi_number_initialization() -> None:
     with pytest.raises(ValueError, match="MIDI number out of range:"):
-        Note.from_midi(128)
+        Note.from_midi(128, duration=1.0, velocity=64)
 
 def test_transpose_out_of_range_high() -> None:
-    note = Note.from_name("C4")
+    note = Note.from_name("C4", duration=1.0, velocity=64)
     with pytest.raises(ValueError, match="MIDI number out of range"):
         note.transpose(60)  # Enough semitones to exceed octave 8 => error
 
 def test_transpose_out_of_range_low() -> None:
-    note = Note.from_name("C4")
+    note = Note.from_name("C4", duration=1.0, velocity=64)
     with pytest.raises(ValueError, match="MIDI number out of range"):
         note.transpose(-70)
 
@@ -85,7 +86,7 @@ def test_fill_missing_fields_with_invalid_string() -> None:
         Note.fill_missing_fields("Invalid")
 
 def test_from_full_name() -> None:
-    note = Note.from_full_name("G#4")
+    note = Note.from_full_name("G#4", duration=1.0, velocity=64)
     assert note.note_name == "G#"
     assert note.octave == 4
     with pytest.raises(ValueError, match="Invalid note name format"):
@@ -97,7 +98,7 @@ def test_fill_missing_fields_with_midi() -> None:
     assert data["octave"] == 4
 
 def test_from_full_name_valid() -> None:
-    note = Note.from_full_name("C#4")
+    note = Note.from_full_name("C#4", duration=1.0, velocity=64)
     assert note.note_name == "C#"
     assert note.octave == 4
 
@@ -155,7 +156,7 @@ def test_note_octave_to_midi_invalid() -> None:
         Note._note_octave_to_midi("InvalidNote", 4)
 
 def test_transpose_to_limits() -> None:
-    note = Note.from_name("C4")
+    note = Note.from_name("C4", duration=1.0, velocity=64)
 
     # Transpose to the upper limit of MIDI numbers
     transposed_note = note.transpose(48)  # Valid transposition, should reach MIDI 108
@@ -176,7 +177,7 @@ def test_normalize_note_name_edge_cases() -> None:
 def test_fill_missing_fields_invalid_dict() -> None:
     with pytest.raises(ValueError, match="Unrecognized note name"):
         Note.fill_missing_fields({"note_name": "Invalid", "octave": 4})
-    with pytest.raises(ValueError, match="Invalid octave"):
+    with pytest.raises(ValueError, match="Invalid octave:"):
         Note.fill_missing_fields({"note_name": "C", "octave": 10})  # Invalid octave # Invalid octave
 
 def test_check_validations_invalid_duration() -> None:
@@ -185,10 +186,10 @@ def test_check_validations_invalid_duration() -> None:
 
 def test_check_validations_invalid_octave() -> None:
     with pytest.raises(ValueError, match="Invalid octave: 9"):
-        Note(note_name="C", octave=9, duration=1.0, velocity=64)  # Invalid octave
+        Note.fill_missing_fields({"note_name": "C", "octave": 9})
 
 def test_midi_number_calculation() -> None:
-    note = Note(note_name="C", octave=4, stored_midi_number=None)
+    note = Note(note_name="C", octave=4, duration=1.0, stored_midi_number=None, velocity=64)
     assert note.midi_number == 60  # Check calculated MIDI number
 
 def test_normalize_note_name_invalid() -> None:
@@ -198,6 +199,6 @@ def test_normalize_note_name_invalid() -> None:
         Note.normalize_note_name("123")  # Invalid string
 
 def test_transpose_invalid_octave() -> None:
-    note = Note.from_name("C8")
+    note = Note.from_name("C8", duration=1.0, velocity=64)
     with pytest.raises(ValueError, match="MIDI number out of range"):
         note.transpose(12)  # Enough to push into octave 9 => error

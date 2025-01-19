@@ -1,7 +1,7 @@
 # src/note_gen/models/chord_progression.py
 
-from typing import List, Any, Dict, Optional, TypeVar, ClassVar
-from pydantic import BaseModel, Field, ConfigDict, field_validator
+from typing import List, Any, Dict, Optional, TypeVar
+from pydantic import BaseModel, Field, ConfigDict, validator
 from src.note_gen.models.musical_elements import Note, Chord
 from src.note_gen.models.roman_numeral import RomanNumeral
 from src.note_gen.models.enums import ChordQualityType
@@ -10,6 +10,8 @@ import logging
 import uuid
 
 logger = logging.getLogger(__name__)
+
+T = TypeVar('T')
 
 class ChordProgression(BaseModel):
     """Class representing a progression of chords."""
@@ -21,120 +23,41 @@ class ChordProgression(BaseModel):
     scale_type: str = Field(description="Type of scale (e.g., major, minor)")
     complexity: float = Field(default=1.0, description="Complexity rating between 0 and 1", ge=0, le=1)
 
-    model_config = ConfigDict(
-        arbitrary_types_allowed=True,
-        json_schema_extra={
-            'example': {
-                'key': 'C',
-                'scale_type': 'major',
-                'chords': ['C', 'G', 'Am'],
-                'complexity': 1.0
-            }
-        }
-    )
+    @validator('chords', each_item=True)
+    def validate_and_convert_chord(cls, v):
+        if isinstance(v, dict):
+            root_data = v.get('root')
+            root = None
+            if isinstance(root_data, str):
+                root = Note(note_name=root_data, octave=4, duration=1, velocity=100)
+            elif isinstance(root_data, dict):
+                root = Note(
+                    note_name=root_data.get('note_name', 'C'),
+                    octave=root_data.get('octave', 4),
+                    duration=root_data.get('duration', 1),
+                    velocity=root_data.get('velocity', 100)
+                )
+            quality = v.get('quality')
+            if isinstance(quality, str):
+                try:
+                    quality = ChordQualityType(quality)
+                except ValueError:
+                    quality = ChordQualityType.MAJOR  # Default to major if invalid
+            return Chord(root=root, quality=quality)
+        elif isinstance(v, Chord):
+            return v
+        else:
+            raise ValueError("Invalid chord type")
 
-    T: ClassVar = TypeVar('T')  # Add this line to annotate T as a ClassVar
-
-    def __init__(self,
-                 id: str,
-                 name: str,
-                 chords: List[Chord],
-                 key: str,
-                 scale_type: str,
-                 complexity: Optional[float] = None) -> None:
-        logger.debug(f'Initializing ChordProgression with data: {id}, {name}, {chords}, {key}, {scale_type}, {complexity}')  # Log the initialization data
-
-        # Extract scale_type from scale_info if present
-        if 'scale_info' in locals() and hasattr(locals()['scale_info'], 'scale_type'):
-            locals()['scale_type'] = locals()['scale_info'].scale_type
-            # Also set the key from scale_info
-            if hasattr(locals()['scale_info'], 'root'):
-                if isinstance(locals()['scale_info'].root, dict):
-                    locals()['key'] = locals()['scale_info'].root.get('note_name', 'C')
-                elif hasattr(locals()['scale_info'].root, 'note_name'):
-                    locals()['key'] = locals()['scale_info'].root.note_name
-                else:
-                    locals()['key'] = 'C'  # Default to C if we can't determine the key
-            # Set a default name if not provided
-            if 'name' not in locals():
-                key = locals().get('key', 'C')
-                scale_type = locals()['scale_info'].scale_type
-                locals()['name'] = f"{key} {scale_type}"
-            
-        # Convert chord dictionaries to Chord objects
-        if 'chords' in locals() and isinstance(locals()['chords'], list):
-            chords = []
-            for chord_data in locals()['chords']:
-                if isinstance(chord_data, dict):
-                    # Handle root note data
-                    root_data = chord_data.get('root')
-                    root = None
-                    
-                    if isinstance(root_data, str):
-                        root = Note(note_name=root_data)
-                    elif isinstance(root_data, dict):
-                        # Handle nested note data
-                        if 'note_name' in root_data:
-                            if isinstance(root_data['note_name'], dict):
-                                # Handle doubly nested note data
-                                note_data = root_data['note_name']
-                                root = Note(
-                                    note_name=note_data.get('note_name', 'C'),
-                                    octave=note_data.get('octave', 4)
-                                )
-                            else:
-                                # Handle singly nested note data
-                                root = Note(
-                                    note_name=root_data.get('note_name', 'C'),
-                                    octave=root_data.get('octave', 4)
-                                )
-                    elif isinstance(root_data, Note):
-                        root = root_data
-                    else:
-                        logger.error(f"Invalid root note data: {root_data}")
-                        continue
-                        
-                    # Create Chord object with processed root note
-                    quality = chord_data.get('quality')
-                    if isinstance(quality, str):
-                        try:
-                            # First try to get the enum directly
-                            quality = ChordQualityType(quality)
-                        except ValueError:
-                            try:
-                                # If that fails, try the _missing_ method for aliases
-                                quality = ChordQualityType._missing_(quality)
-                                if quality is None:
-                                    logger.warning(f"Invalid chord quality '{quality}', defaulting to major")
-                                    quality = ChordQualityType.MAJOR
-                            except Exception as e:
-                                logger.warning(f"Error processing chord quality '{quality}': {e}, defaulting to major")
-                                quality = ChordQualityType.MAJOR
-                    elif not isinstance(quality, ChordQualityType):
-                        logger.warning(f"Invalid chord quality type: {type(quality)}, defaulting to major")
-                        quality = ChordQualityType.MAJOR
-                    
-                    chord = Chord(root=root, quality=quality)
-                    chords.append(chord)
-                elif isinstance(chord_data, Chord):
-                    chords.append(chord_data)
-                else:
-                    error_msg = f"Invalid chord data: {chord_data}"
-                    logger.error(error_msg)
-                    raise ValueError(error_msg)
-            locals()['chords'] = chords
-        super().__init__(**locals())
-
-    @field_validator('key')
+    @validator('key')
     def validate_key(cls, v):
-        valid_keys = ['C', 'G', 'D', 'A', 'E', 'B', 'F#', 'Gb', 'Db', 'Ab', 'Eb', 'Bb', 'F']
-        if v not in valid_keys:
-            raise ValueError(f'Invalid key: {v}. Must be one of {valid_keys}')
+        if not isinstance(v, str) or not v:
+            raise ValueError("Key must be a non-empty string")
         return v
 
-    @field_validator('scale_type')
+    @validator('scale_type')
     def validate_scale_type(cls, v):
-        valid_types = ['major', 'minor', 'harmonic_minor', 'melodic_minor', 'dorian', 'phrygian', 'lydian', 'mixolydian', 'locrian']
+        valid_types = ['major', 'minor']
         if v not in valid_types:
             raise ValueError(f'Invalid scale type: {v}. Must be one of {valid_types}')
         return v
@@ -189,7 +112,7 @@ class ChordProgression(BaseModel):
         
         for interval in intervals:
             note_name = root.get_note_at_interval(interval)
-            notes.append(Note(note_name=note_name, octave=base_octave))
+            notes.append(Note(note_name=note_name, octave=base_octave, duration=1, velocity=100))
             
         # Apply inversion by moving notes up an octave
         if inversion > 0:
@@ -226,7 +149,7 @@ class ChordProgression(BaseModel):
 
     def to_roman_numerals(self) -> List[RomanNumeral]:
         """Convert the chord progression to Roman numerals."""
-        scale = Scale(root=Note(note_name=self.key), scale_type=ScaleType(self.scale_type))
+        scale = Scale(root=Note(note_name=self.key, octave=4, duration=1, velocity=100), scale_type=ScaleType(self.scale_type))
         # This function needs to be updated to handle the new chord type
         pass
 
