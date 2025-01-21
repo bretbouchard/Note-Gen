@@ -123,7 +123,7 @@ class Scale:
         current_midi = self.root.midi_number
         for interval in self.intervals:
             current_midi += interval
-            notes.append(Note.from_midi(current_midi))
+            notes.append(Note.from_midi(current_midi, velocity=64, duration=1.0))
         return notes
 
     def get_scale_degree(self, degree: int) -> Note:

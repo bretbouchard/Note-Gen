@@ -80,7 +80,7 @@ class PatternInterpreter(BaseModel):
                 note = self.scale.get_scale_degree(int(element.value)) if isinstance(element.value, str) and element.value.isdigit() else None
             elif isinstance(element, int):
                 note = Note.from_midi(
-                    element
+                    element, velocity=64, duration=1.0
                 )  # Assuming a method exists to create Note from MIDI number
                 result.append(note)
             elif isinstance(element, str):
@@ -113,7 +113,7 @@ class PatternInterpreter(BaseModel):
             # If you want it to mean "the nth scale degree," do:
             return self.scale.get_scale_degree(element)
             # OR, if you want it to be “MIDI number,” do:
-            # return Note.from_midi(element)
+            # return Note.from_midi(element, velocity=64, duration=1.0)
 
         # If it’s a str, parse it into a Note:
         if isinstance(element, str):
@@ -154,7 +154,7 @@ class ScalePatternInterpreter(PatternInterpreter):
                 else:
                     raise ValueError("ScaleDegree value cannot be None")
             elif isinstance(element, int):
-                note = Note.from_midi(element)  # Assuming int is a MIDI number
+                note = Note.from_midi(element, velocity=64, duration=1.0)  # Assuming int is a MIDI number
                 note_events.append(NoteEvent(note=note))  # Create NoteEvent from MIDI
             elif isinstance(element, str):
                 note = Note.from_full_name(element)  # Assuming str is a note name

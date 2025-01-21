@@ -28,7 +28,7 @@ async def test_note_sequence(client: httpx.AsyncClient):
     root_note = 60  # MIDI number for C4
     for i, note in enumerate(data["notes"]):
         expected_pitch = root_note + expected_intervals[i % len(expected_intervals)]
-        expected_note = Note.from_midi(expected_pitch)
+        expected_note = Note.from_midi(expected_pitch, velocity=64, duration=1.0)
         assert note["note_name"] == expected_note.note_name
         assert note["octave"] == expected_note.octave
 
@@ -62,7 +62,7 @@ async def test_note_sequence_functionality(client):
     root_note = 60  # MIDI number for C4
     for i, note in enumerate(data["notes"]):
         expected_pitch = root_note + expected_intervals[i % len(expected_intervals)]
-        expected_note = Note.from_midi(expected_pitch)
+        expected_note = Note.from_midi(expected_pitch, velocity=64, duration=1.0)
         assert note["note_name"] == expected_note.note_name
         assert note["octave"] == expected_note.octave
 

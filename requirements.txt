@@ -17,7 +17,7 @@ httpcore==1.0.7
 httpx==0.28.1
 idna==3.10
 iniconfig==2.0.0
-pymongo>=3.11
+pymongo>=4.9,<4.11
 isort==5.13.2
 joblib==1.4.2
 jsonpickle==4.0.0

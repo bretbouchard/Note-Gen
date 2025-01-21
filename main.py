@@ -5,8 +5,13 @@ from src.note_gen.routers.user_routes import router as user_router
 from src.note_gen.import_presets import ensure_indexes, import_presets_if_empty
 from typing import Any
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
-
+import tracemalloc
+import sentry_sdk
 import logging
+from dotenv import load_dotenv
+import os
+
+load_dotenv()  # Load environment variables from .env file
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -14,6 +19,7 @@ logger = logging.getLogger(__name__)
 # Database connection
 DATABASE_URL = 'mongodb://localhost:27017/'
 client = AsyncIOMotorClient(DATABASE_URL)
+tracemalloc.start()
 
 class DBConnection:
     def __init__(self, client):
@@ -64,9 +70,18 @@ class ChordProgressionGenerator(BaseModel):
 # Rebuild the model to ensure dependencies are recognized
 # ChordProgressionGenerator.model_rebuild()
 
+sentry_sdk.init(
+    dsn="https://362843c87018f80f239386bab8f2bc45@o4508306410307584.ingest.us.sentry.io/4508680097169408",
+    traces_sample_rate=1.0,
+    _experiments={
+        "continuous_profiling_auto_start": True,
+    },
+)
+
 app = FastAPI()
 
-async def on_startup() -> None:
+@app.on_event("startup")
+async def startup_event():
     # Log FastAPI version
     import fastapi
     logger.info(f'FastAPI version: {fastapi.__version__}')
@@ -78,12 +93,9 @@ async def on_startup() -> None:
         logger.error(f"Error during database initialization: {e}")
     logger.info("Application started...")
 
-app.add_event_handler("startup", on_startup)
-
-async def on_shutdown() -> None:
+@app.on_event("shutdown")
+async def shutdown_event():
     logger.info("Shutting down the application...")
-
-app.add_event_handler("shutdown", on_shutdown)
 
 app.include_router(user_router, prefix="", tags=["User Routes"])
 
@@ -118,6 +130,21 @@ async def get_progression(progression_id: int) -> dict[str, str | int]:
     """Retrieve a specific chord progression by ID."""
     # Logic to retrieve the progression based on ID (implement as needed)
     return {"progression_id": progression_id, "progression": "example"}
+
+@app.get("/sentry-debug")
+async def trigger_error():
+    try:
+        division_by_zero = 1 / 0  # This will raise a ZeroDivisionError
+    except ZeroDivisionError as e:
+        # Capture the current memory allocation snapshot
+        snapshot = tracemalloc.take_snapshot()
+        top_stats = snapshot.statistics('lineno')
+
+        print("[ Top 10 Memory Allocation ]")
+        for stat in top_stats[:10]:
+            print(stat)
+
+        raise e  # Re-raise the exception for Sentry to capture it
 
 @app.get("/")
 async def read_root() -> dict[str, str]:

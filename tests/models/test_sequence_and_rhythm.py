@@ -48,26 +48,26 @@ class FakeScaleInfo(ScaleInfo):
 class TestNoteSequence(unittest.TestCase):
     def setUp(self) -> None:
         self.sequence = NoteSequence(notes=[
-            Note.from_midi(60, octave=4, duration=1.0, velocity=100), 
-            Note.from_midi(62, octave=4, duration=1.0, velocity=100), 
-            Note.from_midi(64, octave=4, duration=1.0, velocity=100)
+            Note.from_midi(60, duration=1.0, velocity=100), 
+            Note.from_midi(62, duration=1.0, velocity=100), 
+            Note.from_midi(64, duration=1.0, velocity=100)
         ], events=[], duration=0.0)
         self.chord = Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality="major")  # Replace with actual chord instance
         self.scale_info = FakeScaleInfo(root=Note(note_name="C", octave=4, duration=1, velocity=100), scale_type=ScaleType.MAJOR)  # Updated to include required arguments
         self.note = Note(note_name="C", octave=4)
 
     def test_validate_notes_converts_ints_to_notes(self) -> None:
-        seq = NoteSequence(notes=[Note.from_midi(60), Note.from_midi(61)])
+        seq = NoteSequence(notes=[Note.from_midi(60, duration=1.0, velocity=100), Note.from_midi(61, duration=1.0, velocity=100)])
         for note in seq.notes:
             self.assertIsInstance(note, Note)
 
     def test_validate_notes_raises_on_invalid_type(self) -> None:
         with self.assertRaises(ValueError):
-            NoteSequence(notes=[Note.from_midi(60), "invalid", Note.from_midi(62)], events=[], duration=0.0)
+            NoteSequence(notes=[Note.from_midi(60, velocity=64, duration=1.0), "invalid", Note.from_midi(62, velocity=64, duration=1.0)], events=[], duration=0.0)
 
     def test_add_note_appends_event(self) -> None:
         initial_events = len(self.sequence.events)
-        self.sequence.add_note(Note.from_midi(65), position=0.0, duration=1.0, velocity=100)
+        self.sequence.add_note(Note.from_midi(65, velocity=64, duration=1.0), position=0.0, duration=1.0, velocity=100)
         self.assertEqual(len(self.sequence.events), initial_events + 1)
         event = self.sequence.events[-1]
         self.assertIsInstance(event.note, Note)
@@ -162,9 +162,9 @@ class TestPatternInterpreter(unittest.TestCase):
         note_sequence = interpreter.interpret(pattern=flat_pattern, chord=None, scale_info=None)
 
         expected_events = [
-            NoteEvent(note=Note.from_midi(60)),
-            NoteEvent(note=Note.from_midi(62)),
-            NoteEvent(note=Note.from_midi(64))
+            NoteEvent(note=Note.from_midi(60, velocity=64, duration=1.0)),
+            NoteEvent(note=Note.from_midi(62, velocity=64, duration=1.0)),
+            NoteEvent(note=Note.from_midi(64, velocity=64, duration=1.0))
         ]
         print(f"Expected events: {expected_events}")
         print(f"Actual note sequence: {note_sequence}")
@@ -323,9 +323,9 @@ class TestPatternInterpreterExtended(unittest.TestCase):
         note_sequence = interpreter.interpret(pattern=flat_pattern, chord=None, scale_info=None)
 
         expected_events = [
-            NoteEvent(note=Note.from_midi(60)),
-            NoteEvent(note=Note.from_midi(62)),
-            NoteEvent(note=Note.from_midi(64))
+            NoteEvent(note=Note.from_midi(60, velocity=64, duration=1.0)),
+            NoteEvent(note=Note.from_midi(62, velocity=64, duration=1.0)),
+            NoteEvent(note=Note.from_midi(64, velocity=64, duration=1.0))
         ]
         print(f"Expected events: {expected_events}")
         print(f"Actual note sequence: {note_sequence}")

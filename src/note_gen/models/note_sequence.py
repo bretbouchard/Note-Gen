@@ -36,7 +36,7 @@ class NoteSequence(BaseModel):
         validated_notes = []
         for note in v:
             if isinstance(note, int):
-                validated_notes.append(Note.from_midi(note))
+                validated_notes.append(Note.from_midi(note, velocity=64, duration=1.0))
             elif isinstance(note, Note):
                 validated_notes.append(note)
             else:
@@ -65,7 +65,7 @@ class NoteSequence(BaseModel):
                 note=transposed_note, position=position, duration=duration, velocity=velocity
             )
         elif isinstance(note, int):
-            note = Note.from_midi(note)
+            note = Note.from_midi(note, velocity=velocity, duration=duration)
             event = NoteEvent(
                 note=note, position=position, duration=duration, velocity=velocity
             )
