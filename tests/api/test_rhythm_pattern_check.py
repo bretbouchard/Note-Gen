@@ -4,12 +4,18 @@ from main import app
 from src.note_gen.models.rhythm_pattern import RhythmPattern, RhythmPatternData, RhythmNote
 from bson import ObjectId
 import uuid
+import httpx
 
 @pytest.fixture
-def client():
-    return TestClient(app)
+async def client():
+    async with httpx.AsyncClient(app=app, base_url="http://test") as c:
+        yield c
 
-def test_get_rhythm_pattern(client):
+# Consolidated tests for rhythm pattern functionality
+
+@pytest.mark.asyncio
+async def test_rhythm_pattern_functionality(client):
+    # Test get rhythm pattern
     pattern_id = str(ObjectId())
     rhythm_note = RhythmNote(position=0.0, duration=1.0, velocity=100, is_rest=False)
     rhythm_data = RhythmPatternData(
@@ -30,22 +36,22 @@ def test_get_rhythm_pattern(client):
     rhythm_pattern = RhythmPattern(name='Test Get Pattern', description='Basic quarter note pattern', tags=['basic'], complexity=1.0, data=rhythm_data, is_test=True)
     
     # Insert the pattern into the database
-    response = client.post('/rhythm-patterns', json=rhythm_pattern.model_dump())
+    response = await client.post('/rhythm-patterns', json=rhythm_pattern.model_dump())
     assert response.status_code == 201
     
     # Retrieve the pattern
-    response = client.get(f'/rhythm-patterns/{pattern_id}')
+    response = await client.get(f'/rhythm-patterns/{pattern_id}')
     assert response.status_code == 200
     data = response.json()
     assert data['name'] == 'Test Get Pattern'
     assert len(data['data']['notes']) == 1
 
-def test_invalid_rhythm_pattern_id(client):
-    response = client.get('/rhythm-patterns/invalid_id')
+    # Test invalid rhythm pattern id
+    response = await client.get('/rhythm-patterns/invalid_id')
     assert response.status_code == 422  # if your router actually returns 422 on invalid format
     assert response.json()['detail'][0]['msg'] == "Invalid ID format"
 
-def test_create_rhythm_pattern(client):
+    # Test create rhythm pattern
     rhythm_note = RhythmNote(position=0.0, duration=1.0, velocity=100, is_rest=False)
     rhythm_data = RhythmPatternData(
         notes=[rhythm_note],
@@ -64,13 +70,13 @@ def test_create_rhythm_pattern(client):
     
     rhythm_pattern = RhythmPattern(name='Test Create Pattern', description='Basic quarter note pattern', tags=['basic'], complexity=1.0, data=rhythm_data, is_test=True)
     
-    response = client.post('/rhythm-patterns', json=rhythm_pattern.model_dump())
+    response = await client.post('/rhythm-patterns', json=rhythm_pattern.model_dump())
     assert response.status_code == 201
     created_pattern = response.json()
     assert created_pattern['name'] == rhythm_pattern.name
     assert len(created_pattern['data']['notes']) == 1
 
-def test_create_duplicate_rhythm_pattern(client):
+    # Test create duplicate rhythm pattern
     # First pattern
     pattern_id = str(ObjectId())
     rhythm_note = RhythmNote(position=0.0, duration=1.0, velocity=100, is_rest=False)
@@ -92,16 +98,16 @@ def test_create_duplicate_rhythm_pattern(client):
     rhythm_pattern = RhythmPattern(id=str(ObjectId()), name='Test Duplicate Pattern', description='Basic quarter note pattern', tags=['basic'], complexity=1.0, data=rhythm_data, is_test=True)
     
     # Create first pattern
-    response = client.post('/rhythm-patterns', json=rhythm_pattern.model_dump())
+    response = await client.post('/rhythm-patterns', json=rhythm_pattern.model_dump())
     assert response.status_code == 201
     
     # Try to create duplicate with same name
     rhythm_pattern.id = str(uuid.uuid4())
-    response = client.post('/rhythm-patterns', json=rhythm_pattern.model_dump())
+    response = await client.post('/rhythm-patterns', json=rhythm_pattern.model_dump())
     assert response.status_code == 409
     assert response.json()['detail'] == "Rhythm pattern with name 'Test Duplicate Pattern' already exists"
 
-def test_invalid_rhythm_pattern(client):
+    # Test invalid rhythm pattern
     # Test with empty notes list
     rhythm_note = RhythmNote(position=0.0, duration=1.0, velocity=100, is_rest=False)
     rhythm_data = RhythmPatternData(
@@ -120,10 +126,10 @@ def test_invalid_rhythm_pattern(client):
     )
     
     invalid_pattern = RhythmPattern(name='Invalid Pattern', description='Invalid pattern', tags=['basic'], complexity=1.0, data=rhythm_data, is_test=True)
-    response = client.post('/rhythm-patterns', json=invalid_pattern.model_dump())
+    response = await client.post('/rhythm-patterns', json=invalid_pattern.model_dump())
     assert response.status_code == 201  # Validation should pass
 
-def test_create_and_delete_rhythm_pattern(client):
+    # Test create and delete rhythm pattern
     rhythm_note = RhythmNote(position=0.0, duration=1.0, velocity=100, is_rest=False)
     rhythm_data = RhythmPatternData(
         notes=[rhythm_note],
@@ -143,15 +149,18 @@ def test_create_and_delete_rhythm_pattern(client):
     rhythm_pattern = RhythmPattern(id=str(ObjectId()), name='Test Create Delete Pattern', description='Basic quarter note pattern', tags=['basic'], complexity=1.0, data=rhythm_data, is_test=True)
     
     # Create the pattern
-    response = client.post('/rhythm-patterns', json=rhythm_pattern.model_dump())
+    response = await client.post('/rhythm-patterns', json=rhythm_pattern.model_dump())
     assert response.status_code == 201
     created_pattern = response.json()
     pattern_id = created_pattern['id']
     
     # Delete the pattern
-    response = client.delete(f'/rhythm-patterns/{pattern_id}')
+    response = await client.delete(f'/rhythm-patterns/{pattern_id}')
     assert response.status_code == 201
     # Verify pattern is deleted
-    response = client.get(f'/rhythm-patterns/{pattern_id}')
+    response = await client.get(f'/rhythm-patterns/{pattern_id}')
     assert response.status_code == 404
     assert response.json()['detail'] == "Rhythm pattern not found"
+
+    # Add relevant tests from other files here
+    pass

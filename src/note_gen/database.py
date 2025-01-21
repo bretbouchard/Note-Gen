@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 import os
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 # MongoDB connection settings
@@ -39,7 +39,7 @@ async def get_client() -> AsyncIOMotorClient[Any]:
         try:
             await _client.admin.command('ping')
         except Exception as e:
-            logger.error(f"Failed to connect to MongoDB: {e}")
+            logger.error(f"Failed to connect to MongoDB: {e}", exc_info=True)
             _client = None
             raise
     return _client
@@ -61,14 +61,16 @@ async def get_database() -> AsyncIOMotorDatabase[Any]:
 
 @asynccontextmanager
 async def get_db() -> AsyncGenerator[AsyncIOMotorDatabase[Any], None]:
-    """Get the database connection as an async context manager."""
-    client = AsyncIOMotorClient(MONGO_URL)
-    db = client[DB_NAME]
-    logger.info("Database connection established: %s", db)
+    global _client, _db
+    if _db is None:
+        client = await get_client()
+        db_name = TEST_DB_NAME if os.getenv("TESTING") else DB_NAME
+        _db = client[db_name]
+        logger.info("Database connection established: %s", _db)
     try:
-        yield db
+        yield _db
     finally:
-        client.close()
+        pass  # Do not close the client here to maintain the connection.
 
 async def close_mongo_connection() -> None:
     """Close database connection."""

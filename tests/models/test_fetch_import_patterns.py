@@ -27,7 +27,7 @@ async def mock_db_with_data(mock_db: MockDatabase) -> MockDatabase:
         NotePattern(id='2', name='Basic Melody', description='Simple melody', tags=['test'], notes=[{'note_name': 'D', 'octave': 4, 'duration': 1.0, 'velocity': 100}]),
     ]
     # Insert sample data into the mock database
-    await mock_db.note_patterns.insert_many([pattern.model_dump() for pattern in sample_patterns])
+    await mock_db.insert_many('note_patterns', [pattern.model_dump() for pattern in sample_patterns])
     return mock_db
 
 @pytest.mark.asyncio
@@ -74,16 +74,16 @@ async def test_fetch_rhythm_pattern_by_id(mock_db_with_data: MockDatabase) -> No
     assert result.id == test_id
 
 @pytest.mark.asyncio
-async def test_fetch_chord_progression_by_id_not_found(mock_db: MockDatabase) -> None:
-    result = await fetch_chord_progression_by_id("nonexistent-id", mock_db)
+async def test_fetch_chord_progression_by_id_not_found(mock_db_with_data: MockDatabase) -> None:
+    result = await fetch_chord_progression_by_id("nonexistent-id", mock_db_with_data)
     assert result is None
 
 @pytest.mark.asyncio
-async def test_fetch_note_pattern_by_id_not_found(mock_db: MockDatabase) -> None:
-    result = await fetch_note_pattern_by_id("nonexistent-id", mock_db)
+async def test_fetch_note_pattern_by_id_not_found(mock_db_with_data: MockDatabase) -> None:
+    result = await fetch_note_pattern_by_id("nonexistent-id", mock_db_with_data)
     assert result is None
 
 @pytest.mark.asyncio
-async def test_fetch_rhythm_pattern_by_id_not_found(mock_db: MockDatabase) -> None:
-    result = await fetch_rhythm_pattern_by_id("nonexistent-id", mock_db)
+async def test_fetch_rhythm_pattern_by_id_not_found(mock_db_with_data: MockDatabase) -> None:
+    result = await fetch_rhythm_pattern_by_id("nonexistent-id", mock_db_with_data)
     assert result is None

@@ -138,6 +138,15 @@ class Chord(BaseModel):
 
     def _generate_chord_notes(self, root: Note, quality: ChordQualityType) -> List[Note]:
         logger.debug(f"Generating notes for chord with root: {root}, quality: {quality}")
+        # Ensure root is a Note object
+        if not isinstance(root, Note):
+            if isinstance(root, dict):
+                root = Note(**root)  # Convert dictionary to Note object
+            elif isinstance(root, str):
+                root = Note(note_name=root)
+            else:
+                logger.error(f"Invalid root note type: {type(root)}")
+                root = Note(note_name='C')
         intervals = {
             ChordQualityType.MAJOR: [0, 4, 7],
             ChordQualityType.MINOR: [0, 3, 7],

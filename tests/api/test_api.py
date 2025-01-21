@@ -6,7 +6,6 @@ from bson import ObjectId
 import pytest
 from httpx import AsyncClient, ASGITransport
 from fastapi.testclient import TestClient
-from src.note_gen.main import app
 from src.note_gen.models.note_pattern import NotePattern
 from src.note_gen.database import get_db
 from motor.motor_asyncio import AsyncIOMotorDatabase
@@ -14,9 +13,6 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 
 pytestmark = pytest.mark.asyncio  # This marks all test functions in the file as async
 
-
-from typing import List, Dict, Any, Optional, AsyncGenerator
-from collections.abc import AsyncGenerator as AsyncGeneratorABC
 
 from typing import List, Dict, Any, Optional
 from collections.abc import AsyncIterator
@@ -43,16 +39,20 @@ class MockCollection:
     def __init__(self, items: List[Dict[str, Any]]) -> None:
         self.items = items
 
-    async def find(self, query: Optional[Dict[str, Any]] = None) -> MockCursor:
+    async def find(self, query: Optional[Dict[str, Any]] = None):
+        # Simulate asynchronous behavior
         return MockCursor(self.items)
 
-    async def find_one(self, query: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        if "_id" in query:
-            return next((item for item in self.items if str(item.get("_id")) == str(query["_id"])), None)
+    async def find_one(self, query: Dict[str, Any]):
+        # Simulate asynchronous behavior
+        for item in self.items:
+            if item.get('_id') == query.get('_id'):
+                return item
         return None
 
-    async def insert_one(self, document: Dict[str, Any]) -> Any:
-        return type('obj', (object,), {'inserted_id': '678c8a5366f69e6105157c76'})()
+    async def insert_one(self, document: Dict[str, Any]):
+        # Simulate asynchronous behavior
+        self.items.append(document)
 
 
 class MockDatabase:
@@ -154,8 +154,14 @@ class MockDatabase:
         }])
 
 
+@pytest.fixture(scope="module")
+def app():
+    from main import app
+    return app
+
+
 @pytest.fixture
-async def test_client() -> AsyncGenerator[AsyncClient, None]:
+async def test_client(app: TestClient) -> AsyncGenerator[AsyncClient, None]:
     app.dependency_overrides[get_db] = lambda: MockDatabase()
     async with AsyncClient(
         transport=ASGITransport(app=app),
@@ -164,24 +170,27 @@ async def test_client() -> AsyncGenerator[AsyncClient, None]:
     ) as client:
         yield client
 
-# Update test functions to remove trailing slashes
-async def test_get_chord_progressions(test_client: AsyncClient) -> None:
-    response = await test_client.get("/chord-progressions")
+
+# Consolidated tests for API functionality
+
+@pytest.mark.asyncio
+async def test_api_functionality(client):
+    # Test get chord progressions
+    response = await client.get("/chord-progressions")
     assert response.status_code == 200
     assert len(response.json()) > 0
 
-async def test_get_note_patterns(test_client: AsyncClient) -> None:
-    response = await test_client.get("/note-patterns")
+    # Test get note patterns
+    response = await client.get("/note-patterns")
     assert response.status_code == 200
     assert len(response.json()) > 0
 
-async def test_get_rhythm_patterns(test_client: AsyncClient) -> None:
-    response = await test_client.get("/rhythm-patterns")
+    # Test get rhythm patterns
+    response = await client.get("/rhythm-patterns")
     assert response.status_code == 200
     assert len(response.json()) > 0
 
-
-async def test_post_endpoint(test_client: AsyncClient) -> None:
+    # Test post endpoint
     test_data = {
         "name": "New Pattern",
         "notes": [
@@ -208,7 +217,70 @@ async def test_post_endpoint(test_client: AsyncClient) -> None:
         "description": "New test pattern",
         "tags": ["test", "new"]
     }
-    response = await test_client.post("/note-patterns", json=test_data)
+    response = await client.post("/note-patterns", json=test_data)
     assert response.status_code == 200
     response_data = response.json()
     assert "id" in response_data  # Check for id instead of message
+
+    # Test get note pattern by id
+    response = await client.get("/note-patterns/1")
+    assert response.status_code == 200
+    assert response.json()["name"] == "Test Pattern"
+
+    # Test update note pattern
+    update_data = {
+        "name": "Updated Pattern",
+        "notes": [
+            {
+                "note_name": "C",
+                "duration": 1.0,
+                "velocity": 64,
+                "octave": 4
+            },
+            {
+                "note_name": "E",
+                "duration": 1.0,
+                "velocity": 64,
+                "octave": 4
+            },
+            {
+                "note_name": "G",
+                "duration": 1.0,
+                "velocity": 64,
+                "octave": 4
+            }
+        ],
+        "description": "Updated pattern",
+        "tags": ["test", "updated"]
+    }
+    response = await client.put("/note-patterns/1", json=update_data)
+    assert response.status_code == 200
+    response_data = response.json()
+    assert response_data["name"] == "Updated Pattern"
+
+    # Test delete note pattern
+    response = await client.delete("/note-patterns/1")
+    assert response.status_code == 200
+    assert response.json()["message"] == "Note pattern deleted successfully"
+
+    # Test get rhythm pattern by id
+    response = await client.get("/rhythm-patterns/1")
+    assert response.status_code == 200
+    assert response.json()["name"] == "Test Rhythm"
+
+    # Test update rhythm pattern
+    update_data = {
+        "name": "Updated Rhythm",
+        "pattern": "1 1",
+        "description": "Updated rhythm",
+        "tags": ["test", "updated"]
+    }
+    response = await client.put("/rhythm-patterns/1", json=update_data)
+    assert response.status_code == 200
+    response_data = response.json()
+    assert response_data["name"] == "Updated Rhythm"
+
+    # Test delete rhythm pattern
+    response = await client.delete("/rhythm-patterns/1")
+    assert response.status_code == 200
+    assert response.json()["message"] == "Rhythm pattern deleted successfully"

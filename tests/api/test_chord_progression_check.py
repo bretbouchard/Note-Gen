@@ -5,7 +5,13 @@ import uuid
 from main import app
 from httpx import AsyncClient
 from src.note_gen.database import get_db
+from bson import ObjectId
 
+
+@pytest.fixture
+async def client():
+    async with AsyncClient(app=app, base_url="http://test") as c:
+        yield c
 
 @pytest.fixture(scope="session")
 def event_loop():
@@ -15,21 +21,15 @@ def event_loop():
     yield loop
     loop.close()
 
-@pytest_asyncio.fixture(scope="session")
-async def client():
-    async with AsyncClient() as ac:
-        yield ac
-
 @pytest_asyncio.fixture(scope="function")
 async def setup_database():
-    db = await anext(get_db())
-    try:
+    async with get_db() as db:
         # Clear existing data
         await db.chord_progressions.delete_many({})
         
         # Setup code to insert test data into the database
         progression = {
-            'id': str(uuid.uuid4()),
+            'id': str(ObjectId()),
             'name': 'Test Base Progression',
             'chords': ['C', 'G', 'Am', 'F'],
             'key': 'C',
@@ -38,17 +38,14 @@ async def setup_database():
         }
         await db.chord_progressions.insert_one(progression)
         yield db
-    except Exception as e:
-        print(f"Error during database setup: {e}")
-        raise
-    finally:
-        # Cleanup
-        await db.chord_progressions.delete_many({})
+
+# Consolidated tests for chord progression functionality
 
 @pytest.mark.asyncio
-async def test_create_chord_progression(client, setup_database):
+async def test_chord_progression_functionality(client, setup_database):
+    # Test create chord progression
     test_progression = {
-        "id": str(uuid.uuid4()),
+        "id": str(ObjectId()),
         "name": "Test Create Progression",
         "chords": [
             {"root": {"note_name": "C", "octave": 4}, "quality": "major"},
@@ -61,8 +58,8 @@ async def test_create_chord_progression(client, setup_database):
         "complexity": 0.5
     }
     
-    response = client.post("/chord-progressions", json=test_progression)
-    assert response.status_code == 200
+    response = await client.post("http://localhost:8000/chord-progressions", json=test_progression)
+    assert response.status_code == 201
     
     data = response.json()
     assert data["name"] == test_progression["name"]
@@ -71,10 +68,9 @@ async def test_create_chord_progression(client, setup_database):
     assert data["scale_type"] == test_progression["scale_type"]
     assert data["complexity"] == test_progression["complexity"]
 
-@pytest.mark.asyncio
-async def test_create_duplicate_chord_progression(client, setup_database):
+    # Test create duplicate chord progression
     test_progression = {
-        "id": str(uuid.uuid4()),
+        "id": str(ObjectId()),
         "name": "Test Duplicate Progression",
         "chords": ["C", "F", "G", "C"],
         "key": "C",
@@ -83,19 +79,18 @@ async def test_create_duplicate_chord_progression(client, setup_database):
     }
     
     # Create first progression
-    response = client.post("/chord-progressions", json=test_progression)
-    assert response.status_code == 200
+    response = await client.post("http://localhost:8000/chord-progressions", json=test_progression)
+    assert response.status_code == 201
     
     # Try to create duplicate
-    response = client.post("/chord-progressions", json=test_progression)
+    response = await client.post("http://localhost:8000/chord-progressions", json=test_progression)
     assert response.status_code == 409
     assert "already exists" in response.json()["detail"]
 
-@pytest.mark.asyncio
-async def test_get_chord_progression(client, setup_database):
+    # Test get chord progression
     # Create a progression first
     test_progression = {
-        "id": str(uuid.uuid4()),
+        "id": str(ObjectId()),
         "name": "Test Get Progression",
         "chords": ["C", "F", "G", "C"],
         "key": "C",
@@ -103,12 +98,12 @@ async def test_get_chord_progression(client, setup_database):
         "complexity": 0.5
     }
     
-    response = client.post("/chord-progressions", json=test_progression)
-    assert response.status_code == 200
+    response = await client.post("http://localhost:8000/chord-progressions", json=test_progression)
+    assert response.status_code == 201
     created_progression = response.json()
     
     # Get the progression
-    response = client.get(f"/chord-progressions/{created_progression['id']}")
+    response = await client.get(f"http://localhost:8000/chord-progressions/{created_progression['id']}")
     assert response.status_code == 200
     
     data = response.json()
@@ -119,17 +114,15 @@ async def test_get_chord_progression(client, setup_database):
     assert data["scale_type"] == test_progression["scale_type"]
     assert data["complexity"] == test_progression["complexity"]
 
-@pytest.mark.asyncio
-async def test_invalid_chord_progression_id(client):
-    response = client.get("/chord-progressions/invalid_id")
+    # Test invalid chord progression id
+    response = await client.get("http://localhost:8000/chord-progressions/invalid_id")
     assert response.status_code == 404
     assert "not found" in response.json()["detail"]
 
-@pytest.mark.asyncio
-async def test_create_and_delete_chord_progression(client, setup_database):
+    # Test create and delete chord progression
     # Create a progression
     test_progression = {
-        "id": str(uuid.uuid4()),
+        "id": str(ObjectId()),
         "name": "Test Delete Progression",
         "chords": ["C", "F", "G", "C"],
         "key": "C",
@@ -137,23 +130,72 @@ async def test_create_and_delete_chord_progression(client, setup_database):
         "complexity": 0.5
     }
     
-    response = client.post("/chord-progressions", json=test_progression)
-    assert response.status_code == 200
+    response = await client.post("http://localhost:8000/chord-progressions", json=test_progression)
+    assert response.status_code == 201
     
     # Delete the progression
-    response = client.delete(f"/chord-progressions/{test_progression['id']}")
+    response = await client.delete(f"http://localhost:8000/chord-progressions/{test_progression['id']}")
     assert response.status_code == 200
     assert "deleted successfully" in response.json()["message"]
     
     # Verify it's gone
-    response = client.get(f"/chord-progressions/{test_progression['id']}")
+    response = await client.get(f"http://localhost:8000/chord-progressions/{test_progression['id']}")
     assert response.status_code == 404
 
-@pytest.mark.asyncio
-async def test_invalid_chord_progression(client):
+    # Test invalid chord progression
     progression = {
         "name": "Invalid Progression",
         # Missing required fields
     }
-    response = client.post('/chord-progressions', json=progression)
+    response = await client.post("http://localhost:8000/chord-progressions", json=progression)
     assert response.status_code == 422  # Validation error
+
+    # Test create chord progression with db
+    progression = {
+        'id': str(ObjectId()),
+        'name': 'Test Progression',
+        'chords': ['C', 'G', 'Am', 'F'],
+        'key': 'C',
+        'scale_type': 'major',
+        'complexity': 0.5
+    }
+    response = await client.post("http://localhost:8000/chord-progressions", json=progression)
+    assert response.status_code == 201
+
+    # Test create duplicate chord progression with db
+    progression = {
+        'id': str(ObjectId()),
+        'name': 'Test Progression',
+        'chords': ['C', 'G', 'Am', 'F'],
+        'key': 'C',
+        'scale_type': 'major',
+        'complexity': 0.5
+    }
+    await setup_database.chord_progressions.insert_one(progression)
+    response = await client.post("http://localhost:8000/chord-progressions", json=progression)
+    assert response.status_code == 400
+
+    # Test get chord progression with db
+    response = await client.get("http://localhost:8000/chord-progressions/1")
+    assert response.status_code == 200
+
+    # Test invalid chord progression id with db
+    response = await client.get("http://localhost:8000/chord-progressions/invalid_id")
+    assert response.status_code == 404
+
+    # Test create and delete chord progression with db
+    progression = {
+        'id': str(ObjectId()),
+        'name': 'Test Progression',
+        'chords': ['C', 'G', 'Am', 'F'],
+        'key': 'C',
+        'scale_type': 'major',
+        'complexity': 0.5
+    }
+    response = await client.post("http://localhost:8000/chord-progressions", json=progression)
+    assert response.status_code == 201
+    
+    # Now delete the progression
+    response = await client.delete(f"http://localhost:8000/chord-progressions/{progression['id']}")
+    assert response.status_code == 200
+    assert "deleted successfully" in response.json()["message"]

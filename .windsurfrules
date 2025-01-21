@@ -19,6 +19,7 @@
   - be casrefule searc can have red harrings
   - only include necesarry steps
   - Pydantic V1 style `@validator` validators are deprecated. Use Pydantic V2 style `@field_validator` validators
+  - The method "on_event" in class "FastAPI" is deprecated use lifespan event handlers instead.
 
 
 ## Key Classes

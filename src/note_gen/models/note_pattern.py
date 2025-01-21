@@ -28,7 +28,7 @@ class NotePattern(BaseModel):
     is_test: Optional[bool] = Field(default=None, description="Test flag")
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             'example': {
                 'name': 'Simple Triad',
                 'data': [0, 2, 4]

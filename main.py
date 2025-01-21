@@ -11,11 +11,28 @@ import logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
+# Database connection
+DATABASE_URL = 'mongodb://localhost:27017/'
+client = AsyncIOMotorClient(DATABASE_URL)
+
+class DBConnection:
+    def __init__(self, client):
+        self.client = client
+
+    async def __aenter__(self):
+        return self.client.note_gen  # Use your database name here
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        self.client.close()  # Close the client when done
+
+async def get_db():
+    db = client.note_gen  # Use your database name here
+    return db  # Return the database connection directly
 
 class ScaleDegree(BaseModel):
     degree: int
     note: str
-
+ 
 class ChordProgressionRequest(BaseModel):
     style: str = "basic"
     start_degree: Optional[int] = None
@@ -47,7 +64,27 @@ class ChordProgressionGenerator(BaseModel):
 # Rebuild the model to ensure dependencies are recognized
 # ChordProgressionGenerator.model_rebuild()
 
-app = FastAPI()  # <-- The main app
+app = FastAPI()
+
+async def on_startup() -> None:
+    # Log FastAPI version
+    import fastapi
+    logger.info(f'FastAPI version: {fastapi.__version__}')
+    # Code to run during startup
+    db = await get_db()
+    try:
+        await ensure_indexes(db)
+    except Exception as e:
+        logger.error(f"Error during database initialization: {e}")
+    logger.info("Application started...")
+
+app.add_event_handler("startup", on_startup)
+
+async def on_shutdown() -> None:
+    logger.info("Shutting down the application...")
+
+app.add_event_handler("shutdown", on_shutdown)
+
 app.include_router(user_router, prefix="", tags=["User Routes"])
 
 # Initialize your generators
@@ -55,16 +92,6 @@ root_note = 'C'  # Example root note
 scale = 'major'  # Example scale type
 scale_info = ScaleInfo(root=root_note, scale=scale)
 chord_generator = ChordProgressionGenerator(scale_info=scale_info)
-
-@app.on_event("startup")
-async def startup_event() -> None:
-    """Initialize database with presets on startup."""
-
-    client: AsyncIOMotorClient[Any] = AsyncIOMotorClient('mongodb://localhost:27017/')
-
-    db: AsyncIOMotorDatabase[Any] = client['note_gen']  # Replace with your database name
-    await ensure_indexes(db) 
-    await import_presets_if_empty(db) 
 
 @app.post("/generate_progression/")
 async def generate_progression(request: ChordProgressionRequest) -> List[ScaleDegree]:

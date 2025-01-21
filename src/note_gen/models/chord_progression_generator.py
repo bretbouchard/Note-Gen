@@ -24,7 +24,7 @@ class ScaleInfo(BaseModel):
         # Logic to return chord quality based on degree
         pass
 
-class ChordProgression(BaseModel):
+class ProgressionGenerator(BaseModel):
     """Base class for chord progressions."""
     
     name: str

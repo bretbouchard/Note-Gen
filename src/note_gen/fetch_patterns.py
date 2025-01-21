@@ -1,7 +1,7 @@
 """Functions for fetching patterns from the database."""
 
 from typing import List, Optional, Dict, Any, Mapping
-from motor.motor_asyncio import AsyncIOMotorDatabase as Database
+from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from src.note_gen.models.chord_progression import ChordProgression
 from src.note_gen.models.rhythm_pattern import RhythmPattern, RhythmNote
@@ -10,8 +10,10 @@ from src.note_gen.models.enums import ChordQualityType
 from src.note_gen.models.note_pattern import NotePattern
 from src.note_gen.database import get_db
 import logging
-logging.getLogger('src.note_gen.fetch_patterns').setLevel(logging.DEBUG)
+import sys
 
+# Configure logging for asynchronous operations
+logging.basicConfig(level=logging.DEBUG, stream=sys.stdout)
 logger = logging.getLogger(__name__)
 
 def process_chord_data(chord_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -72,22 +74,46 @@ def process_chord_data(chord_data: Dict[str, Any]) -> Dict[str, Any]:
 
 # In fetch_patterns.py
 # In fetch_patterns.py
-async def fetch_chord_progressions(db: Database[Mapping[str, Any]]) -> List[ChordProgression]:
+async def fetch_chord_progressions(db: AsyncIOMotorDatabase) -> List[ChordProgression]:
     try:
         cursor = db.chord_progressions.find({})
-        progressions = []
-        async for doc in cursor:
-            progression = ChordProgression(**doc)  # Ensure ChordProgression is typed
-            progressions.append(progression)
-        return progressions
+        progressions = await cursor.to_list(length=None)
+        if not progressions:
+            logger.error("No chord progressions found in the database.")
+            raise ValueError("No chord progressions found.")
+
+        for chord in progressions:
+            logger.debug(f"Validating chord progression: {chord}")
+            if 'chords' not in chord:
+                logger.error(f"Missing chords field in chord progression: {chord}")
+                raise ValueError(f"Missing chords field in chord progression: {chord}")
+            if not isinstance(chord['chords'], list):
+                logger.error(f"Chords field is not a list in chord progression: {chord}")
+                raise ValueError(f"Chords field is not a list in chord progression: {chord}")
+            if len(chord['chords']) == 0:
+                logger.error(f"Empty chords list in chord progression: {chord}")
+                raise ValueError(f"Invalid chord progression data: Empty chords list in chord progression: {chord}")
+
+            # Additional validation for each chord in the progression
+            for chord_item in chord['chords']:
+                if not isinstance(chord_item, dict):
+                    logger.error(f"Invalid chord item in progression: {chord_item}")
+                    raise ValueError(f"Invalid chord item in progression: {chord_item}")
+
+        return [ChordProgression(**doc) for doc in progressions]
+    except ValueError as ve:
+        logger.error(f"ValueError: {ve}")
+        raise
     except Exception as e:
         logger.error(f"Error fetching chord progressions: {e}")
         return []
 
-async def _fetch_chord_progressions(db: Database[Mapping[str, Any]]) -> List[ChordProgression]:
+async def _fetch_chord_progressions(db: AsyncIOMotorDatabase) -> List[ChordProgression]:
+    logger.debug(f"Type of db: {type(db)}")  # Log the type of db
     try:
         chord_progressions = []
         async for doc in db.chord_progressions.find({}):
+            logger.debug(f"Fetched document from MongoDB: {doc}")  # Log the fetched document
             try:
                 # Process chords
                 if 'chords' in doc and isinstance(doc['chords'], list):
@@ -104,48 +130,20 @@ async def _fetch_chord_progressions(db: Database[Mapping[str, Any]]) -> List[Cho
         return []
 
 # In fetch_patterns.py, around line 148
-async def fetch_chord_progression_by_id(id: str, db: Database[Mapping[str, Any]]) -> Optional[ChordProgression]:
+async def fetch_chord_progression_by_id(id: str, db: AsyncIOMotorDatabase) -> Optional[ChordProgression]:
     try:
+        logger.debug(f"Attempting to fetch chord progression with ID: {id}")
         result = await db.chord_progressions.find_one({"_id": id})
         logger.debug(f"Fetched result: {result}")
         if result:
             logger.debug(f"Raw document from MongoDB: {result}")
             
             # Process chords first
-            processed_chords: List[Chord] = []
-            for chord_data in result['chords']:
-                logger.debug(f"Processing chord: {chord_data}")
-                # Create root note
-                root_note_data: Dict[str, Any] = {
-                    'note_name': str(chord_data['root']['note_name']),
-                    'octave': int(chord_data['root']['octave']),
-                    'duration': int(float(chord_data['root']['duration'])),
-                    'velocity': 64
-                }
-                root_note = Note(**root_note_data)
-                
-                # Create chord notes
-                chord_notes = []
-                for note_data in chord_data['notes']:
-                    note_data_dict: Dict[str, Any] = {
-                        'note_name': str(note_data['note_name']),
-                        'octave': int(note_data['octave']),
-                        'duration': int(float(note_data['duration'])),
-                        'velocity': 64
-                    }
-                    note = Note(**note_data_dict)
-                    chord_notes.append(note)
-                
-                # Create Chord object
-                chord_data_dict = {
-                    'root': root_note,
-                    'quality': ChordQualityType[chord_data['quality'].upper()],  # Ensure quality is of correct type
-                    'notes': chord_notes,
-                    'inversion': 0
-                }
-                chord = Chord(root=root_note, quality=ChordQualityType[chord_data['quality'].upper()], notes=chord_notes, inversion=0)
+            if 'chords' in result and isinstance(result['chords'], list):
+                processed_chords = [process_chord_data(chord) for chord in result['chords']]
+            else:
+                processed_chords = []  # Default to an empty list if not valid
             
-            # Create ChordProgression
             prog_data = {
                 'id': str(result['id']),
                 'name': str(result['name']),
@@ -154,24 +152,22 @@ async def fetch_chord_progression_by_id(id: str, db: Database[Mapping[str, Any]]
                 'scale_type': str(result['scale_type']),
                 'chords': processed_chords
             }
-            logger.debug(f"prog_data types: id={type(prog_data['id'])}, name={type(prog_data['name'])}, complexity={type(prog_data['complexity'])}, key={type(prog_data['key'])}, scale_type={type(prog_data['scale_type'])}, chords={type(prog_data['chords'])}")
-            logger.debug(f"prog_data values: id={prog_data['id']}, name={prog_data['name']}, complexity={prog_data['complexity']}, key={prog_data['key']}, scale_type={prog_data['scale_type']}, chords={prog_data['chords']}")
-            logger.debug(f"prog_data values: id={prog_data['id']}, name={prog_data['name']}, complexity={prog_data['complexity']}, key={prog_data['key']}, scale_type={prog_data['scale_type']}, chords={prog_data['chords']}")
+            logger.debug(f"prog_data types: id={{type(prog_data['id'])}}, name={{type(prog_data['name'])}}, complexity={{type(prog_data['complexity'])}}, key={{type(prog_data['key'])}}, scale_type={{type(prog_data['scale_type'])}}, chords={{type(prog_data['chords'])}}")
+            logger.debug(f"prog_data values: id={{prog_data['id']}}, name={{prog_data['name']}}, complexity={{prog_data['complexity']}}, key={{prog_data['key']}}, scale_type={{prog_data['scale_type']}}, chords={{prog_data['chords']}}")
             prog = ChordProgression(**prog_data)
-            
-            logger.debug(f"Created ChordProgression: {prog}")
             return prog
-            
-        return None
+        else:
+            logger.warning(f"No chord progression found for ID: {id}")
+            return None
     except Exception as e:
-        logger.error(f"Error fetching chord progression by id {id}: {e}")
-        logger.debug(f"Error details: {str(e)}")
+        logger.error(f"Error fetching chord progression by ID: {e}", exc_info=True)
         return None
 
 
-async def _fetch_chord_progression_by_id(progression_id: str, db: Database[Mapping[str, Any]]) -> Optional[ChordProgression]:
+async def _fetch_chord_progression_by_id(progression_id: str, db: AsyncIOMotorDatabase) -> Optional[ChordProgression]:
     try:
         doc = await db.chord_progressions.find_one({"id": progression_id})
+        logger.debug(f"Fetched document from MongoDB: {doc}")  # Log the fetched document
         if doc:
             # Process chords
             if 'chords' in doc and isinstance(doc['chords'], list):
@@ -182,17 +178,22 @@ async def _fetch_chord_progression_by_id(progression_id: str, db: Database[Mappi
         logger.error(f"Error fetching chord progression by id {progression_id}: {e}")
         return None
 
-async def fetch_rhythm_patterns(db: Optional[Database[Mapping[str, Any]]] = None) -> List[RhythmPattern]:
+async def fetch_rhythm_patterns(db: AsyncIOMotorDatabase) -> List[RhythmPattern]:
+    logger.debug(f"Type of db: {type(db)}")  # Log the type of db
     """Fetch all rhythm patterns from the database."""
-    if db is None:
-        async with get_db() as db:
-            return await _fetch_rhythm_patterns(db)
-    return await _fetch_rhythm_patterns(db)
+    try:
+        cursor = db.rhythm_patterns.find({})
+        patterns = await cursor.to_list(length=None)
+        return [RhythmPattern(**doc) for doc in patterns]
+    except Exception as e:
+        logger.error(f"Error fetching rhythm patterns: {e}")
+        return []
 
-async def _fetch_rhythm_patterns(db: Database[Mapping[str, Any]]) -> List[RhythmPattern]:
+async def _fetch_rhythm_patterns(db: AsyncIOMotorDatabase) -> List[RhythmPattern]:
     try:
         patterns = []
         async for doc in db.rhythm_patterns.find({}):
+            logger.debug(f"Fetched document from MongoDB: {doc}")  # Log the fetched document
             try:
                 # Convert pattern list to RhythmNote objects
                 if 'pattern' in doc and isinstance(doc['pattern'], list):
@@ -211,16 +212,18 @@ async def _fetch_rhythm_patterns(db: Database[Mapping[str, Any]]) -> List[Rhythm
         logger.error(f"Error fetching rhythm patterns: {e}")
         return []
 
-async def fetch_rhythm_pattern_by_id(pattern_id: str, db: Optional[Database[Mapping[str, Any]]] = None) -> Optional[RhythmPattern]:
+async def fetch_rhythm_pattern_by_id(pattern_id: str, db: Optional[AsyncIOMotorDatabase] = None) -> Optional[RhythmPattern]:
+    logger.debug(f"Type of db: {type(db)}")  # Log the type of db
     """Fetch a rhythm pattern by its ID."""
     if db is None:
         async with get_db() as db:
             return await _fetch_rhythm_pattern_by_id(pattern_id, db)
     return await _fetch_rhythm_pattern_by_id(pattern_id, db)
 
-async def _fetch_rhythm_pattern_by_id(pattern_id: str, db: Database[Mapping[str, Any]]) -> Optional[RhythmPattern]:
+async def _fetch_rhythm_pattern_by_id(pattern_id: str, db: AsyncIOMotorDatabase) -> Optional[RhythmPattern]:
     try:
         doc = await db.rhythm_patterns.find_one({"id": pattern_id})
+        logger.debug(f"Fetched document from MongoDB: {doc}")  # Log the fetched document
         if doc:
             # Convert pattern list to RhythmNote objects
             if 'pattern' in doc and isinstance(doc['pattern'], list):
@@ -234,17 +237,19 @@ async def _fetch_rhythm_pattern_by_id(pattern_id: str, db: Database[Mapping[str,
         logger.error(f"Error fetching rhythm pattern by id {pattern_id}: {e}")
         return None
 
-async def fetch_note_patterns(db: Optional[Database[Mapping[str, Any]]] = None) -> List[NotePattern]:
+async def fetch_note_patterns(db: Optional[AsyncIOMotorDatabase] = None) -> List[NotePattern]:
+    logger.debug(f"Type of db: {type(db)}")  # Log the type of db
     """Fetch all note patterns from the database."""
     if db is None:
         async with get_db() as db:
             return await _fetch_note_patterns(db)
     return await _fetch_note_patterns(db)
 
-async def _fetch_note_patterns(db: Database[Mapping[str, Any]]) -> List[NotePattern]:
+async def _fetch_note_patterns(db: AsyncIOMotorDatabase) -> List[NotePattern]:
     try:
         patterns = []
         async for doc in db.note_patterns.find({}):
+            logger.debug(f"Fetched document from MongoDB: {doc}")  # Log the fetched document
             logger.debug(f"Fetched document: {doc}")  # Log the fetched document
             try:
                 # Log the keys in the document for debugging
@@ -265,16 +270,18 @@ async def _fetch_note_patterns(db: Database[Mapping[str, Any]]) -> List[NotePatt
         logger.error(f"Error fetching note patterns: {e}")
         return []
 
-async def fetch_note_pattern_by_id(pattern_id: str, db: Optional[Database[Mapping[str, Any]]] = None) -> Optional[NotePattern]:
+async def fetch_note_pattern_by_id(pattern_id: str, db: Optional[AsyncIOMotorDatabase] = None) -> Optional[NotePattern]:
+    logger.debug(f"Type of db: {type(db)}")  # Log the type of db
     """Fetch a note pattern by its ID."""
     if db is None:
         async with get_db() as db:
             return await _fetch_note_pattern_by_id(pattern_id, db)
     return await _fetch_note_pattern_by_id(pattern_id, db)
 
-async def _fetch_note_pattern_by_id(pattern_id: str, db: Database[Mapping[str, Any]]) -> Optional[NotePattern]:
+async def _fetch_note_pattern_by_id(pattern_id: str, db: AsyncIOMotorDatabase) -> Optional[NotePattern]:
     try:
         doc = await db.note_patterns.find_one({"id": pattern_id})
+        logger.debug(f"Fetched document from MongoDB: {doc}")  # Log the fetched document
         if doc:
             return NotePattern(**doc)
         return None
