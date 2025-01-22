@@ -19,7 +19,7 @@ class PatternType(str, Enum):
         logger.debug(f"Generating {self.value} pattern")
 
         if not notes:
-            return []
+            raise ValueError("Cannot generate pattern from an empty list of notes.")
 
         match self:
             case PatternType.ASCENDING:

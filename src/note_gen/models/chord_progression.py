@@ -36,24 +36,6 @@ class ChordProgression(BaseModel):
     key: str = Field(description="Key of the chord progression")
     scale_type: str = Field(description="Type of scale (e.g., major, minor)")
     complexity: float = Field(default=1.0, description="Complexity rating", ge=0, le=1)
-# src/note_gen/models/chord_progression.py
-from pydantic import BaseModel, Field, ConfigDict
-from bson import ObjectId
-from typing import List, Union
-
-class ChordProgression(BaseModel):
-    """Class representing a progression of chords."""
-    model_config = ConfigDict(
-        json_encoders={ObjectId: str},
-        arbitrary_types_allowed=True
-    )
-
-    id: str = Field(default_factory=lambda: str(ObjectId()), description="Unique identifier")
-    name: str = Field(description="Name of the chord progression")
-    chords: List[Union[Chord, str]] = Field(description="List of chords", min_length=1)
-    key: str = Field(description="Key of the chord progression")
-    scale_type: str = Field(description="Type of scale (e.g., major, minor)")
-    complexity: float = Field(default=1.0, description="Complexity rating", ge=0, le=1)
 
     @field_validator('chords')
     def validate_chords(cls, value):
@@ -92,7 +74,7 @@ class ChordProgression(BaseModel):
 
     def get_chord_names(self) -> List[str]:
         """Get the names of all chords in the progression."""
-        return [f"{chord.get('root', {}).get('note_name', '')} {chord.get('quality', '')}" for chord in self.chords]
+        return [f"{chord.root.note_name} {chord.quality}" for chord in self.chords]
 
     def transpose(self, interval: int) -> None:
         """Transpose the entire chord progression by a number of semitones."""
@@ -103,11 +85,16 @@ class ChordProgression(BaseModel):
         return {
             "id": self.id,
             "name": self.name,
-            "chords": [f"{chord.get('root', {}).get('note_name', '')} {chord.get('quality', '')}" for chord in self.chords],
+            "chords": [f"{chord.root.note_name} {chord.quality}" for chord in self.chords],
             "key": self.key,
             "scale_type": self.scale_type,
-            "complexity": self.complexity,
+            "complexity": self.complexity
         }
+
+    def model_dump(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:
+        d = {"id": self.id, "name": self.name, "key": self.key, "scale_type": self.scale_type, "complexity": self.complexity}
+        d["chords"] = [f"{chord.root.note_name} {chord.quality}" for chord in self.chords]
+        return d
 
     def generate_chord_notes(self, root: Note, quality: ChordQualityType, inversion: int = 0) -> List[Note]:
         """Generate notes for a chord based on root, quality, and inversion.
@@ -153,18 +140,6 @@ class ChordProgression(BaseModel):
         if chord is None or chord.root is None:
             return None
         return Note(note_name=chord.root.note_name, octave=chord.root.octave, duration=1, velocity=100)
-
-    def model_dump(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:
-        d = super().model_dump(*args, **kwargs)
-        d["chords"] = [f"{chord.get('root', {}).get('note_name', '')} {chord.get('quality', '')}" for chord in self.chords]
-        d["id"] = self.id
-        d["name"] = self.name
-        d["key"] = self.key
-        d["scale_type"] = self.scale_type
-        d["complexity"] = self.complexity
-        return d
-
-
 
     def to_roman_numerals(self) -> List[RomanNumeral]:
         """Convert the chord progression to Roman numerals."""

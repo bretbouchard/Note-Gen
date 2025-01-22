@@ -9,7 +9,7 @@ from src.note_gen.fetch_patterns import (
 )
 from src.note_gen.models.chord_progression import ChordProgression
 from src.note_gen.models.note_pattern import NotePattern
-from src.note_gen.models.rhythm_pattern import RhythmPattern
+from src.note_gen.models.rhythm_pattern import RhythmPattern, RhythmPatternData, RhythmNote
 from pymongo.database import Database
 from typing import Any
 
@@ -26,8 +26,14 @@ async def mock_db_with_data(mock_db: MockDatabase) -> MockDatabase:
         NotePattern(id='1', name='Simple Arpeggio', description='Basic triad arpeggio', tags=['test'], notes=[{'note_name': 'C', 'octave': 4, 'duration': 1.0, 'velocity': 100}]),
         NotePattern(id='2', name='Basic Melody', description='Simple melody', tags=['test'], notes=[{'note_name': 'D', 'octave': 4, 'duration': 1.0, 'velocity': 100}]),
     ]
+    # Sample rhythm patterns to insert into the mock database
+    sample_rhythm_patterns = [
+        RhythmPattern(id='1', name='Basic Rhythm', description='Simple four-beat rhythm', tags=['test'], data=RhythmPatternData(notes=[RhythmNote(position=0, duration=1, velocity=100), RhythmNote(position=1, duration=1, velocity=100)], duration=4.0)),
+        RhythmPattern(id='2', name='Swing Rhythm', description='Swing feel rhythm', tags=['test'], data=RhythmPatternData(notes=[RhythmNote(position=0, duration=1, velocity=100, swing_ratio=0.5), RhythmNote(position=1, duration=1, velocity=100)], duration=4.0)),
+    ]
     # Insert sample data into the mock database
     await mock_db.insert_many('note_patterns', [pattern.model_dump() for pattern in sample_patterns])
+    await mock_db.insert_many('rhythm_patterns', [pattern.model_dump() for pattern in sample_rhythm_patterns])
     return mock_db
 
 @pytest.mark.asyncio

@@ -70,13 +70,13 @@ class ChordProgressionGenerator(BaseModel):
 # Rebuild the model to ensure dependencies are recognized
 # ChordProgressionGenerator.model_rebuild()
 
-sentry_sdk.init(
-    dsn="https://362843c87018f80f239386bab8f2bc45@o4508306410307584.ingest.us.sentry.io/4508680097169408",
-    traces_sample_rate=1.0,
-    _experiments={
-        "continuous_profiling_auto_start": True,
-    },
-)
+# sentry_sdk.init(
+#     dsn="https://362843c87018f80f239386bab8f2bc45@o4508306410307584.ingest.us.sentry.io/4508680097169408",
+#     traces_sample_rate=1.0,
+#     _experiments={
+#         "continuous_profiling_auto_start": True,
+#     },
+# )
 
 app = FastAPI()
 

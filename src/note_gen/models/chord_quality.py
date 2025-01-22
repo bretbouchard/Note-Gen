@@ -51,6 +51,8 @@ class ChordQuality(BaseModel):
             "dim7": ChordQualityType.DIMINISHED_7,
             "ø7": ChordQualityType.HALF_DIMINISHED_7,
             "m7b5": ChordQualityType.HALF_DIMINISHED_7,
+            "aug": ChordQualityType.AUGMENTED,
+            "+": ChordQualityType.AUGMENTED,
             # Add other mappings as necessary
         }
 
@@ -76,4 +78,10 @@ class ChordQuality(BaseModel):
         Returns:
             str: String representation
         """
+        if self.quality_type == ChordQualityType.DOMINANT_7:
+            return "7"
+        if self.quality_type == ChordQualityType.MAJOR_7:
+            return "maj7"
+        if self.quality_type == ChordQualityType.MINOR_7:
+            return "m7"
         return self.quality_type.value

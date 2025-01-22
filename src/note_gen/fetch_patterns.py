@@ -179,12 +179,30 @@ async def _fetch_chord_progression_by_id(progression_id: str, db: AsyncIOMotorDa
         return None
 
 async def fetch_rhythm_patterns(db: AsyncIOMotorDatabase) -> List[RhythmPattern]:
-    logger.debug(f"Type of db: {type(db)}")  # Log the type of db
     """Fetch all rhythm patterns from the database."""
     try:
+        patterns = []
         cursor = db.rhythm_patterns.find({})
-        patterns = await cursor.to_list(length=None)
-        return [RhythmPattern(**doc) for doc in patterns]
+        async for doc in cursor:
+            try:
+                # Merge top-level fields with data fields
+                pattern_data = {
+                    "id": doc["id"],
+                    "name": doc["name"],
+                    "description": doc.get("description", ""),
+                    "complexity": doc.get("complexity", 1.0),
+                    "style": doc.get("style", "basic"),
+                    "is_test": doc.get("is_test", False),
+                    **doc.get("data", {})  # Merge the nested data fields
+                }
+                
+                # Create RhythmPattern object
+                pattern = RhythmPattern(**pattern_data)
+                patterns.append(pattern)
+            except Exception as e:
+                logger.error(f"Error processing rhythm pattern document: {e}")
+                continue
+        return patterns
     except Exception as e:
         logger.error(f"Error fetching rhythm patterns: {e}")
         return []

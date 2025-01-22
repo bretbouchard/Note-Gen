@@ -100,8 +100,10 @@ class ChordQualityType(Enum):
     def __str__(self):
         if self == ChordQualityType.DOMINANT_7:
             return "7"
-        if self in [self.DOMINANT]:
-            return "7"
+        if self == ChordQualityType.MAJOR_7:
+            return "maj7"
+        if self == ChordQualityType.MINOR_7:
+            return "m7"
         return self.value
 
 

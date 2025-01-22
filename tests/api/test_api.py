@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 from src.note_gen.models.note_pattern import NotePattern
 from src.note_gen.database import get_db
 from motor.motor_asyncio import AsyncIOMotorDatabase
-
+from pydantic import ValidationError
 
 pytestmark = pytest.mark.asyncio  # This marks all test functions in the file as async
 
@@ -154,10 +154,10 @@ class MockDatabase:
         }])
 
 
-@pytest.fixture(scope="module")
-def app():
-    from main import app
-    return app
+@pytest.fixture
+async def client():
+    async with AsyncClient(base_url='http://localhost:8000') as client:
+        yield client
 
 
 @pytest.fixture
@@ -176,17 +176,17 @@ async def test_client(app: TestClient) -> AsyncGenerator[AsyncClient, None]:
 @pytest.mark.asyncio
 async def test_api_functionality(client):
     # Test get chord progressions
-    response = await client.get("/chord-progressions")
+    response = await client.get("/api/chord-progressions")
     assert response.status_code == 200
     assert len(response.json()) > 0
 
     # Test get note patterns
-    response = await client.get("/note-patterns")
+    response = await client.get("/api/note-patterns")
     assert response.status_code == 200
     assert len(response.json()) > 0
 
     # Test get rhythm patterns
-    response = await client.get("/rhythm-patterns")
+    response = await client.get("/api/rhythm-patterns")
     assert response.status_code == 200
     assert len(response.json()) > 0
 
@@ -217,13 +217,13 @@ async def test_api_functionality(client):
         "description": "New test pattern",
         "tags": ["test", "new"]
     }
-    response = await client.post("/note-patterns", json=test_data)
+    response = await client.post("/api/note-patterns", json=test_data)
     assert response.status_code == 200
     response_data = response.json()
     assert "id" in response_data  # Check for id instead of message
 
     # Test get note pattern by id
-    response = await client.get("/note-patterns/1")
+    response = await client.get("/api/note-patterns/1")
     assert response.status_code == 200
     assert response.json()["name"] == "Test Pattern"
 
@@ -253,18 +253,18 @@ async def test_api_functionality(client):
         "description": "Updated pattern",
         "tags": ["test", "updated"]
     }
-    response = await client.put("/note-patterns/1", json=update_data)
+    response = await client.put("/api/note-patterns/1", json=update_data)
     assert response.status_code == 200
     response_data = response.json()
     assert response_data["name"] == "Updated Pattern"
 
     # Test delete note pattern
-    response = await client.delete("/note-patterns/1")
+    response = await client.delete("/api/note-patterns/1")
     assert response.status_code == 200
     assert response.json()["message"] == "Note pattern deleted successfully"
 
     # Test get rhythm pattern by id
-    response = await client.get("/rhythm-patterns/1")
+    response = await client.get("/api/rhythm-patterns/1")
     assert response.status_code == 200
     assert response.json()["name"] == "Test Rhythm"
 
@@ -275,12 +275,42 @@ async def test_api_functionality(client):
         "description": "Updated rhythm",
         "tags": ["test", "updated"]
     }
-    response = await client.put("/rhythm-patterns/1", json=update_data)
+    response = await client.put("/api/rhythm-patterns/1", json=update_data)
     assert response.status_code == 200
     response_data = response.json()
     assert response_data["name"] == "Updated Rhythm"
 
     # Test delete rhythm pattern
-    response = await client.delete("/rhythm-patterns/1")
+    response = await client.delete("/api/rhythm-patterns/1")
     assert response.status_code == 200
     assert response.json()["message"] == "Rhythm pattern deleted successfully"
+
+
+import pytest
+from fastapi import HTTPException
+from src.note_gen.models.note import Note
+from src.note_gen.models.chord_progression import ChordProgression
+
+# Test invalid Note creation
+async def test_invalid_note_creation():
+    with pytest.raises(ValidationError) as excinfo:
+        Note(note_name='InvalidNote', octave=10, duration=1.0, velocity=64)
+    assert 'Invalid octave' in str(excinfo.value)
+
+# Test invalid ChordProgression creation
+async def test_invalid_chord_progression_creation():
+    with pytest.raises(ValidationError) as excinfo:
+        ChordProgression(name='Invalid Progression', chords=[], key='C', scale_type='major')
+    assert 'List should have at least 1 item after validation' in str(excinfo.value)
+
+# Test API endpoint with invalid data
+async def test_create_chord_progression_invalid_data(client):
+    invalid_data = {
+        'name': 'Invalid Progression',
+        'chords': [],  # Empty chords list should trigger validation error
+        'key': 'C',
+        'scale_type': 'major'
+    }
+    response = await client.post('/api/chord-progressions', json=invalid_data)
+    assert response.status_code == 422  # Unprocessable Entity
+    assert 'value is not a valid list' in response.json()['detail'][0]['msg']

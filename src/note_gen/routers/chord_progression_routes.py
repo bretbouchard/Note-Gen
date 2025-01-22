@@ -46,8 +46,8 @@ async def create_chord_progression(chord_progression: ChordProgression, db: moto
 
 @router.get("/chord-progressions/{progression_id}", response_model=ChordProgression)
 async def get_chord_progression(progression_id: str, db: motor_asyncio.AsyncIOMotorDatabase = Depends(get_db)) -> ChordProgression:
+    logger.info(f"Fetching chord progression with ID: {progression_id}")
     try:
-        logger.info(f"Fetching chord progression with ID: {progression_id}")
         progression = await db.chord_progressions.find_one({"_id": ObjectId(progression_id)})
         logger.debug(f"Query result: {progression}")
         if progression is None:
@@ -57,13 +57,28 @@ async def get_chord_progression(progression_id: str, db: motor_asyncio.AsyncIOMo
         serialized_progression = {k: str(v) if isinstance(v, ObjectId) else v for k, v in progression.items()}
         logger.info(f"Fetched chord progression: {serialized_progression}")
         return ChordProgression(**serialized_progression)
-    except motor_asyncio.errors.OperationFailure as e:
-        logger.error(f"Error fetching chord progression: {e}", exc_info=True)
-        logger.debug(f"Progression ID attempted to fetch: {progression_id}")
-        raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
     except Exception as e:
-        logger.error(f"Error fetching chord progression: {e}", exc_info=True)
-        logger.debug(f"Progression ID attempted to fetch: {progression_id}")
-        raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
+        logger.error(f"Error fetching chord progression with ID {progression_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal Server Error")
+
+@router.get("/chord-progressions", response_model=List[ChordProgression])
+async def get_all_chord_progressions(db: motor_asyncio.AsyncIOMotorDatabase = Depends(get_db)) -> List[ChordProgression]:
+    logger.info("Fetching all chord progressions")
+    try:
+        cursor = db.chord_progressions.find()
+        logger.debug(f"Cursor created: {cursor}")
+        progressions = await cursor.to_list(length=100)  # Adjust length as needed
+        logger.info(f"Fetched {len(progressions)} chord progressions")
+        # Ensure all ObjectId fields are serialized to strings
+        for progression in progressions:
+            logger.debug(f"Processing progression: {progression}")
+            for field, value in progression.items():
+                if isinstance(value, ObjectId):
+                    progression[field] = str(value)
+        logger.debug(f"Serialized progressions: {progressions}")
+        return [ChordProgression(**p) for p in progressions]
+    except Exception as e:
+        logger.error(f"Error fetching chord progressions: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal Server Error")
 
 # Additional CRUD operations can be added here

@@ -43,27 +43,44 @@ def event_loop():
     loop.close()
 
 @pytest_asyncio.fixture(scope="session")
-async def mongo_client():
+async def mongo_client(event_loop):
     """Create a MongoDB client."""
     global client
     try:
         client = AsyncIOMotorClient(MONGODB_URL)
         logger.info("MongoDB client connected.")
+        logger.info(f"Connected to MongoDB at {MONGODB_URL}")
+    except Exception as e:
+        logger.error(f"Failed to connect to MongoDB: {e}")
+        logger.error(f"Error connecting to MongoDB at {MONGODB_URL}: {e}")
+
+    try:
         yield client
     finally:
         if client:
             client.close()
             logger.info("MongoDB client connection closed.")
+            logger.info(f"Disconnected from MongoDB at {MONGODB_URL}")
+
+@pytest.fixture(autouse=True)
+async def setup_test_db(mongo_client, event_loop):
+    global db
+    db = mongo_client["test_note_gen"]
+    
+    # Clear test database
+    await db.chord_progressions.delete_many({})
+    await db.note_patterns.delete_many({})
+    await db.rhythm_patterns.delete_many({})
+    
+    yield db
+    
+    # Cleanup
+    mongo_client.drop_database('test_note_gen')
 
 @pytest_asyncio.fixture(scope="function")
-async def clean_test_db(mongo_client: AsyncIOMotorClient) -> None:
-    db = mongo_client.test_note_gen
+async def clean_test_db(setup_test_db):
+    db = setup_test_db
     try:
-        await db.drop_collection("chord_progressions")
-        await db.drop_collection("note_patterns")
-        await db.drop_collection("rhythm_patterns")
-        logger.info("Test database cleared.")
-
         # Insert sample data for chord progressions
         if SAMPLE_CHORD_PROGRESSIONS:
             documents = [
@@ -147,16 +164,17 @@ class MockDatabase:
             "rhythm_patterns": [],
         }
 
-    async def note_patterns(self):
+    def note_patterns(self):
         return self.data["note_patterns"]
 
-    async def chord_progressions(self):
+    def chord_progressions(self):
         return self.data["chord_progressions"]
 
-    async def rhythm_patterns(self):
+    def rhythm_patterns(self):
         return self.data["rhythm_patterns"]
 
-    async def insert_many(self, collection_name, documents):
+    def insert_many(self, collection_name, documents):
+        logger.info(f"Inserting {len(documents)} documents into {collection_name}.")
         if collection_name in self.data:
             self.data[collection_name].extend(documents)
         else:
@@ -231,7 +249,7 @@ async def mock_db(clean_test_db):
     }
 
     for collection_name, documents in mock_data.items():
-        await mock_db.insert_many(collection_name, documents)
+        mock_db.insert_many(collection_name, documents)
     return mock_db
 
 def pytest_sessionfinish(session, exitstatus):
@@ -239,6 +257,8 @@ def pytest_sessionfinish(session, exitstatus):
     global client
     if client:
         client.close()
+        logger.info("MongoDB client connection closed.")
+        logger.info(f"Disconnected from MongoDB at {MONGODB_URL}")
 
 # Ensure custom test utilities are registered for assertions
 pytest.register_assert_rewrite("tests.utils")

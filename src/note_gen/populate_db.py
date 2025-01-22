@@ -1,5 +1,3 @@
-from pymongo import MongoClient
-import uuid
 from motor import motor_asyncio
 from motor.motor_asyncio import AsyncIOMotorClient
 
@@ -124,35 +122,35 @@ async def insert_data(db: motor_asyncio.AsyncIOMotorDatabase, data: list, collec
         print(f"Inserted {len(result.inserted_ids)} {collection_name}")
 
 async def run_imports():
-    async with AsyncIOMotorClient('mongodb://localhost:27017/') as client:
-        db = client['note_gen']
-        
-        await clear_existing_data(db)
-        
-        # Format and prepare all progressions
-        chord_progressions = [
-            await format_chord_progression(name, prog)
-            for name, prog in COMMON_PROGRESSIONS.items()
-        ]
-        
-        # Format and prepare all note patterns
-        note_patterns = [
-            await format_note_pattern(name, pattern)
-            for name, pattern in NOTE_PATTERNS.items()
-        ]
-        
-        # Format and prepare all rhythm patterns
-        rhythm_patterns = [
-            await format_rhythm_pattern(name, pattern)
-            for name, pattern in RHYTHM_PATTERNS.items()
-        ]
-        
-        # Insert the data
-        await insert_data(db, chord_progressions, 'chord_progressions')
-        await insert_data(db, note_patterns, 'note_patterns')
-        await insert_data(db, rhythm_patterns, 'rhythm_patterns')
-        
-        print("Database population completed successfully")
+    client = AsyncIOMotorClient("mongodb://localhost:27017/")
+    db = client["note_gen"]
+    
+    await clear_existing_data(db)
+    
+    # Format and prepare all progressions
+    chord_progressions = [
+        await format_chord_progression(name, prog)
+        for name, prog in COMMON_PROGRESSIONS.items()
+    ]
+    
+    # Format and prepare all note patterns
+    note_patterns = [
+        await format_note_pattern(name, pattern)
+        for name, pattern in NOTE_PATTERNS.items()
+    ]
+    
+    # Format and prepare all rhythm patterns
+    rhythm_patterns = [
+        await format_rhythm_pattern(name, pattern)
+        for name, pattern in RHYTHM_PATTERNS.items()
+    ]
+    
+    # Insert the data
+    await insert_data(db, chord_progressions, 'chord_progressions')
+    await insert_data(db, note_patterns, 'note_patterns')
+    await insert_data(db, rhythm_patterns, 'rhythm_patterns')
+    
+    print("Database population completed successfully")
 
 if __name__ == '__main__':
     import asyncio

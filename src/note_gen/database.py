@@ -44,7 +44,7 @@ async def get_client() -> AsyncIOMotorClient[Any]:
             raise
     return _client
 
-async def get_database() -> AsyncIOMotorDatabase[Any]:
+async def get_db() -> AsyncIOMotorDatabase[Any]:
     """Get database instance."""
     global _db
     if _db is None:

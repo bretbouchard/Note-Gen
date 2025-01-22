@@ -169,8 +169,51 @@ async def test_fetch_note_patterns_with_new_data(clean_test_db):
 @pytest.mark.asyncio
 async def test_fetch_rhythm_patterns_with_new_data(clean_test_db):
     db = clean_test_db
+    
+    # Create test rhythm pattern data with the correct nested structure
+    test_rhythm_note = {
+        "duration": 1.0,
+        "velocity": 100,
+        "position": 0.0
+    }
+    
+    test_pattern = {
+        "_id": "test_1",
+        "id": "test_1",
+        "name": "Test Pattern",
+        "data": {
+            "notes": [test_rhythm_note],
+            "time_signature": "4/4",
+            "swing_ratio": 0.67,
+            "default_duration": 1.0,
+            "total_duration": 4.0,
+            "groove_type": "straight",
+            "duration": 4.0,
+            "style": "basic"
+        },
+        "description": "Test rhythm pattern",
+        "complexity": 1.0,
+        "style": "basic",
+        "is_test": True
+    }
+    
+    # Insert test data
+    await db.rhythm_patterns.insert_one(test_pattern)
+    
+    # Verify insertion
+    inserted = await db.rhythm_patterns.find_one({"id": "test_1"})
+    assert inserted is not None
+    
+    # Now fetch the patterns
     result = await fetch_rhythm_patterns(db)
+    
+    # Add debug print
+    print(f"Fetched result: {result}")
+    
+    # Verify the result
     assert len(result) > 0
+    assert result[0].id == "test_1"
+    assert result[0].name == "Test Pattern"
 
 @pytest.mark.asyncio
 async def test_process_chord_data() -> None:
