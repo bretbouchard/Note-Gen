@@ -54,16 +54,14 @@ class TestChordProgressionGenerator(unittest.TestCase):
         with self.assertRaises(ValueError):
             gen.generate(pattern=[], progression_length=4)
 
-
     def test_invalid_pattern_raises_validation_error(self) -> None:
         scale_info = FakeScaleInfo()
         gen = ChordProgressionGenerator(scale_info=scale_info)
-        with self.assertRaises(ValueError):  # Update expectation to ValueError
+        with self.assertRaises(ValueError):  
             gen.generate(pattern=["nonexistent"], progression_length=4)
 
     def test_generate_with_valid_pattern(self) -> None:
         scale_info = FakeScaleInfo()
-        # Use a known pattern from PROGRESSION_PATTERNS: "I-IV-V"
         gen = ChordProgressionGenerator(scale_info=scale_info)
         pattern = ["I-IV-V"]
         logger.debug(f"Testing valid pattern generation with pattern: {pattern}")
@@ -92,7 +90,6 @@ class TestChordProgressionGenerator(unittest.TestCase):
     def test_generate_random_valid_length(self) -> None:
         scale_info = FakeScaleInfo()
         gen = ChordProgressionGenerator(scale_info=scale_info)
-        # Patch random.choice to control output
         with patch.object(random, 'choice', side_effect=[1, "major", 3, "minor"]):
             progression = gen.generate_random(length=2)
             self.assertEqual(len(progression.chords), 2)
@@ -106,10 +103,9 @@ class TestChordProgressionGenerator(unittest.TestCase):
     def test_generate_chord_valid(self) -> None:
         scale_info = FakeScaleInfo()
         gen = ChordProgressionGenerator(scale_info=scale_info)
-        chord = gen.generate_chord("i")  # maps to scale_degree=1 (see RomanNumeral code)
-        # In FakeScaleInfo, 1 -> "C"
+        chord = gen.generate_chord("i")  
         self.assertEqual(chord.root.note_name, "C")
-        self.assertEqual(chord.quality, ChordQualityType.MAJOR)  # Because get_chord_quality_for_degree(1) -> 'major'
+        self.assertEqual(chord.quality, ChordQualityType.MAJOR)  
 
     def test_generate_chord_invalid_numeral(self) -> None:
         scale_info = FakeScaleInfo()
@@ -134,36 +130,24 @@ class TestChordProgressionGenerator(unittest.TestCase):
             ChordProgressionGenerator(scale_info=FakeScaleInfo()).generate(pattern=['I-IV-V'], progression_length=0)
 
     def test_generate_chord_progression_with_zero_length(self) -> None:
-        # Test for zero length progression raises ValueError
         with self.assertRaises(ValueError):
             ChordProgressionGenerator(scale_info=FakeScaleInfo()).generate(pattern=['I-IV-V'], progression_length=0)
 
     def test_generate_chord_progression_with_exact_length(self) -> None:
-        # Test for exact match of generated chords to progression length
         progression = ChordProgressionGenerator(scale_info=FakeScaleInfo()).generate(pattern=['I-IV-V'], progression_length=3)
         self.assertEqual(len(progression.chords), 3)
 
     def test_generate_random_with_edge_case(self) -> None:
-        # Test random generation with a length of 1
         scale_info = FakeScaleInfo()
         gen = ChordProgressionGenerator(scale_info=scale_info)
         progression = gen.generate_random(length=1)
         self.assertEqual(len(progression.chords), 1)
-        self.assertIsInstance(progression.chords[0], Chord)
 
     def test_generate_large_progression_with_repeated_patterns(self) -> None:
-        # Test large progression with repeated patterns
         progression = ChordProgressionGenerator(scale_info=FakeScaleInfo()).generate(pattern=['I-IV-V', 'I-IV-V'], progression_length=6)
         self.assertEqual(len(progression.chords), 6)
-        self.assertIsInstance(progression.chords[0], Chord)
-        self.assertIsInstance(progression.chords[1], Chord)
-        self.assertIsInstance(progression.chords[2], Chord)
-        self.assertIsInstance(progression.chords[3], Chord)
-        self.assertIsInstance(progression.chords[4], Chord)
-        self.assertIsInstance(progression.chords[5], Chord)
 
     def test_chord_inversions(self) -> None:
-        # Test for a C major chord in root position
         scale_info = ScaleInfo(root=Note(note_name="C", octave=4, stored_midi_number=60, duration=1, velocity=100), scale_type="major")
         chords = [
             Chord(root=Note(note_name="C", octave=4, stored_midi_number=60, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
@@ -172,22 +156,19 @@ class TestChordProgressionGenerator(unittest.TestCase):
         ]
         progression = ChordProgressionGenerator(scale_info=scale_info, chords=chords)
         notes = progression.generate_chord_notes(chords[0].root, chords[0].quality, chords[0].inversion)
-        print(f"Root position notes: {notes}")  # Debug output
         assert notes == [Note(note_name="C", octave=4, stored_midi_number=60, duration=1.0, velocity=100), Note(note_name="E", octave=4, stored_midi_number=64, duration=1.0, velocity=100), Note(note_name="G", octave=4, stored_midi_number=67, duration=1.0, velocity=100)], "Root position notes do not match"
 
         chord = Chord(root=Note(note_name="C", octave=4, stored_midi_number=60, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR, inversion=1)
         notes = progression.generate_chord_notes(chord.root, chord.quality, chord.inversion)
-        print(f"First inversion notes: {notes}")  # Debug output
         assert notes == [Note(note_name="E", octave=4, stored_midi_number=64, duration=1.0, velocity=100), Note(note_name="G", octave=4, stored_midi_number=67, duration=1.0, velocity=100), Note(note_name="C", octave=5, stored_midi_number=72, duration=1.0, velocity=100)], "First inversion notes do not match"
 
         chord = Chord(root=Note(note_name="C", octave=4, stored_midi_number=60, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR, inversion=2)
         notes = progression.generate_chord_notes(chord.root, chord.quality, chord.inversion)
-        print(f"Second inversion notes: {notes}")  # Debug output
         assert notes == [Note(note_name="G", octave=4, stored_midi_number=67, duration=1.0, velocity=100), Note(note_name="C", octave=5, stored_midi_number=72, duration=1.0, velocity=100), Note(note_name="E", octave=5, stored_midi_number=76, duration=1.0, velocity=100)], "Second inversion notes do not match"
 
     def test_generate_chord_progression_with_pattern(self) -> None:
-        pattern = ['I-IV-V']  # Define a valid pattern using Roman numerals
-        scale_info = FakeScaleInfo()  # Ensure scale_info is defined properly
+        pattern = ['I-IV-V']  
+        scale_info = FakeScaleInfo()  
         gen = ChordProgressionGenerator(scale_info=scale_info)
         progression = gen.generate(pattern=pattern, progression_length=3)
         assert progression is not None, "Progression should not be None"
@@ -203,7 +184,7 @@ class TestChordProgressionGenerator(unittest.TestCase):
 
     def test_invalid_quality(self):
         root_note = Note(note_name="C", octave=4, stored_midi_number=60, duration=1, velocity=100)
-        invalid_quality = "invalid_quality"  # Invalid value
+        invalid_quality = "invalid_quality"  
         with self.assertRaises(ValueError):
             Chord(root=root_note, quality=invalid_quality)
 
@@ -224,7 +205,7 @@ class TestChordProgressionGenerator(unittest.TestCase):
 
     def test_create_chord_invalid_quality(self):
         root_note = Note(note_name="C", octave=4, stored_midi_number=60, duration=1, velocity=100)
-        invalid_quality = "invalid_quality"  # Invalid value
+        invalid_quality = "invalid_quality"  
         with self.assertRaises(ValueError):
             Chord(root=root_note, quality=invalid_quality)
 

@@ -7,6 +7,7 @@ from src.note_gen.models.note import Note
 from src.note_gen.models.scale_info import ScaleInfo
 from src.note_gen.models.musical_elements import Chord
 from src.note_gen.models.enums import ChordQualityType
+from pydantic import BaseModel, Field, ConfigDict, field_validator
 
 @pytest.fixture
 def setup_note_sequence_generator() -> NoteSequenceGenerator:

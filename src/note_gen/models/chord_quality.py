@@ -45,7 +45,8 @@ class ChordQuality(BaseModel):
             "diminished": ChordQualityType.DIMINISHED,
             "dim": ChordQualityType.DIMINISHED,
             "°": ChordQualityType.DIMINISHED,
-            "7": ChordQualityType.DOMINANT_7,
+            "dominant": ChordQualityType.DOMINANT,
+            ChordQualityType.DOMINANT_7.value: ChordQualityType.DOMINANT_7,
             "maj7": ChordQualityType.MAJOR_7,
             "m7": ChordQualityType.MINOR_7,
             "dim7": ChordQualityType.DIMINISHED_7,
@@ -53,7 +54,7 @@ class ChordQuality(BaseModel):
             "m7b5": ChordQualityType.HALF_DIMINISHED_7,
             "aug": ChordQualityType.AUGMENTED,
             "+": ChordQualityType.AUGMENTED,
-            # Add other mappings as necessary
+            "7": ChordQualityType.DOMINANT_7,
         }
 
         logging.debug(f"Input quality string: {quality_str}")  # Log the input quality string
@@ -79,7 +80,7 @@ class ChordQuality(BaseModel):
             str: String representation
         """
         if self.quality_type == ChordQualityType.DOMINANT_7:
-            return "7"
+            return self.quality_type.value
         if self.quality_type == ChordQualityType.MAJOR_7:
             return "maj7"
         if self.quality_type == ChordQualityType.MINOR_7:

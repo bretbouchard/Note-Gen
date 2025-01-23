@@ -104,12 +104,41 @@ async def test_note_pattern_functionality(client):
         name='Test Create Delete Pattern',
         description='Test pattern',
         tags=['basic'],
-        data=[0, 2, 4],  # Simple triad pattern
-        notes=[
-            Note(note_name='C', octave=4),
-            Note(note_name='D', octave=4),
-            Note(note_name='E', octave=4)
-        ],
+        data={
+            "notes": [
+                {
+                    "note_name": "C",
+                    "octave": 4,
+                    "duration": 1.0,
+                    "velocity": 100
+                },
+                {
+                    "note_name": "D",
+                    "octave": 4,
+                    "duration": 1.0,
+                    "velocity": 100
+                },
+                {
+                    "note_name": "E",
+                    "octave": 4,
+                    "duration": 1.0,
+                    "velocity": 100
+                }
+            ],
+            "intervals": None,
+            "duration": 1.0,
+            "position": 0.0,
+            "velocity": 100,
+            "direction": "up",
+            "use_chord_tones": False,
+            "use_scale_mode": False,
+            "arpeggio_mode": False,
+            "restart_on_chord": False,
+            "octave_range": [4, 5],
+            "default_duration": 1.0
+        },
+        complexity=0.5,
+        style="basic",
         is_test=True
     )
     

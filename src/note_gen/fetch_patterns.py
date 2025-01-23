@@ -20,55 +20,34 @@ def process_chord_data(chord_data: Dict[str, Any]) -> Dict[str, Any]:
     """Process chord data to handle nested structures."""
     # Check if chord_data is a dictionary
     if isinstance(chord_data, dict):
-        # Convert quality to enum if it's a string
-        if 'quality' in chord_data:
-            try:
-                # Convert chord_data['quality'] to ChordQualityType if it's a string
-                quality_value = chord_data['quality']
-                if isinstance(quality_value, str):
-                    quality_value = ChordQualityType[quality_value.upper()]  # Example conversion
-                quality = ChordQualityType._missing_(cls=ChordQualityType, value=quality_value)
-                if quality is None:
-                    logger.warning(f"Invalid chord quality '{chord_data['quality']}', defaulting to major")
-                    quality = ChordQualityType.MAJOR
-            except Exception as e:
-                logger.warning(f"Error processing chord quality '{chord_data['quality']}': {e}, defaulting to major")
-                quality = ChordQualityType.MAJOR
-
-            # Ensure quality is always a valid ChordQualityType
-            if not isinstance(quality, ChordQualityType):
-                quality = ChordQualityType.MAJOR  # Default to major if quality is invalid
-
-            chord_data['quality'] = quality
-        elif isinstance(chord_data['quality'], ChordQualityType):
-            # Already a ChordQualityType, no need to convert
-            pass
-        else:
-            logger.error(f"Invalid chord quality type: {type(chord_data['quality'])}")
-            chord_data['quality'] = ChordQualityType.MAJOR  # Default to major if invalid
-        
         # Process root note if it exists
         if 'root' in chord_data:
             if isinstance(chord_data['root'], dict):
-                # If root is a dict with note_name nested inside
-                if 'note_name' in chord_data['root'] and isinstance(chord_data['root']['note_name'], dict):
-                    note_data = chord_data['root']['note_name']
+                if 'note_name' in chord_data['root']:
+                    note_data = chord_data['root']
                     chord_data['root'] = Note(
                         note_name=note_data.get('note_name', 'C'),
                         octave=note_data.get('octave', 4)
                     )
-                # If root is a dict with direct note_name
-                elif 'note_name' in chord_data['root']:
-                    chord_data['root'] = Note(
-                        note_name=chord_data['root']['note_name'],
-                        octave=chord_data['root'].get('octave', 4)
-                    )
             elif isinstance(chord_data['root'], str):
-                # If root is a string, create a Note with default octave
                 chord_data['root'] = Note(note_name=chord_data['root'])
             elif not isinstance(chord_data['root'], Note):
                 logger.error(f"Invalid root note type: {type(chord_data['root'])}")
                 chord_data['root'] = Note(note_name='C')  # Default to C if invalid
+
+        # Update the logic to convert chord quality strings to enums and vice versa
+        if 'quality' in chord_data:
+            chord_quality = chord_data['quality']
+            if isinstance(chord_quality, str):
+                try:
+                    chord_quality = ChordQualityType[chord_quality.upper()]
+                except KeyError:
+                    logging.warning(f'Unknown chord quality: {chord_quality}. Defaulting to MAJOR.')
+                    chord_quality = ChordQualityType.MAJOR
+            elif not isinstance(chord_quality, ChordQualityType):
+                logging.warning('Invalid chord quality type, defaulting to MAJOR.')
+                chord_quality = ChordQualityType.MAJOR
+            chord_data['quality'] = chord_quality
     
     return chord_data
 
@@ -77,12 +56,13 @@ def process_chord_data(chord_data: Dict[str, Any]) -> Dict[str, Any]:
 async def fetch_chord_progressions(db: AsyncIOMotorDatabase) -> List[ChordProgression]:
     try:
         cursor = db.chord_progressions.find({})
-        progressions = await cursor.to_list(length=None)
-        if not progressions:
+        fetched_progressions = await cursor.to_list(length=None)
+        logger.debug(f'Fetched chord progressions: {fetched_progressions}')  # Log fetched data
+        if not fetched_progressions:
             logger.error("No chord progressions found in the database.")
             raise ValueError("No chord progressions found.")
 
-        for chord in progressions:
+        for chord in fetched_progressions:
             logger.debug(f"Validating chord progression: {chord}")
             if 'chords' not in chord:
                 logger.error(f"Missing chords field in chord progression: {chord}")
@@ -100,7 +80,16 @@ async def fetch_chord_progressions(db: AsyncIOMotorDatabase) -> List[ChordProgre
                     logger.error(f"Invalid chord item in progression: {chord_item}")
                     raise ValueError(f"Invalid chord item in progression: {chord_item}")
 
-        return [ChordProgression(**doc) for doc in progressions]
+        # Convert chord quality strings back to enum types
+        for progression in fetched_progressions:
+            for chord in progression['chords']:
+                try:
+                    chord['quality'] = ChordQualityType[chord['quality'].upper()]
+                except KeyError:
+                    logger.warning(f"Unknown chord quality: {chord['quality']}")
+                    chord['quality'] = ChordQualityType.MAJOR  # Default to major if unknown
+
+        return [ChordProgression(**doc) for doc in fetched_progressions]
     except ValueError as ve:
         logger.error(f"ValueError: {ve}")
         raise

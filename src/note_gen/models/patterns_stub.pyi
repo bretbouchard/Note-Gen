@@ -1,12 +1,14 @@
 """Type stubs for patterns module."""
 
 from typing import List, Dict, Any, Optional, Union
-from pydantic import BaseModel
-
+from pydantic import BaseModel, Field
 
 from src.note_gen.models.musical_elements import Chord
 from src.note_gen.models.note import Note
 from src.note_gen.models.scale_degree import ScaleDegree
+from src.note_gen.models.patterns import NotePattern as NotePattern
+from src.note_gen.models.patterns import NotePatternData as NotePatternData
+
 
 DirectionType = str
 ApproachType = str
@@ -78,54 +80,9 @@ class RhythmPattern:
     id: Optional[str] = Field(None, description="ID of the rhythm pattern")
     is_test: Optional[bool] = Field(default=None, description="Test flag")
 
-
-
     @classmethod
     def check_name(cls, v: Optional[str]) -> str: ...
     @classmethod
     def check_data(
         cls, v: Union[RhythmPatternData, Dict[str, Any]]
     ) -> RhythmPatternData: ...
-
-class NotePatternData(BaseModel):
-    """Type stub for NotePatternData."""
-
-    notes: List[NoteType] = []
-    intervals: Optional[List[int]] = None
-    duration: float = 1.0
-    position: float = 0.0
-    velocity: Optional[int] = None
-    direction: Optional[str] = None
-    use_chord_tones: bool = False
-    use_scale_mode: bool = False
-    arpeggio_mode: bool = False
-    restart_on_chord: bool = False
-    octave_range: Optional[List[int]] = None
-
-    def dict(self, *args: Any, **kwargs: Any) -> Dict[str, Any]: ...
-
-class NotePattern(BaseModel):
-    """Type stub for NotePattern."""
-
-    name: str
-    description: str = ""
-    data: Optional[Union[NotePatternData, List[int]]] = None
-    notes: Optional[List[NoteType]] = None
-    intervals: Optional[List[int]] = None
-    duration: Optional[float] = None
-    position: Optional[float] = None
-    velocity: Optional[int] = None
-    direction: Optional[str] = None
-    use_chord_tones: Optional[bool] = None
-    use_scale_mode: Optional[bool] = None
-    arpeggio_mode: Optional[bool] = None
-    restart_on_chord: Optional[bool] = None
-    octave_range: Optional[List[int]] = None
-    default_duration: Optional[float] = None
-
-    @classmethod
-    def create(cls, name: str, data: NotePatternData) -> "NotePattern": ...
-    def get_notes(self) -> List[NoteType]: ...
-    def get_intervals(self) -> List[int]: ...
-    def get_duration(self) -> float: ...
-    def dict(self, *args: Any, **kwargs: Any) -> Dict[str, Any]: ...

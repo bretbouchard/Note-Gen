@@ -15,7 +15,7 @@ class TestChordQuality(unittest.TestCase):
             ("diminished", ChordQualityType.DIMINISHED),
             ("dim", ChordQualityType.DIMINISHED),
             ("°", ChordQualityType.DIMINISHED),
-            ("7", ChordQualityType.DOMINANT_7),
+            ("dominant_7", ChordQualityType.DOMINANT_7),  # Change here
             ("maj7", ChordQualityType.MAJOR_7),
             ("m7", ChordQualityType.MINOR_7),
             ("dim7", ChordQualityType.DIMINISHED_7),
@@ -23,6 +23,8 @@ class TestChordQuality(unittest.TestCase):
             ("m7b5", ChordQualityType.HALF_DIMINISHED_7),
             ("aug", ChordQualityType.AUGMENTED),
             ("+", ChordQualityType.AUGMENTED),
+            ('dominant', ChordQualityType.DOMINANT),
+            ('7', ChordQualityType.DOMINANT_7),  # Ensure '7' is passed as a string
         ]
         
         for input_str, expected_type in test_cases:
@@ -79,7 +81,7 @@ class TestChordQuality(unittest.TestCase):
             (ChordQualityType.MINOR, "minor"),
             (ChordQualityType.DIMINISHED, "diminished"),
             (ChordQualityType.AUGMENTED, "augmented"),
-            (ChordQualityType.DOMINANT_7, "7"),
+            (ChordQualityType.DOMINANT_7, "dominant_7"),
             (ChordQualityType.MAJOR_7, "maj7"),
             (ChordQualityType.MINOR_7, "m7"),
         ]

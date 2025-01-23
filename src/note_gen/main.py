@@ -19,9 +19,18 @@ async def lifespan(app: FastAPI):
     # Startup: Create MongoDB connection
     app.mongodb_client = AsyncIOMotorClient('mongodb://localhost:27017/')
     app.mongodb = app.mongodb_client.note_gen_db
+    try:
+        async with get_db() as db:
+            await ensure_indexes(db)
+            await import_presets_if_empty(db)
+    except Exception as e:
+        logger.error(f"Error during database initialization: {e}", exc_info=True)
+        raise SystemExit("Database initialization failed, shutting down.")
     yield
     # Shutdown: Close MongoDB connection
     app.mongodb_client.close()
+    if logger:
+        logger.info("Shutting down the application...")
 
 app = FastAPI(lifespan=lifespan)
 
@@ -41,21 +50,6 @@ class LogMiddleware(BaseHTTPMiddleware):
             raise
 
 app.add_middleware(LogMiddleware)
-
-@app.on_event("startup")
-async def startup_event():
-    try:
-        async with get_db() as db:
-            await ensure_indexes(db)
-            await import_presets_if_empty(db)
-    except Exception as e:
-        logger.error(f"Error during database initialization: {e}", exc_info=True)
-        raise SystemExit("Database initialization failed, shutting down.")
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    if logger:
-        logger.info("Shutting down the application...")
 
 async def main():
     async with get_db() as db:  

@@ -10,7 +10,7 @@ from src.note_gen.models.note_event import NoteEvent
 from src.note_gen.models.scale import Scale, ScaleType
 from src.note_gen.models.scale_info import ScaleInfo
 from src.note_gen.models.note_pattern import NotePattern  # Import NotePattern
-
+from pydantic import BaseModel, Field, ConfigDict, field_validator
 
 class FakeScale(Scale):
     """A minimal fake Scale for testing."""
@@ -199,12 +199,14 @@ class TestRhythmPatternData(unittest.TestCase):
                 default_duration=-1.0,  # Directly pass negative duration
             )
 
-    def test_calculate_total_duration(self) -> None:
-        total_duration = sum(note.duration for note in self.notes)
-        self.assertEqual(self.data.total_duration, total_duration, "Total duration should match the sum of note durations")
-        self.data.default_duration = 2.0
-        self.data.notes = [RhythmNote(position=0.0, duration=self.data.default_duration)]
-        self.assertEqual(self.data.total_duration, self.data.default_duration)
+def test_calculate_total_duration(self) -> None:
+    total_duration = sum(note.duration for note in self.notes)
+    self.assertEqual(self.data.total_duration, total_duration)
+    
+    # When setting a new default duration, we should update the notes
+    self.data.default_duration = 2.0
+    self.data.notes = [RhythmNote(position=0.0, duration=2.0)]  # Match the default duration
+    self.assertEqual(self.data.total_duration, self.data.default_duration)
 
     def test_validate_swing_ratio_out_of_bounds(self) -> None:
         with self.assertRaises(ValueError):

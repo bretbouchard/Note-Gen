@@ -1,7 +1,7 @@
 """Module for note event models."""
 
 import logging
-from pydantic import BaseModel, Field, ConfigDict, field_validator , model_validator
+from pydantic import BaseModel, Field, ConfigDict, field_validator, validator, root_validator
 from typing import Union
 
 from src.note_gen.models.musical_elements import Note, Chord
@@ -16,9 +16,7 @@ class NoteEvent(BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    note: Union[Note, ScaleDegree, Chord] = Field(
-        ..., description="The note associated with the event"
-    )
+    note: Union[Note, ScaleDegree, Chord] = Field(..., description="The note associated with the event")
     position: float = Field(default=0.0, description="Position of the note event")
     duration: float = Field(default=1.0, description="Duration of the note event")
     velocity: int = Field(default=100, description="Velocity of the note event")
@@ -35,6 +33,12 @@ class NoteEvent(BaseModel):
     def validate_duration(cls, value: float) -> float:
         if value <= 0:
             raise ValueError("Duration must be positive.")
+        return value
+
+    @field_validator("velocity")
+    def validate_velocity(cls, value: int) -> int:
+        if not (0 <= value <= 127):
+            raise ValueError("MIDI velocity must be between 0 and 127.")
         return value
 
     @property
@@ -67,12 +71,6 @@ class NoteEvent(BaseModel):
         except ValueError as e:
             logger.error(f"Error during transposition: {e}")
             raise
-
-    @model_validator(mode="after")
-    def validate_velocity(self) -> "NoteEvent":
-        if not (0 <= self.velocity <= 127):
-            raise ValueError("MIDI velocity must be between 0 and 127.")
-        return self
 
     def __str__(self) -> str:
         return f"NoteEvent(note={self.note}, position={self.position}, duration={self.duration})"

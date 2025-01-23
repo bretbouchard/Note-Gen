@@ -1,7 +1,7 @@
 import pytest
 from src.note_gen.models.note import Note
 from src.note_gen.models.note_event import NoteEvent
-from pydantic import ValidationError
+from pydantic import ValidationError, root_validator, field_validator
 
 def test_create_note_event() -> None:
     note = Note.from_name("C4")

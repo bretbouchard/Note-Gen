@@ -2,11 +2,11 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel  
 from typing import List, Optional
 from src.note_gen.routers.user_routes import router as user_router
+from src.note_gen.routers.chord_progression_routes import router as chord_progression_router
 from src.note_gen.import_presets import ensure_indexes, import_presets_if_empty
 from typing import Any
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 import tracemalloc
-import sentry_sdk
 import logging
 from dotenv import load_dotenv
 import os
@@ -67,17 +67,6 @@ class ChordProgressionGenerator(BaseModel):
         # This is a placeholder implementation
         return progression
 
-# Rebuild the model to ensure dependencies are recognized
-# ChordProgressionGenerator.model_rebuild()
-
-# sentry_sdk.init(
-#     dsn="https://362843c87018f80f239386bab8f2bc45@o4508306410307584.ingest.us.sentry.io/4508680097169408",
-#     traces_sample_rate=1.0,
-#     _experiments={
-#         "continuous_profiling_auto_start": True,
-#     },
-# )
-
 app = FastAPI()
 
 @app.on_event("startup")
@@ -98,6 +87,7 @@ async def shutdown_event():
     logger.info("Shutting down the application...")
 
 app.include_router(user_router, prefix="", tags=["User Routes"])
+app.include_router(chord_progression_router, prefix="/api", tags=["Chord Progression Routes"])
 
 # Initialize your generators
 root_note = 'C'  # Example root note
@@ -131,20 +121,7 @@ async def get_progression(progression_id: int) -> dict[str, str | int]:
     # Logic to retrieve the progression based on ID (implement as needed)
     return {"progression_id": progression_id, "progression": "example"}
 
-@app.get("/sentry-debug")
-async def trigger_error():
-    try:
-        division_by_zero = 1 / 0  # This will raise a ZeroDivisionError
-    except ZeroDivisionError as e:
-        # Capture the current memory allocation snapshot
-        snapshot = tracemalloc.take_snapshot()
-        top_stats = snapshot.statistics('lineno')
 
-        print("[ Top 10 Memory Allocation ]")
-        for stat in top_stats[:10]:
-            print(stat)
-
-        raise e  # Re-raise the exception for Sentry to capture it
 
 @app.get("/")
 async def read_root() -> dict[str, str]:

@@ -4,11 +4,14 @@ from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 from typing import Any, AsyncGenerator
 import logging
 from contextlib import asynccontextmanager
+import atexit
 import os
+import threading
 
 # Configure logging
-logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+logging.getLogger("pymongo").setLevel(logging.WARNING)
 
 # MongoDB connection settings
 MONGO_URL = "mongodb://localhost:27017"
@@ -26,80 +29,88 @@ MONGO_SETTINGS = {
     'serverSelectionTimeoutMS': 5000
 }
 
-# MongoDB client instance
+# Global variables
+_client_lock = threading.Lock()
 _client: AsyncIOMotorClient[Any] | None = None
 _db: AsyncIOMotorDatabase[Any] | None = None
 
-async def get_client() -> AsyncIOMotorClient[Any]:
-    """Get MongoDB client instance with optimized connection pooling."""
-    global _client
-    if _client is None:
-        _client = AsyncIOMotorClient(MONGO_URL, **MONGO_SETTINGS)
-        # Test connection
-        try:
-            await _client.admin.command('ping')
-        except Exception as e:
-            logger.error(f"Failed to connect to MongoDB: {e}", exc_info=True)
-            _client = None
-            raise
-    return _client
 
-async def get_db() -> AsyncIOMotorDatabase[Any]:
-    """Get database instance."""
-    global _db
-    if _db is None:
-        try:
-            client = await get_client()
-            db_name = TEST_DB_NAME if os.getenv("TESTING") else DB_NAME
-            print(f"Using database: {db_name}")
-            print(f"Using database: {DB_NAME}")
-            _db = client[db_name]
-        except Exception as e:
-            logger.error(f"Failed to connect to the database: {e}")
-            raise
-    return _db
+async def get_client() -> AsyncIOMotorClient[Any]:
+    global _client
+    with _client_lock:
+        if _client is None:
+            logger.debug("Initializing MongoDB client...")
+            try:
+                _client = AsyncIOMotorClient(
+                    MONGO_URL,
+                    **MONGO_SETTINGS  
+                )
+                await _client.admin.command('ping')
+                logger.info("MongoDB connection established.")
+                logger.debug(f"Client initialized: {_client}")  
+            except Exception as e:
+                logger.error(f"Failed to connect to MongoDB: {e}", exc_info=True)
+                if _client:
+                    _client.close()
+                _client = None
+                raise
+    logger.debug(f"Returning client: {_client}")  
+    return _client
 
 @asynccontextmanager
 async def get_db() -> AsyncGenerator[AsyncIOMotorDatabase[Any], None]:
     global _client, _db
     if _db is None:
+        logger.debug("Getting database instance...")
         client = await get_client()
         db_name = TEST_DB_NAME if os.getenv("TESTING") else DB_NAME
+        logger.debug(f"Using database: {db_name}")
         _db = client[db_name]
-        logger.info("Database connection established: %s", _db)
     try:
         yield _db
+    except Exception as e:
+        logger.error(f"Error occurred while using database: {e}", exc_info=True)
     finally:
-        pass  # Do not close the client here to maintain the connection.
+        logger.debug("Database connection yielded.")
 
+# Modify close_mongo_connection
 async def close_mongo_connection() -> None:
-    """Close database connection."""
     global _client, _db
-    if _client is not None:
-        _client.close()
-        _client = None
-    _db = None
+    with _client_lock:
+        if isinstance(_client, AsyncIOMotorClient):  
+            try:
+                logger.info("Closing MongoDB connection...")
+                _client.close()  
+                logger.info("MongoDB connection closed.")
+            except Exception as e:
+                logger.error(f"Failed to close MongoDB connection: {e}", exc_info=True)
+            finally:
+                _client = None
+                _db = None
+        else:
+            logger.warning("_client is not a valid AsyncIOMotorClient instance.")
 
 async def init_database() -> None:
     """Initialize the database with collections if they don't exist."""
     if os.getenv("TESTING"):
-        # Skip initialization for test database
+        logger.debug("Skipping database initialization for testing.")
         return
-        
     async with get_db() as db:
-        if "chord_progressions" not in await db.list_collection_names():
-            await db.create_collection("chord_progressions")
-            logger.info("Created chord_progressions collection")
-            
-        if "note_patterns" not in await db.list_collection_names():
-            await db.create_collection("note_patterns")
-            logger.info("Created note_patterns collection")
-            
-        if "rhythm_patterns" not in await db.list_collection_names():
-            await db.create_collection("rhythm_patterns")
-            logger.info("Created rhythm_patterns collection")
-            
-        # Import presets if collections are empty
-        if not os.getenv("TESTING"):
-            from src.note_gen.import_presets import import_presets_if_empty
-            await import_presets_if_empty(db)
+        logger.debug("Initializing database collections...")
+        try:
+            if "chord_progressions" not in await db.list_collection_names():
+                await db.create_collection("chord_progressions")
+                logger.info("Created chord_progressions collection")
+            if "note_patterns" not in await db.list_collection_names():
+                await db.create_collection("note_patterns")
+                logger.info("Created note_patterns collection")
+            if "rhythm_patterns" not in await db.list_collection_names():
+                await db.create_collection("rhythm_patterns")
+                logger.info("Created rhythm_patterns collection")
+        except Exception as e:
+            logger.error(f"Failed to initialize database collections: {e}", exc_info=True)
+        else:
+            # Import presets if collections are empty
+            if not os.getenv("TESTING"):
+                from src.note_gen.import_presets import import_presets_if_empty
+                await import_presets_if_empty(db)

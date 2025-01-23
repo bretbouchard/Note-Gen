@@ -18,7 +18,6 @@ class ChordQualityType(Enum):
     DIMINISHED = "diminished"
     AUGMENTED = "augmented"
     DOMINANT_7 = "dominant_7"
-    DOMINANT = "dominant"
     MAJOR_7 = "major_7"
     MINOR_7 = "minor_7"
     DIMINISHED_7 = "diminished_7"
@@ -37,6 +36,8 @@ class ChordQualityType(Enum):
     FLAT_7 = "flat_7"
     SHARP_5 = "sharp_5"
     SHARP_7 = "sharp_7"
+
+    DOMINANT = "dominant"
 
     @classmethod
     def get_intervals(cls, quality_type):

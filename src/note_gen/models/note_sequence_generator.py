@@ -1,6 +1,6 @@
 from __future__ import annotations
 from typing import List, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator, validator
 
 from src.note_gen.models.note import Note
 from src.note_gen.models.chord_progression import ChordProgression

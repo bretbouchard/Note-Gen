@@ -1,20 +1,26 @@
-from motor.motor_asyncio import AsyncIOMotorClient
+import asyncio
+import logging
+from src.note_gen.database import get_client, get_db, close_mongo_connection
 
-async def test_db_connection():
-    try:
-        # Connect to the MongoDB server
-        client = AsyncIOMotorClient('mongodb://localhost:27017/')
-        
-        # Access the note_gen database
-        db = client['note_gen']
-        
-        # Fetch and print the names of the collections
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+
+async def test_connection():
+    client = await get_client()
+    if client is None:
+        logging.error('Failed to initialize MongoDB client.')
+        return
+    async with get_db() as db:
         collections = await db.list_collection_names()
-        print("Connected to the database. Collections:", collections)
-        
-    except Exception as e:
-        print("Failed to connect to the database:", str(e))
+        print('Connected to database. Collections:', collections)
+
+        for collection_name in collections:
+            collection = db[collection_name]
+            documents = await collection.find().to_list(length=10)  # Fetch up to 10 documents
+            print(f'Contents of {collection_name}:', documents)
+
+    logging.info(f'State of client before closing: {client}')
+    await close_mongo_connection()  # Use the proper cleanup function
 
 if __name__ == "__main__":
-    import asyncio
-    asyncio.run(test_db_connection())
+    asyncio.run(test_connection())

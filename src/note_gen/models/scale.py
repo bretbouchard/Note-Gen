@@ -1,9 +1,11 @@
-from typing import List
+from typing import List, Type, Dict, Any
 from src.note_gen.models.note import Note
 from enum import Enum
 import logging
+from pydantic import BaseModel, Field, field_validator
 
 logger = logging.getLogger(__name__)
+
 
 class ScaleType(Enum):
     """Enum representing different scale types."""
@@ -111,40 +113,55 @@ class ScaleType(Enum):
         return list(range(1, len(self.get_intervals()) + 1))
 
 
-class Scale:
+class Scale(BaseModel):
     """A scale with a root note and a ScaleType."""
-    def __init__(self, root: Note, scale_type: ScaleType):
-        self.root = root
-        self.scale_type = scale_type
-        self.intervals = scale_type.get_intervals()
+
+    root: Note = Field(...)
+    scale_type: ScaleType = Field(...)
+    intervals: List[int] = Field(default_factory=list)
+
+    @field_validator('intervals', mode='before')
+    def set_intervals(cls, v: List[int], values: Dict[str, Any]) -> List[int]:
+        if 'scale_type' in values:
+            expected_intervals = values['scale_type'].get_intervals()
+            if v != expected_intervals:
+                logger.error(f"Invalid intervals: {v}. Expected: {expected_intervals}")
+                raise ValueError(f"Invalid intervals: {v}. Expected: {expected_intervals}")
+            logger.debug(f"Intervals set to: {v}")
+            return expected_intervals
+        logger.debug("No scale_type provided; intervals not set.")
+        return v  # Return the original value if scale_type is not available
 
     def get_notes(self) -> List[Note]:
+        """Get the notes in the scale."""
         notes = [self.root]
         current_midi = self.root.midi_number
         for interval in self.intervals:
             current_midi += interval
             notes.append(Note.from_midi(current_midi, velocity=64, duration=1.0))
+        logger.debug(f"Generated notes: {[note.note_name for note in notes]}")
         return notes
 
     def get_scale_degree(self, degree: int) -> Note:
         if not (1 <= degree <= len(self.intervals)):
+            logger.error(f"Scale degree must be between 1 and {len(self.intervals)}.")
             raise ValueError(f"Scale degree must be between 1 and {len(self.intervals)}.")
-        
+        logger.debug(f"Getting note at scale degree: {degree}")
         return self.get_notes()[degree - 1]
-    
+
     def get_degree_of_note(self, note: Note) -> int:
-        """Return which scale degree (1-based) this note is in the current scale.
-        Raise an error if it's not found or doesn't align exactly with a scale tone."""
+        """Return which scale degree (1-based) this note is in the current scale. Raise an error if it's not found or doesn't align exactly with a scale tone."""
         notes_in_scale = self.get_notes()  # returns List[Note]
         for i, scale_note in enumerate(notes_in_scale, start=1):
-            # Compare MIDI numbers or names
             if scale_note.midi_number == note.midi_number:
                 return i
+        logger.error(f"{note} not found in {self.scale_type} scale with root {self.root}")
         raise ValueError(f"{note} not found in {self.scale_type} scale with root {self.root}")
 
     def get_note_at_degree(self, degree: int) -> Note:
         """Get the note at a specific scale degree."""
         notes = self.get_notes()
         if not (1 <= degree <= len(notes)):
+            logger.error(f"Scale degree must be between 1 and {len(notes)}.")
             raise ValueError(f"Scale degree must be between 1 and {len(notes)}.")
         return notes[degree - 1]

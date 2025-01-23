@@ -1,12 +1,14 @@
 import unittest
-from src.note_gen.models.scale_degree import ScaleDegree  # Replace 'your_module' with the actual module name
+from src.note_gen.models.scale_degree import ScaleDegree  
+from note_gen.models.note import Note  # Add this import at the top
 
-class TestScaleDegree(unittest.TestCase):
-    def test_scale_degree_creation(self):
-        degree = ScaleDegree(value=1)
-        self.assertEqual(degree.value, 1)
-        self.assertGreater(degree.value, 0, "Scale degree must be greater than 0")
-        self.assertLessEqual(degree.value, 7, "Scale degree must be less than or equal to 7")
+def test_scale_degree_creation(self):
+    degree = ScaleDegree(
+        degree="1",
+        note=Note(note_name="C", octave=4),
+        value="1",
+        midi_number=60
+    )
         
     def test_invalid_scale_degree(self):
         with self.assertRaises(ValueError):

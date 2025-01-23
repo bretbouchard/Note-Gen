@@ -1,7 +1,7 @@
 # src/note_gen/models/note.py
 import re
-from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
-from typing import Any, ClassVar, Dict, Tuple, Optional
+from pydantic import BaseModel, Field, field_validator, ValidationError, root_validator
+from typing import Any, ClassVar, Dict, Tuple, Optional, Union
 import logging
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -9,10 +9,10 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %
 class Note(BaseModel):
     """A musical note with optional MIDI number auto-population."""
 
-    note_name: str
-    octave: int
-    duration: float = 1.0  # Default duration
-    velocity: int = 64  # Default velocity
+    note_name: str = Field(...)
+    octave: int = Field(...)
+    duration: float = Field(1.0)  # Default duration
+    velocity: int = Field(64)  # Default velocity
     stored_midi_number: Optional[int] = None  # Add stored_midi_number attribute
 
     # Maps note names to their semitone values
@@ -64,18 +64,6 @@ class Note(BaseModel):
             raise ValueError("Invalid velocity. Velocity should be an integer between 0 and 127.")
         return v
 
-
-    @model_validator(mode='before')
-    def validate_and_fill(cls, values: Dict[str, Any]) -> Dict[str, Any]:
-        if 'note_name' not in values:
-            raise ValueError("Missing field: note_name")
-        if 'octave' not in values:
-            raise ValueError("Missing field: octave")
-        if 'duration' not in values:
-            values['duration'] = 1.0  # Default duration
-        if 'velocity' not in values:
-            values['velocity'] = 64  # Default velocity
-        return values
 
     @classmethod
     def calculate_midi_number(cls, note_name: str, octave: int) -> int:
@@ -147,66 +135,67 @@ class Note(BaseModel):
             raise ValueError("MIDI number out of range")
         # Logic to convert MIDI number to note name and octave
         note_name, octave = cls._midi_to_note_octave(midi_number)
+        
+        # Validate octave range
+        if octave < 0 or octave > 8:  # Changed from 10 to 8
+            raise ValueError("MIDI number out of range")  # Changed error message
+        
+        # Create new note with transposed values
         return cls(note_name=note_name, octave=octave, duration=duration, velocity=velocity)
 
     @classmethod
-    def fill_missing_fields(cls, data: Dict[str, Any]) -> Dict[str, Any]:
+    def fill_missing_fields(cls, data: Union[Dict[str, Any], int, str]) -> Dict[str, Any]:
         """Fill missing fields in note data with defaults."""
         logging.debug(f"Input data for fill_missing_fields: {data}")
         
         if data is None:
             raise ValueError("Expected a dict, int, or str for Note")
         
-        # Handle MIDI number input
         if isinstance(data, int):
-            if not (0 <= data <= 127):
-                raise ValueError("MIDI number out of range")
-            note_name, octave = cls._midi_to_note_octave(data)
-            data = {
-                "note_name": note_name, 
-                "octave": octave,
-                "stored_midi_number": data  # Store original MIDI number
-            }
+            data = cls._fill_from_midi(data)
+        elif isinstance(data, dict):
+            data = cls._fill_from_dict(data)
+        elif isinstance(data, str):
+            data = cls._fill_from_str(data)
+        else:
+            raise ValueError("Invalid input type for Note")
         
-        if isinstance(data, str):
-            raise ValueError("Invalid note name format")
-                        
-        if not isinstance(data, dict):
-            raise ValueError("Expected a dict, int, or str for Note")
-        
-        # Create a copy to modify
-        result = data.copy()
-        
-        # Add defaults
-        if 'duration' not in result:
-            result['duration'] = 1.0
-        if 'velocity' not in result:
-            result['velocity'] = 64
-        if 'stored_midi_number' not in result:
-            result['stored_midi_number'] = None
-        
-        # Validate required fields
-        if 'note_name' not in result:
-            result['note_name'] = 'C'  # Default note name
-                        
-        if 'octave' not in result:
-            result['octave'] = 4  # Default octave
-                        
-        # Validate values - note_name first
-        if result['note_name'] not in cls.NOTE_TO_SEMITONE:
-            raise ValueError("Unrecognized note name")
-                            
-        # Then validate octave
-        logging.debug(f"Validating octave value: {result['octave']}")
-        if result['octave'] < 0 or result['octave'] > 8:  # Octaves 0-8 are valid
-            logging.debug(f"Invalid octave detected: {result['octave']}")
-            raise ValueError(f"Invalid octave: {result['octave']}")
-        logging.debug(f"Octave validation passed: {result['octave']}")
-                        
-        return result
+        return data
 
-    @staticmethod
-    def note_name_to_midi(note_name: str) -> int:
+    @classmethod
+    def _fill_from_midi(cls, midi_number: int) -> Dict[str, Any]:
+        if not (0 <= midi_number <= 127):
+            raise ValueError("MIDI number out of range")
+        note_name, octave = cls._midi_to_note_octave(midi_number)
+        return {
+            "note_name": note_name, 
+            "octave": octave,
+            "stored_midi_number": midi_number  # Store original MIDI number
+        }
+
+    @classmethod
+    def _fill_from_dict(cls, data: Dict[str, Any]) -> Dict[str, Any]:
+        if 'note_name' not in data:
+            raise ValueError("Missing note_name in dictionary")
+        if 'octave' not in data:
+            raise ValueError("Missing octave in dictionary")
+        data['stored_midi_number'] = cls.calculate_midi_number(data['note_name'], data['octave'])
+        return data
+
+    @classmethod
+    def _fill_from_str(cls, note_str: str) -> Dict[str, Any]:
+        match = re.match(r'([A-Ga-g][#b]?)(\d+)', note_str)
+        if not match:
+            raise ValueError("Invalid note name format")
+        note_name, octave = match.groups()
+        return {
+            "note_name": note_name,
+            "octave": int(octave),
+            "stored_midi_number": cls.calculate_midi_number(note_name, int(octave))
+        }
+
+    @classmethod
+    def note_name_to_midi(cls, note_name: str) -> int:
         """Convert a note name to its MIDI offset."""
         note_to_number = {
             "C": 0, "C#": 1, "D": 2, "D#": 3, "E": 4, "F": 5,

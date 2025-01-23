@@ -2,7 +2,7 @@ import pytest
 from fastapi.testclient import TestClient
 from main import app
 from src.note_gen.models.presets import COMMON_PROGRESSIONS, NOTE_PATTERNS, RHYTHM_PATTERNS
-from src.note_gen.import_presets import client
+from src.note_gen.database import get_client
 import logging
 
 logger = logging.getLogger(__name__)
@@ -14,7 +14,8 @@ def test_client():
 @pytest.fixture(autouse=True)
 async def setup_test_db():
     # Use a test database
-    global db
+    global db, client
+    client = await get_client()  
     db = client["test_note_gen"]
     
     # Clear test database
@@ -28,7 +29,9 @@ async def setup_test_db():
     client.drop_database('test_note_gen')
 
 @pytest.mark.asyncio
-async def test_startup_imports_presets_when_empty(setup_test_db):
+async def test_startup_imports_presets_when_empty():
+    client = await get_client()
+    # Rest of your test code
     logger.info("Starting test: test_startup_imports_presets_when_empty")
     try:
         """Test that presets are imported when collections are empty."""

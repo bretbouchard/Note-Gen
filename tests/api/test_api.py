@@ -5,11 +5,12 @@ from unittest.mock import AsyncMock, MagicMock
 from bson import ObjectId
 import pytest
 from httpx import AsyncClient, ASGITransport
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from src.note_gen.models.note_pattern import NotePattern
+from src.note_gen.models.patterns import NotePattern
 from src.note_gen.database import get_db
 from motor.motor_asyncio import AsyncIOMotorDatabase
-from pydantic import ValidationError
+from pydantic import ValidationError  # Fix the syntax error here
 
 pytestmark = pytest.mark.asyncio  # This marks all test functions in the file as async
 
@@ -39,18 +40,18 @@ class MockCollection:
     def __init__(self, items: List[Dict[str, Any]]) -> None:
         self.items = items
 
-    async def find(self, query: Optional[Dict[str, Any]] = None):
+    async def find(self, query: Optional[Dict[str, Any]] = None) -> AsyncIterator[Dict[str, Any]]:
         # Simulate asynchronous behavior
         return MockCursor(self.items)
 
-    async def find_one(self, query: Dict[str, Any]):
+    async def find_one(self, query: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         # Simulate asynchronous behavior
         for item in self.items:
             if item.get('_id') == query.get('_id'):
                 return item
         return None
 
-    async def insert_one(self, document: Dict[str, Any]):
+    async def insert_one(self, document: Dict[str, Any]) -> None:
         # Simulate asynchronous behavior
         self.items.append(document)
 
@@ -155,13 +156,13 @@ class MockDatabase:
 
 
 @pytest.fixture
-async def client():
+async def client() -> AsyncGenerator[AsyncClient, None]:
     async with AsyncClient(base_url='http://localhost:8000') as client:
         yield client
 
 
 @pytest.fixture
-async def test_client(app: TestClient) -> AsyncGenerator[AsyncClient, None]:
+async def test_client(app: FastAPI) -> AsyncGenerator[AsyncClient, None]:
     app.dependency_overrides[get_db] = lambda: MockDatabase()
     async with AsyncClient(
         transport=ASGITransport(app=app),
@@ -174,7 +175,7 @@ async def test_client(app: TestClient) -> AsyncGenerator[AsyncClient, None]:
 # Consolidated tests for API functionality
 
 @pytest.mark.asyncio
-async def test_api_functionality(client):
+async def test_api_functionality(client: AsyncClient) -> None:
     # Test get chord progressions
     response = await client.get("/api/chord-progressions")
     assert response.status_code == 200
@@ -292,19 +293,41 @@ from src.note_gen.models.note import Note
 from src.note_gen.models.chord_progression import ChordProgression
 
 # Test invalid Note creation
-async def test_invalid_note_creation():
+async def test_invalid_note_creation() -> None:
     with pytest.raises(ValidationError) as excinfo:
         Note(note_name='InvalidNote', octave=10, duration=1.0, velocity=64)
     assert 'Invalid octave' in str(excinfo.value)
 
 # Test invalid ChordProgression creation
-async def test_invalid_chord_progression_creation():
+async def test_invalid_chord_progression_creation() -> None:
     with pytest.raises(ValidationError) as excinfo:
         ChordProgression(name='Invalid Progression', chords=[], key='C', scale_type='major')
     assert 'List should have at least 1 item after validation' in str(excinfo.value)
 
+# Test API endpoint with valid data
+async def test_create_chord_progression_valid_data(client: AsyncClient) -> None:
+    valid_data = {
+        'name': 'Valid Progression',
+        'chords': [
+            {'name': 'C', 'root': {'note': 'C', 'octave': 4}, 'quality': 'major', 'intervals': [0, 4, 7]},
+            {'name': 'G', 'root': {'note': 'G', 'octave': 4}, 'quality': 'major', 'intervals': [0, 4, 7]},
+            {'name': 'Am', 'root': {'note': 'A', 'octave': 4}, 'quality': 'minor', 'intervals': [0, 3, 7]},
+            {'name': 'F', 'root': {'note': 'F', 'octave': 4}, 'quality': 'major', 'intervals': [0, 4, 7]}
+        ],
+        'key': 'C',
+        'scale_type': 'major',
+        'scale_info': {
+            "root": "C",
+            "scale_type": "major",
+            "intervals": [0, 2, 4, 5, 7, 9, 11]
+        }
+    }
+    response = await client.post('/api/chord-progressions', json=valid_data)
+    assert response.status_code == 201  # Created
+    assert response.json()['name'] == 'Valid Progression'
+
 # Test API endpoint with invalid data
-async def test_create_chord_progression_invalid_data(client):
+async def test_create_chord_progression_invalid_data(client: AsyncClient) -> None:
     invalid_data = {
         'name': 'Invalid Progression',
         'chords': [],  # Empty chords list should trigger validation error
@@ -313,4 +336,4 @@ async def test_create_chord_progression_invalid_data(client):
     }
     response = await client.post('/api/chord-progressions', json=invalid_data)
     assert response.status_code == 422  # Unprocessable Entity
-    assert 'value is not a valid list' in response.json()['detail'][0]['msg']
+    assert 'List should have at least 1 item after validation, not 0' in response.json()['detail'][0]['msg']

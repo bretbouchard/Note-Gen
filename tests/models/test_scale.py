@@ -85,12 +85,8 @@ def test_scale_creation_and_notes():
     ]
 )
 def test_get_scale_degree_valid(root_name: str, scale_type: ScaleType, valid_degree: int) -> None:
-    """
-    Test getting a valid scale degree (within range).
-    """
     root_note = Note.from_name(root_name)
-    scale = Scale(root_note, scale_type)
-
+    scale = Scale(root=root_note, scale_type=scale_type)  # Use keyword arguments
     note_at_degree = scale.get_scale_degree(valid_degree)
     assert note_at_degree is not None, "Should return a valid Note object."
 

@@ -1,5 +1,6 @@
 from motor import motor_asyncio
 from motor.motor_asyncio import AsyncIOMotorClient
+import uuid
 
 # Import the actual presets
 from src.note_gen.models.presets import (
@@ -18,33 +19,43 @@ async def clear_existing_data(db: motor_asyncio.AsyncIOMotorDatabase) -> None:
 
 async def format_chord_progression(name: str, progression: list) -> dict:
     """Format a chord progression according to the model requirements."""
+
+    # Validate input
+    if not progression:
+        raise ValueError("Progression list cannot be empty.")
+
+    valid_roman_numerals = {'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii'}
+    for chord in progression:
+        if not isinstance(chord, str) or chord not in valid_roman_numerals:
+            raise ValueError(f"Invalid Roman numeral: {chord}")
+
     def convert_roman_to_note(roman: str, key: str = "C") -> dict:
         # Strip any quality indicators from the roman numeral
         base_roman = ''.join(c for c in roman if c.isalpha())
         quality = ''.join(c for c in roman if not c.isalpha())
-        
+
         # Map roman numerals to scale degrees
         roman_to_degree = {
             'I': 0, 'II': 2, 'III': 4, 'IV': 5, 'V': 7, 'VI': 9, 'VII': 11,
             'i': 0, 'ii': 2, 'iii': 4, 'iv': 5, 'v': 7, 'vi': 9, 'vii': 11
         }
-        
+
         # Map scale degree to note name
         major_scale = ['C', 'D', 'E', 'F', 'G', 'A', 'B']
         degree = roman_to_degree.get(base_roman.upper(), 0)
         note_name = major_scale[degree % 7]
-        
+
         # Determine quality based on roman numeral case and any modifiers
         if quality:
             chord_quality = quality
         else:
             chord_quality = 'MINOR' if base_roman.islower() else 'MAJOR'
-            
+
         if '°' in roman or 'dim' in roman:
             chord_quality = 'DIMINISHED'
         elif 'aug' in roman:
             chord_quality = 'AUGMENTED'
-        
+
         return {
             'root': {'note_name': note_name, 'octave': 4},
             'quality': chord_quality

@@ -10,8 +10,8 @@ import httpx
 
 @pytest.fixture
 async def client():
-    async with httpx.AsyncClient(app=app, base_url="http://test") as c:
-        yield c
+    async with httpx.AsyncClient(base_url="http://localhost:8000") as client:
+        yield client
 
 # Consolidated tests for user routes functionality
 
