@@ -31,9 +31,17 @@ class NotePattern(BaseModel):
     description: str = Field(..., description="Pattern description")
     tags: List[str] = Field(..., description="Pattern tags")
     complexity: Optional[float] = Field(None, description="Pattern complexity")
-    data: NotePatternData = Field(..., description="Pattern data")
+    notes: Optional[List[Note]] = Field(default=None, description="List of notes in the pattern")
+    data: Optional[Union[NotePatternData, List[Union[int, List[int]]]]] = Field(default=None, description="Additional pattern data")
     style: str = Field(default="basic", description="Pattern style")
     is_test: Optional[bool] = Field(default=None, description="Test flag")
+
+    def get_notes(self) -> List[Note]:
+        return self.notes if self.notes is not None else []
+
+    @property
+    def total_duration(self) -> float:
+        return sum(note.duration for note in self.notes) if self.notes else 0.0
 
     class Config:
         json_schema_extra = {
@@ -49,3 +57,17 @@ class NotePattern(BaseModel):
             }
         }
         arbitrary_types_allowed = True
+    
+    @model_validator(mode='before')
+    def validate_data(cls, values):
+        # Check data field
+        data = values.get('data')
+        if data is None:
+            raise ValueError("Data must be provided and cannot be None.")
+        if isinstance(data, list):
+            if not data or not all(isinstance(item, (int, list)) for item in data):
+                raise ValueError("Data must be a non-empty list of integers or nested lists.")
+        elif not isinstance(data, NotePatternData):
+            raise ValueError("Data must be an instance of NotePatternData or a list.")
+
+        return values

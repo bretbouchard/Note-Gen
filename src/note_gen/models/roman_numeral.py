@@ -12,8 +12,8 @@ class RomanNumeral:
 
     @classmethod
     def from_scale_degree(cls, degree: int, quality: ChordQualityType) -> str:
-        if degree not in cls.INT_TO_ROMAN:
-            raise ValueError(f"Unsupported scale degree: {degree} (must be 1..7).")
+        if degree < 1 or degree > 7:
+            raise ValueError(f"Scale degree {degree} is out of range. Scale degrees must be between 1 and 7.")
 
         numeral = cls.INT_TO_ROMAN[degree]
 
@@ -31,6 +31,8 @@ class RomanNumeral:
         elif quality == ChordQualityType.MAJOR_7:
             return numeral + 'Δ'  # Some people use "Δ7" for major7
         elif quality == ChordQualityType.DOMINANT:
+            return numeral + '7'
+        elif quality == ChordQualityType.DOMINANT_7:
             return numeral + '7'
         
         # Fallback: treat as major triad if none above

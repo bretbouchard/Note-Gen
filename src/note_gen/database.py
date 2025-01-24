@@ -1,12 +1,14 @@
 """Database connection module."""
 
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
-from typing import Any, AsyncGenerator
+from src.note_gen.models.chord_progression import ChordProgression
+from typing import Any, AsyncGenerator, Dict, List, Optional
 import logging
 from contextlib import asynccontextmanager
 import atexit
 import os
 import threading
+import traceback
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -114,3 +116,31 @@ async def init_database() -> None:
             if not os.getenv("TESTING"):
                 from src.note_gen.import_presets import import_presets_if_empty
                 await import_presets_if_empty(db)
+
+async def create_chord_progression(db: AsyncIOMotorDatabase, progression: ChordProgression) -> Dict[str, Any]:
+    try:
+        prog_dict = progression.model_dump()
+        result = await db.chord_progressions.insert_one(prog_dict)
+        if result.inserted_id:
+            created_progression = await db.chord_progressions.find_one({"_id": result.inserted_id})
+            if created_progression:
+                created_progression["id"] = str(created_progression.pop("_id"))
+                return created_progression
+        raise HTTPException(status_code=500, detail="Failed to create chord progression")
+    except Exception as e:
+        logger.error(f"Error creating chord progression: {e}")  # Log the exception message
+        logger.error(traceback.format_exc())  # Log the full traceback
+        logger.error(f"Progression data: {prog_dict}")  # Log the progression data being inserted
+        raise HTTPException(status_code=500, detail=str(e))
+
+async def get_chord_progressions(db: AsyncIOMotorDatabase) -> List[Dict[str, Any]]:
+    try:
+        cursor = db.chord_progressions.find({})
+        progressions = []
+        async for doc in cursor:
+            doc["id"] = str(doc.pop("_id"))
+            progressions.append(doc)
+        return progressions
+    except Exception as e:
+        logger.error(f"Error fetching chord progressions: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

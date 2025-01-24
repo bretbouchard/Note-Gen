@@ -36,7 +36,7 @@ app = FastAPI(lifespan=lifespan)
 
 # Include routers with prefixes to avoid conflicts
 app.include_router(user_routes, prefix="/users")
-app.include_router(chord_progression_routes, prefix="/api/chord-progressions")
+app.include_router(chord_progression_routes, prefix="/api")
 
 class LogMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):

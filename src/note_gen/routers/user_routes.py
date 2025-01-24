@@ -2,21 +2,17 @@ from fastapi import APIRouter, HTTPException, Depends, Request
 from pydantic import BaseModel, Field
 from typing import Union, Optional, List, Dict, Any 
 import logging
-import uuid
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from bson import ObjectId
-from fastapi.encoders import jsonable_encoder
 
 from src.note_gen.models.musical_elements import Note
 from src.note_gen.models.chord_progression import ChordProgression
 from src.note_gen.models.scale_info import ScaleInfo
-from src.note_gen.models.note import Note
 from src.note_gen.models.patterns import NotePattern, NotePatternData
-from src.note_gen.models.rhythm_pattern import RhythmPattern
+from src.note_gen.models.rhythm_pattern import RhythmPattern, RhythmPatternResponse
 from src.note_gen.models.note_pattern import NotePatternResponse
-from src.note_gen.models.rhythm_pattern import RhythmPatternResponse  
 
-
+from src.note_gen.database import get_db
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -25,7 +21,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 # MongoDB connection
-from src.note_gen.database import get_db
+
 
 class Chord(BaseModel):
     root: Dict[str, Any] = Field(description="Root note information")
@@ -97,7 +93,7 @@ class GenerateSequenceResponse(BaseModel):
     rhythm_pattern_name: str = Field(description="Name of the rhythm pattern used")
 
 def get_next_id() -> str:
-    return str(uuid.uuid4())
+    return str(ObjectId())
 
 def get_note_name(midi_number: int) -> str:
     """Get the note name for a given MIDI number."""

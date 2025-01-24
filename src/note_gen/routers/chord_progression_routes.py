@@ -20,11 +20,20 @@ async def create_chord_progression(chord_progression: ChordProgression, db: moto
         logger.info(f"Incoming request to create chord progression: {chord_progression}")
         logger.debug(f"Request data: {chord_progression.dict()}")
         logger.info(f"Creating chord progression: {chord_progression}")
+        
+        # Validate required fields
+        required_fields = ['name', 'chords', 'key', 'scale_type']
+        missing_fields = [field for field in required_fields if not getattr(chord_progression, field)]
+        if missing_fields:
+            logger.error(f"Missing required fields: {', '.join(missing_fields)}")
+            raise HTTPException(status_code=400, detail=f'Missing required fields: {", ".join(missing_fields)}')
+        
         progression_data = chord_progression.dict(exclude_unset=True)
         logger.debug(f"Prepared data for insertion: {progression_data}")
         result = await db.chord_progressions.insert_one(progression_data)
         chord_progression.id = str(result.inserted_id)
         logger.info(f"Chord progression created with ID: {chord_progression.id}")
+        logger.info(f"Created progression details: {chord_progression.dict()}")
         return chord_progression
     except Exception as e:
         logger.error(f"Error creating chord progression: {e}")

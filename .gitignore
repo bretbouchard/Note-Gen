@@ -3,6 +3,12 @@ refactor/
 /__pycache__
 /venv
 /new_venv
+/__pycache__
 
 # Ignore coverage documentation
 documentation
+db/diagnostic.data/metrics.interim
+src/note_gen/__pycache__/database.cpython-311.pyc
+src/note_gen/models/__pycache__/
+src/note_gen/routers/__pycache__/
+tests/__pycache__/

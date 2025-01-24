@@ -1,5 +1,5 @@
 # src/note_gen/models/musical_elements.py
-from typing import List, Optional, Union, Any
+from typing import List, Optional, Union, Any, Dict
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 import logging
@@ -76,12 +76,14 @@ class Chord(BaseModel):
 
     @field_validator('root')
     def validate_root(cls, value: Note) -> Note:
-        if not isinstance(value, Note):
-            raise ValueError("Root must be a Note instance.")
+        if not isinstance(value, Note) or value.octave is None or value.note_name is None or value.duration is None or value.velocity is None:
+            raise ValueError("Root must be a valid Note instance with a specified octave, note_name, duration, and velocity.")
         return value
 
-    def __init__(self, root: Note, quality: Union[str, ChordQualityType], notes: Optional[List[Note]] = None, inversion: int = 0):
+    def __init__(self, root: Union[Note, Dict[str, Any]], quality: Union[str, ChordQualityType], notes: Optional[List[Note]] = None, inversion: int = 0):
         logger.debug(f"Initializing Chord with root: {root}, quality: {quality}")
+        if isinstance(root, dict):
+            root = Note(**root)  # Convert dictionary to Note instance
         if isinstance(quality, str):
             if quality not in [q.value for q in ChordQualityType]:
                 logger.error(f"Invalid quality: '{quality}'. Must be one of: {[q.value for q in ChordQualityType]}")

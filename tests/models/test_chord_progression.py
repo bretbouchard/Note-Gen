@@ -52,13 +52,18 @@ class TestChordProgression(unittest.TestCase):
             Chord(root=Note(note_name="F", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
             Chord(root=Note(note_name="G", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR)
         ]
+        scale_info = {
+            "root": {"note_name": "C", "octave": 4},
+            "scale_type": "major"
+        }
         progression = ChordProgression(
             id="test_progression_id",
             name="Test Progression",
             chords=chords,
             key="C",
             scale_type="major",
-            complexity=0.5
+            complexity=0.5,
+            scale_info=scale_info
         )
         logging.debug(f"Progression: {progression}")
         assert progression.name == "Test Progression"
@@ -77,7 +82,11 @@ class TestChordProgression(unittest.TestCase):
             ],
             key="C",
             scale_type="major",
-            complexity=0.5
+            complexity=0.5,
+            scale_info={
+                "root": {"note_name": "C", "octave": 4},
+                "scale_type": "major"
+            }
         )
         progression.add_chord(Chord(root=Note(note_name="G", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR))
         logging.debug(f"Progression after adding chord: {progression}")
@@ -98,7 +107,11 @@ class TestChordProgression(unittest.TestCase):
             ],
             key="C",
             scale_type="major",
-            complexity=0.5
+            complexity=0.5,
+            scale_info={
+                "root": {"note_name": "C", "octave": 4},
+                "scale_type": "major"
+            }
         )
         logging.debug(f"Chord at 0: {progression.get_chord_at(0)}")
         assert progression.get_chord_at(0) == Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR)
@@ -118,7 +131,11 @@ class TestChordProgression(unittest.TestCase):
             ],
             key="C",
             scale_type="major",
-            complexity=0.5
+            complexity=0.5,
+            scale_info={
+                "root": {"note_name": "C", "octave": 4},
+                "scale_type": "major"
+            }
         )
         logging.debug(f"All chords: {progression.get_all_chords()}")
         assert progression.get_all_chords() == [
@@ -138,7 +155,11 @@ class TestChordProgression(unittest.TestCase):
             ],
             key="C",
             scale_type="major",
-            complexity=0.5
+            complexity=0.5,
+            scale_info={
+                "root": {"note_name": "C", "octave": 4},
+                "scale_type": "major"
+            }
         )
         actual_names = progression.get_chord_names()
         logging.debug(f"Actual chord names: {actual_names}")
@@ -155,7 +176,11 @@ class TestChordProgression(unittest.TestCase):
             ],
             key="C",
             scale_type="major",
-            complexity=0.5
+            complexity=0.5,
+            scale_info={
+                "root": {"note_name": "C", "octave": 4},
+                "scale_type": "major"
+            }
         )
         progression_dict = progression.to_dict()
         logging.debug(f"Progression dict: {progression_dict}")
@@ -172,7 +197,11 @@ class TestChordProgression(unittest.TestCase):
             ],
             key="C",
             scale_type="major",
-            complexity=0.5
+            complexity=0.5,
+            scale_info={
+                "root": {"note_name": "C", "octave": 4},
+                "scale_type": "major"
+            }
         )
         dumped = progression.model_dump()
         logging.debug(f"Dumped model: {dumped}")
@@ -195,7 +224,11 @@ class TestChordProgression(unittest.TestCase):
                 ],
                 key="C",
                 scale_type="major",
-                complexity=0.5
+                complexity=0.5,
+                scale_info={
+                    "root": {"note_name": "C", "octave": 4},
+                    "scale_type": "major"
+                }
             )
         except ValueError:
             logging.debug('Caught ValueError as expected for invalid chord type.')  # Log the expected error
@@ -210,7 +243,11 @@ class TestChordProgression(unittest.TestCase):
                 chords=[],  
                 key="C",
                 scale_type="major",
-                complexity=0.5
+                complexity=0.5,
+                scale_info={
+                    "root": {"note_name": "C", "octave": 4},
+                    "scale_type": "major"
+                }
             )
             logging.debug("Empty chords")
 
@@ -226,7 +263,11 @@ class TestChordProgression(unittest.TestCase):
                 ],
                 key="C",
                 scale_type="major",
-                complexity=2.0  
+                complexity=2.0,  
+                scale_info={
+                    "root": {"note_name": "C", "octave": 4},
+                    "scale_type": "major"
+                }
             )
             logging.debug("Invalid complexity")
 

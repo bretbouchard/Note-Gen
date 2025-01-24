@@ -9,6 +9,7 @@ from src.note_gen.models.patterns import NotePattern
 from src.note_gen.models.musical_elements import Chord
 from src.note_gen.models.scale_degree import ScaleDegree
 from src.note_gen.models.note import Note
+from src.note_gen.models.pattern_data import NotePatternData
 
 # Type aliases
 DirectionType = Literal["forward", "backward", "random", "alternating"]
@@ -24,5 +25,5 @@ class NotePatternResponse(BaseModel):
     description: str = Field(..., description="Pattern description")
     tags: List[str] = Field(..., description="Pattern tags")
     complexity: Optional[float] = Field(None, description="Pattern complexity")
-    data: Optional[List[int]] = Field(default=None, description="Additional pattern data")
+    data: Optional[Union[NotePatternData, List[Union[int, List[int]]]]] = Field(default=None, description="Additional pattern data")
     is_test: Optional[bool] = Field(default=None, description="Test flag")

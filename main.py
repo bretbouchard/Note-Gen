@@ -1,9 +1,10 @@
-from fastapi import FastAPI, HTTPException      
+from contextlib import asynccontextmanager
+from fastapi import FastAPI, HTTPException           
 from pydantic import BaseModel  
 from typing import List, Optional
 from src.note_gen.routers.user_routes import router as user_router
 from src.note_gen.routers.chord_progression_routes import router as chord_progression_router
-from src.note_gen.import_presets import ensure_indexes, import_presets_if_empty
+from src.note_gen.import_presets import initialize_client, run_imports
 from typing import Any
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 import tracemalloc
@@ -69,22 +70,24 @@ class ChordProgressionGenerator(BaseModel):
 
 app = FastAPI()
 
-@app.on_event("startup")
-async def startup_event():
-    # Log FastAPI version
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
     import fastapi
     logger.info(f'FastAPI version: {fastapi.__version__}')
-    # Code to run during startup
-    db = await get_db()
     try:
-        await ensure_indexes(db)
+        await run_imports()  # This will handle initialization and importing presets
     except Exception as e:
         logger.error(f"Error during database initialization: {e}")
     logger.info("Application started...")
-
-@app.on_event("shutdown")
-async def shutdown_event():
+    
+    yield  # This is where the application runs
+    
+    # Shutdown
     logger.info("Shutting down the application...")
+
+app = FastAPI(lifespan=lifespan)
+
 
 app.include_router(user_router, prefix="", tags=["User Routes"])
 app.include_router(chord_progression_router, prefix="/api", tags=["Chord Progression Routes"])
