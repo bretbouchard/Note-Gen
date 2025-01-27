@@ -197,6 +197,9 @@ async def fetch_rhythm_patterns(db: AsyncIOMotorDatabase) -> List[RhythmPattern]
         return []
 
 async def _fetch_rhythm_patterns(db: AsyncIOMotorDatabase) -> List[RhythmPattern]:
+    if db is None:
+        logger.error("Database connection is not established.")
+        raise RuntimeError("Database connection is not available.")
     try:
         patterns = []
         async for doc in db.rhythm_patterns.find({}):

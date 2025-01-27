@@ -9,8 +9,6 @@ class AccidentalType(StrEnum):
     DOUBLE_SHARP = "##"
     DOUBLE_FLAT = "bb"
 
-
-
 class ChordQualityType(Enum):
     """Enum for chord quality types."""
     MAJOR = "major"
@@ -36,11 +34,10 @@ class ChordQualityType(Enum):
     FLAT_7 = "flat_7"
     SHARP_5 = "sharp_5"
     SHARP_7 = "sharp_7"
-
     DOMINANT = "dominant"
 
     @classmethod
-    def get_intervals(cls, quality_type):
+    def get_scale_intervals(cls, quality_type: 'ChordQualityType') -> List[int]:
         intervals = {
             cls.MAJOR: [0, 4, 7],
             cls.MINOR: [0, 3, 7],
@@ -69,34 +66,14 @@ class ChordQualityType(Enum):
         }
         return intervals.get(quality_type, None)
 
-    def get_intervals(self) -> List[int]:
-        intervals = {
-            self.MAJOR: [0, 4, 7],
-            self.MINOR: [0, 3, 7],
-            self.DIMINISHED: [0, 3, 6],
-            self.AUGMENTED: [0, 4, 8],
-            self.DOMINANT_7: [0, 4, 7, 10],
-            self.DOMINANT: [0, 4, 7, 10],
-            self.MAJOR_7: [0, 4, 7, 11],
-            self.MINOR_7: [0, 3, 7, 10],
-            self.DIMINISHED_7: [0, 3, 6, 9],
-            self.HALF_DIMINISHED_7: [0, 3, 6, 10],
-            self.AUGMENTED_7: [0, 4, 8, 10],
-            self.MAJOR_9: [0, 4, 7, 11, 14],
-            self.MINOR_9: [0, 3, 7, 10, 14],
-            self.DOMINANT_9: [0, 4, 7, 10, 14],
-            self.MAJOR_11: [0, 4, 7, 11, 14, 17],
-            self.MINOR_11: [0, 3, 7, 10, 14, 17],
-            self.DOMINANT_11: [0, 4, 7, 10, 14, 17],
-            self.SUS2: [0, 2, 7],
-            self.SUS4: [0, 5, 7],
-            self.SEVEN_SUS4: [0, 5, 7, 10],
-            self.FLAT_5: [0, 4, 6],
-            self.FLAT_7: [0, 4, 7, 9],
-            self.SHARP_5: [0, 4, 8],
-            self.SHARP_7: [0, 4, 7, 11],
-        }
-        return intervals.get(self, None)
+    @classmethod
+    def from_string(cls, quality_str: str) -> 'ChordQualityType':
+        if not quality_str:
+            raise ValueError("Quality string cannot be empty")
+        try:
+            return cls[quality_str.upper()]
+        except KeyError:
+            raise ValueError(f"Invalid quality string: {quality_str}")
 
     def __str__(self):
         if self == ChordQualityType.DOMINANT_7:
@@ -108,8 +85,19 @@ class ChordQualityType(Enum):
         return self.value
 
 
+class ScaleDegree(Enum):
+    TONIC = 1
+    SUPERTONIC = 2
+    MEDIANT = 3
+    SUBDOMINANT = 4
+    DOMINANT = 5
+    SUBMEDIANT = 6
+    LEADING_TONE = 7
+
+
 class ScaleType(Enum):
     """Enum representing different scale types."""
+    MINOR = "minor"
     MAJOR = "major"
     NATURAL_MINOR = "natural_minor"
     HARMONIC_MINOR = "harmonic_minor"

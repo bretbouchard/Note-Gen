@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException, Depends, Request
+from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel, Field
 from typing import Union, Optional, List, Dict, Any 
 import logging
@@ -123,29 +124,29 @@ async def get_chord_progressions(db: AsyncIOMotorDatabase[Dict[str, Any]] = Depe
         logger.error(f"Error getting chord progressions: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
 
-@router.get("/note-patterns", response_model=List[NotePattern])
-async def get_note_patterns(db: AsyncIOMotorDatabase[Dict[str, Any]] = Depends(get_db)) -> List[NotePattern]:
+@router.get("/note-patterns", response_model=List[NotePatternResponse])
+async def get_note_patterns(db: AsyncIOMotorDatabase[Dict[str, Any]] = Depends(get_db)) -> List[NotePatternResponse]:
     """
     Retrieve all note patterns from the database.
     """
     try:
         cursor: AsyncIOMotorCursor[Dict[str, Any]] = db.note_patterns.find()
         note_patterns = await cursor.to_list(length=100)
-        return note_patterns
+        return [NotePatternResponse(**p) for p in note_patterns]
     except Exception as e:
         logger.error(f"Error getting note patterns: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal Server Error")
         
 
-@router.get("/rhythm-patterns", response_model=List[RhythmPattern])
-async def get_rhythm_patterns(db: AsyncIOMotorDatabase[Dict[str, Any]] = Depends(get_db)) -> List[RhythmPattern]:
+@router.get("/rhythm-patterns", response_model=List[ApiRhythmPattern])
+async def get_rhythm_patterns(db: AsyncIOMotorDatabase[Dict[str, Any]] = Depends(get_db)) -> List[ApiRhythmPattern]:
     """
     Retrieve all rhythm patterns from the database.
     """
     try:
         cursor = db.rhythm_patterns.find()
         rhythm_patterns = await cursor.to_list(length=100)
-        return rhythm_patterns
+        return [ApiRhythmPattern(**p) for p in rhythm_patterns]
     except Exception as e:
         logger.error(f"Error getting rhythm patterns: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal Server Error")
@@ -210,8 +211,8 @@ async def get_chord_progression(progression_id: str, db: AsyncIOMotorDatabase[Di
 # NEW: Create & Get-by-ID for Note Patterns
 # ------------------------------------------------------
 
-@router.post("/note-patterns", response_model=NotePattern)
-async def create_note_pattern(note_pattern: NotePattern, db: AsyncIOMotorDatabase = Depends(get_db)) -> NotePattern:
+@router.post("/note-patterns", response_model=NotePatternResponse)
+async def create_note_pattern(note_pattern: NotePattern, db: AsyncIOMotorDatabase[Dict[str, Any]] = Depends(get_db)) -> NotePatternResponse:
     """
     Create a new note pattern
     """
@@ -223,13 +224,13 @@ async def create_note_pattern(note_pattern: NotePattern, db: AsyncIOMotorDatabas
         if result is None:
             raise HTTPException(status_code=500, detail='Database insertion failed')
         created_note_pattern = await db.note_patterns.find_one({'_id': result.inserted_id})
-        return created_note_pattern
+        return NotePatternResponse(**created_note_pattern)
     except Exception as e:
         logger.error(f'Error creating note pattern: {str(e)}')
         raise HTTPException(status_code=500, detail=f'Database error: {str(e)}')
 
-@router.get("/note-patterns/{pattern_id}", response_model=NotePattern)
-async def get_note_pattern(pattern_id: str, db: AsyncIOMotorDatabase[Dict[str, Any]] = Depends(get_db)) -> NotePattern:
+@router.get("/note-patterns/{pattern_id}", response_model=NotePatternResponse)
+async def get_note_pattern(pattern_id: str, db: AsyncIOMotorDatabase[Dict[str, Any]] = Depends(get_db)) -> NotePatternResponse:
     """
     Get a single note pattern by ID.
     """
@@ -238,7 +239,7 @@ async def get_note_pattern(pattern_id: str, db: AsyncIOMotorDatabase[Dict[str, A
         note_pattern = await db.note_patterns.find_one({"_id": object_id})
         if note_pattern is None:
             raise HTTPException(status_code=404, detail="Note pattern not found")
-        return note_pattern
+        return NotePatternResponse(**note_pattern)
     except Exception as e:
         logger.error(f"Error fetching note pattern: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal Server Error")
@@ -292,7 +293,7 @@ async def get_rhythm_pattern(pattern_id: str, db: AsyncIOMotorDatabase[Dict[str,
         rhythm_pattern = await db.rhythm_patterns.find_one({"_id": object_id})
         if rhythm_pattern is None:
             raise HTTPException(status_code=404, detail="Rhythm pattern not found")
-        return rhythm_pattern
+        return ApiRhythmPattern(**rhythm_pattern)
     except Exception as e:
         logger.error(f"Error fetching rhythm pattern: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal Server Error")
@@ -314,7 +315,7 @@ async def generate_sequence(request: GenerateSequenceRequest, db: AsyncIOMotorDa
     """
     try:
         # Logic to generate the sequence
-        return {"message": "Sequence generated successfully"}
+        return GenerateSequenceResponse(notes=[], progression_name="", note_pattern_name="", rhythm_pattern_name="")
     except Exception as e:
         logger.error(f"Error generating sequence: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal Server Error")
@@ -326,7 +327,7 @@ async def generate_sequence_new(request: GenerateSequenceRequest, db: AsyncIOMot
     """
     try:
         # Logic to generate the sequence
-        return {"message": "New sequence generated successfully"}
+        return GenerateSequenceResponse(notes=[], progression_name="", note_pattern_name="", rhythm_pattern_name="")
     except Exception as e:
         logger.error(f"Error generating new sequence: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal Server Error")

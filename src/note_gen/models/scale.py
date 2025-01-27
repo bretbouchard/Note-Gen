@@ -2,7 +2,7 @@ from typing import List, Type, Dict, Any
 from src.note_gen.models.note import Note
 from enum import Enum
 import logging
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, ValidationError
 
 logger = logging.getLogger(__name__)
 
@@ -120,17 +120,20 @@ class Scale(BaseModel):
     scale_type: ScaleType = Field(...)
     intervals: List[int] = Field(default_factory=list)
 
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        self.intervals = self.calculate_intervals()  # Ensure intervals are calculated on initialization
+
     @field_validator('intervals', mode='before')
-    def set_intervals(cls, v: List[int], values: Dict[str, Any]) -> List[int]:
+    def set_intervals(cls: Type['Scale'], v: List[int], values: Dict[str, Any]) -> List[int]:
         if 'scale_type' in values:
             expected_intervals = values['scale_type'].get_intervals()
             if v != expected_intervals:
-                logger.error(f"Invalid intervals: {v}. Expected: {expected_intervals}")
-                raise ValueError(f"Invalid intervals: {v}. Expected: {expected_intervals}")
-            logger.debug(f"Intervals set to: {v}")
-            return expected_intervals
-        logger.debug("No scale_type provided; intervals not set.")
-        return v  # Return the original value if scale_type is not available
+                raise ValidationError(f"Invalid intervals: {v}. Expected: {expected_intervals}", Scale)
+        return v
+
+    def calculate_intervals(self) -> List[int]:
+        return self.scale_type.get_intervals()
 
     def get_notes(self) -> List[Note]:
         """Get the notes in the scale."""
@@ -143,9 +146,9 @@ class Scale(BaseModel):
         return notes
 
     def get_scale_degree(self, degree: int) -> Note:
-        if not (1 <= degree <= len(self.intervals)):
-            logger.error(f"Scale degree must be between 1 and {len(self.intervals)}.")
-            raise ValueError(f"Scale degree must be between 1 and {len(self.intervals)}.")
+        if not (1 <= degree <= len(self.intervals) + 1):
+            logger.error(f"Scale degree must be between 1 and {len(self.intervals) + 1}.")
+            raise ValueError(f"Scale degree must be between 1 and {len(self.intervals) + 1}.")
         logger.debug(f"Getting note at scale degree: {degree}")
         return self.get_notes()[degree - 1]
 

@@ -1,34 +1,40 @@
 from typing import Optional, Dict, ClassVar
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 
 from src.note_gen.models.note import Note
 from src.note_gen.models.scale import Scale, ScaleType
-from src.note_gen.models.chord_quality import ChordQualityType
+from src.note_gen.models.enums import ScaleType, ChordQualityType, ScaleDegree
 
 class ScaleInfo(BaseModel):
     """Information about a musical scale."""
     root: Note
-    scale_type: Optional[str] = "major"
+    scale_type: Optional[ScaleType] = Field(default=ScaleType.MAJOR)
+
+    @field_validator('scale_type')
+    def validate_scale_type(cls, value: ScaleType) -> ScaleType:
+        if value not in [ScaleType.MAJOR, ScaleType.MINOR]:
+            raise ValueError("Scale type must be either 'major' or 'minor'")
+        return value
 
     # Define chord qualities for major and minor scales
     MAJOR_SCALE_QUALITIES: ClassVar[Dict[int, ChordQualityType]] = {
-        1: ChordQualityType.MAJOR,      # I
-        2: ChordQualityType.MINOR,      # ii
-        3: ChordQualityType.MINOR,      # iii
-        4: ChordQualityType.MAJOR,      # IV
-        5: ChordQualityType.MAJOR,      # V
-        6: ChordQualityType.MINOR,      # vi
-        7: ChordQualityType.DIMINISHED  # vii°
+        1: ChordQualityType.MAJOR,
+        2: ChordQualityType.MINOR,
+        3: ChordQualityType.MINOR,
+        4: ChordQualityType.MAJOR,
+        5: ChordQualityType.MAJOR,
+        6: ChordQualityType.MINOR,
+        7: ChordQualityType.DIMINISHED
     }
 
     MINOR_SCALE_QUALITIES: ClassVar[Dict[int, ChordQualityType]] = {
-        1: ChordQualityType.MINOR,      # i
-        2: ChordQualityType.DIMINISHED, # ii°
-        3: ChordQualityType.MAJOR,      # III
-        4: ChordQualityType.MINOR,      # iv
-        5: ChordQualityType.MINOR,      # v
-        6: ChordQualityType.MAJOR,      # VI
-        7: ChordQualityType.MAJOR       # VII
+        1: ChordQualityType.MINOR,
+        2: ChordQualityType.DIMINISHED,
+        3: ChordQualityType.MAJOR,
+        4: ChordQualityType.MINOR,
+        5: ChordQualityType.MINOR,
+        6: ChordQualityType.MAJOR,
+        7: ChordQualityType.MAJOR
     }
 
     def get_note_for_degree(self, degree: int) -> Optional[Note]:
@@ -39,29 +45,16 @@ class ScaleInfo(BaseModel):
         if not self.scale_type:
             return None
 
-        scale = Scale(root=self.root, scale_type=ScaleType(self.scale_type))
+        scale = Scale(root=self.root, scale_type=self.scale_type)
         notes = scale.get_notes()
         return notes[degree - 1] if notes else None
 
     def get_scale_note_at_degree(self, degree: int) -> Note:
         """Get the note at a given scale degree."""
-        scale = Scale(root=self.root, scale_type=ScaleType(self.scale_type))
+        scale = Scale(root=self.root, scale_type=self.scale_type)
         return scale.get_note_at_degree(degree)
 
-    def get_chord_quality_for_degree(self, degree: int) -> ChordQualityType:
-        """Get the chord quality for a given scale degree."""
-        if not isinstance(degree, int):
-            raise ValueError(f"Degree must be an integer, got {type(degree)}")
-            
-        if degree < 1 or degree > 7:
-            raise ValueError(f"Invalid scale degree: {degree}")
-            
-        if not self.scale_type:
-            raise ValueError("scale_type cannot be None")
-
-        qualities = (
-            self.MAJOR_SCALE_QUALITIES if self.scale_type == "major"
-            else self.MINOR_SCALE_QUALITIES
-        )
-        
-        return qualities[degree]
+    def get_chord_quality_for_degree(self, degree: ScaleDegree) -> ChordQualityType:
+        if degree.value < 1 or degree.value > 7:
+            raise ValueError("Degree must be between 1 and 7")
+        return self.MAJOR_SCALE_QUALITIES[degree.value] if self.scale_type == ScaleType.MAJOR else self.MINOR_SCALE_QUALITIES[degree.value]

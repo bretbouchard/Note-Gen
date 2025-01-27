@@ -2,7 +2,7 @@ from __future__ import annotations
 import logging
 import sys
 import re
-from typing import List, Optional, Any, Dict
+from typing import List, Optional, Any, Dict, Union
 from pydantic import BaseModel, Field, field_validator, model_validator
 import uuid
 

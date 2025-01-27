@@ -68,6 +68,11 @@ async def get_db() -> AsyncGenerator[AsyncIOMotorDatabase[Any], None]:
         db_name = TEST_DB_NAME if os.getenv("TESTING") else DB_NAME
         logger.debug(f"Using database: {db_name}")
         _db = client[db_name]
+    
+    if _db is None:
+        logger.error("Database connection is not initialized.")
+        raise RuntimeError("Database connection is not available.")
+    
     try:
         yield _db
     except Exception as e:

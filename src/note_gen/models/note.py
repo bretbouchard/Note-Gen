@@ -9,11 +9,14 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %
 class Note(BaseModel):
     """A musical note with optional MIDI number auto-population."""
 
-    note_name: str = Field(...)
-    octave: int = Field(...)
-    duration: float = Field(1.0)  # Default duration
-    velocity: int = Field(64)  # Default velocity
-    stored_midi_number: Optional[int] = None  # Add stored_midi_number attribute
+    note_name: str
+    octave: int
+    duration: float = Field(default=1.0)
+    velocity: int = Field(default=64)
+    stored_midi_number: Optional[int] = None
+
+    class Config:
+        arbitrary_types_allowed = True
 
     # Maps note names to their semitone values
     NOTE_TO_SEMITONE: ClassVar[Dict[str, int]] = {
@@ -34,36 +37,29 @@ class Note(BaseModel):
         9: 'A', 10: 'A#', 11: 'B'
     }
 
-
     @field_validator('octave')
-    def validate_octave(cls, v: int) -> int:
-        if not isinstance(v, int) or v < 0 or v > 9:
-            raise ValueError(f'Invalid octave: {v}. Octave must be between 0 and 9.')
-        return v
+    def validate_octave(cls, value):
+        if not (0 <= value <= 8):
+            raise ValueError('Octave must be between 0 and 8')
+        return value
 
     @field_validator('note_name')
-    def validate_note_name(cls, v: str) -> str:
-        if not isinstance(v, str):
-            raise ValueError("Invalid type for note_name")
-        match = re.match(r"^[A-Ga-g][#b]?\d{0,1}$", v)
-        if not match:
-            raise ValueError(f"Invalid note name: {v}.")
-        return v
+    def validate_note_name(cls, value: str) -> str:
+        if value not in Note.NOTE_TO_SEMITONE:
+            raise ValueError(f'Invalid note name: {value}')
+        return value
 
     @field_validator('duration')
-    def validate_duration(cls, v: float) -> float:
-        if not isinstance(v, (int, float)) or v <= 0:  # Ensure duration is a number and greater than 0
-            raise ValueError('Input should be greater than 0. Duration should be a positive number.')
-        return v
-    
-    @field_validator('velocity')
-    def validate_velocity(cls, v: int) -> int:
-        if not isinstance(v, int):
-            raise ValueError("Invalid type for velocity")
-        if not (0 <= v <= 127):
-            raise ValueError("Invalid velocity. Velocity should be an integer between 0 and 127.")
-        return v
+    def validate_duration(cls, value: float) -> float:
+        if value <= 0:
+            raise ValueError('Duration must be greater than 0')
+        return value
 
+    @field_validator('velocity')
+    def validate_velocity(cls, value: int) -> int:
+        if not (0 <= value <= 127):
+            raise ValueError('Velocity must be between 0 and 127')
+        return value
 
     @classmethod
     def calculate_midi_number(cls, note_name: str, octave: int) -> int:

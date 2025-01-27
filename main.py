@@ -19,11 +19,11 @@ logger = logging.getLogger(__name__)
 
 # Database connection
 DATABASE_URL = 'mongodb://localhost:27017/'
-client = AsyncIOMotorClient(DATABASE_URL)
+client: AsyncIOMotorClient = AsyncIOMotorClient(DATABASE_URL)
 tracemalloc.start()
 
 class DBConnection:
-    def __init__(self, client):
+    def __init__(self, client: AsyncIOMotorClient) -> None:
         self.client = client
 
     async def __aenter__(self):

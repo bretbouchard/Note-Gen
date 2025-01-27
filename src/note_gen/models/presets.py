@@ -24,8 +24,8 @@ DEFAULT_RHYTHM_PATTERN_NAME = "Basic"
 # Common chord progressions in Roman numeral notation
 COMMON_PROGRESSIONS: Dict[str, List[str]] = {
     # Standard Progressions
-    "I-IV-V": ["I", "IV", "V"],
-    "I-V-vi-IV/Pop Ballad/Pop I-V-vi-IV": ["I", "V", "vi", "IV"],
+    "I-IV-V": ["I", "IV", "V"], 
+    "Pop Ballad_I-V-vi-IV": ["I", "V", "vi", "IV"],
     "ii-V-I": ["ii", "V", "I"],
     "I-vi-IV-V/50s Doo-Wop": ["I", "vi", "IV", "V"],
     "vi-IV-I-V/Modern Pop": ["vi", "IV", "I", "V"],

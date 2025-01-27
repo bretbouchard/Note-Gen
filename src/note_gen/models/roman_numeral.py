@@ -1,41 +1,44 @@
 from src.note_gen.models.enums import ChordQualityType
 from src.note_gen.models.musical_elements import Chord
 from src.note_gen.models.scale import Scale
+import logging
+
+logger = logging.getLogger(__name__)
 
 class RomanNumeral:
     ROMAN_TO_INT = {'I': 1, 'II': 2, 'III': 3, 'IV': 4, 'V': 5, 'VI': 6, 'VII': 7}
     INT_TO_ROMAN = {v: k for k, v in ROMAN_TO_INT.items()}
 
-    def __init__(self, scale_degree: int = None, quality: ChordQualityType = None):
+    def __init__(self, scale_degree: int = None, quality: ChordQualityType = None) -> None:
+        if scale_degree is not None and (scale_degree < 1 or scale_degree > 7):
+            raise ValueError("Invalid scale degree. Must be between 1 and 7.")
         self.scale_degree = scale_degree
         self.quality = quality if quality is not None else ChordQualityType.MAJOR
 
     @classmethod
     def from_scale_degree(cls, degree: int, quality: ChordQualityType) -> str:
+        logger.debug(f"Received scale_degree: {degree}, quality: {quality}")
+        logger.debug("Entering from_scale_degree method")
         if degree < 1 or degree > 7:
-            raise ValueError(f"Scale degree {degree} is out of range. Scale degrees must be between 1 and 7.")
-
+            logger.error("Invalid scale degree. Must be between 1 and 7.")
+            logger.debug("Raising ValueError for invalid scale degree.")
+            raise ValueError("Invalid scale degree. Must be between 1 and 7.")
+        logger.debug("Valid scale degree, proceeding with conversion")
         numeral = cls.INT_TO_ROMAN[degree]
-
-        # Basic triads
+        
         if quality == ChordQualityType.MINOR:
             return numeral.lower()
-        elif quality == ChordQualityType.DIMINISHED:
-            return numeral.lower() + 'o'
         elif quality == ChordQualityType.AUGMENTED:
             return numeral + '+'
-        
-        # 7th chords (example)
-        elif quality == ChordQualityType.MINOR_7:
-            return numeral.lower() + '7'
-        elif quality == ChordQualityType.MAJOR_7:
-            return numeral + 'Δ'  # Some people use "Δ7" for major7
-        elif quality == ChordQualityType.DOMINANT:
-            return numeral + '7'
+        elif quality == ChordQualityType.DIMINISHED:
+            return numeral.lower() + 'o'
         elif quality == ChordQualityType.DOMINANT_7:
             return numeral + '7'
+        elif quality == ChordQualityType.MAJOR_7:
+            return numeral + 'Δ'
+        elif quality == ChordQualityType.MINOR_7:
+            return numeral.lower() + '7'
         
-        # Fallback: treat as major triad if none above
         return numeral
 
     @classmethod
@@ -69,6 +72,9 @@ class RomanNumeral:
             else:
                 quality = ChordQualityType.DOMINANT_7
             base_numeral = base_numeral.replace('7', '')
+        elif 'Δ' in numeral:
+            quality = ChordQualityType.MAJOR_7
+            base_numeral = base_numeral.replace('Δ', '')
         else:
             base_numeral = numeral.upper()
 

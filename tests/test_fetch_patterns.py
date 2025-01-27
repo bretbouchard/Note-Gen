@@ -11,12 +11,12 @@ from src.note_gen.fetch_patterns import (
     fetch_note_pattern_by_id,
     process_chord_data
 )
-from src.note_gen.models.enums import ChordQualityType, ScaleType
-from src.note_gen.models.chord_quality import ChordQualityType
+from src.note_gen.models.enums import ScaleType
 
 from src.note_gen.models.chord_progression import ChordProgression
+from src.note_gen.models.enums import ChordQualityType
 from src.note_gen.models.rhythm_pattern import RhythmPattern, RhythmNote, RhythmPatternData
-from src.note_gen.models.note_pattern import NotePattern
+from src.note_gen.models.note_pattern import NotePattern, NotePatternData
 from src.note_gen.models.musical_elements import Note
 import motor.motor_asyncio
 import uuid 
@@ -124,142 +124,191 @@ def event_loop():
 @pytest.fixture(autouse=True)
 async def clean_test_db(event_loop):
     """Clean and initialize test database."""
-    client = motor.motor_asyncio.AsyncIOMotorClient(io_loop=event_loop)
-    db = client.test_note_gen
-    
-    # Clean the database
-    await db.chord_progressions.delete_many({})
-    await db.rhythm_patterns.delete_many({})
-    await db.note_patterns.delete_many({})
-    
-    # Insert test data
-    test_chord_progressions = [
-        {
-            "_id": "1",
-            "id": "progression_1",
-            "name": "I-IV-V",
-            "chords": [
-                {"root": {"note_name": "C", "octave": 4}, "quality": ChordQualityType.MAJOR.value},
-                {"root": {"note_name": "F", "octave": 4}, "quality": ChordQualityType.MAJOR.value},
-                {"root": {"note_name": "G", "octave": 4}, "quality": ChordQualityType.MAJOR.value}
-            ],
-            "key": "C",
-            "scale_type": ScaleType.MAJOR.value,
-            "complexity": 0.5
+    try:
+        client = motor.motor_asyncio.AsyncIOMotorClient()
+        if client is None:
+            raise RuntimeError("Failed to initialize MongoDB client.")
+        db = client.test_note_gen
+        
+        # Clean the database
+        await db.chord_progressions.delete_many({})
+        await db.rhythm_patterns.delete_many({})
+        await db.note_patterns.delete_many({})
+        
+        # Insert test data
+        # ChordProgression test data
+        test_chord_progressions = [
+            {
+                "_id": "1",
+                "id": "progression_1",
+                "name": "I-IV-V",
+                "chords": [
+                    {"root": {"note_name": "C", "octave": 4}, "quality": ChordQualityType.MAJOR.value},
+                    {"root": {"note_name": "F", "octave": 4}, "quality": ChordQualityType.MAJOR.value},
+                    {"root": {"note_name": "G", "octave": 4}, "quality": ChordQualityType.MAJOR.value}
+                ],
+                "key": "C",
+                "scale_type": ScaleType.MAJOR.value,
+                "complexity": 0.5,
+                "scale_info": {
+                    "root": {"note_name": "C", "octave": 4},
+                    "scale_type": ScaleType.MAJOR.value
+                }
+            }
+        ]
+        
+        # RhythmPattern test data
+        test_rhythm_pattern = {
+            "_id": "test_1",
+            "id": "test_1",
+            "name": "Test Pattern",
+            "data": {
+                "notes": [{"duration": 1.0, "velocity": 100, "position": 0.0}],
+                "time_signature": "4/4",
+                "swing_ratio": 0.67,
+                "default_duration": 1.0,
+                "total_duration": 4.0,
+                "groove_type": "straight",
+                "duration": 4.0
+            },
+            "description": "Test rhythm pattern",
+            "complexity": 1.0
         }
-    ]
-    
-    test_rhythm_pattern = {
-        "_id": "test_1",
-        "id": "test_1",
-        "name": "Test Pattern",
-        "data": {
-            "notes": [{"duration": 1.0, "velocity": 100, "position": 0.0}],
-            "time_signature": "4/4",
-            "swing_ratio": 0.67,
-            "default_duration": 1.0,
-            "total_duration": 4.0,
-            "groove_type": "straight",
-            "duration": 4.0,
+        
+        test_note_pattern = {
+            "_id": "1",
+            "id": "pattern_1",
+            "name": "Test Note Pattern",
+            "data": NotePatternData(
+                notes=[
+                    {
+                        "note_name": "C",
+                        "octave": 4,
+                        "duration": 1.0,
+                        "velocity": 100
+                    }
+                ],
+                intervals=[2, 2, 1, 2, 2, 2, 1],
+                duration=1.0,
+                position=0.0,
+                velocity=100,
+                direction="up",
+                use_chord_tones=False,
+                use_scale_mode=False,
+                arpeggio_mode=False,
+                restart_on_chord=False,
+                octave_range=[4, 5],
+                default_duration=1.0
+            ).model_dump(),
+            "description": "Test pattern",
+            "tags": ["test"],
+            "complexity": 0.5,
             "style": "basic"
-        },
-        "description": "Test rhythm pattern",
-        "complexity": 1.0,
-        "style": "basic"
-    }
-    
-    test_note_pattern = {
-        "_id": "1",
-        "id": "pattern_1",
-        "name": "Test Note Pattern",
-        "data": {
-            "notes": [{
-                "note_name": "C",
-                "octave": 4,
-                "duration": 1.0,
-                "velocity": 100
-            }],
-            "intervals": None,
-            "duration": 1.0,
-            "position": 0.0,
-            "velocity": 100,
-            "direction": "up",
-            "use_chord_tones": False,
-            "use_scale_mode": False,
-            "arpeggio_mode": False,
-            "restart_on_chord": False,
-            "octave_range": [4, 5],
-            "default_duration": 1.0
-        },
-        "description": "Test pattern",
-        "tags": ["test"],
-        "complexity": 0.5,
-        "style": "basic"
-    }
-    
-    await db.chord_progressions.insert_many(test_chord_progressions)
-    await db.rhythm_patterns.insert_one(test_rhythm_pattern)
-    await db.note_patterns.insert_one(test_note_pattern)
-    
-    yield db
-    await client.close()
-    
-    # Insert test rhythm pattern data
-    test_rhythm_pattern = {
-        "_id": "test_1",
-        "id": "test_1",
-        "name": "Test Pattern",
-        "data": {
-            "notes": [{"duration": 1.0, "velocity": 100, "position": 0.0}],
-            "time_signature": "4/4",
-            "swing_ratio": 0.67,
-            "default_duration": 1.0,
-            "total_duration": 4.0,
-            "groove_type": "straight",
-            "duration": 4.0,
+        }
+        
+        await db.chord_progressions.insert_many(test_chord_progressions)
+        await db.rhythm_patterns.insert_one(test_rhythm_pattern)
+        await db.note_patterns.insert_one(test_note_pattern)
+        
+        yield db
+        await client.close()
+        
+        # Insert multiple rhythm patterns
+        test_rhythm_patterns = [
+            {
+                "_id": "test_1",
+                "id": "test_1",
+                "name": "Basic Quarter Notes",
+                "data": RhythmPatternData(
+                    notes=[
+                        RhythmNote(position=0.0, duration=1.0, velocity=100, is_rest=False),
+                        RhythmNote(position=1.0, duration=1.0, velocity=100, is_rest=False),
+                        RhythmNote(position=2.0, duration=1.0, velocity=100, is_rest=False),
+                        RhythmNote(position=3.0, duration=1.0, velocity=100, is_rest=False)
+                    ],
+                    time_signature="4/4",
+                    swing_ratio=0.67,
+                    default_duration=1.0,
+                    total_duration=4.0,
+                    groove_type="straight",
+                    duration=4.0
+                ),
+                "description": "Basic quarter note pattern",
+                "tags": ["test"],
+                "complexity": 1.0,
+                "style": "basic"
+            },
+            {
+                "_id": "test_2",
+                "id": "test_2",
+                "name": "Swing Eighth Notes",
+                "data": RhythmPatternData(
+                    notes=[
+                        RhythmNote(position=0.0, duration=0.5, velocity=100, is_rest=False),
+                        RhythmNote(position=0.5, duration=0.5, velocity=100, is_rest=False),
+                        RhythmNote(position=1.0, duration=0.5, velocity=100, is_rest=False),
+                        RhythmNote(position=1.5, duration=0.5, velocity=100, is_rest=False)
+                    ],
+                    time_signature="4/4",
+                    swing_ratio=0.5,
+                    default_duration=0.5,
+                    total_duration=4.0,
+                    groove_type="swing",
+                    duration=4.0
+                ),
+                "description": "Swing eighth note pattern",
+                "tags": ["test"],
+                "complexity": 1.0,
+                "style": "swing"
+            }
+        ]
+        
+        # Insert the rhythm patterns into the database
+        
+        # Insert test note pattern data
+        test_note_pattern = {
+            "_id": "1",
+            "id": "pattern_1",
+            "name": "Test Note Pattern",
+            "data": NotePatternData(
+                notes=[
+                    {
+                        "note_name": "C",
+                        "octave": 4,
+                        "duration": 1.0,
+                        "velocity": 100
+                    }
+                ],
+                intervals=[2, 2, 1, 2, 2, 2, 1],
+                duration=1.0,
+                position=0.0,
+                velocity=100,
+                direction="up",
+                use_chord_tones=False,
+                use_scale_mode=False,
+                arpeggio_mode=False,
+                restart_on_chord=False,
+                octave_range=[4, 5],
+                default_duration=1.0
+            ).model_dump(),
+            "description": "Test pattern",
+            "tags": ["test"],
+            "complexity": 0.5,
             "style": "basic"
-        },
-        "description": "Test rhythm pattern",
-        "complexity": 1.0,
-        "style": "basic"
-    }
-    
-    # Insert test note pattern data
-    test_note_pattern = {
-        "_id": "1",
-        "id": "pattern_1",
-        "name": "Test Note Pattern",
-        "data": {
-            "notes": [{
-                "note_name": "C",
-                "octave": 4,
-                "duration": 1.0,
-                "velocity": 100
-            }],
-            "intervals": None,
-            "duration": 1.0,
-            "position": 0.0,
-            "velocity": 100,
-            "direction": "up",
-            "use_chord_tones": False,
-            "use_scale_mode": False,
-            "arpeggio_mode": False,
-            "restart_on_chord": False,
-            "octave_range": [4, 5],
-            "default_duration": 1.0
-        },
-        "description": "Test pattern",
-        "tags": ["test"],
-        "complexity": 0.5,
-        "style": "basic"
-    }
-    
-    await db.chord_progressions.insert_many(test_chord_progressions)
-    await db.rhythm_patterns.insert_one(test_rhythm_pattern)
-    await db.note_patterns.insert_one(test_note_pattern)
-    
-    yield db
-    await client.close()
+        }
+        
+        await db.chord_progressions.insert_many(test_chord_progressions)
+        await db.rhythm_patterns.insert_one(test_rhythm_pattern)
+        await db.rhythm_patterns.insert_many(test_rhythm_patterns)
+
+        await db.note_patterns.insert_one(test_note_pattern)
+        
+        yield db
+        await client.close()
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        raise
 
 @pytest.mark.asyncio
 async def test_fetch_chord_progressions(clean_test_db):
@@ -300,22 +349,27 @@ async def test_fetch_note_patterns(clean_test_db):
         "_id": f"test_{uuid.uuid4()}",
         "id": "test_pattern",
         "name": "Test Pattern",
-        "data": {
-            "notes": [
-                {"note_name": "C", "octave": 4, "duration": 1.0, "velocity": 100}
+        "data": NotePatternData(
+            notes=[
+                {
+                    "note_name": "C",
+                    "octave": 4,
+                    "duration": 1.0,
+                    "velocity": 100
+                }
             ],
-            "intervals": None,
-            "duration": 1.0,
-            "position": 0.0,
-            "velocity": 100,
-            "direction": "up",
-            "use_chord_tones": False,
-            "use_scale_mode": False,
-            "arpeggio_mode": False,
-            "restart_on_chord": False,
-            "octave_range": [4, 5],
-            "default_duration": 1.0
-        },
+            intervals=[2, 2, 1, 2, 2, 2, 1],
+            duration=1.0,
+            position=0.0,
+            velocity=100,
+            direction="up",
+            use_chord_tones=False,
+            use_scale_mode=False,
+            arpeggio_mode=False,
+            restart_on_chord=False,
+            octave_range=[4, 5],
+            default_duration=1.0
+        ).model_dump(),
         "description": "Test pattern",
         "tags": ["test"],
         "complexity": 0.5,
@@ -330,12 +384,12 @@ async def test_fetch_note_patterns(clean_test_db):
 @pytest.mark.asyncio
 async def test_fetch_note_pattern_by_id(clean_test_db):
     """Test fetching note pattern by ID."""
-    pattern_id = "1"
+    pattern_id = "6796b4f614a3818c72f38e86"
     result = await fetch_note_pattern_by_id(pattern_id, clean_test_db)
     assert result is not None
     assert isinstance(result, NotePattern)
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio 
 async def test_fetch_with_invalid_data(clean_test_db):
     db = clean_test_db
     # Insert invalid data directly into the test database
@@ -365,22 +419,15 @@ async def test_fetch_rhythm_patterns_with_new_data(clean_test_db):
         "id": "test_pattern",
         "name": "Test Pattern",
         "data": {
-            "notes": [{
-                "duration": 1.0,
-                "velocity": 100,
-                "position": 0.0
-            }],
-            "duration": 4.0,
+            "notes": [{"duration": 1.0, "velocity": 100, "position": 0.0}],
             "time_signature": "4/4",
-            "swing_enabled": True,
             "swing_ratio": 0.67,
+            "default_duration": 1.0,
+            "total_duration": 4.0,
             "groove_type": "straight",
-            "variation_probability": 0.1,
-            "humanize_amount": 0.1,
-            "accent_pattern": None,
-            "total_duration": 4.0,  # Added this field
-            "default_duration": 1.0  # Added this field
-        },
+            "duration": 4.0,
+            "style": "basic"
+        }, 
         "description": "Test rhythm pattern",
         "tags": ["test"],
         "complexity": 1.0,

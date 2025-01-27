@@ -7,7 +7,7 @@ from pydantic import BaseModel, ValidationError, Field
 from src.note_gen.models.scale_info import ScaleInfo
 from src.note_gen.models.musical_elements import Chord, Note
 from src.note_gen.models.chord_progression import ChordProgression
-from src.note_gen.models.chord_quality import ChordQualityType
+from src.note_gen.models.chord_quality import ChordQuality
 from src.note_gen.models.roman_numeral import RomanNumeral
 from src.note_gen.models.enums import ScaleType
 
@@ -38,8 +38,12 @@ class ProgressionGenerator(BaseModel):
 
 class ChordProgressionGenerator(BaseModel):
     """Generator for creating chord progressions."""
+
+    name: str
+    chords: List[Chord]
+    key: str
+    scale_type: ScaleType
     
-    scale_info: ScaleInfo
     # Mapping from integers to Roman numerals
     INT_TO_ROMAN: ClassVar[Dict[int, str]] = {
         1: "I",
@@ -179,8 +183,10 @@ class ChordProgressionGenerator(BaseModel):
         return ChordProgression(name="Custom Progression", chords=chords, key=self.scale_info.root.note_name, scale_type=self.scale_info.scale_type)
 
 class FakeScaleInfo(ScaleInfo):
-    def __init__(self, root: Note = None, scale_type: ScaleType = ScaleType.MAJOR, key: str = 'C'):
-        super().__init__(root or Note(note_name='C', octave=4, duration=1, velocity=64), scale_type)
+    def __init__(self, root: Note = None, scale_type: ScaleType = ScaleType.MAJOR, key: str = None):
+        if root is None:
+            root = Note(note_name='C', octave=4, duration=1, velocity=64)
+        super().__init__(root, scale_type)
 
     def get_chord_quality_for_degree(self, degree: int) -> ChordQualityType:
         # Return a chord quality based on the degree

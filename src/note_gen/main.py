@@ -7,6 +7,7 @@ import logging
 from motor.motor_asyncio import AsyncIOMotorClient
 from contextlib import asynccontextmanager
 from starlette.middleware.base import BaseHTTPMiddleware
+from typing import AsyncGenerator
 
 # Import the FastAPI app instance from the root main.py
 
@@ -15,7 +16,7 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(leve
 logger = logging.getLogger(__name__)
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Startup: Create MongoDB connection
     app.mongodb_client = AsyncIOMotorClient('mongodb://localhost:27017/')
     app.mongodb = app.mongodb_client.note_gen_db
@@ -32,7 +33,9 @@ async def lifespan(app: FastAPI):
     if logger:
         logger.info("Shutting down the application...")
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI()
+mongodb_client: AsyncIOMotorClient = AsyncIOMotorClient("mongodb://localhost:27017")
+app.lifespan = lifespan
 
 # Include routers with prefixes to avoid conflicts
 app.include_router(user_routes, prefix="/users")

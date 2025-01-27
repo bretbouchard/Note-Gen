@@ -1,9 +1,10 @@
 from typing import List, Any, Dict, Optional, Union
-from pydantic import BaseModel, Field, ConfigDict, field_validator
+from pydantic import BaseModel, Field, ConfigDict, field_validator, validator
 from src.note_gen.models.note import Note
 from src.note_gen.models.musical_elements import Chord
 from src.note_gen.models.roman_numeral import RomanNumeral
 from src.note_gen.models.enums import ChordQualityType
+from src.note_gen.models.scale_info import ScaleInfo
 from src.note_gen.models.scale import Scale, ScaleType
 import logging
 import uuid
@@ -17,16 +18,21 @@ class ChordProgression(BaseModel):
         arbitrary_types_allowed=True
     )
 
-    id: Optional[str] = Field(default_factory=lambda: str(ObjectId()), description="Unique identifier")
+    id: Optional[str] = None
     name: str = Field(description="Name of the chord progression")
     chords: List[Union[Chord, Dict[str, Any]]] = Field(description="List of chords", min_length=1)
     key: str = Field(description="Key of the chord progression")
     scale_type: str = Field(description="Type of scale (e.g., major, minor)")
-    complexity: Optional[float] = Field(description="Complexity of the chord progression")
-    scale_info: Optional[Dict[str, Any]] = Field(description="Scale information")
+    complexity: float = Field(default=0.0, description="Complexity of the chord progression")
+    scale_info: ScaleInfo = Field(description="Scale information")
+
+    @field_validator('scale_info')
+    def validate_scale_info(cls, value):
+        # Add any validation logic needed for scale_info
+        return value
 
     @field_validator('chords')
-    def validate_chords(cls, chords):
+    def validate_chords(cls, chords: List[Union[Chord, Dict[str, Any]]]) -> List[Chord]:
         processed_chords = [
             Chord(**chord) if isinstance(chord, dict) else chord
             for chord in chords
@@ -34,20 +40,20 @@ class ChordProgression(BaseModel):
         return processed_chords
 
     @field_validator('key')
-    def validate_key(cls, v):
+    def validate_key(cls, v: str) -> str:
         if not isinstance(v, str) or not v:
             raise ValueError("Key must be a non-empty string")
         return v
 
     @field_validator('scale_type')
-    def validate_scale_type(cls, v):
+    def validate_scale_type(cls, v: str) -> str:
         valid_types = ['major', 'minor']
         if v not in valid_types:
             raise ValueError(f'Invalid scale type: {v}. Must be one of {valid_types}')
         return v
 
     @field_validator('complexity')
-    def validate_complexity(cls, v):
+    def validate_complexity(cls, v: Optional[float]) -> Optional[float]:
         if v is not None and (v < 0 or v > 1):
             raise ValueError("Complexity must be between 0 and 1")
         return v
@@ -147,7 +153,7 @@ class ChordProgression(BaseModel):
                 f"scale_type: {self.scale_type!r}, "
                 f"chords: List[Dict]={self.chords!r})")
 
-    def json(self, *args, **kwargs):
+    def json(self, *args: Any, **kwargs: Any) -> str:
         # Override json method to serialize ObjectId to string
         data = super().json(*args, **kwargs)
         return data.replace('ObjectId(', '"').replace(')', '"')
