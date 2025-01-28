@@ -45,9 +45,29 @@ class MockDatabase:
         """Mock find_one operation."""
         return self.get_collection(collection).get(query.get("_id"))
 
+    async def find(self, collection, query):
+        """Mock find operation."""
+        collection_data = self.get_collection(collection)
+        for doc in collection_data.values():
+            if all(doc.get(key) == value for key, value in query.items()):
+                yield doc
+        
+        # If no query is provided, yield all documents
+        if not query:
+            for doc in collection_data.values():
+                yield doc
+
     async def insert_one(self, collection, document):
         """Mock insert_one operation."""
         self.get_collection(collection)[document["_id"]] = document
+
+    async def insert_many(self, collection, documents):
+        """Mock insert_many operation."""
+        for document in documents:
+            if "id" in document:
+                self.get_collection(collection)[document["id"]] = document
+            else:
+                raise ValueError("All documents must have an id field")
 
     async def delete_one(self, collection, query):
         """Mock delete_one operation."""

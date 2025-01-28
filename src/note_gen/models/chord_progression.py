@@ -20,11 +20,19 @@ class ChordProgression(BaseModel):
 
     id: Optional[str] = None
     name: str = Field(description="Name of the chord progression")
-    chords: List[Union[Chord, Dict[str, Any]]] = Field(description="List of chords", min_length=1)
+    chords: List[Chord] = Field(..., description="List of chords")
     key: str = Field(description="Key of the chord progression")
     scale_type: str = Field(description="Type of scale (e.g., major, minor)")
     complexity: float = Field(default=0.0, description="Complexity of the chord progression")
     scale_info: ScaleInfo = Field(description="Scale information")
+
+    def __init__(self, **data: Dict[str, Any]) -> None:
+        logger.debug(f"Creating ChordProgression with data: {data}")
+        try:
+            super().__init__(**data)
+        except Exception as e:
+            logger.error(f"Error during ChordProgression initialization: {e}")
+            raise
 
     @field_validator('scale_info')
     def validate_scale_info(cls, value):
@@ -32,60 +40,73 @@ class ChordProgression(BaseModel):
         return value
 
     @field_validator('chords')
-    def validate_chords(cls, chords: List[Union[Chord, Dict[str, Any]]]) -> List[Chord]:
-        processed_chords = [
-            Chord(**chord) if isinstance(chord, dict) else chord
-            for chord in chords
-        ]
-        return processed_chords
+    def validate_chords(cls, value):
+        if not value:
+            raise ValueError("Chords must be a non-empty list.")
+        for chord in value:
+            if not isinstance(chord, Chord):
+                raise ValueError("Each item in chords must be a valid Chord instance.")
+        return value
+
+    @field_validator('name')
+    def validate_name(cls, value):
+        logger.debug(f"Validating progression name: {value}")
+        if not isinstance(value, str) or not value:
+            raise ValueError("Name must be a non-empty string")
+        return value
 
     @field_validator('key')
     def validate_key(cls, v: str) -> str:
+        logger.debug(f"Validating progression key: {v}")
         if not isinstance(v, str) or not v:
             raise ValueError("Key must be a non-empty string")
         return v
 
     @field_validator('scale_type')
     def validate_scale_type(cls, v: str) -> str:
+        logger.debug(f"Validating progression scale type: {v}")
         valid_types = ['major', 'minor']
         if v not in valid_types:
+            logger.error(f'Invalid scale type: {v}. Must be one of {valid_types}')
             raise ValueError(f'Invalid scale type: {v}. Must be one of {valid_types}')
         return v
 
     @field_validator('complexity')
     def validate_complexity(cls, v: Optional[float]) -> Optional[float]:
+        logger.debug(f"Validating progression complexity: {v}")
         if v is not None and (v < 0 or v > 1):
+            logger.error("Complexity must be between 0 and 1")
             raise ValueError("Complexity must be between 0 and 1")
         return v
 
-    def add_chord(self, chord: Dict) -> None:
+    def add_chord(self, chord: Chord) -> None:
         """Add a chord to the progression."""
         self.chords.append(chord)
 
-    def get_chord_at(self, index: int) -> Dict:
+    def get_chord_at(self, index: int) -> Chord:
         return self.chords[index]
 
-    def get_all_chords(self) -> List[Dict]:
+    def get_all_chords(self) -> List[Chord]:
         """Get all chords in the progression."""
         return self.chords
 
     def get_chord_names(self) -> List[str]:
         """Get the names of all chords in the progression."""
-        return [f"{chord.root.note_name} {chord.quality}" for chord in self.chords]
+        return [chord.root.note_name for chord in self.chords]
 
     def transpose(self, interval: int) -> None:
         """Transpose the entire chord progression by a number of semitones."""
         pass
 
     def to_dict(self) -> Dict[str, Any]:
-        """Convert the chord progression to a dictionary representation."""
+        """Return a dictionary representation of the chord progression."""
         return {
-            "id": self.id,
-            "name": self.name,
-            "chords": [f"{chord.root.note_name} {chord.quality}" for chord in self.chords],
-            "key": self.key,
-            "scale_type": self.scale_type,
-            "complexity": self.complexity
+            'id': self.id,
+            'name': self.name,
+            'chords': [chord.to_dict() for chord in self.chords], 
+            'key': self.key,
+            'scale_type': self.scale_type,
+            'complexity': self.complexity,
         }
 
     def model_dump(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:
@@ -151,7 +172,7 @@ class ChordProgression(BaseModel):
     def __repr__(self) -> str:
         return (f"ChordProgression(key: {self.key!r}, "
                 f"scale_type: {self.scale_type!r}, "
-                f"chords: List[Dict]={self.chords!r})")
+                f"chords: List[Chord]={self.chords!r})")
 
     def json(self, *args: Any, **kwargs: Any) -> str:
         # Override json method to serialize ObjectId to string

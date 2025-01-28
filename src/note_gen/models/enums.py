@@ -37,14 +37,13 @@ class ChordQualityType(Enum):
     DOMINANT = "dominant"
 
     @classmethod
-    def get_scale_intervals(cls, quality_type: 'ChordQualityType') -> List[int]:
+    def get_intervals(cls, quality_type: 'ChordQualityType') -> List[int]:
         intervals = {
             cls.MAJOR: [0, 4, 7],
             cls.MINOR: [0, 3, 7],
             cls.DIMINISHED: [0, 3, 6],
             cls.AUGMENTED: [0, 4, 8],
             cls.DOMINANT_7: [0, 4, 7, 10],
-            cls.DOMINANT: [0, 4, 7, 10],
             cls.MAJOR_7: [0, 4, 7, 11],
             cls.MINOR_7: [0, 3, 7, 10],
             cls.DIMINISHED_7: [0, 3, 6, 9],
@@ -61,13 +60,11 @@ class ChordQualityType(Enum):
             cls.SEVEN_SUS4: [0, 5, 7, 10],
             cls.FLAT_5: [0, 4, 6],
             cls.FLAT_7: [0, 4, 7, 9],
-            cls.SHARP_5: [0, 4, 8],
-            cls.SHARP_7: [0, 4, 7, 11],
         }
-        return intervals.get(quality_type, None)
+        return intervals.get(quality_type, [])
 
     @classmethod
-    def from_string(cls, quality_str: str) -> 'ChordQualityType':
+    def from_string(cls, quality_str: str) -> Optional['ChordQualityType']:
         if not quality_str:
             raise ValueError("Quality string cannot be empty")
         try:
@@ -75,7 +72,7 @@ class ChordQualityType(Enum):
         except KeyError:
             raise ValueError(f"Invalid quality string: {quality_str}")
 
-    def __str__(self):
+    def __str__(self) -> str:
         if self == ChordQualityType.DOMINANT_7:
             return "7"
         if self == ChordQualityType.MAJOR_7:

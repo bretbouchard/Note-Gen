@@ -16,7 +16,7 @@ from src.note_gen.models.enums import ScaleType
 from src.note_gen.models.chord_progression import ChordProgression
 from src.note_gen.models.enums import ChordQualityType
 from src.note_gen.models.rhythm_pattern import RhythmPattern, RhythmNote, RhythmPatternData
-from src.note_gen.models.note_pattern import NotePattern, NotePatternData
+from src.note_gen.models.note_pattern import NotePatternData, NotePatternResponse as NotePattern
 from src.note_gen.models.musical_elements import Note
 import motor.motor_asyncio
 import uuid 
@@ -113,16 +113,15 @@ SAMPLE_RHYTHM_PATTERNS = [
 ]
 
 @pytest.fixture(scope="session")
-def event_loop():
+async def event_loop() -> None:
     """Create an instance of the default event loop for each test case."""
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     yield loop
     loop.close()
 
-
 @pytest.fixture(autouse=True)
-async def clean_test_db(event_loop):
+async def clean_test_db(event_loop: asyncio.AbstractEventLoop) -> None:
     """Clean and initialize test database."""
     try:
         client = motor.motor_asyncio.AsyncIOMotorClient()
@@ -135,12 +134,10 @@ async def clean_test_db(event_loop):
         await db.rhythm_patterns.delete_many({})
         await db.note_patterns.delete_many({})
         
-        # Insert test data
         # ChordProgression test data
         test_chord_progressions = [
             {
-                "_id": "1",
-                "id": "progression_1",
+                "id": "progression_1",  # Unique ID for testing
                 "name": "I-IV-V",
                 "chords": [
                     {"root": {"note_name": "C", "octave": 4}, "quality": ChordQualityType.MAJOR.value},
@@ -159,8 +156,7 @@ async def clean_test_db(event_loop):
         
         # RhythmPattern test data
         test_rhythm_pattern = {
-            "_id": "test_1",
-            "id": "test_1",
+            "id": "test_1",  # Unique ID for testing
             "name": "Test Pattern",
             "data": {
                 "notes": [{"duration": 1.0, "velocity": 100, "position": 0.0}],
@@ -176,8 +172,7 @@ async def clean_test_db(event_loop):
         }
         
         test_note_pattern = {
-            "_id": "1",
-            "id": "pattern_1",
+            "id": "pattern_1",  # Unique ID for testing
             "name": "Test Note Pattern",
             "data": NotePatternData(
                 notes=[
@@ -205,113 +200,26 @@ async def clean_test_db(event_loop):
             "complexity": 0.5,
             "style": "basic"
         }
-        
-        await db.chord_progressions.insert_many(test_chord_progressions)
-        await db.rhythm_patterns.insert_one(test_rhythm_pattern)
-        await db.note_patterns.insert_one(test_note_pattern)
-        
-        yield db
-        await client.close()
-        
-        # Insert multiple rhythm patterns
-        test_rhythm_patterns = [
-            {
-                "_id": "test_1",
-                "id": "test_1",
-                "name": "Basic Quarter Notes",
-                "data": RhythmPatternData(
-                    notes=[
-                        RhythmNote(position=0.0, duration=1.0, velocity=100, is_rest=False),
-                        RhythmNote(position=1.0, duration=1.0, velocity=100, is_rest=False),
-                        RhythmNote(position=2.0, duration=1.0, velocity=100, is_rest=False),
-                        RhythmNote(position=3.0, duration=1.0, velocity=100, is_rest=False)
-                    ],
-                    time_signature="4/4",
-                    swing_ratio=0.67,
-                    default_duration=1.0,
-                    total_duration=4.0,
-                    groove_type="straight",
-                    duration=4.0
-                ),
-                "description": "Basic quarter note pattern",
-                "tags": ["test"],
-                "complexity": 1.0,
-                "style": "basic"
-            },
-            {
-                "_id": "test_2",
-                "id": "test_2",
-                "name": "Swing Eighth Notes",
-                "data": RhythmPatternData(
-                    notes=[
-                        RhythmNote(position=0.0, duration=0.5, velocity=100, is_rest=False),
-                        RhythmNote(position=0.5, duration=0.5, velocity=100, is_rest=False),
-                        RhythmNote(position=1.0, duration=0.5, velocity=100, is_rest=False),
-                        RhythmNote(position=1.5, duration=0.5, velocity=100, is_rest=False)
-                    ],
-                    time_signature="4/4",
-                    swing_ratio=0.5,
-                    default_duration=0.5,
-                    total_duration=4.0,
-                    groove_type="swing",
-                    duration=4.0
-                ),
-                "description": "Swing eighth note pattern",
-                "tags": ["test"],
-                "complexity": 1.0,
-                "style": "swing"
-            }
-        ]
-        
-        # Insert the rhythm patterns into the database
-        
-        # Insert test note pattern data
-        test_note_pattern = {
-            "_id": "1",
-            "id": "pattern_1",
-            "name": "Test Note Pattern",
-            "data": NotePatternData(
-                notes=[
-                    {
-                        "note_name": "C",
-                        "octave": 4,
-                        "duration": 1.0,
-                        "velocity": 100
-                    }
-                ],
-                intervals=[2, 2, 1, 2, 2, 2, 1],
-                duration=1.0,
-                position=0.0,
-                velocity=100,
-                direction="up",
-                use_chord_tones=False,
-                use_scale_mode=False,
-                arpeggio_mode=False,
-                restart_on_chord=False,
-                octave_range=[4, 5],
-                default_duration=1.0
-            ).model_dump(),
-            "description": "Test pattern",
-            "tags": ["test"],
-            "complexity": 0.5,
-            "style": "basic"
-        }
-        
-        await db.chord_progressions.insert_many(test_chord_progressions)
-        await db.rhythm_patterns.insert_one(test_rhythm_pattern)
-        await db.rhythm_patterns.insert_many(test_rhythm_patterns)
 
+        # Insert test data into the database
+        await db.chord_progressions.insert_many(test_chord_progressions)
+        await db.rhythm_patterns.insert_one(test_rhythm_pattern)
         await db.note_patterns.insert_one(test_note_pattern)
-        
+
+        # Invalid data test
+        await db.chord_progressions.insert_one({"id": "invalid_id", "name": "Invalid Chord Progression", "chords": []})
+        with pytest.raises(ValueError, match="Invalid chord progression data"):
+            await fetch_chord_progressions(db)  # Expecting a ValueError for invalid data
+
         yield db
-        await client.close()
+        client.close()  # Ensure client is closed after all operations
 
     except Exception as e:
         print(f"An error occurred: {e}")
         raise
 
 @pytest.mark.asyncio
-async def test_fetch_chord_progressions(clean_test_db):
+async def test_fetch_chord_progressions(clean_test_db) -> None:
     """Test fetching chord progressions."""
     result = await fetch_chord_progressions(clean_test_db)
     assert len(result) > 0
@@ -319,20 +227,20 @@ async def test_fetch_chord_progressions(clean_test_db):
 
 
 @pytest.mark.asyncio
-async def test_fetch_chord_progression_by_id(clean_test_db):
+async def test_fetch_chord_progression_by_id(clean_test_db) -> None:
     db = clean_test_db
-    progression_id = "1"
+    progression_id = "progression_1"
     result = await fetch_chord_progression_by_id(progression_id, db)
     assert result is not None
 
 @pytest.mark.asyncio
-async def test_fetch_rhythm_patterns(clean_test_db):
+async def test_fetch_rhythm_patterns(clean_test_db) -> None:
     db = clean_test_db
     result = await fetch_rhythm_patterns(db)
     assert result is not None
 
 @pytest.mark.asyncio
-async def test_fetch_rhythm_pattern_by_id(clean_test_db):
+async def test_fetch_rhythm_pattern_by_id(clean_test_db) -> None:
     """Test fetching rhythm pattern by ID."""
     pattern_id = "test_1"
     result = await fetch_rhythm_pattern_by_id(pattern_id, clean_test_db)
@@ -341,13 +249,12 @@ async def test_fetch_rhythm_pattern_by_id(clean_test_db):
 
 
 @pytest.mark.asyncio
-async def test_fetch_note_patterns(clean_test_db):
+async def test_fetch_note_patterns(clean_test_db) -> None:
     """Test fetching note patterns."""
     db = clean_test_db
 
     test_pattern = {
-        "_id": f"test_{uuid.uuid4()}",
-        "id": "test_pattern",
+        "id": "pattern_2",
         "name": "Test Pattern",
         "data": NotePatternData(
             notes=[
@@ -382,15 +289,15 @@ async def test_fetch_note_patterns(clean_test_db):
     assert isinstance(result[0], NotePattern)
 
 @pytest.mark.asyncio
-async def test_fetch_note_pattern_by_id(clean_test_db):
+async def test_fetch_note_pattern_by_id(clean_test_db) -> None:
     """Test fetching note pattern by ID."""
-    pattern_id = "6796b4f614a3818c72f38e86"
+    pattern_id = "pattern_1"
     result = await fetch_note_pattern_by_id(pattern_id, clean_test_db)
     assert result is not None
     assert isinstance(result, NotePattern)
 
 @pytest.mark.asyncio 
-async def test_fetch_with_invalid_data(clean_test_db):
+async def test_fetch_with_invalid_data(clean_test_db) -> None:
     db = clean_test_db
     # Insert invalid data directly into the test database
     await db.chord_progressions.insert_one({"id": "invalid_id", "name": "Invalid Chord Progression", "chords": []})
@@ -398,36 +305,44 @@ async def test_fetch_with_invalid_data(clean_test_db):
         await fetch_chord_progressions(db)
 
 @pytest.mark.asyncio
-async def test_fetch_chord_progressions_with_new_data(clean_test_db):
+async def test_fetch_chord_progressions_with_new_data(clean_test_db) -> None:
     db = clean_test_db
     result = await fetch_chord_progressions(db)
     assert len(result) > 0
 
 @pytest.mark.asyncio
-async def test_fetch_note_patterns_with_new_data(clean_test_db):
+async def test_fetch_note_patterns_with_new_data(clean_test_db) -> None:
     db = clean_test_db
     result = await fetch_note_patterns(db)
     assert len(result) > 0
 
 @pytest.mark.asyncio
-async def test_fetch_rhythm_patterns_with_new_data(clean_test_db):
+async def test_fetch_rhythm_patterns_with_new_data(clean_test_db) -> None:
     """Test fetching rhythm patterns with new data."""
     db = clean_test_db
 
     test_pattern = {
-        "_id": f"test_{uuid.uuid4()}",
-        "id": "test_pattern",
+        "id": "test_2",
         "name": "Test Pattern",
-        "data": {
-            "notes": [{"duration": 1.0, "velocity": 100, "position": 0.0}],
-            "time_signature": "4/4",
-            "swing_ratio": 0.67,
-            "default_duration": 1.0,
-            "total_duration": 4.0,
-            "groove_type": "straight",
-            "duration": 4.0,
-            "style": "basic"
-        }, 
+        "data": RhythmPatternData(
+            notes=[
+                RhythmNote(position=0.0, duration=1.0, velocity=100, is_rest=False),
+                RhythmNote(position=1.0, duration=1.0, velocity=100, is_rest=False),
+                RhythmNote(position=2.0, duration=1.0, velocity=100, is_rest=False),
+                RhythmNote(position=3.0, duration=1.0, velocity=100, is_rest=False)
+            ],
+            time_signature="4/4",
+            swing_enabled=False,
+            humanize_amount=0.0,
+            swing_ratio=0.67,
+            style="basic",
+            default_duration=1.0,
+            total_duration=4.0,
+            accent_pattern=[],
+            groove_type="straight",
+            variation_probability=0.0,
+            duration=4.0
+        ).model_dump(),
         "description": "Test rhythm pattern",
         "tags": ["test"],
         "complexity": 1.0,
@@ -441,7 +356,7 @@ async def test_fetch_rhythm_patterns_with_new_data(clean_test_db):
 
 
 @pytest.mark.asyncio
-async def test_process_chord_data():
+async def test_process_chord_data() -> None:
     """Test processing chord data."""
     valid_data = {
         'root': {'note_name': 'C', 'octave': 4, 'duration': 1.0, 'velocity': 100},

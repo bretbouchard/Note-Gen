@@ -1,6 +1,7 @@
 # src/note_gen/models/musical_elements.py
 from typing import List, Optional, Union, Any, Dict
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+from enum import Enum
 
 import logging
 
@@ -11,51 +12,77 @@ logger = logging.getLogger(__name__)
 from src.note_gen.models.enums import ChordQualityType
 from src.note_gen.models.note import Note
 
-__all__ = ['Note', 'ChordQuality', 'Chord']
+__all__ = ['Note', 'ChordQualityType', 'Chord']
 
 
-class ChordQuality(BaseModel):
-    """Model for chord quality."""
+class ChordQualityType(str, Enum):
+    MAJOR = "major"
+    MINOR = "minor"
+    DIMINISHED = "diminished"
+    AUGMENTED = "augmented"
+    MAJOR_7 = "maj7"
+    MINOR_7 = "m7"
+    DIMINISHED_7 = "dim7"
+    AUGMENTED_7 = "augmented_7"
+    SUS2 = "sus2"
+    SUS4 = "sus4"
+    DOMINANT = "dominant"
+    DOMINANT_7 = "dominant_7"
+    DOMINANT_9 = "dominant_9"
+    DOMINANT_11 = "dominant_11"
+    HALF_DIMINISHED_7 = "m7b5"
+    MAJOR_9 = "major_9"
+    MINOR_9 = "minor_9"
+    MAJOR_11 = "major_11"
+    MINOR_11 = "minor_11"
+    SEVEN_SUS4 = "seven_sus4"
+    FLAT_5 = "flat_5"
+    FLAT_7 = "flat_7"
+    SHARP_5 = "sharp_5"
+    SHARP_7 = "sharp_7"
 
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-
-    quality_type: ChordQualityType = Field(default=ChordQualityType.MAJOR)
-    has_seventh: bool = Field(default=False)
-    has_ninth: bool = Field(default=False)
-    has_eleventh: bool = Field(default=False)
-    is_diminished: bool = Field(default=False)
-    is_augmented: bool = Field(default=False)
+    _ALIASES: Dict[str, str] = {
+        "M": "major",
+        "maj": "major",
+        "m": "minor",
+        "min": "minor",
+        "dim": "diminished",
+        "°": "diminished",
+        "aug": "augmented",
+        "+": "augmented",
+        "7": "dominant_7",
+        "ø7": "m7b5",
+    }
 
     @classmethod
-    def from_str(cls, quality_str: str) -> "ChordQuality":
-        """Create a ChordQuality from a string."""
-        quality_map = {
-            'major': ChordQualityType.MAJOR,
-            'minor': ChordQualityType.MINOR,
-            'diminished': ChordQualityType.DIMINISHED,
-            'augmented': ChordQualityType.AUGMENTED,
-            'dominant': ChordQualityType.DOMINANT,
-            'dominant7': ChordQualityType.DOMINANT_7,
-            'major7': ChordQualityType.MAJOR_7,
-            'minor7': ChordQualityType.MINOR_7,
-            'diminished7': ChordQualityType.DIMINISHED_7,
-            'half_diminished7': ChordQualityType.HALF_DIMINISHED_7,
-            'augmented7': ChordQualityType.AUGMENTED_7,
-            'major9': ChordQualityType.MAJOR_9,
-            'minor9': ChordQualityType.MINOR_9,
-            'dominant9': ChordQualityType.DOMINANT_9,
-            'major11': ChordQualityType.MAJOR_11,
-            'minor11': ChordQualityType.MINOR_11,
-            'dominant11': ChordQualityType.DOMINANT_11,
-            'sus2': ChordQualityType.SUS2,
-            'sus4': ChordQualityType.SUS4,
-            'seven_sus4': ChordQualityType.SEVEN_SUS4,
-            'flat_5': ChordQualityType.FLAT_5,
-            'flat_7': ChordQualityType.FLAT_7,
-            'sharp_5': ChordQualityType.SHARP_5,
-            'sharp_7': ChordQualityType.SHARP_7,
+    def from_string(cls, quality_str: str) -> 'ChordQualityType':
+        if not quality_str:
+            raise ValueError("Quality string cannot be empty")
+        quality_str = quality_str.lower()  # Convert to lowercase for consistency
+        # Check if the quality_str is in the aliases
+        if quality_str in cls._ALIASES:
+            quality_str = cls._ALIASES[quality_str]  # Map alias to full name
+        try:
+            return cls[quality_str.upper()]
+        except KeyError:
+            raise ValueError(f"Invalid quality string: {quality_str}")
+
+    def get_intervals(self) -> List[int]:
+        INTERVALS = {
+            ChordQualityType.MAJOR: [0, 4, 7],
+            ChordQualityType.MINOR: [0, 3, 7],
+            ChordQualityType.DIMINISHED: [0, 3, 6],
+            ChordQualityType.AUGMENTED: [0, 4, 8],
+            ChordQualityType.MAJOR_7: [0, 4, 7, 11],
+            ChordQualityType.MINOR_7: [0, 3, 7, 10],
+            ChordQualityType.DIMINISHED_7: [0, 3, 6, 9],
+            ChordQualityType.DOMINANT_7: [0, 4, 7, 10],
+            ChordQualityType.HALF_DIMINISHED_7: [0, 3, 6, 10],
         }
-        return cls(quality_type=quality_map.get(quality_str.lower(), ChordQualityType.MAJOR))
+        return INTERVALS[self]
+
+    def __str__(self) -> str:
+        return self.value
 
 
 class Chord(BaseModel):
@@ -80,25 +107,22 @@ class Chord(BaseModel):
             raise ValueError("Root must be a valid Note instance with a specified octave, note_name, duration, and velocity.")
         return value
 
-    def __init__(self, root: Union[Note, Dict[str, Any]], quality: Union[str, ChordQualityType], notes: Optional[List[Note]] = None, inversion: int = 0):
-        logger.debug(f"Initializing Chord with root: {root}, quality: {quality}")
-        if isinstance(root, dict):
-            root = Note(**root)  # Convert dictionary to Note instance
-        if isinstance(quality, str):
-            if quality not in [q.value for q in ChordQualityType]:
-                logger.error(f"Invalid quality: '{quality}'. Must be one of: {[q.value for q in ChordQualityType]}")
-                raise ValueError(f"Invalid quality: '{quality}'. Must be one of: {[q.value for q in ChordQualityType]}")
-            quality = ChordQualityType(quality)
-        if notes is None:
-            notes = []  # Initialize to an empty list if not provided
-
-        super().__init__(root=root, quality=quality, notes=notes, inversion=inversion)
-
+    def __init__(self, **data):
+        logger.debug(f"Initializing Chord with data: {data}")
+        super().__init__(**data)
+        if isinstance(data.get('root'), dict):
+            data['root'] = Note(**data['root'])  # Convert dictionary to Note instance
+        if isinstance(data.get('quality'), str):
+            if data['quality'] not in [q.value for q in ChordQualityType]:
+                logger.error(f"Invalid quality: '{data['quality']}'. Must be one of: {[q.value for q in ChordQualityType]}")
+                raise ValueError(f"Invalid quality: '{data['quality']}'. Must be one of: {[q.value for q in ChordQualityType]}")
+            data['quality'] = ChordQualityType(data['quality'])
+        if data.get('notes') is None:
+            data['notes'] = []  # Initialize to an empty list if not provided
         # Generate notes based on root and quality
-        self.notes = self._generate_chord_notes(root, quality)
-
-        if inversion > 0:
-            self.notes = self._apply_inversion(self.notes, inversion)
+        self.notes = self._generate_chord_notes(data['root'], data['quality'])
+        if data.get('inversion', 0) > 0:
+            self.notes = self._apply_inversion(self.notes, data['inversion'])
 
     @field_validator('inversion')
     def validate_inversion(cls, v: int) -> int:
@@ -108,49 +132,22 @@ class Chord(BaseModel):
 
     def _generate_chord_notes(self, root: Note, quality: ChordQualityType) -> List[Note]:
         logger.debug(f"Starting note generation for quality: {quality}")
-        intervals = {
-            ChordQualityType.MAJOR: [0, 4, 7],
-            ChordQualityType.MINOR: [0, 3, 7],
-            ChordQualityType.DIMINISHED: [0, 3, 6],
-            ChordQualityType.AUGMENTED: [0, 4, 8],
-            ChordQualityType.MAJOR_7: [0, 4, 7, 11],
-            ChordQualityType.MINOR_7: [0, 3, 7, 10],
-            ChordQualityType.DIMINISHED_7: [0, 3, 6, 9],
-            ChordQualityType.AUGMENTED_7: [0, 4, 8, 11],
-            ChordQualityType.SUS2: [0, 2, 7],
-            ChordQualityType.SUS4: [0, 5, 7],
-            ChordQualityType.DOMINANT: [0, 4, 7],
-            ChordQualityType.DOMINANT_7: [0, 4, 7, 10],
-            ChordQualityType.DOMINANT_9: [0, 4, 7, 10, 14],
-            ChordQualityType.DOMINANT_11: [0, 4, 7, 10, 14, 17],
-            ChordQualityType.HALF_DIMINISHED_7: [0, 3, 6, 10],
-            ChordQualityType.MAJOR_9: [0, 4, 7, 11, 14],
-            ChordQualityType.MINOR_9: [0, 3, 7, 10, 14],
-            ChordQualityType.MAJOR_11: [0, 4, 7, 11, 14, 17],
-            ChordQualityType.MINOR_11: [0, 3, 7, 10, 14, 17],
-            ChordQualityType.SEVEN_SUS4: [0, 5, 7, 10],
-            ChordQualityType.FLAT_5: [0, 4, 6],
-            ChordQualityType.FLAT_7: [0, 4, 7, 9],
-            ChordQualityType.SHARP_5: [0, 4, 8],
-            ChordQualityType.SHARP_7: [0, 4, 7, 11],
-        }
+        intervals = quality.get_intervals()
         logger.debug(f"Intervals defined: {intervals}")
-
-        if quality not in intervals:
-            logger.error(f"Invalid quality: '{quality}'. Must be one of: {[q.value for q in ChordQualityType]}")
-            raise ValueError(f"Invalid quality: '{quality}'. Must be one of: {[q.value for q in ChordQualityType]}")
 
         notes = [root]
         logger.debug(f"Starting note generation for quality: {quality}")
-        for interval in intervals[quality][1:]:
+        for interval in intervals[1:]:
             transposed_note = root.transpose(interval)  # Call transpose on the root note
             logger.debug(f"Transposed note: {transposed_note} for interval: {interval}")
             if quality == ChordQualityType.DIMINISHED:
                 if transposed_note.note_name == 'D#':
-                    transposed_note.note_name = 'Eb'  # Change D# to Eb
-                if transposed_note.note_name == 'F#':
-                    transposed_note.note_name = 'Gb'  # Change F# to Gb
-            notes.append(transposed_note)
+                    transposed_note.note_name = 'Eb'
+                elif transposed_note.note_name == 'F#':
+                    transposed_note.note_name = 'Gb'
+                notes.append(transposed_note)
+            else:
+                notes.append(transposed_note)
         logger.debug(f"Generated notes: {notes}")
         return notes
 
@@ -188,6 +185,11 @@ class Chord(BaseModel):
         logger.debug(f"Transposed chord: {new_root}, {new_notes}")
         return Chord(root=new_root, quality=self.quality, notes=new_notes, inversion=self.inversion)
 
+    def to_dict(self) -> str:
+        """Return a string representation of the chord name."""
+        return f'{self.root.note_name} {self.quality.value}'
+
+        
     def __str__(self) -> str:
         """String representation of the chord."""
         return (

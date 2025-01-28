@@ -42,6 +42,7 @@ async def get_client() -> AsyncIOMotorClient[Any]:
     with _client_lock:
         if _client is None:
             logger.debug("Initializing MongoDB client...")
+            logger.debug(f"Connecting to MongoDB at {MONGO_URL}")
             try:
                 _client = AsyncIOMotorClient(
                     MONGO_URL,
@@ -68,10 +69,8 @@ async def get_db() -> AsyncGenerator[AsyncIOMotorDatabase[Any], None]:
         db_name = TEST_DB_NAME if os.getenv("TESTING") else DB_NAME
         logger.debug(f"Using database: {db_name}")
         _db = client[db_name]
-    
-    if _db is None:
-        logger.error("Database connection is not initialized.")
-        raise RuntimeError("Database connection is not available.")
+        logger.info(f"Successfully connected to database: {db_name}")
+        logger.info(f"Database connection established for database: {db_name}")
     
     try:
         yield _db

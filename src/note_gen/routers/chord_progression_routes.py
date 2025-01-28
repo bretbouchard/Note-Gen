@@ -1,7 +1,7 @@
 # src/note_gen/routers/chord_progression_routes.py
 
 from fastapi import APIRouter, HTTPException, Depends
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 from typing import List
 from bson import ObjectId
 from motor import motor_asyncio
@@ -63,18 +63,20 @@ async def get_all_chord_progressions(db: motor_asyncio.AsyncIOMotorDatabase = De
     try:
         progressions = await db.chord_progressions.find().to_list(length=None)
         logger.info(f"Fetched {len(progressions)} chord progressions")
+        logger.debug(f"Fetched chord progressions data: {progressions}")
+        logger.debug(f"Progressions before processing: {progressions}")  # Log the fetched data
         valid_progressions = []
         for progression in progressions:
             logger.debug(f"Processing progression: {progression}")
-            for field, value in progression.items():
-                if isinstance(value, ObjectId):
-                    progression[field] = str(value)
             # Check for required fields
-            if "chords" in progression and "key" in progression and "scale_type" in progression:
+            if 'name' not in progression or 'chords' not in progression:
+                logger.warning(f"Missing required fields in progression: {progression}")
+                continue
+            # Validate and create ChordProgression instance
+            try:
                 valid_progressions.append(ChordProgression(**progression))
-            else:
-                logger.error(f"Missing required fields in progression: {progression}")
-        logger.debug(f"Serialized progressions: {valid_progressions}")
+            except ValidationError as e:
+                logger.error(f"Validation error for progression {progression}: {e}")
         return valid_progressions
     except Exception as e:
         logger.error(f"Error fetching chord progressions: {e}", exc_info=True)

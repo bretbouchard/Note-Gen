@@ -54,7 +54,7 @@ class ScaleInfo(BaseModel):
         scale = Scale(root=self.root, scale_type=self.scale_type)
         return scale.get_note_at_degree(degree)
 
-    def get_chord_quality_for_degree(self, degree: ScaleDegree) -> ChordQualityType:
-        if degree.value < 1 or degree.value > 7:
+    def get_chord_quality_for_degree(self, degree: int) -> ChordQualityType:
+        if degree < 1 or degree > 7:
             raise ValueError("Degree must be between 1 and 7")
-        return self.MAJOR_SCALE_QUALITIES[degree.value] if self.scale_type == ScaleType.MAJOR else self.MINOR_SCALE_QUALITIES[degree.value]
+        return self.MAJOR_SCALE_QUALITIES[degree] if self.scale_type == ScaleType.MAJOR else self.MINOR_SCALE_QUALITIES[degree]

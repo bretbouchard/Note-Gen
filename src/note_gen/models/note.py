@@ -236,6 +236,16 @@ class Note(BaseModel):
             raise ValueError(f"Unrecognized note name: {note_name}")
         return note_to_semitone[note_name] + (octave + 1) * 12
 
+    def to_dict(self) -> Dict[str, Any]:
+        """Return a dictionary representation of the note, including stored_midi_number."""
+        return {
+            'note_name': self.note_name,
+            'octave': self.octave,
+            'duration': self.duration,
+            'velocity': self.velocity,
+            'stored_midi_number': self.stored_midi_number
+        }  
+
     def get_note_at_interval(self, interval: int) -> str:
         """Get the note name at the specified interval from this note."""
         base_semitone = self.NOTE_TO_SEMITONE[self.note_name]

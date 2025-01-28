@@ -1,8 +1,20 @@
 import unittest
-from src.note_gen.models.chord_quality import ChordQuality
 from src.note_gen.models.enums import ChordQualityType
 
 class TestChordQuality(unittest.TestCase):
+    def test_from_string_invalid(self) -> None:
+        """Test that invalid chord quality strings raise ValueError."""
+        invalid_qualities = [
+            "invalid_quality",
+            "nonexistent",
+            "",
+            "123",
+        ]
+        for quality in invalid_qualities:
+            with self.subTest(quality=quality):
+                with self.assertRaises(ValueError):
+                    ChordQualityType.from_string(quality)
+
     def test_from_string_valid(self) -> None:
         """Test that valid chord quality strings are correctly converted."""
         test_cases = [
@@ -15,7 +27,7 @@ class TestChordQuality(unittest.TestCase):
             ("diminished", ChordQualityType.DIMINISHED),
             ("dim", ChordQualityType.DIMINISHED),
             ("°", ChordQualityType.DIMINISHED),
-            ("dominant_7", ChordQualityType.DOMINANT_7),  # Change here
+            ("dominant_7", ChordQualityType.DOMINANT_7),
             ("maj7", ChordQualityType.MAJOR_7),
             ("m7", ChordQualityType.MINOR_7),
             ("dim7", ChordQualityType.DIMINISHED_7),
@@ -24,32 +36,12 @@ class TestChordQuality(unittest.TestCase):
             ("aug", ChordQualityType.AUGMENTED),
             ("+", ChordQualityType.AUGMENTED),
             ('dominant', ChordQualityType.DOMINANT),
-            ('7', ChordQualityType.DOMINANT_7),  # Ensure '7' is passed as a string
+            ('7', ChordQualityType.DOMINANT_7),
         ]
-        
         for input_str, expected_type in test_cases:
             with self.subTest(input_str=input_str):
-                chord_quality = ChordQuality.from_string(input_str)
-                self.assertEqual(
-                    chord_quality.quality_type, 
-                    expected_type,
-                    f"Expected {input_str} to convert to {expected_type}, got {chord_quality.quality_type}"
-                )
-
-    def test_from_string_invalid(self) -> None:
-        """Test that invalid chord quality strings raise ValueError."""
-        invalid_qualities = [
-            "not_a_quality",
-            "",
-            "invalid",
-            "123",
-            None,  # type: ignore
-        ]
-        
-        for invalid_str in invalid_qualities:
-            with self.subTest(invalid_str=invalid_str):
-                with self.assertRaises(ValueError):
-                    ChordQuality.from_string(invalid_str)
+                chord_quality = ChordQualityType.from_string(input_str)
+                self.assertEqual(chord_quality, expected_type)
 
     def test_get_intervals(self) -> None:
         """Test that correct intervals are returned for each chord quality."""
@@ -64,12 +56,10 @@ class TestChordQuality(unittest.TestCase):
             (ChordQualityType.DIMINISHED_7, [0, 3, 6, 9]),
             (ChordQualityType.HALF_DIMINISHED_7, [0, 3, 6, 10]),
         ]
-        
         for quality_type, expected_intervals in test_cases:
             with self.subTest(quality_type=quality_type):
-                chord_quality = ChordQuality(quality_type=quality_type)
                 self.assertEqual(
-                    chord_quality.get_intervals(),
+                    quality_type.get_intervals(),
                     expected_intervals,
                     f"Expected {quality_type} to have intervals {expected_intervals}"
                 )
@@ -88,12 +78,12 @@ class TestChordQuality(unittest.TestCase):
         
         for quality_type, expected_str in test_cases:
             with self.subTest(quality_type=quality_type):
-                chord_quality = ChordQuality(quality_type=quality_type)
                 self.assertEqual(
-                    str(chord_quality),
+                    str(quality_type),
                     expected_str,
                     f"Expected str({quality_type}) to be {expected_str}"
                 )
+
 
 if __name__ == "__main__":
     unittest.main()
