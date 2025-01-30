@@ -14,7 +14,7 @@ async def test_note_sequence(client: httpx.AsyncClient):
         "progression_name": "I-IV-V",  # Updated to a valid progression
         "note_pattern_name": "Simple Triad",  # Example note pattern
         "rhythm_pattern_name": "quarter_notes",  # Example rhythm pattern
-        "scale_info": {"root": {"note_name": "C", "octave": 4}, "scale_type": "major"}
+        "scale_info": {"root": {"note_name": "C", "octave": 4}, "scale_type": ""}
     }
 
     response = await client.post("/generate-sequence", json=request_data)
@@ -48,8 +48,8 @@ async def test_note_sequence_functionality(client):
         "progression_name": "I-IV-V",  # Updated to a valid progression
         "note_pattern_name": "Simple Triad",  # Example note pattern
         "rhythm_pattern_name": "quarter_notes",  # Example rhythm pattern
-        "scale_info": {"root": {"note_name": "C", "octave": 4}, "scale_type": "major"}
-    }
+        "scale_info": {"root": {"note_name": "C", "octave": 4}, "scale_type": "MAJOR"}
+    }   
 
     response = await client.post("/generate-sequence", json=request_data)
     assert response.status_code == 200

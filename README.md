@@ -152,7 +152,7 @@ POST /generate/chord
 {
     "chord": {
         "root": 1,
-        "quality": "major",
+        "quality": "MAJOR",
         "duration": 4
     }
 }
@@ -164,13 +164,13 @@ Generate a random chord progression
 POST /generate/progression/random
 {
     "length": 4,
-    "scale": "C major"
+    "scale": "C MAJOR"
 }
 ```
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.
+Contributions are welcome! Please feel free to submit a Pull Request. For MAJOR changes, please open an issue first to discuss what you would like to change.
 
 ## License
 

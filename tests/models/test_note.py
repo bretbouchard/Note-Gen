@@ -177,15 +177,15 @@ def test_normalize_note_name_edge_cases() -> None:
 def test_fill_missing_fields_invalid_dict() -> None:
     with pytest.raises(ValueError, match="Unrecognized note name"):
         Note.fill_missing_fields({"note_name": "Invalid", "octave": 4})
-    with pytest.raises(ValueError, match="Invalid octave:"):
-        Note.fill_missing_fields({"note_name": "C", "octave": 10})  # Invalid octave # Invalid octave
+    with pytest.raises(ValueError, match="Octave must be between 0 and 8: 10"):
+        Note.fill_missing_fields({"note_name": "C", "octave": 10})  # Invalid octave
 
 def test_check_validations_invalid_duration() -> None:
     with pytest.raises(ValueError, match="Input should be greater than 0"):
         Note(note_name="C", octave=4, duration=0, velocity=64)  # Invalid duration
 
 def test_check_validations_invalid_octave() -> None:
-    with pytest.raises(ValueError, match="Invalid octave: 9"):
+    with pytest.raises(ValueError, match="Octave must be between 0 and 8: 9"):
         Note.fill_missing_fields({"note_name": "C", "octave": 9})
 
 def test_midi_number_calculation() -> None:

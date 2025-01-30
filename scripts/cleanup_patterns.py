@@ -1,11 +1,8 @@
 # scripts/cleanup_patterns.py
 from motor.motor_asyncio import AsyncIOMotorClient
 from typing import Dict, Any
-import logging
 import asyncio
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 # [Note and RhythmNote classes remain unchanged]
 class Note:
@@ -86,7 +83,7 @@ def validate_chord_progression(progression: Dict[str, Any]) -> bool:
         return True
         
     valid_keys = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
-    valid_scale_types = ['major', 'minor', 'harmonic_minor', 'melodic_minor']
+    valid_scale_types = ['MAJOR', 'MINOR', 'HARMONIC_MINOR', 'MELODIC_MINOR']
     
     if not progression.get('chords') or not isinstance(progression['chords'], list):
         return False
@@ -106,33 +103,33 @@ async def cleanup_database() -> None:
     try:
         # Remove patterns without IDs
         result = await db.note_patterns.delete_many({"id": {"$exists": False}})
-        logger.info(f"Removed {result.deleted_count} note patterns without IDs")
+        print(f"Removed {result.deleted_count} note patterns without IDs")
 
         result = await db.rhythm_patterns.delete_many({"id": {"$exists": False}})
-        logger.info(f"Removed {result.deleted_count} rhythm patterns without IDs")
+        print(f"Removed {result.deleted_count} rhythm patterns without IDs")
 
         # Clean up note patterns
         async for pattern in db.note_patterns.find({}):
             if not validate_note_pattern(pattern):
                 await db.note_patterns.delete_one({'_id': pattern['_id']})
-                logger.info(f"Deleted invalid note pattern: {pattern.get('name', 'unnamed')}")
+                print(f"Deleted invalid note pattern: {pattern.get('name', 'unnamed')}")
         
         # Clean up rhythm patterns
         async for pattern in db.rhythm_patterns.find({}):
             if not validate_rhythm_pattern(pattern):
                 await db.rhythm_patterns.delete_one({'_id': pattern['_id']})
-                logger.info(f"Deleted invalid rhythm pattern: {pattern.get('name', 'unnamed')}")
+                print(f"Deleted invalid rhythm pattern: {pattern.get('name', 'unnamed')}")
         
         # Clean up chord progressions
         async for progression in db.chord_progressions.find({}):
             if not validate_chord_progression(progression):
                 await db.chord_progressions.delete_one({'_id': progression['_id']})
-                logger.info(f"Deleted invalid chord progression: {progression.get('name', 'unnamed')}")
+                print(f"Deleted invalid chord progression: {progression.get('name', 'unnamed')}")
         
-        logger.info("Database cleanup completed successfully")
+        print("Database cleanup completed successfully")
     
     except Exception as e:
-        logger.error(f"Error during cleanup: {e}")
+        print(f"Error during cleanup: {e}")
     finally:
         client.close()
 

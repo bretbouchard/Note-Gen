@@ -26,7 +26,7 @@ class FakeScaleInfo(ScaleInfo):
     @field_validator('scale_type')
     def validate_scale_type(cls, value: ScaleType) -> ScaleType:
         if value not in [ScaleType.MAJOR, ScaleType.MINOR]:
-            raise ValueError("Scale type must be either 'major' or 'minor'")
+            raise ValueError("Scale type must be either 'MAJOR' or 'MINOR'")
         return value
 
     @classmethod

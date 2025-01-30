@@ -18,20 +18,20 @@ async def seed_test_db():
             {
                 'name': 'Sample Progression 1',
                 'chords': [
-                    {'root': {'note_name': 'C', 'octave': 4}, 'quality': 'major'},
-                    {'root': {'note_name': 'G', 'octave': 4}, 'quality': 'major'}
+                    {'root': {'note_name': 'C', 'octave': 4}, 'quality': 'MAJOR'},
+                    {'root': {'note_name': 'G', 'octave': 4}, 'quality': 'MAJOR'}
                 ],
                 'key': 'C',
-                'scale_type': 'major'
+                'scale_type': 'MAJOR'
             },
             {
                 'name': 'Sample Progression 2',
                 'chords': [
-                    {'root': {'note_name': 'D', 'octave': 4}, 'quality': 'minor'},
-                    {'root': {'note_name': 'A', 'octave': 4}, 'quality': 'major'}
+                    {'root': {'note_name': 'D', 'octave': 4}, 'quality': 'MINOR'},
+                    {'root': {'note_name': 'A', 'octave': 4}, 'quality': 'MAJOR'}
                 ],
                 'key': 'D',
-                'scale_type': 'minor'
+                'scale_type': 'MINOR'
             }
         ])
         logger.info(f'Successfully inserted {len(result.inserted_ids)} chord progressions.')

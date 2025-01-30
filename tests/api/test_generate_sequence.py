@@ -18,7 +18,7 @@ async def test_generate_sequence_from_presets(client) -> None:
                 "note_name": "C",
                 "octave": 4
             },
-            "scale_type": "major"
+            "scale_type": "MAJOR"
         }
     }
     response = await client.post("/generate-sequence", json=request_data)
@@ -59,7 +59,7 @@ async def test_generate_sequence_invalid_progression(client) -> None:
                 "note_name": "C",
                 "octave": 4
             },
-            "scale_type": "major"
+            "scale_type": "MAJOR"
         }
     }
     response = await client.post("/generate-sequence", json=request_data)
@@ -77,7 +77,7 @@ async def test_generate_sequence_invalid_note_pattern(client) -> None:
                 "note_name": "C",
                 "octave": 4
             },
-            "scale_type": "major"
+            "scale_type": "MAJOR"
         }
     }
     response = await client.post("/generate-sequence", json=request_data)
@@ -95,7 +95,7 @@ async def test_generate_sequence_invalid_rhythm_pattern(client) -> None:
                 "note_name": "C",
                 "octave": 4
             },
-            "scale_type": "major"
+            "scale_type": "MAJOR"
         }
     }
     response = await client.post("/generate-sequence", json=request_data)
@@ -108,7 +108,7 @@ async def test_note_sequence(client):
         "progression_name": "I-IV-V",  # Updated to a valid progression
         "note_pattern_name": "Simple Triad",  # Example note pattern
         "rhythm_pattern_name": "quarter_notes",  # Example rhythm pattern
-        "scale_info": {"root": {"note_name": "C", "octave": 4}, "scale_type": "major"}
+        "scale_info": {"root": {"note_name": "C", "octave": 4}, "scale_type": "MAJOR"}
     }
 
     response = await client.post("/generate-sequence", json=request_data)
@@ -131,7 +131,7 @@ async def test_generate_sequence_functionality(client):
                 "note_name": "C",
                 "octave": 4
             },
-            "scale_type": "major"
+            "scale_type": "MAJOR"
         }
     }
     response = await client.post("/generate-sequence", json=request_data)
@@ -154,7 +154,7 @@ async def test_generate_sequence_functionality(client):
                 "note_name": "C",
                 "octave": 4
             },
-            "scale_type": "major"
+            "scale_type": "MAJOR"
         }
     }
     response = await client.post("/generate-sequence", json=request_data)
@@ -171,7 +171,7 @@ async def test_generate_sequence_functionality(client):
                 "note_name": "C",
                 "octave": 4
             },
-            "scale_type": "major"
+            "scale_type": "MAJOR"
         }
     }
     response = await client.post("/generate-sequence", json=request_data)
@@ -188,7 +188,7 @@ async def test_generate_sequence_functionality(client):
                 "note_name": "C",
                 "octave": 4
             },
-            "scale_type": "major"
+            "scale_type": "MAJOR"
         }
     }
     response = await client.post("/generate-sequence", json=request_data)
@@ -200,7 +200,7 @@ async def test_generate_sequence_functionality(client):
         "progression_name": "I-IV-V",  # Updated to a valid progression
         "note_pattern_name": "Simple Triad",  # Example note pattern
         "rhythm_pattern_name": "quarter_notes",  # Example rhythm pattern
-        "scale_info": {"root": {"note_name": "C", "octave": 4}, "scale_type": "major"}
+        "scale_info": {"root": {"note_name": "C", "octave": 4}, "scale_type": "MAJOR"}
     }
 
     response = await client.post("/generate-sequence", json=request_data)
@@ -219,7 +219,7 @@ async def test_generate_sequence_functionality(client):
                 "note_name": "C",
                 "octave": 4
             },
-            "scale_type": "major"
+            "scale_type": "MAJOR"
         }
     }
     response = await client.post("/generate-sequence", json=request_data)

@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import List, Dict, ClassVar, Optional
 import random
-import logging
+
 from pydantic import BaseModel, ValidationError, Field
 
 from src.note_gen.models.scale_info import ScaleInfo
@@ -11,7 +11,6 @@ from src.note_gen.models.chord_progression import ChordProgression
 from src.note_gen.models.roman_numeral import RomanNumeral
 from src.note_gen.models.enums import ScaleType, ChordQualityType
 
-logger = logging.getLogger(__name__)
 
 # class ScaleInfo(BaseModel):
 #     """Base class for scale information."""
@@ -60,14 +59,14 @@ class ChordProgressionGenerator(BaseModel):
     }
     
     def __init__(self, name: str, chords: List[Chord], key: str, scale_type: ScaleType, scale_info: ScaleInfo):
-        logger.debug(f'Initializing ChordProgressionGenerator with name: {name}, key: {key}, scale_type: {scale_type}, scale_info: {scale_info}')
-        logger.debug(f'scale_info type: {type(scale_info)}, scale_info values: root={scale_info.root}, scale_type={scale_info.scale_type}')
-        logger.debug(f'scale_info type: {type(scale_info)}, scale_info values: root={scale_info.root}, scale_type={scale_info.scale_type}')
-        logger.debug(f'scale_info type: {type(scale_info)}, scale_info values: root={scale_info.root}, scale_type={scale_info.scale_type}')
+        print(f'Initializing ChordProgressionGenerator with name: {name}, key: {key}, scale_type: {scale_type}, scale_info: {scale_info}')
+        print(f'scale_info type: {type(scale_info)}, scale_info values: root={scale_info.root}, scale_type={scale_info.scale_type}')
+        print(f'scale_info type: {type(scale_info)}, scale_info values: root={scale_info.root}, scale_type={scale_info.scale_type}')
+        print(f'scale_info type: {type(scale_info)}, scale_info values: root={scale_info.root}, scale_type={scale_info.scale_type}')
         super().__init__(name=name, chords=chords, key=key, scale_type=scale_type, scale_info=scale_info)
 
     def generate(self, pattern: Optional[List[str]] = None, progression_length: Optional[int] = None) -> ChordProgression:
-        logger.debug(f'Generating chord progression with pattern: {pattern}, progression_length: {progression_length}')
+        print(f'Generating chord progression with pattern: {pattern}, progression_length: {progression_length}')
         if pattern is None and progression_length is None:
             raise ValueError("Must provide either a pattern or a progression_length")
             
@@ -106,9 +105,9 @@ class ChordProgressionGenerator(BaseModel):
         pattern = []
         for _ in range(length):
             degree = random.choice(list(self.INT_TO_ROMAN.keys()))  # Choose a random scale degree (1-7)
-            quality = random.choice(["major", "minor"])  # Choose a random quality
+            quality = random.choice(["MAJOR", "MINOR"])  # Choose a random quality
             numeral = self.INT_TO_ROMAN[degree]
-            if quality == "minor":
+            if quality == "MINOR":
                 numeral = numeral.lower()
             pattern.append(numeral)
             
@@ -152,14 +151,14 @@ class ChordProgressionGenerator(BaseModel):
         
     def generate_chord_numeral(self, numeral: str) -> Chord:
         """Generate a chord based on the numeral provided."""
-        logger.debug(f'Generating chord for numeral: {numeral}')  # Log the numeral being processed
+        print(f'Generating chord for numeral: {numeral}')  # Log the numeral being processed
         if numeral not in self.INT_TO_ROMAN.values():
             raise ValueError(f"Invalid numeral: {numeral}. Must be one of {list(self.INT_TO_ROMAN.values())}")
         roman = RomanNumeral.from_string(numeral)
-        logger.debug(f'Converted numeral to Roman numeral: {roman}')  # Log the converted Roman numeral
+        print(f'Converted numeral to Roman numeral: {roman}')  # Log the converted Roman numeral
         root = self.scale_info.root
         quality = self.scale_info.get_chord_quality_for_degree(roman.scale_degree)
-        logger.debug(f'Root note: {root}, Quality: {quality}')  # Log root note and quality
+        print(f'Root note: {root}, Quality: {quality}')  # Log root note and quality
         return Chord(root=root, quality=quality)
 
     def generate_chord_notes(self, root: Note, quality: ChordQualityType, inversion: int = 0) -> List[Note]:
@@ -193,7 +192,7 @@ class ChordProgressionGenerator(BaseModel):
         for degree, quality in zip(degrees, qualities):
             # Convert degree to Roman numeral
             roman = self.INT_TO_ROMAN[degree]
-            if quality.lower() == "minor":
+            if quality.lower() == "MINOR":
                 roman = roman.lower()
             elif quality.lower() == "diminished":
                 roman = roman.lower() + "o"

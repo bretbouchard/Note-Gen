@@ -15,7 +15,7 @@ class Note:
     to_note: Optional[str] = None  # Similar to midi_to_note
     degree: Optional[int] = None  # Scale degree (1 for tonic, etc.)
     key: Optional[str] = "C"  # Key of the scale
-    scale_type: Optional[str] = "major"  # Type of scale (e.g., major, minor)
+    scale_type: Optional[str] = "MAJOR"  # Type of scale (e.g., MAJOR, MINOR)
     octave_offset: int = 0  # Offset from middle C
 
 

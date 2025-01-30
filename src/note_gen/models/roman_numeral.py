@@ -59,7 +59,7 @@ class RomanNumeral:
         if 'o' in numeral.lower():
             quality = ChordQualityType.DIMINISHED
             base_numeral = base_numeral.replace('O', '').replace('o', '')
-        # Check if the numeral is lowercase (indicates minor)
+        # Check if the numeral is lowercase (indicates MINOR)
         elif numeral.islower() and numeral.upper() in cls.ROMAN_TO_INT:
             quality = ChordQualityType.MINOR
             base_numeral = numeral.upper()

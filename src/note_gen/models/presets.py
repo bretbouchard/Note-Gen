@@ -14,7 +14,7 @@ from src.note_gen.models.scale_info import ScaleInfo
 
 # Default values for musical components
 DEFAULT_KEY = "C"
-DEFAULT_SCALE_TYPE = "major"
+DEFAULT_SCALE_TYPE = "MAJOR"
 DEFAULT_CHORD_PROGRESSION = "I-IV-V-I"
 DEFAULT_NOTE_PATTERN = "Simple Triad"
 DEFAULT_RHYTHM_PATTERN = "basic"

@@ -95,7 +95,7 @@ def test_get_scale_degree_valid(root_name: str, scale_type: ScaleType, valid_deg
     "root_name, scale_type, invalid_degree",
     [
         ("C4", ScaleType.MAJOR, 0),   # below range
-        ("C4", ScaleType.MAJOR, 8),   # major has 7 intervals => 8 is out-of-range
+        ("C4", ScaleType.MAJOR, 8),   # MAJOR has 7 intervals => 8 is out-of-range
         ("C4", ScaleType.CHROMATIC, 13),  # chromatic has 12 intervals => 13 out-of-range
     ]
 )
@@ -159,8 +159,8 @@ def test_scale_type_get_scale_degrees() -> None:
 @pytest.mark.parametrize(
     "scale_type, in_range_degree, out_of_range_degree",
     [
-        (ScaleType.MAJOR, 3, 8),           # major=7 intervals => valid up to 7
-        (ScaleType.PENTATONIC_MAJOR, 4, 6), # pentatonic_major=5 intervals => valid up to 6
+        (ScaleType.MAJOR, 3, 8),           # MAJOR=7 intervals => valid up to 7
+        (ScaleType.PENTATONIC_MAJOR, 4, 6), # pentatonic_MAJOR=5 intervals => valid up to 6
         (ScaleType.CHROMATIC, 10, 13),     # chromatic=12 intervals => valid up to 13
     ]
 )

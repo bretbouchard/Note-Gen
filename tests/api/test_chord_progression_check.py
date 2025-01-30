@@ -33,7 +33,7 @@ async def setup_database():
             'name': 'Test Base Progression',
             'chords': ['C', 'G', 'Am', 'F'],
             'key': 'C',
-            'scale_type': 'major',
+            'scale_type': 'MAJOR',
             'complexity': 0.5
         }
         await db.chord_progressions.insert_one(progression)
@@ -48,13 +48,13 @@ async def test_chord_progression_functionality(client, setup_database):
         "id": str(ObjectId()),
         "name": "Test Create Progression",
         "chords": [
-            {"root": {"note_name": "C", "octave": 4}, "quality": "major"},
-            {"root": {"note_name": "F", "octave": 4}, "quality": "major"},
-            {"root": {"note_name": "G", "octave": 4}, "quality": "major"},
-            {"root": {"note_name": "C", "octave": 4}, "quality": "major"}
+            {"root": {"note_name": "C", "octave": 4}, "quality": "MAJOR"},
+            {"root": {"note_name": "F", "octave": 4}, "quality": "MAJOR"},
+            {"root": {"note_name": "G", "octave": 4}, "quality": "MAJOR"},
+            {"root": {"note_name": "C", "octave": 4}, "quality": "MAJOR"}
         ],
         "key": "C",
-        "scale_type": "major",
+        "scale_type": "MAJOR",
         "complexity": 0.5
     }
     
@@ -74,7 +74,7 @@ async def test_chord_progression_functionality(client, setup_database):
         "name": "Test Duplicate Progression",
         "chords": ["C", "F", "G", "C"],
         "key": "C",
-        "scale_type": "major",
+        "scale_type": "MAJOR",
         "complexity": 0.5
     }
     
@@ -94,7 +94,7 @@ async def test_chord_progression_functionality(client, setup_database):
         "name": "Test Get Progression",
         "chords": ["C", "F", "G", "C"],
         "key": "C",
-        "scale_type": "major",
+        "scale_type": "MAJOR",
         "complexity": 0.5
     }
     
@@ -126,7 +126,7 @@ async def test_chord_progression_functionality(client, setup_database):
         "name": "Test Delete Progression",
         "chords": ["C", "F", "G", "C"],
         "key": "C",
-        "scale_type": "major",
+        "scale_type": "MAJOR",
         "complexity": 0.5
     }
     
@@ -156,7 +156,7 @@ async def test_chord_progression_functionality(client, setup_database):
         'name': 'Test Progression',
         'chords': ['C', 'G', 'Am', 'F'],
         'key': 'C',
-        'scale_type': 'major',
+        'scale_type': 'MAJOR',
         'complexity': 0.5
     }
     response = await client.post("http://localhost:8000/chord-progressions", json=progression)
@@ -168,7 +168,7 @@ async def test_chord_progression_functionality(client, setup_database):
         'name': 'Test Progression',
         'chords': ['C', 'G', 'Am', 'F'],
         'key': 'C',
-        'scale_type': 'major',
+        'scale_type': 'MAJOR',
         'complexity': 0.5
     }
     await setup_database.chord_progressions.insert_one(progression)
@@ -189,7 +189,7 @@ async def test_chord_progression_functionality(client, setup_database):
         'name': 'Test Progression',
         'chords': ['C', 'G', 'Am', 'F'],
         'key': 'C',
-        'scale_type': 'major',
+        'scale_type': 'MAJOR',
         'complexity': 0.5
     }
     response = await client.post("http://localhost:8000/chord-progressions", json=progression)

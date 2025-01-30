@@ -146,8 +146,8 @@
 ## Enums
 - **Classes**:
   - `AccidentalType`: Enum for accidentals (natural, sharp, flat).
-  - `ChordQualityType`: Enum for chord qualities (major, minor, diminished).
-  - `ScaleType`: Enum for scale types (major, natural minor).
+  - `ChordQualityType`: Enum for chord qualities (MAJOR, MINOR, diminished).
+  - `ScaleType`: Enum for scale types (MAJOR, natural MINOR).
 
 ## Musical Elements Model
 - **Classes**:
@@ -166,7 +166,7 @@
 - **Common Chord Progressions**: Dict[str, List[str]]
 - **Default Values**:
   - `DEFAULT_KEY`: "C"
-  - `DEFAULT_SCALE_TYPE`: "major"
+  - `DEFAULT_SCALE_TYPE`: "MAJOR"
   - `DEFAULT_CHORD_PROGRESSION`: "I-IV-V-I"
   - `DEFAULT_NOTE_PATTERN`: "Simple Triad"
   - `DEFAULT_RHYTHM_PATTERN`: "quarter_notes"

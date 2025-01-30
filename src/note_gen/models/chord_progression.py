@@ -1,5 +1,5 @@
 from typing import List, Any, Dict, Optional, Union
-from pydantic import BaseModel, Field, ConfigDict, field_validator, validator
+from pydantic import BaseModel, Field, ConfigDict, field_validator, validator, root_validator
 from src.note_gen.models.note import Note
 from src.note_gen.models.musical_elements import Chord
 from src.note_gen.models.roman_numeral import RomanNumeral
@@ -22,17 +22,30 @@ class ChordProgression(BaseModel):
     name: str = Field(description="Name of the chord progression")
     chords: List[Chord] = Field(..., description="List of chords")
     key: str = Field(description="Key of the chord progression")
-    scale_type: str = Field(description="Type of scale (e.g., major, minor)")
+    scale_type: str = Field(description="Type of scale (e.g., MAJOR, MINOR)")
     complexity: float = Field(default=0.0, description="Complexity of the chord progression")
     scale_info: ScaleInfo = Field(description="Scale information")
+    quality: ChordQualityType = Field(description="Quality of the chord progression")
 
     def __init__(self, **data: Dict[str, Any]) -> None:
         logger.debug(f"Creating ChordProgression with data: {data}")
+        logger.debug(f"Data keys: {data.keys()}")
+        logger.debug(f"Data values: {data.values()}")
         try:
             super().__init__(**data)
         except Exception as e:
             logger.error(f"Error during ChordProgression initialization: {e}")
             raise
+
+    @root_validator(pre=True)
+    def check_quality(cls, values):
+        chords = values.get('chords', [])
+        if not chords:
+            raise ValueError("Chords must be a non-empty list.")
+        # Set quality from the first chord if not provided
+        if 'quality' not in values:
+            values['quality'] = chords[0].quality
+        return values
 
     @field_validator('scale_info')
     def validate_scale_info(cls, value):
@@ -41,11 +54,17 @@ class ChordProgression(BaseModel):
 
     @field_validator('chords')
     def validate_chords(cls, value):
+        logger.debug(f"Validating chords: {value}")
         if not value:
             raise ValueError("Chords must be a non-empty list.")
         for chord in value:
+            logger.debug(f"Validating chord: {chord}")
             if not isinstance(chord, Chord):
-                raise ValueError("Each item in chords must be a valid Chord instance.")
+                raise ValueError("Each chord must be an instance of Chord.")
+            if not isinstance(chord.root, Note):
+                raise ValueError("Chord root must be a valid Note instance.")
+            if not isinstance(chord.root.note_name, str) or not chord.root.note_name:
+                raise ValueError("Note name must be a valid non-empty string.")
         return value
 
     @field_validator('name')
@@ -65,7 +84,7 @@ class ChordProgression(BaseModel):
     @field_validator('scale_type')
     def validate_scale_type(cls, v: str) -> str:
         logger.debug(f"Validating progression scale type: {v}")
-        valid_types = ['major', 'minor']
+        valid_types = ['MAJOR', 'MINOR']
         if v not in valid_types:
             logger.error(f'Invalid scale type: {v}. Must be one of {valid_types}')
             raise ValueError(f'Invalid scale type: {v}. Must be one of {valid_types}')
@@ -109,6 +128,15 @@ class ChordProgression(BaseModel):
             'complexity': self.complexity,
         }
 
+    def dict(self, *args, **kwargs):
+        original_dict = super().dict(*args, **kwargs)
+        # Convert ChordQualityType instances to strings
+        if 'chords' in original_dict:
+            for chord in original_dict['chords']:
+                if isinstance(chord['quality'], ChordQualityType):
+                    chord['quality'] = chord['quality'].value
+        return original_dict
+
     def model_dump(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:
         d = {"id": self.id, "name": self.name, "key": self.key, "scale_type": self.scale_type, "complexity": self.complexity}
         d["chords"] = [f"{chord.root.note_name} {chord.quality}" for chord in self.chords]
@@ -126,7 +154,9 @@ class ChordProgression(BaseModel):
             List[Note]: The notes of the chord in the specified inversion
         """
         # Get the intervals for this chord quality
-        intervals = ChordQualityType.get_intervals(quality)
+        if not isinstance(quality, ChordQualityType):
+            raise ValueError("Quality must be an instance of ChordQualityType")
+        intervals = ChordQualityType(quality).get_intervals()
         
         # Generate the notes in root position first
         notes = []
@@ -174,7 +204,11 @@ class ChordProgression(BaseModel):
                 f"scale_type: {self.scale_type!r}, "
                 f"chords: List[Chord]={self.chords!r})")
 
-    def json(self, *args: Any, **kwargs: Any) -> str:
-        # Override json method to serialize ObjectId to string
-        data = super().json(*args, **kwargs)
-        return data.replace('ObjectId(', '"').replace(')', '"')
+    def json(self, *args, **kwargs):
+        original_dict = self.dict(*args, **kwargs)
+        # Convert ChordQualityType instances to strings
+        if 'chords' in original_dict:
+            for chord in original_dict['chords']:
+                if isinstance(chord['quality'], ChordQualityType):
+                    chord['quality'] = chord['quality'].value
+        return original_dict

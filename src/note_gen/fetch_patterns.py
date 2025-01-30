@@ -16,38 +16,34 @@ import sys
 logging.basicConfig(level=logging.DEBUG, stream=sys.stdout)
 logger = logging.getLogger(__name__)
 
-def process_chord_data(chord_data: Dict[str, Any]) -> Dict[str, Any]:
-    """Process chord data to handle nested structures."""
-    # Check if chord_data is a dictionary
-    if isinstance(chord_data, dict):
-        # Process root note if it exists
-        if isinstance(chord_data, dict) and 'root' in chord_data and isinstance(chord_data, dict):
-            if isinstance(chord_data['root'], dict) and 'note_name' in chord_data['root'] and isinstance(chord_data['root'], dict):
-                note_data = chord_data['root']
-                chord_data['root'] = Note(
-                    note_name=note_data.get('note_name', 'C'),
-                    octave=note_data.get('octave')  # Dynamically assign octave from note_data if available
-                )
-            elif isinstance(chord_data['root'], str):
-                chord_data['root'] = Note(note_name=chord_data['root'], octave=4)  # Default octave set to 4
-            elif not isinstance(chord_data['root'], Note):
-                logger.error(f"Invalid root note type: {type(chord_data['root'])}")
-                chord_data['root'] = Note(note_name='C', octave=4)  # Default to C if invalid
+def process_chord_data(chord_data: Dict[str, Any], db_name: str) -> Dict[str, Any]:
+    """Process chord data from the database."""
+    logger.debug(f"Processing chord data for database: {db_name}")
+    logger.debug(f"Input chord data: {chord_data}")
 
-        # Update the logic to convert chord quality strings to enums and vice versa
-        if isinstance(chord_data, dict) and 'quality' in chord_data and isinstance(chord_data, dict):
-            chord_quality = chord_data['quality']
-            if isinstance(chord_quality, str):
-                try:
-                    chord_data['quality'] = ChordQualityType[chord_quality.upper()]
-                except KeyError:
-                    logger.error(f"Invalid chord quality string: {chord_quality}")
-                    chord_data['quality'] = ChordQualityType.MAJOR  # Default to MAJOR if invalid
-            elif not isinstance(chord_quality, ChordQualityType):
-                logger.warning('Invalid chord quality type, defaulting to MAJOR.')
-                chord_data['quality'] = ChordQualityType.MAJOR
-    
-    return chord_data
+    # If we're processing a single chord object
+    if 'root' in chord_data:
+        return chord_data
+
+    # If we're processing a chord progression
+    if 'chords' in chord_data:
+        if not isinstance(chord_data['chords'], list) or len(chord_data['chords']) == 0:
+            logger.error("Chords must be a non-empty list.")
+            raise ValueError("Chords must be a non-empty list.")
+        
+        # Process each chord in the progression
+        processed_chords = []
+        for chord in chord_data['chords']:
+            if not isinstance(chord, dict):
+                logger.error(f"Invalid chord format: {chord}")
+                raise ValueError(f"Invalid chord format: {chord}")
+            processed_chords.append(chord)
+        
+        chord_data['chords'] = processed_chords
+        return chord_data
+
+    logger.error("Invalid chord data format")
+    raise ValueError("Invalid chord data format")
 
 async def fetch_chord_progressions(db: AsyncIOMotorDatabase[Dict[str, Any]]) -> List[ChordProgression]:
     if db is None:
@@ -71,7 +67,7 @@ async def _fetch_chord_progressions(db: AsyncIOMotorDatabase[Dict[str, Any]]) ->
             try:
                 # Process chords
                 if isinstance(doc, dict) and 'chords' in doc and isinstance(doc['chords'], list) and isinstance(doc, dict):
-                    doc['chords'] = [process_chord_data(chord) for chord in doc['chords']]
+                    doc['chords'] = [process_chord_data(chord, db_name=db.name) for chord in doc['chords']]
                 progression = ChordProgression(**doc)
                 chord_progressions.append(progression)
             except Exception as e:
@@ -83,42 +79,43 @@ async def _fetch_chord_progressions(db: AsyncIOMotorDatabase[Dict[str, Any]]) ->
         return []
 
 async def fetch_chord_progression_by_id(id: str, db: AsyncIOMotorDatabase[Dict[str, Any]]) -> Optional[ChordProgression]:
+    """Fetch a chord progression by ID from the database."""
     try:
         logger.debug(f"Attempting to fetch chord progression with ID: {id}")
-        result = await db.chord_progressions.find_one({"_id": id})
-        logger.debug(f"Fetched result: {result}")
-        if result and isinstance(result, dict):
-            logger.debug(f"Raw document from MongoDB: {result}")
-            # Process chords first
-            processed_chords = [process_chord_data(chord) for chord in result.get('chords', [])]
-            prog_data: Dict[str, Any] = {
-                'id': str(result.get('id', '')),  
-                'name': str(result['name']),  
-                'complexity': float(result.get('complexity', 0.0)),  
-                'key': str(result['key']),  
-                'scale_type': str(result['scale_type']),  
-                'chords': processed_chords
-            }
-            logger.debug(f"prog_data types: id={{type(prog_data['id'])}}, name={{type(prog_data['name'])}}, complexity={{type(prog_data['complexity'])}}, key={{type(prog_data['key'])}}, scale_type={{type(prog_data['scale_type'])}}, chords={{type(prog_data['chords'])}}")
-            logger.debug(f"prog_data values: id={{prog_data['id']}}, name={{prog_data['name']}}, complexity={{prog_data['complexity']}}, key={{prog_data['key']}}, scale_type={{prog_data['scale_type']}}, chords={{prog_data['chords']}}")
-            return ChordProgression(**prog_data)
-        else:
-            logger.warning(f"No chord progression found for ID: {id}")
+        result = await db.chord_progressions.find_one({'id': id})
+        
+        if result is None:
+            logger.debug(f"No chord progression found with ID: {id}")
             return None
+
+        # Log the chords before processing
+        logger.debug(f"Chords retrieved: {result.get('chords', [])}")
+        
+        # Process the entire chord progression data
+        processed_data = process_chord_data(result, db.name)
+        
+        # Create and return the ChordProgression instance
+        return ChordProgression(**processed_data)
     except Exception as e:
-        logger.error(f"Error fetching chord progression by ID: {e}", exc_info=True)
+        logger.error(f"Error fetching chord progression by ID: {id}, Error: {str(e)}")
         return None
 
 async def _fetch_chord_progression_by_id(progression_id: str, db: AsyncIOMotorDatabase[Dict[str, Any]]) -> Optional[ChordProgression]:
     try:
-        doc = await db.chord_progressions.find_one({"id": progression_id})
-        logger.debug(f"Fetched document from MongoDB: {doc}")  
-        if doc:
+        logger.debug(f"Attempting to fetch chord progression with ID: {progression_id}")
+        result = await db.chord_progressions.find_one({"id": progression_id})
+        logger.debug(f'Fetched result: {result}')
+
+        # Log all chord progressions in the database
+        all_progressions = await db.chord_progressions.find().to_list(None)
+        logger.debug(f'All chord progressions in the database: {all_progressions}')
+
+        if result:
             # Process chords
-            if isinstance(doc, dict) and 'chords' in doc and isinstance(doc['chords'], list) and isinstance(doc, dict):
-                doc['chords'] = [process_chord_data(chord) for chord in doc['chords']]
+            if isinstance(result, dict) and 'chords' in result and isinstance(result['chords'], list) and isinstance(result, dict):
+                result['chords'] = [process_chord_data(chord, db_name=db.name) for chord in result['chords']]
             
-            return ChordProgression(**doc)
+            return ChordProgression(**result)
         return None
     except Exception as e:
         logger.error(f"Error fetching chord progression by id {progression_id}: {e}")

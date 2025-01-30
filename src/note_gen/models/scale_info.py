@@ -13,10 +13,10 @@ class ScaleInfo(BaseModel):
     @field_validator('scale_type')
     def validate_scale_type(cls, value: ScaleType) -> ScaleType:
         if value not in [ScaleType.MAJOR, ScaleType.MINOR]:
-            raise ValueError("Scale type must be either 'major' or 'minor'")
+            raise ValueError("Scale type must be either 'MAJOR' or 'MINOR'")
         return value
 
-    # Define chord qualities for major and minor scales
+    # Define chord qualities for MAJOR and MINOR scales
     MAJOR_SCALE_QUALITIES: ClassVar[Dict[int, ChordQualityType]] = {
         1: ChordQualityType.MAJOR,
         2: ChordQualityType.MINOR,

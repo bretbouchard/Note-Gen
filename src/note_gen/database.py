@@ -122,19 +122,23 @@ async def init_database() -> None:
                 await import_presets_if_empty(db)
 
 async def create_chord_progression(db: AsyncIOMotorDatabase, progression: ChordProgression) -> Dict[str, Any]:
+    logger.debug("Attempting to create chord progression...")
     try:
         prog_dict = progression.model_dump()
+        logger.debug(f"Chord progression data to insert: {prog_dict}")
         result = await db.chord_progressions.insert_one(prog_dict)
+        logger.debug(f"Insert result: {result}")
         if result.inserted_id:
             created_progression = await db.chord_progressions.find_one({"_id": result.inserted_id})
             if created_progression:
                 created_progression["id"] = str(created_progression.pop("_id"))
+                logger.info(f"Successfully created chord progression: {created_progression}")
                 return created_progression
         raise HTTPException(status_code=500, detail="Failed to create chord progression")
     except Exception as e:
         logger.error(f"Error creating chord progression: {e}")  # Log the exception message
         logger.error(traceback.format_exc())  # Log the full traceback
-        logger.error(f"Progression data: {prog_dict}")  # Log the progression data being inserted
+        logger.error(f"Progression data: {prog_dict}")  # Log the progression data
         raise HTTPException(status_code=500, detail=str(e))
 
 async def get_chord_progressions(db: AsyncIOMotorDatabase) -> List[Dict[str, Any]]:

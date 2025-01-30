@@ -67,7 +67,7 @@ async def test_fetch_rhythm_patterns(mock_db_with_data: MockDatabase) -> None:
     assert len(result) > 0
 
 @pytest.mark.asyncio
-async def test_fetch_chord_progression_by_id(mock_db_with_data: MockDatabase) -> None:
+async def test_fetch_chord_progression_by_id_2(mock_db_with_data: MockDatabase) -> None:
     progressions = await fetch_chord_progressions(mock_db_with_data)
     assert len(progressions) > 0
     test_id = progressions[0].id

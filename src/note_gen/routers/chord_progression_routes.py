@@ -8,8 +8,16 @@ from motor import motor_asyncio
 from src.note_gen.dependencies import get_db
 from src.note_gen.models.chord_progression import ChordProgression
 import logging
+from fastapi.encoders import jsonable_encoder
+from json import JSONEncoder
 
 logger = logging.getLogger(__name__)
+
+class CustomJSONEncoder(JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, ChordQualityType):
+            return obj.name
+        return super().default(obj)
 
 router = APIRouter()
 
@@ -28,13 +36,27 @@ async def create_chord_progression(chord_progression: ChordProgression, db: moto
             logger.error(f"Missing required fields: {', '.join(missing_fields)}")
             raise HTTPException(status_code=400, detail=f'Missing required fields: {", ".join(missing_fields)}')
         
+        # Convert ChordQualityType to string for serialization
+        for chord in chord_progression.chords:
+            if isinstance(chord.quality, ChordQualityType):
+                chord.quality = chord.quality.name  # Convert to string
+        
         progression_data = chord_progression.dict(exclude_unset=True)
         logger.debug(f"Prepared data for insertion: {progression_data}")
+
+        # Use custom JSON encoder to handle serialization
+        progression_data = jsonable_encoder(progression_data, custom_encoder=CustomJSONEncoder)
+
         result = await db.chord_progressions.insert_one(progression_data)
         chord_progression.id = str(result.inserted_id)
         logger.info(f"Chord progression created with ID: {chord_progression.id}")
+        
         logger.info(f"Created progression details: {chord_progression.dict()}")
-        return chord_progression
+        # Convert ChordQualityType to string for serialization
+        for chord in chord_progression.chords:
+            if isinstance(chord.quality, ChordQualityType):
+                chord.quality = chord.quality.name  # Convert to string
+        return jsonable_encoder(chord_progression, custom_encoder=CustomJSONEncoder)
     except Exception as e:
         logger.error(f"Error creating chord progression: {e}")
         logger.error(f"Request data that caused error: {chord_progression.dict()}")
@@ -60,26 +82,27 @@ async def get_chord_progression(progression_id: str, db: motor_asyncio.AsyncIOMo
 
 @router.get("/chord-progressions")
 async def get_all_chord_progressions(db: motor_asyncio.AsyncIOMotorDatabase = Depends(get_db)):
+    logger.info('get_all_chord_progressions called')  
     try:
         progressions = await db.chord_progressions.find().to_list(length=None)
-        logger.info(f"Fetched {len(progressions)} chord progressions")
-        logger.debug(f"Fetched chord progressions data: {progressions}")
-        logger.debug(f"Progressions before processing: {progressions}")  # Log the fetched data
-        valid_progressions = []
+        logger.debug(f'Fetched {len(progressions)} chord progressions from the database: {progressions}')  
+        response_data = []
         for progression in progressions:
-            logger.debug(f"Processing progression: {progression}")
-            # Check for required fields
-            if 'name' not in progression or 'chords' not in progression:
-                logger.warning(f"Missing required fields in progression: {progression}")
-                continue
-            # Validate and create ChordProgression instance
             try:
-                valid_progressions.append(ChordProgression(**progression))
+                # Validate against the ChordProgression model
+                validated_progression = ChordProgression(**progression)
+                required_fields = ['name', 'chords', 'key', 'scale_type']
+                missing_fields = [field for field in required_fields if not getattr(validated_progression, field)]
+                if missing_fields:
+                    logger.error(f"Missing required fields for progression {progression}: {', '.join(missing_fields)}")
+                response_data.append(validated_progression.dict())
             except ValidationError as e:
-                logger.error(f"Validation error for progression {progression}: {e}")
-        return valid_progressions
+                logger.error(f'Validation error for progression {progression}: {e.errors()}')
+                raise HTTPException(status_code=400, detail='Invalid chord progression data')
+        logger.debug(f'Serialized response data: {response_data}')  
+        return response_data
     except Exception as e:
-        logger.error(f"Error fetching chord progressions: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail="Internal Server Error")
+        logger.error(f'Error fetching chord progressions: {e}')  
+        raise HTTPException(status_code=500, detail='Internal Server Error')
 
 # Additional CRUD operations can be added here

@@ -12,7 +12,7 @@ async def test_format_chord_progression_valid():
         'name': progression_name,
         'scale_info': {
             'root': {'note_name': 'C', 'octave': 4},
-            'scale_type': 'major'
+            'scale_type': 'MAJOR'
         },
         'chords': [
             {'root': {'note_name': 'C', 'octave': 4}, 'quality': 'MAJOR'},
@@ -20,7 +20,7 @@ async def test_format_chord_progression_valid():
             {'root': {'note_name': 'G', 'octave': 4}, 'quality': 'MAJOR'},
         ],
         'key': 'C',
-        'scale_type': 'major',
+        'scale_type': 'MAJOR',
         'description': f'Progression: {progression_name}',
         'tags': ['preset'],
         'complexity': 1.0,

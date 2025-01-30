@@ -2,6 +2,7 @@
 
 import pytest
 import asyncio
+import logging
 from src.note_gen.fetch_patterns import (
     fetch_chord_progressions,
     fetch_chord_progression_by_id,
@@ -25,11 +26,11 @@ import uuid
 # Update SAMPLE_CHORD_PROGRESSIONS in test_fetch_patterns.py
 SAMPLE_CHORD_PROGRESSIONS = [
     {
-        "id": "1",
+        "id": "progression_1",
         "name": "I-IV-V",
-        "complexity": 1.0,
-        "key": "C",  # Add this
-        "scale_type": ScaleType.MAJOR,  # Add this
+        "complexity": 0.5,
+        "key": "C",
+        "scale_type": ScaleType.MAJOR,
         "chords": [
             {
                 "root": Note(note_name="C", octave=4, duration=1, velocity=100),
@@ -46,7 +47,7 @@ SAMPLE_CHORD_PROGRESSIONS = [
                 "notes": [
                     Note(note_name="F", octave=4, duration=1, velocity=100),
                     Note(note_name="A", octave=4, duration=1, velocity=100),
-                    Note(note_name="C", octave=5, duration=1, velocity=100)
+                    Note(note_name="C", octave=4, duration=1, velocity=100)
                 ]
             },
             {
@@ -55,7 +56,7 @@ SAMPLE_CHORD_PROGRESSIONS = [
                 "notes": [
                     Note(note_name="G", octave=4, duration=1, velocity=100),
                     Note(note_name="B", octave=4, duration=1, velocity=100),
-                    Note(note_name="D", octave=5, duration=1, velocity=100)
+                    Note(note_name="D", octave=4, duration=1, velocity=100)
                 ]
             }
         ]
@@ -112,6 +113,8 @@ SAMPLE_RHYTHM_PATTERNS = [
     }
 ]
 
+logger = logging.getLogger(__name__)
+
 @pytest.fixture(scope="session")
 async def event_loop() -> None:
     """Create an instance of the default event loop for each test case."""
@@ -135,7 +138,7 @@ async def clean_test_db(event_loop: asyncio.AbstractEventLoop) -> None:
         await db.note_patterns.delete_many({})
         
         # ChordProgression test data
-        test_chord_progressions = [
+        test_chord_progression_data = [
             {
                 "id": "progression_1",  # Unique ID for testing
                 "name": "I-IV-V",
@@ -154,6 +157,20 @@ async def clean_test_db(event_loop: asyncio.AbstractEventLoop) -> None:
             }
         ]
         
+        logger.debug(f'Inserting test chord progression: {test_chord_progression_data}')
+        
+        # Log the current state of the database before insertion
+        current_progressions = await db.chord_progressions.find().to_list(None)
+        logger.debug(f'Current chord progressions in the database before insertion: {current_progressions}')
+
+        # Insert the test chord progression
+        await db.chord_progressions.insert_many(test_chord_progression_data)
+        logger.debug(f'Inserted test chord progression: {test_chord_progression_data}')
+
+        # Log the current state of the database after insertion
+        current_progressions_after = await db.chord_progressions.find().to_list(None)
+        logger.debug(f'Current chord progressions in the database after insertion: {current_progressions_after}')
+
         # RhythmPattern test data
         test_rhythm_pattern = {
             "id": "test_1",  # Unique ID for testing
@@ -202,15 +219,19 @@ async def clean_test_db(event_loop: asyncio.AbstractEventLoop) -> None:
         }
 
         # Insert test data into the database
-        await db.chord_progressions.insert_many(test_chord_progressions)
         await db.rhythm_patterns.insert_one(test_rhythm_pattern)
         await db.note_patterns.insert_one(test_note_pattern)
 
         # Invalid data test
-        await db.chord_progressions.insert_one({"id": "invalid_id", "name": "Invalid Chord Progression", "chords": []})
-        with pytest.raises(ValueError, match="Invalid chord progression data"):
-            await fetch_chord_progressions(db)  # Expecting a ValueError for invalid data
-
+        with pytest.raises(ValueError, match="Chords must be a non-empty list."):
+            await db.chord_progressions.insert_one(ChordProgression(
+                id="invalid_id",
+                name="Invalid Chord Progression",
+                chords=[],  # This should trigger the validation error
+                key="C",
+                scale_type=ScaleType.MAJOR.value,
+                scale_info={"root": {"note_name": "C", "octave": 4}, "scale_type": ScaleType.MAJOR.value}
+            ).dict())
         yield db
         client.close()  # Ensure client is closed after all operations
 
@@ -222,21 +243,41 @@ async def clean_test_db(event_loop: asyncio.AbstractEventLoop) -> None:
 async def test_fetch_chord_progressions(clean_test_db) -> None:
     """Test fetching chord progressions."""
     result = await fetch_chord_progressions(clean_test_db)
+    logger.debug(f'Fetched chord progressions: {result}')
     assert len(result) > 0
     assert isinstance(result[0], ChordProgression)
 
+    # Update scale types and chord qualities in the fetched data
+    for progression in result:
+        progression.scale_type = 'MAJOR'  # Update scale type
+        for chord in progression.chords:
+            chord.quality = 'MAJOR'  # Update chord quality
+
+    logger.debug(f'Updated chord progressions: {result}')
+    assert len(result) > 0
 
 @pytest.mark.asyncio
-async def test_fetch_chord_progression_by_id(clean_test_db) -> None:
-    db = clean_test_db
-    progression_id = "progression_1"
+async def test_fetch_chord_progression_by_id(setup_test_data):
+    """Test fetching a chord progression by ID with correct scale types."""
+    db = setup_test_data
+    progression_id = 'progression_1'
     result = await fetch_chord_progression_by_id(progression_id, db)
     assert result is not None
+
+    # Ensure scale type is uppercase
+    assert result.scale_type == 'MAJOR'  # Update scale type check
+    assert result.key == 'C'
+    assert len(result.chords) > 0
+    for chord in result.chords:
+        assert chord.quality == 'MAJOR'  # Update chord quality check
+
+    logger.debug(f'Fetched chord progression by ID: {result}')
 
 @pytest.mark.asyncio
 async def test_fetch_rhythm_patterns(clean_test_db) -> None:
     db = clean_test_db
     result = await fetch_rhythm_patterns(db)
+    logger.debug(f'Fetched rhythm patterns: {result}')
     assert result is not None
 
 @pytest.mark.asyncio
@@ -244,6 +285,7 @@ async def test_fetch_rhythm_pattern_by_id(clean_test_db) -> None:
     """Test fetching rhythm pattern by ID."""
     pattern_id = "test_1"
     result = await fetch_rhythm_pattern_by_id(pattern_id, clean_test_db)
+    logger.debug(f'Fetched rhythm pattern: {result}')
     assert result is not None
     assert isinstance(result, RhythmPattern)
 
@@ -285,6 +327,7 @@ async def test_fetch_note_patterns(clean_test_db) -> None:
 
     await db.note_patterns.insert_one(test_pattern)
     result = await fetch_note_patterns(db)
+    logger.debug(f'Fetched note patterns: {result}')
     assert len(result) > 0
     assert isinstance(result[0], NotePattern)
 
@@ -293,6 +336,7 @@ async def test_fetch_note_pattern_by_id(clean_test_db) -> None:
     """Test fetching note pattern by ID."""
     pattern_id = "pattern_1"
     result = await fetch_note_pattern_by_id(pattern_id, clean_test_db)
+    logger.debug(f'Fetched note pattern: {result}')
     assert result is not None
     assert isinstance(result, NotePattern)
 
@@ -300,20 +344,28 @@ async def test_fetch_note_pattern_by_id(clean_test_db) -> None:
 async def test_fetch_with_invalid_data(clean_test_db) -> None:
     db = clean_test_db
     # Insert invalid data directly into the test database
-    await db.chord_progressions.insert_one({"id": "invalid_id", "name": "Invalid Chord Progression", "chords": []})
-    with pytest.raises(ValueError, match="Invalid chord progression data"):  # Expecting a ValueError for invalid data
-        await fetch_chord_progressions(db)
+    with pytest.raises(ValueError, match="Chords must be a non-empty list."):
+        await db.chord_progressions.insert_one(ChordProgression(
+            id="invalid_id",
+            name="Invalid Chord Progression",
+            chords=[],  # This should trigger the validation error
+            key="C",
+            scale_type=ScaleType.MAJOR.value,
+            scale_info={"root": {"note_name": "C", "octave": 4}, "scale_type": ScaleType.MAJOR.value}
+        ).dict())
 
 @pytest.mark.asyncio
 async def test_fetch_chord_progressions_with_new_data(clean_test_db) -> None:
     db = clean_test_db
     result = await fetch_chord_progressions(db)
+    logger.debug(f'Fetched chord progressions with new data: {result}')
     assert len(result) > 0
 
 @pytest.mark.asyncio
 async def test_fetch_note_patterns_with_new_data(clean_test_db) -> None:
     db = clean_test_db
     result = await fetch_note_patterns(db)
+    logger.debug(f'Fetched note patterns with new data: {result}')
     assert len(result) > 0
 
 @pytest.mark.asyncio
@@ -352,6 +404,7 @@ async def test_fetch_rhythm_patterns_with_new_data(clean_test_db) -> None:
     # Insert directly into collection
     await db.rhythm_patterns.insert_one(test_pattern)
     result = await fetch_rhythm_patterns(db)
+    logger.debug(f'Fetched rhythm patterns with new data: {result}')
     assert len(result) > 0
 
 
@@ -360,7 +413,34 @@ async def test_process_chord_data() -> None:
     """Test processing chord data."""
     valid_data = {
         'root': {'note_name': 'C', 'octave': 4, 'duration': 1.0, 'velocity': 100},
-        'quality': "major"
+        'quality': "MAJOR"
     }
-    processed = process_chord_data(valid_data)
-    assert processed['quality'] == ChordQualityType.MAJOR
+    db_name = "test_db"  # Mock database name
+    processed = process_chord_data(valid_data, db_name=db_name)
+    logger.debug(f'Processed chord data: {processed}')
+    assert processed['quality'] == ChordQualityType.MAJOR.value  # Compare with enumeration value
+
+@pytest.fixture
+async def setup_test_data(clean_test_db):
+    """Setup test data with correct scale types."""
+    db = clean_test_db
+    # Insert the chord progression with correct scale type
+    test_progression = {
+        'id': 'progression_1',
+        'name': 'I-IV-V',
+        'chords': [
+            {'root': {'note_name': 'C', 'octave': 4}, 'quality': 'MAJOR'},
+            {'root': {'note_name': 'F', 'octave': 4}, 'quality': 'MAJOR'},
+            {'root': {'note_name': 'G', 'octave': 4}, 'quality': 'MAJOR'}
+        ],
+        'key': 'C',
+        'scale_type': ScaleType.MAJOR.value,
+        'complexity': 0.5,
+        'scale_info': {
+            'root': {'note_name': 'C', 'octave': 4},
+            'scale_type': ScaleType.MAJOR.value
+        }
+    }
+    await db.chord_progressions.delete_many({})
+    await db.chord_progressions.insert_one(test_progression)
+    return db

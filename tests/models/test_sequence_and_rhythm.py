@@ -39,7 +39,7 @@ class FakeScaleInfo(ScaleInfo):
         return Note(note_name="C", octave=4)
 
     def get_chord_quality_for_degree(self, degree: int) -> str:
-        return "major"
+        return "MAJOR"
 
     def get_scale_notes(self) -> List[Note]:
         return [Note(note_name="C", octave=4, duration=1, velocity=100), Note(note_name="D"), Note(note_name="E")]
@@ -52,8 +52,8 @@ class TestNoteSequence(unittest.TestCase):
             Note.from_midi(62, duration=1.0, velocity=100), 
             Note.from_midi(64, duration=1.0, velocity=100)
         ], events=[], duration=0.0)
-        self.chord = Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality="major")  # Replace with actual chord instance
-        self.scale_info = FakeScaleInfo(root=Note(note_name="C", octave=4, duration=1, velocity=100), scale_type='major')  # Updated to use string for scale_type
+        self.chord = Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality="MAJOR")  # Replace with actual chord instance
+        self.scale_info = FakeScaleInfo(root=Note(note_name="C", octave=4, duration=1, velocity=100), scale_type='MAJOR')  # Updated to use string for scale_type
         self.note = Note(note_name="C", octave=4)
 
     def test_validate_notes_converts_ints_to_notes(self) -> None:
@@ -119,8 +119,8 @@ class TestPatternInterpreter(unittest.TestCase):
         fake_scale = FakeScale()
         pattern = [1, 2, 3]
         self.interpreter = ScalePatternInterpreter(scale=fake_scale, pattern=pattern)
-        self.chord = Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality="major")
-        self.scale_info = FakeScaleInfo(root=Note(note_name="C", octave=4, duration=1, velocity=100), scale_type='major')  # Updated to use string for scale_type
+        self.chord = Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality="MAJOR")
+        self.scale_info = FakeScaleInfo(root=Note(note_name="C", octave=4, duration=1, velocity=100), scale_type='MAJOR')  # Updated to use string for scale_type
 
     def test_interpret_returns_note_sequence(self) -> None:
         sequence = self.interpreter.interpret(pattern=[1, 2, 3], chord=self.chord, scale_info=self.scale_info)        
@@ -338,7 +338,7 @@ class TestIntegration(unittest.TestCase):
     def test_full_note_sequence_generation(self) -> None:
         # Setup a fake scale, chord progression, note pattern, and rhythm pattern
         scale = FakeScale()
-        fake_chord = Chord(root=Note(note_name="C", octave=4), quality="major")
+        fake_chord = Chord(root=Note(note_name="C", octave=4), quality="MAJOR")
         note_pattern_data = [Note(note_name='C', octave=4), Note(note_name='D', octave=4), Note(note_name='E', octave=4)]  # For simplicity
         
         # Create rhythm pattern (if needed for integration; not used in current interpreter)

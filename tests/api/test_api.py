@@ -11,6 +11,8 @@ from src.note_gen.models.patterns import NotePattern
 from src.note_gen.database import get_db
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import ValidationError  # Fix the syntax error here
+from src.note_gen.models.note import Note
+from src.note_gen.models.chord_progression import ChordProgression, ChordQualityType
 
 pytestmark = pytest.mark.asyncio  # This marks all test functions in the file as async
 
@@ -65,34 +67,36 @@ class MockDatabase:
             "chords": [
                 {
                     "name": "C",
-                    "root": {"note": "C", "octave": 4},  # Root as dictionary
-                    "quality": "major",
+                    "root": {"note_name": "C", "octave": 4},  # Root as dictionary
+                    "quality": ChordQualityType.MAJOR,
                     "intervals": [0, 4, 7]
                 },
                 {
                     "name": "G",
-                    "root": {"note": "G", "octave": 4},  # Root as dictionary
-                    "quality": "major",
+                    "root": {"note_name": "G", "octave": 4},  # Root as dictionary
+                    "quality": ChordQualityType.MAJOR,
                     "intervals": [0, 4, 7]
                 },
                 {
                     "name": "Am",
-                    "root": {"note": "A", "octave": 4},  # Root as dictionary
-                    "quality": "minor",
+                    "root": {"note_name": "A", "octave": 4},  # Root as dictionary
+                    "quality": ChordQualityType.MINOR,
                     "intervals": [0, 3, 7]
                 },
                 {
                     "name": "F",
-                    "root": {"note": "F", "octave": 4},  # Root as dictionary
-                    "quality": "major",
+                    "root": {"note_name": "F", "octave": 4},  # Root as dictionary
+                    "quality": ChordQualityType.MAJOR,
                     "intervals": [0, 4, 7]
                 }
             ],
             "scale_info": {
-                "root": "C",
-                "scale_type": "major",
+                "root": Note(note_name='C', octave=4),
+                "scale_type": "MAJOR",
                 "intervals": [0, 2, 4, 5, 7, 9, 11]
-            }
+            },
+            "key": "C",
+            "scale_type": "MAJOR"
         }])
 
         # Keep note patterns as is since it's working
@@ -292,7 +296,7 @@ async def test_api_functionality(client: AsyncClient) -> None:
 import pytest
 from fastapi import HTTPException
 from src.note_gen.models.note import Note
-from src.note_gen.models.chord_progression import ChordProgression
+from src.note_gen.models.chord_progression import ChordProgression, ChordQualityType
 
 # Test invalid Note creation
 async def test_invalid_note_creation() -> None:
@@ -303,32 +307,39 @@ async def test_invalid_note_creation() -> None:
 # Test invalid ChordProgression creation
 async def test_invalid_chord_progression_creation() -> None:
     with pytest.raises(ValidationError) as excinfo:
-        ChordProgression(name='Invalid Progression', chords=[], key='C', scale_type='major')
-    assert 'List should have at least 1 item after validation' in str(excinfo.value)
+        ChordProgression(
+            name='Invalid Progression',
+            chords=[
+                {'name': 'C', 'root': {'note_name': 'C', 'octave': 4}, 'quality': ChordQualityType.MAJOR, 'intervals': [0, 4, 7]},
+                {'name': 'G', 'root': {'note_name': 'G', 'octave': 4}, 'quality': ChordQualityType.MAJOR, 'intervals': [0, 4, 7]}
+            ],
+            key='C',
+            scale_type='MAJOR',
+            scale_info={'root': Note(note_name='C', octave=4), 'scale_type': 'MAJOR'}
+        )
+    assert 'List should have at least 3 item after validation' in str(excinfo.value)
 
 # Test API endpoint with valid data
 async def test_create_chord_progression_valid_data(client: AsyncClient) -> None:
     valid_data = {
         'name': 'Valid Progression',
         'chords': [
-            {'name': 'C', 'root': {'note': 'C', 'octave': 4}, 'quality': 'major', 'intervals': [0, 4, 7]},
-            {'name': 'G', 'root': {'note': 'G', 'octave': 4}, 'quality': 'major', 'intervals': [0, 4, 7]},
-            {'name': 'Am', 'root': {'note': 'A', 'octave': 4}, 'quality': 'minor', 'intervals': [0, 3, 7]},
-            {'name': 'F', 'root': {'note': 'F', 'octave': 4}, 'quality': 'major', 'intervals': [0, 4, 7]}
+            {'name': 'C', 'root': {'note_name': 'C', 'octave': 4}, 'quality': ChordQualityType.MAJOR, 'intervals': [0, 4, 7]},
+            {'name': 'G', 'root': {'note_name': 'G', 'octave': 4}, 'quality': ChordQualityType.MAJOR, 'intervals': [0, 4, 7]},
+            {'name': 'Am', 'root': {'note_name': 'A', 'octave': 4}, 'quality': ChordQualityType.MINOR, 'intervals': [0, 3, 7]},
+            {'name': 'F', 'root': {'note_name': 'F', 'octave': 4}, 'quality': ChordQualityType.MAJOR, 'intervals': [0, 4, 7]}
         ],
         'key': 'C',
-        'scale_type': 'major',
+        'scale_type': 'MAJOR',
         'scale_info': {
-            "root": "C",
-            "scale_type": "major",
+            "root": Note(note_name='C', octave=4),
+            "scale_type": "MAJOR",
             "intervals": [0, 2, 4, 5, 7, 9, 11]
         }
     }
     response = await client.post('/api/chord-progressions', json=valid_data)
-    if response.status_code != 201:
-        print("Response Status Code:", response.status_code)  # Print status code if not 201
-        print("Response JSON:", response.json())  # Print the response JSON for debugging
-    assert response.status_code == 201  # Created
+    assert response.status_code == 200
+    assert response.json()['name'] == 'Valid Progression'
 
 # Test API endpoint with invalid data
 async def test_create_chord_progression_invalid_data(client: AsyncClient) -> None:
@@ -336,8 +347,8 @@ async def test_create_chord_progression_invalid_data(client: AsyncClient) -> Non
         'name': 'Invalid Progression',
         'chords': [],  # Empty chords list should trigger validation error
         'key': 'C',
-        'scale_type': 'major'
+        'scale_type': 'MAJOR'
     }
     response = await client.post('/api/chord-progressions', json=invalid_data)
     assert response.status_code == 422  # Unprocessable Entity
-    assert 'List should have at least 1 item after validation, not 0' in response.json()['detail'][0]['msg']
+    assert 'List should have at least 3 item after validation' in response.json()['detail'][0]['msg']

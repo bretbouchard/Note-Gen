@@ -41,9 +41,9 @@ async def format_chord_progression(name: str, progression: list) -> dict:
         }
 
         # Map scale degree to note name
-        major_scale = ['C', 'D', 'E', 'F', 'G', 'A', 'B']
+        MAJOR_scale = ['C', 'D', 'E', 'F', 'G', 'A', 'B']
         degree = roman_to_degree.get(base_roman.upper(), 0)
-        note_name = major_scale[degree % 7]
+        note_name = MAJOR_scale[degree % 7]
 
         # Determine quality based on roman numeral case and any modifiers
         if quality:

@@ -8,7 +8,7 @@ import httpx
 
 @pytest.fixture
 async def client():
-    async with httpx.AsyncClient(app=app, base_url="http://test") as c:
+    async with httpx.AsyncClient(base_url="http://127.0.0.1:8000", verify=False) as c:
         yield c
 
 # Consolidated tests for rhythm pattern functionality
@@ -16,7 +16,6 @@ async def client():
 @pytest.mark.asyncio
 async def test_rhythm_pattern_functionality(client):
     # Test get rhythm pattern
-    pattern_id = str(ObjectId())
     rhythm_note = RhythmNote(position=0.0, duration=1.0, velocity=100, is_rest=False)
     rhythm_data = RhythmPatternData(
         notes=[rhythm_note],
@@ -38,6 +37,7 @@ async def test_rhythm_pattern_functionality(client):
     # Insert the pattern into the database
     response = await client.post('/rhythm-patterns', json=rhythm_pattern.model_dump())
     assert response.status_code == 201
+    pattern_id = response.json()['_id']  # Capture the ID of the created pattern
     
     # Retrieve the pattern
     response = await client.get(f'/rhythm-patterns/{pattern_id}')
@@ -78,7 +78,6 @@ async def test_rhythm_pattern_functionality(client):
 
     # Test create duplicate rhythm pattern
     # First pattern
-    pattern_id = str(ObjectId())
     rhythm_note = RhythmNote(position=0.0, duration=1.0, velocity=100, is_rest=False)
     rhythm_data = RhythmPatternData(
         notes=[rhythm_note],

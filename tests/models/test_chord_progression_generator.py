@@ -101,7 +101,7 @@ class TestChordProgressionGenerator(unittest.TestCase):
             Chord(root=Note(note_name="G", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR)
         ])
         with self.assertRaises(ValueError):
-            gen.generate_custom(degrees=[1, 2], qualities=["major"])
+            gen.generate_custom(degrees=[1, 2], qualities=["MAJOR"])
 
     def test_generate_custom_valid(self) -> ChordProgression:
         scale_info = ScaleInfo(root=Note(note_name="C", octave=4, duration=1, velocity=64))
@@ -110,7 +110,7 @@ class TestChordProgressionGenerator(unittest.TestCase):
             Chord(root=Note(note_name="F", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
             Chord(root=Note(note_name="G", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR)
         ])
-        progression = gen.generate_custom(degrees=[1, 2], qualities=["major", "minor"])
+        progression = gen.generate_custom(degrees=[1, 2], qualities=["MAJOR", "MINOR"])
         self.assertEqual(len(progression.chords), 2)
         self.assertEqual(progression.chords[0].quality, ChordQualityType.MAJOR)
         self.assertEqual(progression.chords[1].quality, ChordQualityType.MINOR)
@@ -212,16 +212,16 @@ class TestChordProgressionGenerator(unittest.TestCase):
         with self.assertRaises(ValueError):
             gen.generate(pattern=['I-IV-V'], progression_length=0)
 
-    def test_generate_chord_notes_valid(self):
-        root_note = Note(note_name="C", octave=4, duration=1.0, velocity=100)
-        chord = Chord(root=root_note, quality=ChordQualityType.MAJOR)
-        generated_notes = chord._generate_chord_notes(root=root_note, quality=ChordQualityType.MAJOR)
+    def test_generate_chord_notes_valid(self) -> None:
+        scale_info = ScaleInfo(root=Note(note_name="C", octave=4), scale_type=ScaleType.MAJOR)
+        chord = Chord(root=Note(note_name="C", octave=4), quality=ChordQualityType.MAJOR)
+        generated_notes = chord._generate_chord_notes(chord.root, chord.quality)
         expected_notes = [
-            root_note,
-            root_note.transpose(4),  # E
-            root_note.transpose(7)   # G
+            Note(note_name="C", octave=4),  # Root
+            Note(note_name="E", octave=4),  # Major third
+            Note(note_name="G", octave=4)   # Perfect fifth
         ]
-        self.assertEqual(generated_notes, expected_notes)
+        self.assertEqual(generated_notes, expected_notes)  # Check if generated notes match expected
 
     def test_generate_chord_notes_invalid_quality(self):
         root_note = Note(note_name="C", octave=4, duration=1.0, velocity=100)
@@ -256,6 +256,50 @@ class TestChordProgressionGenerator(unittest.TestCase):
         chord = Chord(root=root_note, quality=ChordQualityType.MAJOR)
         generated_notes = chord._generate_chord_notes(root=root_note, quality=ChordQualityType.MAJOR)
         self.assertTrue(all(note.octave <= 6 for note in generated_notes))  # Ensure no note exceeds octave 6
+
+    def test_generate_chord_notes_major(self):
+        root_note = Note(note_name="C", octave=4, duration=1.0, velocity=100)
+        chord = Chord(root=root_note, quality=ChordQualityType.MAJOR)
+        generated_notes = chord._generate_chord_notes(root=root_note, quality=ChordQualityType.MAJOR)
+        expected_notes = [
+            root_note,
+            root_note.transpose(4),  # E
+            root_note.transpose(7)   # G
+        ]
+        self.assertEqual(generated_notes, expected_notes)
+
+    def test_generate_chord_notes_minor(self):
+        root_note = Note(note_name="C", octave=4, duration=1.0, velocity=100)
+        chord = Chord(root=root_note, quality=ChordQualityType.MINOR)
+        generated_notes = chord._generate_chord_notes(root=root_note, quality=ChordQualityType.MINOR)
+        expected_notes = [
+            root_note,
+            root_note.transpose(3),  # Eb
+            root_note.transpose(7)   # G
+        ]
+        self.assertEqual(generated_notes, expected_notes)
+
+    def test_generate_chord_notes_augmented(self):
+        root_note = Note(note_name="C", octave=4, duration=1.0, velocity=100)
+        chord = Chord(root=root_note, quality=ChordQualityType.AUGMENTED)
+        generated_notes = chord._generate_chord_notes(root=root_note, quality=ChordQualityType.AUGMENTED)
+        expected_notes = [
+            root_note,
+            root_note.transpose(4),  # E
+            root_note.transpose(8)   # G#
+        ]
+        self.assertEqual(generated_notes, expected_notes)
+
+    def test_generate_chord_notes_diminished(self):
+        root_note = Note(note_name="C", octave=4, duration=1.0, velocity=100)
+        chord = Chord(root=root_note, quality=ChordQualityType.DIMINISHED)
+        generated_notes = chord._generate_chord_notes(root=root_note, quality=ChordQualityType.DIMINISHED)
+        expected_notes = [
+            root_note,
+            root_note.transpose(3),  # Eb
+            root_note.transpose(6)   # Gb
+        ]
+        self.assertEqual(generated_notes, expected_notes)
 
 if __name__ == "__main__":
     unittest.main()

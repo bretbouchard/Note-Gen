@@ -57,7 +57,7 @@ async def test_note_pattern_functionality(client):
         name='Test Create Pattern',
         description='Test pattern',
         tags=['basic'],
-        data=[0, 4, 7],  # C major triad intervals
+        data=[0, 4, 7],  # C MAJOR triad intervals
         notes=[
             Note(note_name='C', octave=4),
             Note(note_name='E', octave=4),

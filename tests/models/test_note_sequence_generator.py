@@ -11,10 +11,10 @@ from pydantic import BaseModel, Field, ConfigDict, field_validator
 
 @pytest.fixture
 def setup_note_sequence_generator() -> NoteSequenceGenerator:
-    scale_info = ScaleInfo(root=Note(note_name="C", octave=4), scale_type="major")
+    scale_info = ScaleInfo(root=Note(note_name="C", octave=4), scale_type="MAJOR")
     chord1 = Chord(root=Note(note_name="C", octave=4), quality=ChordQualityType.MAJOR)
     chord2 = Chord(root=Note(note_name="F", octave=4), quality=ChordQualityType.MAJOR)
-    chord_progression = ChordProgression(name="Test Progression", key="C", scale_type="major", scale_info=scale_info, chords=[chord1, chord2])
+    chord_progression = ChordProgression(name="Test Progression", key="C", scale_type="MAJOR", scale_info=scale_info, chords=[chord1, chord2])
     note_sequence = NoteSequence(notes=[])
     
     rhythm_note1 = RhythmNote(position=0.0, duration=1.0, velocity=100, is_rest=False)
@@ -74,22 +74,22 @@ def test_get_root_note_from_chord_none_root(setup_note_sequence_generator: NoteS
 def test_get_root_note_from_chord_none_scale(setup_note_sequence_generator: NoteSequenceGenerator) -> None:
     generator = setup_note_sequence_generator
     # Create a chord progression with no scale type
-    scale_info = ScaleInfo(root=Note(note_name="C", octave=4), scale_type="major")
+    scale_info = ScaleInfo(root=Note(note_name="C", octave=4), scale_type="MAJOR")
     chord = Chord(root=Note(note_name="C", octave=4), quality=ChordQualityType.MAJOR)
-    chord_progression = ChordProgression(name="Test Progression", key="C", scale_type="major", scale_info=scale_info, chords=[chord])
+    chord_progression = ChordProgression(name="Test Progression", key="C", scale_type="MAJOR", scale_info=scale_info, chords=[chord])
     generator.chord_progression = chord_progression
     root_note = generator.get_root_note_from_chord(chord)
     assert root_note.note_name == "C"
 
 def test_note_sequence_generator_i_iv_v_i() -> None:
-    # Create scale info (C major)
-    scale_info = ScaleInfo(root=Note(note_name="C", octave=4), scale_type="major")
+    # Create scale info (C MAJOR)
+    scale_info = ScaleInfo(root=Note(note_name="C", octave=4), scale_type="MAJOR")
     
-    # Create chord progression (I-IV-V-I in C major)
+    # Create chord progression (I-IV-V-I in C MAJOR)
     chord1 = Chord(root=Note(note_name="C", octave=4), quality=ChordQualityType.MAJOR)
     chord2 = Chord(root=Note(note_name="F", octave=4), quality=ChordQualityType.MAJOR)
     chord3 = Chord(root=Note(note_name="G", octave=4), quality=ChordQualityType.MAJOR)
-    chord_progression = ChordProgression(name="I-IV-V-I Progression", key="C", scale_type="major", scale_info=scale_info, chords=[chord1, chord2, chord3])
+    chord_progression = ChordProgression(name="I-IV-V-I Progression", key="C", scale_type="MAJOR", scale_info=scale_info, chords=[chord1, chord2, chord3])
     # Create note sequence (simple sequence following chord roots)
     notes = [
         {"note_name": "C", "octave": 4, "duration": 1.0},

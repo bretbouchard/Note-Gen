@@ -22,8 +22,8 @@ async def import_presets_if_empty(db: AsyncIOMotorDatabase) -> None:
         if not await db.chord_progressions.count_documents({}):
             # Insert default chord progressions
             default_progressions = [
-                {"name": "Default Progression 1", "chords": [], "key": "C", "scale_type": "major"},
-                {"name": "Default Progression 2", "chords": [], "key": "G", "scale_type": "major"},
+                {"name": "Default Progression 1", "chords": [], "key": "C", "scale_type": "MAJOR"},
+                {"name": "Default Progression 2", "chords": [], "key": "G", "scale_type": "MAJOR"},
             ]
             await db.chord_progressions.insert_many(default_progressions)
 
