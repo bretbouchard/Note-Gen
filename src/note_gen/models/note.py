@@ -1,6 +1,6 @@
 # src/note_gen/models/note.py
 import re
-from pydantic import BaseModel, Field, validator, ValidationError, root_validator, ConfigDict
+from pydantic import BaseModel, Field, validator, ValidationError, root_validator, field_validator, ConfigDict
 from typing import Any, ClassVar, Dict, Tuple, Optional, Union
 import logging
 
@@ -20,7 +20,6 @@ class Note(BaseModel):
     velocity: int = Field(default=64)
     stored_midi_number: Optional[int] = None
 
-    Config = NoteConfig
 
     # Maps note names to their semitone values
     NOTE_TO_SEMITONE: ClassVar[Dict[str, int]] = {
@@ -41,28 +40,41 @@ class Note(BaseModel):
         9: 'A', 10: 'A#', 11: 'B'
     }
 
-    @validator('octave')
+    @field_validator('note_name')
+    def validate_note_name(cls, value):
+        if value not in cls.NOTE_TO_SEMITONE:
+            raise ValueError(f'Invalid note name: {value}. Must be one of {list(cls.NOTE_TO_SEMITONE.keys())}.')
+        return value
+
+    @field_validator('octave')
+    def validate_octave(cls, value):
+        if not (0 <= value <= 8):
+            raise ValueError('Octave must be between 0 and 8.')
+        return value
+
+    @field_validator('octave')
     @classmethod
     def validate_octave(cls, octave):
         if octave < 0 or octave > 8:
             raise ValueError("Invalid octave:")
         return octave
 
-    @validator('note_name')
+    @field_validator('note_name')
+    @classmethod
     @classmethod
     def validate_note_name(cls, note_name):
         if not re.match(r'^[A-G][#b]?\d?$', note_name):
             raise ValueError(f"Invalid note name: {note_name}")  # Include the invalid note name
         return note_name
 
-    @validator('duration')
+    @field_validator('duration')
     @classmethod
     def validate_duration(cls, duration):
         if duration <= 0:
             raise ValueError("Input should be greater than 0")
         return duration
 
-    @validator('velocity')
+    @field_validator('velocity')
     @classmethod
     def validate_velocity(cls, velocity):
         if not (0 <= velocity <= 127):

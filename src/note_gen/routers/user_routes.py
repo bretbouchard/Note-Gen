@@ -6,8 +6,8 @@ import logging
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from bson import ObjectId
 
-from src.note_gen.models.musical_elements import Note
-from src.note_gen.models.chord_progression import ChordProgression
+from src.note_gen.models.musical_elements import Note, Chord
+from src.note_gen.models.chord_progression import ChordProgression 
 from src.note_gen.models.scale_info import ScaleInfo
 from src.note_gen.models.patterns import NotePattern, NotePatternData
 from src.note_gen.database import get_db
@@ -21,10 +21,6 @@ router = APIRouter()
 # MongoDB connection
 
 
-class Chord(BaseModel):
-    root: Dict[str, Any] = Field(description="Root note information")
-    quality: str = Field(description="Quality of the chord")
-
 class ChordProgressionRequest(BaseModel):
     scale_info: ScaleInfo = Field(description="Scale information")
     num_chords: int = Field(description="Number of chords")
@@ -34,7 +30,7 @@ class ChordProgressionResponse(BaseModel):
     id: str = Field(description="ID of the chord progression")
     name: str = Field(description="Name of the chord progression")
     scale_info: Dict[str, Any] = Field(description="Scale information")
-    chords: List[Chord] = Field(description="List of chords")
+    chords: List[Dict[str, Any]] = Field(description="List of chords")
 
 class ApiNotePattern(BaseModel):
     id: Optional[str] = Field(None, description="ID of the note pattern")

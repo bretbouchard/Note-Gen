@@ -12,27 +12,29 @@ logger = logging.getLogger(__name__)
 __all__ = ['Note', 'ChordQualityType', 'Chord']
 
 CHORD_QUALITY_ALIASES = {
+    "dominant": "dominant7",           # Map to the enum value, not the enum name
+    "dom": "dominant7", 
     'maj': 'MAJOR',
     'min': 'MINOR',
     'm': 'MINOR',
     'dim': 'DIMINISHED',
     'aug': 'AUGMENTED',
-    '7': 'DOMINANT_7',
+    '7': 'DOMINANT7',
     'maj7': 'MAJOR7',
-    'min7': 'MINOR_7',
-    'm7': 'MINOR_7',
+    'min7': 'MINOR7',
+    'm7': 'MINOR7',
     'dim7': 'DIMINISHED7',
     'm7b5': 'M7B5',
-    'sus2': 'SUSPENDED_2',
-    'sus4': 'SUSPENDED_4',
-    '6': 'MAJOR_6',
-    'm6': 'MINOR_6',
-    'minmaj7': 'MINOR_MAJOR_7',
-    'aug7': 'AUGMENTED_7',
-    'ø7': 'HALF_DIMINISHED_7',
-    'b5': 'FLAT_5',
-    '#5': 'SHARP_5',
-    '#7': 'SHARP_7'
+    'sus2': 'SUSPENDED2',
+    'sus4': 'SUSPENDED4',
+    '6': 'MAJOR7',
+    'm6': 'MINOR7',
+    'minmaj7': 'MINOR_MAJOR7',
+    'aug7': 'AUGMENTED7',
+    'ø7': 'HALF_DIMINISHED7',
+    'b5': 'FLAT5',
+    '#5': 'SHARP5',
+    '#7': 'SHARP7'
 }
 
 class ChordQualityType(str, Enum):
@@ -40,8 +42,8 @@ class ChordQualityType(str, Enum):
     MINOR = 'MINOR'
     DIMINISHED = 'DIMINISHED'
     AUGMENTED = 'AUGMENTED'
-    DOMINANT7 = 'DOMINANT7'
-    MAJOR7 = 'MAJOR7'  # Keep this as MAJOR7 without underscore
+    DOMINANT7 = "DOMINANT7"
+    MAJOR7 = 'MAJOR7'
     MINOR7 = 'MINOR7'
     DIMINISHED7 = 'DIMINISHED7'
     M7B5 = 'M7B5'
@@ -55,6 +57,7 @@ class ChordQualityType(str, Enum):
     FLAT5 = 'FLAT5'
     SHARP5 = 'SHARP5'
     SHARP7 = 'SHARP7'
+    INVALID_QUALITY = "INVALID_QUALITY"
 
     @classmethod
     def from_string(cls, quality_str: str) -> 'ChordQualityType':
@@ -69,9 +72,10 @@ class ChordQualityType(str, Enum):
         try:
             return cls[quality_str.upper()]
         except KeyError:
-            raise ValueError(f"Invalid quality string: {quality_str}")
+            if quality_str not in cls._member_map_:
+                return cls.INVALID_QUALITY  # Assign INVALID_QUALITY for invalid strings
 
-    def get_intervals(self) -> List[int]:
+    def get_intervals(self, quality: 'ChordQualityType') -> List[int]:
         """Get the intervals for a given chord quality."""
         intervals_map = {
             ChordQualityType.MAJOR: [0, 4, 7],
@@ -95,76 +99,71 @@ class ChordQualityType(str, Enum):
             ChordQualityType.SHARP7: [0, 4, 7, 11]  # Changed from SHARP_7
         }
     
-        if self not in intervals_map:
-            raise ValueError(f"No intervals defined for chord quality: {self}")
+        if self == ChordQualityType.INVALID_QUALITY:
+            raise ValueError("No intervals defined for chord quality: INVALID_QUALITY.")
+        if quality not in intervals_map:
+            raise ValueError(f"No intervals defined for chord quality: {quality}")
         
-        return intervals_map[self]
-
+        return intervals_map[quality]
 
 class Chord(BaseModel):
-    root: Note
-    quality: str = Field(default=ChordQualityType.MAJOR.value)
-    inversion: int = Field(default=0)
-    notes: List[Note] = []
-
-    class Config:
-        arbitrary_types_allowed = True
-
     logger: ClassVar[logging.Logger] = logging.getLogger(__name__)
 
-    def __init__(self, **data: Any) -> None:
-        self.logger.debug(f"Initializing Chord with data: {data}")
-        if 'quality' in data:
-            self.logger.info(f"Quality before conversion: {data['quality']}")
-            data['quality'] = ChordQualityType.from_string(data['quality']).value  # Convert to string
-        super().__init__(**data)
-        self.logger.info(f"Quality after conversion: {self.quality}")
-        self.notes = self._generate_chord_notes(self.root, ChordQualityType.from_string(self.quality))
-        self.apply_inversion()  # Apply inversion after generating notes
+    root: Note
+    quality: ChordQualityType
+    notes: List[Note] = Field(default_factory=list)
+    inversion: int = 0
+    complexity: Optional[float] = None
+
+    def __init__(self, root: Note, quality: ChordQualityType, notes: Optional[List[Note]] = None, inversion: int = 0, complexity: Optional[float] = None):
+        if not isinstance(root, Note):
+            raise ValueError("Root must be a valid Note instance.")
+        if complexity is not None and (complexity < 0 or complexity > 1):
+            raise ValueError("Complexity must be between 0 and 1")
+        super().__init__(root=root, quality=quality, notes=notes or [], inversion=inversion, complexity=complexity)
+
+    def generate_notes(self) -> List[Note]:
+        """Generate notes for the chord based on its root and quality."""
+        intervals = self.quality.get_intervals(self.quality) 
+        notes = []
+        for interval in intervals:
+            note = self.root.transpose(interval)  # Assuming transpose method exists in Note class
+            notes.append(note)
+        return notes
 
     def apply_inversion(self) -> None:
         if self.inversion < 0:
             raise ValueError("Inversion cannot be negative.")
-        if self.inversion > 0:
-            self.notes = self.notes[self.inversion:] + self.notes[:self.inversion]  # Rotate notes for inversion
-
-    @field_validator('quality')
-    def validate_quality(cls, value: str) -> str:
-        if not isinstance(value, str):
-            raise ValueError("Quality must be a valid string.")
-        try:
-            ChordQualityType.from_string(value)
-        except ValueError:
-            raise ValueError("Quality must be a valid ChordQualityType.")
-        return value
+        if self.inversion >= len(self.notes):
+            raise ValueError("Inversion is greater than the number of notes.")
+        self.notes = self.notes[self.inversion:] + self.notes[:self.inversion]  
 
     def _generate_chord_notes(self, root: Note, quality: ChordQualityType) -> List[Note]:
         """Generate the notes for a chord based on its root and quality."""
-        logger.debug(f"Starting note generation for quality: {quality}")
-        logger.debug(f"Root note: {root.note_name}, Octave: {root.octave}")
+        self.logger.debug(f"Starting note generation for quality: {quality}")
+        self.logger.debug(f"Root note: {root.note_name}, Octave: {root.octave}")
         
-        intervals = quality.get_intervals()
+        if quality == ChordQualityType.INVALID_QUALITY:
+            raise ValueError("Invalid chord quality.")  
+        
+        intervals = quality.get_intervals(quality)  
+        self.logger.debug(f"Intervals for {quality}: {intervals}")  
         notes = []
         
         for interval in intervals:
+            self.logger.debug(f"Processing interval: {interval}")  
             new_note = root.transpose(interval)
             notes.append(new_note)
+            self.logger.debug(f"Generated note: {new_note.note_name} for interval: {interval}")  # Log each generated note
+            self.logger.debug(f"Generated note details: {new_note.note_name}, octave: {new_note.octave}")  # Log additional note details
         
-        return notes
-
-    def generate_notes(self) -> List[Note]:
-        """Generate the notes for this chord based on its root and quality."""
-        self.logger.debug(f"Generating notes for chord with root: {self.root}, quality: {self.quality}")
-        notes = self._generate_chord_notes(self.root, ChordQualityType.from_string(self.quality))
-        if self.inversion > 0:
-            notes = notes[self.inversion:] + notes[:self.inversion]  # Rotate notes for inversion
-        self.logger.debug(f"Generated notes for chord: {notes}")
         return notes
 
     def get_notes(self) -> List[Note]:
         """Get the notes in this chord."""
         if not self.notes:
             self.notes = self.generate_notes()
+            self.logger.debug(f"Generated notes: {self.notes}")  # Log the generated notes
         self.logger.debug(f"Returning notes for chord: {self.notes}")
         return self.notes
 
@@ -177,7 +176,7 @@ class Chord(BaseModel):
     def to_dict(self):
         return {
             "root": self.root.to_dict(),
-            "quality": ChordQualityType.from_string(self.quality).name,  # Ensure proper serialization
+            "quality": self.quality.name,  
             "notes": [note.to_dict() for note in self.notes],
             "inversion": self.inversion
         }
@@ -199,22 +198,44 @@ class Chord(BaseModel):
                 f"notes={self.notes}, inversion={self.inversion})")
 
     @classmethod
-    def from_quality(cls, root: Note, quality: str) -> 'Chord':  # Accept quality as a string
-        cls.logger.debug(f"Creating chord from quality: {quality}")  # Log the quality being passed
+    def from_quality(cls, root: Note, quality: Union[str, ChordQualityType]) -> 'Chord':
+        if isinstance(quality, str):
+            input_quality = quality
+            cls.logger.debug(f"Input quality string: {input_quality}")
+            quality = {
+                'maj7': ChordQualityType.MAJOR7,
+                'major7': ChordQualityType.MAJOR7,
+                'MAJOR7': ChordQualityType.MAJOR7,
+                'MAJ7': ChordQualityType.MAJOR7,
+                'min7': ChordQualityType.MINOR7,
+                'minor7': ChordQualityType.MINOR7,
+                'MINOR7': ChordQualityType.MINOR7,
+                'MIN7': ChordQualityType.MINOR7,
+                'dim': ChordQualityType.DIMINISHED,
+                'diminished': ChordQualityType.DIMINISHED,
+                'aug': ChordQualityType.AUGMENTED,
+                'maj': ChordQualityType.MAJOR,
+                'major': ChordQualityType.MAJOR,
+                'MIN': ChordQualityType.MINOR,
+                'MINOR': ChordQualityType.MINOR,
+                'dom7': ChordQualityType.DOMINANT7,
+                'major': ChordQualityType.MAJOR,
+                'minor': ChordQualityType.MINOR,
+                'INVALID': ChordQualityType.INVALID_QUALITY
+            }.get(quality.lower())
+
+            if quality is None:
+                cls.logger.debug("Quality is None, defaulting to MAJOR")
+            else:
+                cls.logger.debug(f"Mapped quality string '{input_quality}' to '{quality}'")
+            cls.logger.debug(f"Mapped quality: {quality}")
+        cls.logger.debug(f"Input quality string: {input_quality}")
+        cls.logger.debug(f"Mapped quality: {quality}")
         if not isinstance(root, Note) or not hasattr(root, 'note_name'):
             raise ValueError("Root must be a valid Note instance with a note_name")
-        cls.logger.debug(f"Quality being passed to from_string: {quality}")  # Log the quality value
-        cls.logger.debug(f"Creating chord from quality: {root}, {quality}")
-        cls.logger.debug(f"Quality being passed to from_string: {quality}")
-        cls.logger.debug(f"Quality being passed to from_string: {quality}")
-        quality_enum = ChordQualityType.from_string(quality)  # Convert string to enum
-        cls.logger.debug(f"Quality being passed to from_string: {quality}")
-        return cls(root=root, quality=quality_enum.value)  # Use the enum value
+        cls.logger.debug(f"Quality being passed to from_string: {quality}")  
+        return cls(root=root, quality=quality)  
 
 
 class ChordProgression(BaseModel):
     logger: ClassVar[logging.Logger] = logging.getLogger(__name__)
-
-    def __init__(self, **data):
-        self.logger.debug(f"Initializing ChordProgression with data: {data}")
-        # ... rest of the code remains the same ...

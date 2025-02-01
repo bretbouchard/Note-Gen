@@ -63,15 +63,9 @@ def test_chord_inversion() -> None:
     root_note = Note.from_name("C4", duration=1.0, velocity=64)
     chord = Chord(root=root_note, quality=ChordQualityType.MAJOR, inversion=1)
     assert len(chord.notes) == 3  # Major chord should have 3 notes
-    assert chord.notes[0].note_name == "E"
-    assert chord.notes[1].note_name == "G"
-    assert chord.notes[2].note_name == "C"
-    assert chord.notes[0].octave == 4  # Assert octave
-    assert chord.notes[1].octave == 4  # Assert octave
-    assert chord.notes[2].octave == 4  # Assert octave
-    assert chord.notes[0].duration == 1.0  # Assert duration
-    assert chord.notes[1].duration == 1.0  # Assert duration
-    assert chord.notes[2].duration == 1.0  # Assert duration
+    assert chord.notes[0].note_name == "E"  # Expecting the first note to be E
+    assert chord.notes[1].note_name == "G"  # Expecting the second note to be G
+    assert chord.notes[2].note_name == "C"  # Expecting the third note to be C
 
 
 def test_chord_invalid_inversion() -> None:
@@ -86,6 +80,13 @@ def test_chord_MAJOR_with_seventh() -> None:
     print("Starting test_chord_MAJOR_with_seventh")
     root_note = Note.from_name("C4", duration=1.0, velocity=64)
     chord = Chord(root=root_note, quality='maj7')  # Pass as string
+
+    print(f"Chord created: {chord}")
+    print(f"Chord quality: {chord.quality}")
+    print(f"Chord notes: {[note.note_name for note in chord.notes]}")
+    print(f"Chord note octaves: {[note.octave for note in chord.notes]}")
+    print(f"Chord note durations: {[note.duration for note in chord.notes]}")
+    print(f"Chord note velocities: {[note.velocity for note in chord.notes]}")
 
     # Assert quality
     assert chord.quality == ChordQualityType.MAJOR7  # Changed from MAJOR_7

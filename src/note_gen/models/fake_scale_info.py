@@ -1,5 +1,4 @@
-from pydantic import BaseModel, Field, ConfigDict, field_validator, root_validator, validator
-from src.note_gen.models.scale_info import ScaleInfo
+from pydantic import BaseModel, Field, field_validator, ConfigDict
 from src.note_gen.models.note import Note
 from src.note_gen.models.enums import ScaleType, ChordQualityType
 from src.note_gen.models.scale import Scale
@@ -8,40 +7,31 @@ import logging
 
 logging.basicConfig(level=logging.DEBUG)
 
-class FakeScaleInfo(ScaleInfo):
-    root: Note = Field(default_factory=lambda: Note(note_name="C", octave=4, duration=1, velocity=64))
-    scale_type: ScaleType = ScaleType.MAJOR
-    complexity: Optional[float] = Field(default=0.0)
+class FakeScaleInfo(BaseModel):
+    root: Note
+    scale_type: ScaleType = Field(default=ScaleType.MAJOR)
+    complexity: float = Field(default=0.0)
 
-    class Config:
-        arbitrary_types_allowed = True
-
-    def __init__(self, root: Note = None, scale_type: ScaleType = ScaleType.MAJOR, complexity: float = 0.0):
-        if root is None:
-            root = self.root
-        super().__init__(root=root, scale_type=scale_type)
-        self.complexity = complexity
-
-    @classmethod
     @field_validator('scale_type')
-    def validate_scale_type(cls, value: ScaleType) -> ScaleType:
-        if value not in [ScaleType.MAJOR, ScaleType.MINOR]:
-            raise ValueError("Scale type must be either 'MAJOR' or 'MINOR'")
+    def validate_scale_type(cls, value):
+        if value not in ScaleType:
+            raise ValueError('Invalid scale type. Must be either MAJOR or MINOR.')
         return value
 
-    @classmethod
     @field_validator('complexity')
     def validate_complexity(cls, value: float) -> float:
         if not (0 <= value <= 1):
             raise ValueError("Complexity must be between 0 and 1")
         return value
 
+    class Config:
+        model_config = ConfigDict(arbitrary_types_allowed=True)
+
     def some_method(self) -> None:
         """Placeholder method for future functionality."""
         pass
     
     def get_scale_info(self) -> dict[str, Any]:
-        """Returns a dictionary with scale information."""
         return {
             "root": self.root,
             "scale_type": self.scale_type,

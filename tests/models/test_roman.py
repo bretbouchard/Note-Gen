@@ -44,17 +44,17 @@ class TestRomanNumeral(unittest.TestCase):
 
     def test_from_scale_degree_MINOR_7(self) -> None:
         degree = 2
-        numeral = RomanNumeral.from_scale_degree(degree, ChordQualityType.MINOR_7)
+        numeral = RomanNumeral.from_scale_degree(degree, ChordQualityType.MINOR7)
         self.assertEqual(numeral, "ii7")
 
     def test_from_scale_degree_MAJOR_7(self) -> None:
         degree = 1
-        numeral = RomanNumeral.from_scale_degree(degree, ChordQualityType.MAJOR_7)
+        numeral = RomanNumeral.from_scale_degree(degree, ChordQualityType.MAJOR7)
         self.assertEqual(numeral, "IΔ")
 
     def test_from_scale_degree_dominant_7(self) -> None:
         degree = 5
-        numeral = RomanNumeral.from_scale_degree(degree, ChordQualityType.DOMINANT_7)
+        numeral = RomanNumeral.from_scale_degree(degree, ChordQualityType.DOMINANT7)
         self.assertEqual(numeral, "V7")
 
     def test_from_scale_degree_invalid_degree(self) -> None:
@@ -98,8 +98,8 @@ class TestRomanNumeral(unittest.TestCase):
         test_data = [
             (Chord(root=Note(note_name="D", octave=4, duration=1, velocity=100), quality=ChordQualityType.MINOR), "ii"),
             (Chord(root=Note(note_name="E", octave=4, duration=1, velocity=100), quality=ChordQualityType.DIMINISHED), "iiio"),
-            (Chord(root=Note(note_name="A", octave=4, duration=1, velocity=100), quality=ChordQualityType.MINOR_7), "vi7"),
-            (Chord(root=Note(note_name="G", octave=4, duration=1, velocity=100), quality=ChordQualityType.DOMINANT_7), "V7"),
+            (Chord(root=Note(note_name="A", octave=4, duration=1, velocity=100), quality=ChordQualityType.MINOR7), "vi7"),  # Changed from MINOR_7 to MINOR7
+            (Chord(root=Note(note_name="G", octave=4, duration=1, velocity=100), quality=ChordQualityType.DOMINANT7), "V7"),  # Changed from DOMINANT_7 to DOMINANT7
         ]
         for chord, expected_numeral in test_data:
             with self.subTest(chord=chord):

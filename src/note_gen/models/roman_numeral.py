@@ -32,11 +32,11 @@ class RomanNumeral:
             return numeral + '+'
         elif quality == ChordQualityType.DIMINISHED:
             return numeral.lower() + 'o'
-        elif quality == ChordQualityType.DOMINANT_7:
+        elif quality == ChordQualityType.DOMINANT7:
             return numeral + '7'
-        elif quality == ChordQualityType.MAJOR_7:
+        elif quality == ChordQualityType.MAJOR7:
             return numeral + 'Δ'
-        elif quality == ChordQualityType.MINOR_7:
+        elif quality == ChordQualityType.MINOR7:
             return numeral.lower() + '7'
         
         return numeral
@@ -68,12 +68,12 @@ class RomanNumeral:
             base_numeral = base_numeral.replace('+', '')
         elif '7' in numeral:
             if numeral.islower():
-                quality = ChordQualityType.MINOR_7
+                quality = ChordQualityType.MINOR7
             else:
-                quality = ChordQualityType.DOMINANT_7
+                quality = ChordQualityType.DOMINANT7
             base_numeral = base_numeral.replace('7', '')
         elif 'Δ' in numeral:
-            quality = ChordQualityType.MAJOR_7
+            quality = ChordQualityType.MAJOR7
             base_numeral = base_numeral.replace('Δ', '')
         else:
             base_numeral = numeral.upper()
@@ -93,14 +93,14 @@ class RomanNumeral:
 
     @classmethod
     def get_roman_numeral_from_chord(cls, chord: Chord, scale: Scale) -> str:
-        # Convert chord.root to a scale degree, or raise error if not found
         try:
             scale_degree = scale.get_degree_of_note(chord.root)
         except ValueError as e:
             raise ValueError(f"Failed to get degree of note {chord.root} in scale {scale}: {str(e)}")
         except Exception as e:
             raise ValueError(f"An unexpected error occurred while getting degree of note {chord.root} in scale {scale}: {str(e)}")
-
+    
         quality = chord.quality or ChordQualityType.MAJOR
-
+        logger.debug(f"Chord quality in get_roman_numeral_from_chord: {quality}")
+    
         return cls.from_scale_degree(scale_degree, quality)

@@ -1,9 +1,12 @@
 from typing import Optional, Dict, ClassVar
 from pydantic import BaseModel, Field, field_validator
+import logging
 
 from src.note_gen.models.note import Note
 from src.note_gen.models.scale import Scale, ScaleType
 from src.note_gen.models.enums import ScaleType, ChordQualityType, ScaleDegree
+
+logger = logging.getLogger(__name__)
 
 class ScaleInfo(BaseModel):
     """Information about a musical scale."""
@@ -41,13 +44,8 @@ class ScaleInfo(BaseModel):
         """Get the note for a given scale degree."""
         if degree < 1 or degree > 7:
             return None
-            
-        if not self.scale_type:
-            return None
-
-        scale = Scale(root=self.root, scale_type=self.scale_type)
-        notes = scale.get_notes()
-        return notes[degree - 1] if notes else None
+        scale = Scale(root=self.root, scale_type=self.scale_type.value)  # Use string representation
+        return scale.get_note_at_degree(degree)  # Call the correct method
 
     def get_scale_note_at_degree(self, degree: int) -> Note:
         """Get the note at a given scale degree."""
@@ -57,4 +55,8 @@ class ScaleInfo(BaseModel):
     def get_chord_quality_for_degree(self, degree: int) -> ChordQualityType:
         if degree < 1 or degree > 7:
             raise ValueError("Degree must be between 1 and 7")
-        return self.MAJOR_SCALE_QUALITIES[degree] if self.scale_type == ScaleType.MAJOR else self.MINOR_SCALE_QUALITIES[degree]
+        logger.debug(f"Getting chord quality for degree: {degree}")
+        quality = self.MAJOR_SCALE_QUALITIES[degree] if self.scale_type == ScaleType.MAJOR else self.MINOR_SCALE_QUALITIES[degree]
+        logger.debug(f"Degree: {degree}, Chord Quality: {quality}")
+        logger.debug(f"Returning chord quality: {quality}")
+        return quality

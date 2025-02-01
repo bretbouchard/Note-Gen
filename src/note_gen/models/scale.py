@@ -120,8 +120,9 @@ class Scale(BaseModel):
     scale_type: ScaleType = Field(...)
     intervals: List[int] = Field(default_factory=list)
 
-    def __init__(self, **kwargs: Any) -> None:
-        super().__init__(**kwargs)
+    def __init__(self, root: Note, scale_type: ScaleType) -> None:
+        logger.debug('Initializing Scale with root: %s, scale_type: %s', root, scale_type)
+        super().__init__(root=root, scale_type=scale_type)
         self.intervals = self.calculate_intervals()  # Ensure intervals are calculated on initialization
 
     @field_validator('intervals', mode='before')

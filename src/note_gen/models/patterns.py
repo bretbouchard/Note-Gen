@@ -43,7 +43,7 @@ class NotePattern(BaseModel):
     def total_duration(self) -> float:
         return sum(note.duration for note in self.notes) if self.notes else 0.0
 
-    class Config:
+    class ConfigDict:
         json_schema_extra = {
             'example': {
                 'name': 'Simple Triad',
