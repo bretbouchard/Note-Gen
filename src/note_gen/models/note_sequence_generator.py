@@ -7,7 +7,7 @@ from src.note_gen.models.chord_progression import ChordProgression
 from src.note_gen.models.rhythm_pattern import RhythmPattern
 from src.note_gen.models.note_sequence import NoteSequence
 from src.note_gen.models.note_event import NoteEvent
-from src.note_gen.models.musical_elements import Chord
+from src.note_gen.models.chord import Chord
 from src.note_gen.models.scale_info import ScaleInfo  # Import ScaleInfo
 
 def generate_sequence_from_presets(
@@ -42,7 +42,7 @@ class NoteSequenceGenerator(BaseModel):
         sequence = []
         for chord in self.chord_progression.chords:
             # Generate all notes in the chord (not just the root)
-            chord_notes = chord.generate_chord_notes()
+            chord_notes = chord.generate_notes()
             sequence.extend(chord_notes)
         return sequence
     

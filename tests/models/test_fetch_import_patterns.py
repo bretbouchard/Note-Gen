@@ -12,6 +12,11 @@ from src.note_gen.models.note_pattern import NotePattern, NotePatternData
 from src.note_gen.models.rhythm_pattern import RhythmPattern, RhythmPatternData, RhythmNote
 from pymongo.database import Database
 from typing import Any
+from src.note_gen.models.fake_scale_info import FakeScaleInfo
+from src.note_gen.models.enums import ScaleType
+from src.note_gen.models.note import Note
+from src.note_gen.models.chord import Chord
+from src.note_gen.models.chord_quality import ChordQualityType
 
 from tests.conftest import MockDatabase
 
@@ -45,9 +50,52 @@ async def mock_db_with_data(mock_db: MockDatabase) -> MockDatabase:
         RhythmPattern(id='1', name='Basic Rhythm', description='Simple four-beat rhythm', tags=['test'], data=RhythmPatternData(notes=[RhythmNote(position=0, duration=1, velocity=100), RhythmNote(position=1, duration=1, velocity=100)], duration=4.0)),
         RhythmPattern(id='2', name='Swing Rhythm', description='Swing feel rhythm', tags=['test'], data=RhythmPatternData(notes=[RhythmNote(position=0, duration=1, velocity=100, swing_ratio=0.5), RhythmNote(position=1, duration=1, velocity=100)], duration=4.0)),
     ]
+    # Sample chord progressions to insert into the mock database
+    sample_chord_progressions = [
+        ChordProgression(
+            id='1',
+            name='Simple I-IV-V',
+            key='C',
+            scale_type=ScaleType.MAJOR,
+            scale_info=FakeScaleInfo(
+                root=Note(note_name='C', octave=4, duration=1.0, velocity=100),
+                scale_type=ScaleType.MAJOR
+            ),
+            chords=[
+                Chord(root=Note(note_name='C', octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
+                Chord(root=Note(note_name='F', octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
+                Chord(root=Note(note_name='G', octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR)
+            ]
+        ),
+        ChordProgression(
+            id='2',
+            name='Minor ii-V-i',
+            key='A',
+            scale_type=ScaleType.MINOR,
+            scale_info=FakeScaleInfo(
+                root=Note(note_name='A', octave=4, duration=1.0, velocity=100),
+                scale_type=ScaleType.MINOR
+            ),
+            chords=[
+                Chord(root=Note(note_name='B', octave=4, duration=1.0, velocity=100), quality=ChordQualityType.DIMINISHED),
+                Chord(root=Note(note_name='E', octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
+                Chord(root=Note(note_name='A', octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MINOR)
+            ]
+        ),
+    ]
     # Insert sample data into the mock database
-    await mock_db.insert_many('note_patterns', [pattern.model_dump() for pattern in sample_patterns])
-    await mock_db.insert_many('rhythm_patterns', [pattern.model_dump() for pattern in sample_rhythm_patterns])
+    note_patterns_data = [pattern.model_dump() for pattern in sample_patterns]
+    rhythm_patterns_data = [pattern.model_dump() for pattern in sample_rhythm_patterns]
+    chord_progressions_data = [progression.model_dump() for progression in sample_chord_progressions]
+
+    # Ensure each document has an _id field that matches its id
+    for data in note_patterns_data + rhythm_patterns_data + chord_progressions_data:
+        if 'id' in data:
+            data['_id'] = data['id']
+
+    await mock_db.insert_many('note_patterns', note_patterns_data)
+    await mock_db.insert_many('rhythm_patterns', rhythm_patterns_data)
+    await mock_db.insert_many('chord_progressions', chord_progressions_data)
     return mock_db
 
 @pytest.mark.asyncio

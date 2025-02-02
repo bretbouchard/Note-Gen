@@ -1,7 +1,7 @@
 import unittest
 from src.note_gen.models.fake_scale_info import FakeScaleInfo
 from src.note_gen.models.note import Note
-from src.note_gen.models.enums import ScaleType
+from src.note_gen.models.scale import ScaleType
 
 class TestFakeScaleInfo(unittest.TestCase):
     def test_valid_initialization(self):

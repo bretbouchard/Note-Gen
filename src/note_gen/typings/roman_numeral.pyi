@@ -2,7 +2,7 @@
 
 from typing import ClassVar, Optional, List
 
-from src.note_gen.models.musical_elements import Chord
+from src.note_gen.models.chord import Chord
 from src.note_gen.models.scale_degree import ScaleDegree
 
 class RomanNumeral:

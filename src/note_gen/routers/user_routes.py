@@ -1,12 +1,13 @@
-from fastapi import APIRouter, HTTPException, Depends, Request
+from typing import List, Dict, Any, Optional, Union
+from fastapi import APIRouter, HTTPException, Depends, Request, Query
 from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel, Field
-from typing import Union, Optional, List, Dict, Any 
 import logging
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from bson import ObjectId
 
-from src.note_gen.models.musical_elements import Note, Chord
+from src.note_gen.models.note import Note
+from src.note_gen.models.chord import Chord
 from src.note_gen.models.chord_progression import ChordProgression 
 from src.note_gen.models.scale_info import ScaleInfo
 from src.note_gen.models.patterns import NotePattern, NotePatternData

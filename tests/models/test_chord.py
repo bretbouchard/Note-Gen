@@ -2,7 +2,8 @@ import pytest
 import logging
 from pydantic import ValidationError
 from src.note_gen.models.note import Note
-from src.note_gen.models.musical_elements import Chord, ChordQualityType
+from src.note_gen.models.chord import Chord
+from src.note_gen.models.musical_elements import ChordQualityType
 
 # Configure logging to output to console
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')

@@ -18,7 +18,7 @@ from src.note_gen.models.chord_progression import ChordProgression
 from src.note_gen.models.enums import ChordQualityType
 from src.note_gen.models.rhythm_pattern import RhythmPattern, RhythmNote, RhythmPatternData
 from src.note_gen.models.note_pattern import NotePatternData, NotePatternResponse as NotePattern
-from src.note_gen.models.musical_elements import Note
+from src.note_gen.models.note import Note
 import motor.motor_asyncio
 import uuid 
 

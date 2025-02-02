@@ -1,50 +1,31 @@
 # src/note_gen/models/scale_degree.py
 
-from __future__ import annotations
-
-from typing import Any, Dict, Optional
-from pydantic import BaseModel, ConfigDict, Field, field_validator
-import logging
-
-from src.note_gen.models.musical_elements import Note
-
-# Set up logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
+from typing import Optional, Dict, Any
+from pydantic import BaseModel, ConfigDict, field_validator
 
 class ScaleDegree(BaseModel):
-    """Represents a degree in a musical scale."""
+    """A scale degree with a value."""
+    value: int
 
-    model_config = ConfigDict(arbitrary_types_allowed=True)
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        use_enum_values=True,
+        validate_assignment=True
+    )
 
-    degree: int
-    note: Note
-    value: Optional[str] = Field(default=None, description="The note value associated with the scale degree.")
-    midi_number: int = Field(init=False)
-
-    @field_validator("degree")
-    def validate_degree(cls, value: int) -> int:
-        if value < 1 or value > 7:
-            raise ValueError("Degree must be between 1 and 7.")
+    @field_validator('value')
+    @classmethod
+    def validate_value(cls, value: int) -> int:
+        """Validate that value is between 1 and 7."""
+        if not (1 <= value <= 7):
+            raise ValueError("Scale degree must be between 1 and 7")
         return value
 
-    def __init__(self, **data: Any) -> None:
-        super().__init__(**data)
-        self.midi_number = self.note.midi_number
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert the scale degree to a dictionary."""
+        return {
+            "value": self.value
+        }
 
     def __str__(self) -> str:
-        return f"ScaleDegree(degree={self.degree}, note={self.note})"
-
-    def model_dump(self, **kwargs: Any) -> Dict[str, Any]:
-        """Convert to dictionary representation of the ScaleDegree object."""
-        logger.debug("Converting ScaleDegree to dictionary representation.")
-        d = super().model_dump(**kwargs)
-        logger.info("ScaleDegree converted to dictionary successfully.")
-        return d
-
-    def to_note(self) -> Note:
-        """Convert this scale degree to a Note object."""
-        logger.debug("Converting ScaleDegree to Note object.")
-        logger.info(f"Returning note: {self.note}")
-        return self.note
+        return f"ScaleDegree({self.value})"

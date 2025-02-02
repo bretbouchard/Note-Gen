@@ -25,7 +25,7 @@ def test_invalid_duration() -> None:
 
 def test_invalid_velocity() -> None:
     note = Note.from_name("C4")
-    with pytest.raises(ValidationError, match=r"Value error, MIDI velocity must be between 0 and 127."):
+    with pytest.raises(ValidationError, match=r"Input should be less than or equal to 127"):
         NoteEvent(note=note, velocity=130)
 
 def test_note_event_creation_with_velocity() -> None:

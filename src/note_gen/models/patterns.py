@@ -1,10 +1,8 @@
 from typing import List, Optional, Dict, Any, Union
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-# Other imports
-
-from src.note_gen.models.musical_elements import Chord
 from src.note_gen.models.note import Note
+from src.note_gen.models.chord import Chord
 from src.note_gen.models.scale_degree import ScaleDegree
 
 NoteType = Union[Note, ScaleDegree, Chord]
@@ -24,26 +22,7 @@ class NotePatternData(BaseModel):
     octave_range: List[int] = Field(default=[4, 5], description="Octave range")
     default_duration: float = Field(default=1.0, description="Default note duration")
 
-class NotePattern(BaseModel):
-    """A pattern of musical notes."""
-    id: Optional[str] = Field(None, description="ID of the note pattern")
-    name: str = Field(..., description="Name of the note pattern")
-    description: str = Field(..., description="Pattern description")
-    tags: List[str] = Field(..., description="Pattern tags")
-    complexity: Optional[float] = Field(None, description="Pattern complexity")
-    notes: Optional[List[Note]] = Field(default=None, description="List of notes in the pattern")
-    data: Optional[Union[NotePatternData, List[Union[int, List[int]]]]] = Field(default=None, description="Additional pattern data")
-    style: str = Field(default="basic", description="Pattern style")
-    is_test: Optional[bool] = Field(default=None, description="Test flag")
-
-    def get_notes(self) -> List[Note]:
-        return self.notes if self.notes is not None else []
-
-    @property
-    def total_duration(self) -> float:
-        return sum(note.duration for note in self.notes) if self.notes else 0.0
-
-    class ConfigDict:
+    class Config:
         json_schema_extra = {
             'example': {
                 'name': 'Simple Triad',
@@ -57,7 +36,59 @@ class NotePattern(BaseModel):
             }
         }
         arbitrary_types_allowed = True
-    
+
+class NotePattern(BaseModel):
+    """A pattern of musical notes."""
+    id: Optional[str] = Field(None, description="ID of the note pattern")
+    name: str = Field(..., description="Name of the note pattern")
+    description: str = Field(..., description="Pattern description")
+    tags: List[str] = Field(..., description="Pattern tags")
+    complexity: Optional[float] = Field(None, description="Pattern complexity")
+    notes: Optional[List[Note]] = Field(default=None, description="List of notes in the pattern")
+    data: Optional[Union[NotePatternData, List[Union[int, List[int]]]]] = Field(default=None, description="Additional pattern data")
+    is_test: Optional[bool] = Field(default=None, description="Test flag")
+
+    @property
+    def total_duration(self) -> float:
+        """Calculate the total duration of the pattern."""
+        if not self.notes:
+            return 0.0
+        return sum(note.duration for note in self.notes)
+
+    def get_notes(self) -> List[Note]:
+        """Get the list of notes in the pattern."""
+        return self.notes or []
+
+    def add_note(self, note: Note) -> None:
+        """Add a note to the pattern."""
+        if self.notes is None:
+            self.notes = []
+        self.notes.append(note)
+
+    def remove_note(self, index: int) -> None:
+        """Remove a note from the pattern."""
+        if self.notes and 0 <= index < len(self.notes):
+            self.notes.pop(index)
+
+    def clear_notes(self) -> None:
+        """Clear all notes from the pattern."""
+        self.notes = []
+
+    class Config:
+        json_schema_extra = {
+            'example': {
+                'name': 'Simple Triad',
+                'description': 'A simple triad pattern',
+                'tags': ['triad', 'basic'],
+                'notes': [
+                    {'note_name': 'C', 'octave': 4, 'duration': 1.0, 'velocity': 100},
+                    {'note_name': 'E', 'octave': 4, 'duration': 1.0, 'velocity': 100},
+                    {'note_name': 'G', 'octave': 4, 'duration': 1.0, 'velocity': 100}
+                ]
+            }
+        }
+        arbitrary_types_allowed = True
+
     @model_validator(mode='before')
     def validate_data(cls, values):
         # Check data field

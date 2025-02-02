@@ -1,104 +1,80 @@
 """Module for handling sequences of musical notes."""
 
-from typing import List, Union, Any
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from typing import List, Union, Dict, Any, Optional
+from pydantic import BaseModel, ConfigDict, field_validator, Field, model_validator
 
-from src.note_gen.models.musical_elements import Note
+from src.note_gen.models.note import Note
+from src.note_gen.models.chord import Chord
 from src.note_gen.models.note_event import NoteEvent
 
 
 class NoteSequence(BaseModel):
-    """A sequence of musical notes."""
+    """A sequence of musical notes or events."""
+    notes: List[Union[Note, int]]
+    events: List[NoteEvent] = Field(default_factory=list)
+    duration: float = 0.0
+    default_duration: float = 1.0
 
-    notes: List[Union[Note, int]] = Field(description="List of notes")
-    events: List[NoteEvent] = Field(
-        default_factory=list, description="List of note events"
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        use_enum_values=True,
+        validate_assignment=True
     )
-    duration: float = Field(default=0.0, description="Duration of the note sequence")
-    model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    @model_validator(mode='before')
-    def check_notes_field(cls, values: dict[str, Any]) -> dict[str, Any]:
-        notes = values.get('notes')
-        if notes is not None:
-            validated = []
-            for note in notes:
-                if isinstance(note, (Note, int)):
-                    validated.append(note)
-                else:
-                    raise ValueError(f"Invalid note type: {type(note)}")
-            values['notes'] = validated
-        return values
+    @property
+    def total_duration(self) -> float:
+        """Calculate the total duration of the notes in the sequence."""
+        return sum(note.duration for note in self.notes if isinstance(note, Note))
 
     @field_validator('notes')
     @classmethod
-    def validate_notes(cls, v: List[Union[Note, int]]) -> List[Note]:
-        validated_notes = []
-        for note in v:
+    def validate_notes(cls, value: List[Union[Note, int]]) -> List[Union[Note, int]]:
+        """Validate and convert notes."""
+        result = []
+        for note in value:
             if isinstance(note, int):
-                validated_notes.append(Note.from_midi(note, velocity=64, duration=1.0))
+                # Convert MIDI number to Note
+                if not (0 <= note <= 127):
+                    raise ValueError(f"Invalid MIDI number: {note}")
+                result.append(Note.from_midi(note))
             elif isinstance(note, Note):
-                validated_notes.append(note)
+                result.append(note)
             else:
-                raise ValueError("All notes must be instances of Note.")
-        return validated_notes
+                raise ValueError(f"Invalid note type: {type(note)}")
+        return result
 
-    @field_validator("events", mode="before")
-    def check_events(cls, value: List[NoteEvent]) -> List[NoteEvent]:
-        """Validate that all events are instances of NoteEvent."""
-        if not all(isinstance(event, NoteEvent) for event in value):
-            raise ValueError("All events must be NoteEvent instances.")
+    @field_validator('duration')
+    @classmethod
+    def validate_duration(cls, value: float) -> float:
+        """Validate duration is non-negative."""
+        if value < 0:
+            raise ValueError("Duration must be non-negative")
         return value
 
-    def add_note(
-        self,
-        note: Union[str, Note, int],
-        position: float = 0.0,
-        duration: float = 1.0,
-        velocity: int = 100,
-        semitones: int = 0,
-    ) -> None:
-        """Add a note to the sequence."""
-        if isinstance(note, Note):
-            transposed_note = note.transpose(semitones)
-            event = NoteEvent(
-                note=transposed_note, position=position, duration=duration, velocity=velocity
-            )
-        elif isinstance(note, int):
-            note = Note.from_midi(note, velocity=velocity, duration=duration)
-            event = NoteEvent(
-                note=note, position=position, duration=duration, velocity=velocity
-            )
-        else:
-            raise TypeError("Invalid note type")
-        self.events.append(event)  
+    def add_note(self, note: Union[Note, int], position: float = 0.0, duration: float = 1.0, velocity: int = 100) -> None:
+        """Add a note to the sequence at the specified position."""
+        if isinstance(note, int):
+            note = Note.from_midi(note, duration=duration, velocity=velocity)
+        event = NoteEvent(note=note, position=position, duration=duration, velocity=velocity)
+        self.events.append(event)
 
-    def _update_duration(self) -> None:
-        if self.events:
-            self.duration = max(event.end_position for event in self.events)
-
-    def get_notes_at(self, position: float) -> List[NoteEvent]:
-        """Get all notes active at the given position."""
-        return [
-            event
-            for event in self.events
-            if event.position <= position < event.end_position
-        ]
+    def get_notes_at(self, position: float) -> List[Note]:
+        """Get all notes at a specific position."""
+        return [event.note for event in self.events if event.position == position]
 
     def clear(self) -> None:
-        """Clear all notes from the sequence."""
-        self.events.clear()
+        """Clear all notes and events from the sequence."""
+        self.notes = []
+        self.events = []
         self.duration = 0.0
 
-    def transpose(self, semitones: int) -> None:
-        """Transpose the note sequence by the given number of semitones."""
-        for event in self.events:
-            try:
-                event.transpose(semitones)
-            except ValueError as e:
-                raise ValueError(f"Error transposing event: {e}")
-            except TypeError as e:
-                raise TypeError(f"Error transposing event: {e}")
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert the sequence to a dictionary."""
+        return {
+            "notes": [note.to_dict() if isinstance(note, Note) else note for note in self.notes],
+            "events": [event.to_dict() for event in self.events],
+            "duration": self.duration
+        }
 
 
 class SimpleNoteSequence(BaseModel):

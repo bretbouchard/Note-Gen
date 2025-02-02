@@ -1,9 +1,10 @@
 from typing import List, Any, Dict, Optional, Union, ClassVar
-from pydantic import BaseModel, Field, ConfigDict, model_validator, field_validator, validator
+from pydantic import BaseModel, Field, ConfigDict, field_validator, model_validator
+from src.note_gen.models.chord import Chord
 from src.note_gen.models.note import Note
-from src.note_gen.models.musical_elements import Chord
 from src.note_gen.models.roman_numeral import RomanNumeral
-from src.note_gen.models.enums import ChordQualityType, ScaleType
+from src.note_gen.models.enums import ChordQualityType
+from src.note_gen.models.scale_type import ScaleType
 from src.note_gen.models.scale_info import ScaleInfo
 from src.note_gen.models.scale import Scale
 from src.note_gen.models.fake_scale_info import FakeScaleInfo
@@ -14,10 +15,9 @@ from bson import ObjectId
 logger = logging.getLogger(__name__)
 
 class ChordProgression(BaseModel):
-    model_config = ConfigDict(
-        json_encoders={ObjectId: str},
-        arbitrary_types_allowed=True
-    )
+    class Config:
+        json_encoders = {ObjectId: str}
+        arbitrary_types_allowed = True
 
     logger: ClassVar[logging.Logger] = logging.getLogger(__name__)  
 
@@ -51,7 +51,10 @@ class ChordProgression(BaseModel):
             if not isinstance(chord, Chord):
                 raise ValueError("All items in chords must be instances of Chord.")
             if not isinstance(chord.quality, ChordQualityType):
-                raise ValueError(f"Invalid chord quality: {chord.quality}")
+                try:
+                    chord.quality = ChordQualityType(chord.quality)
+                except ValueError:
+                    raise ValueError(f"Invalid chord quality: {chord.quality}")
         return v
 
     @field_validator('key')
@@ -63,7 +66,8 @@ class ChordProgression(BaseModel):
     @field_validator('scale_type')
     def validate_scale_type(cls, value):
         if value not in ScaleType:
-            raise ValueError('Invalid scale type. Must be either MAJOR or MINOR.')
+            valid_types = [t.value for t in ScaleType]
+            raise ValueError(f'Invalid scale type. Must be one of: {", ".join(valid_types)}')
         return value
 
     @field_validator('quality')
@@ -83,7 +87,10 @@ class ChordProgression(BaseModel):
         for chord in chords:
             logger.debug(f"Validating chord quality: {chord.quality}")
             if not isinstance(chord.quality, ChordQualityType):
-                raise ValueError(f"Invalid chord quality: {chord.quality}")
+                try:
+                    chord.quality = ChordQualityType(chord.quality)
+                except ValueError:
+                    raise ValueError(f"Invalid chord quality: {chord.quality}")
         return chords
 
     @model_validator(mode='before')
@@ -111,30 +118,23 @@ class ChordProgression(BaseModel):
     def transpose(self, interval: int) -> None:
         pass
 
-    def to_dict(self, *args, **kwargs):
-        original_dict = super().dict(*args, **kwargs)
-        if 'chords' in original_dict:
-            for idx, chord in enumerate(original_dict['chords']):
-                if isinstance(chord, Chord):
-                    original_dict['chords'][idx] = {
-                        'root': chord.root,
-                        'quality': chord.quality.name,
-                        'notes': chord.notes,
-                        'inversion': chord.inversion
-                    }
+    def dict(self, *args, **kwargs):
+        """
+        DEPRECATED: Use model_dump() instead.
+        Convert the model to a dictionary.
+        """
+        original_dict = super().model_dump(*args, **kwargs)
+        if 'id' in original_dict and original_dict['id'] is None:
+            del original_dict['id']
         return original_dict
 
-    def dict(self, *args, **kwargs):
-        original_dict = super().dict(*args, **kwargs)
-        if 'chords' in original_dict:
-            for idx, chord in enumerate(original_dict['chords']):
-                if isinstance(chord, Chord):
-                    original_dict['chords'][idx] = {
-                        'root': chord.root,
-                        'quality': chord.quality.name,
-                        'notes': chord.notes,
-                        'inversion': chord.inversion
-                    }
+    def to_dict(self, *args, **kwargs):
+        """
+        Convert the model to a dictionary.
+        """
+        original_dict = super().model_dump(*args, **kwargs)
+        if 'id' in original_dict and original_dict['id'] is None:
+            del original_dict['id']
         return original_dict
 
     def model_dump(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:

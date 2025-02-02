@@ -1,10 +1,12 @@
 from typing import Optional, Dict, ClassVar
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator, Field
 import logging
 
 from src.note_gen.models.note import Note
-from src.note_gen.models.scale import Scale, ScaleType
-from src.note_gen.models.enums import ScaleType, ChordQualityType, ScaleDegree
+from src.note_gen.models.scale import Scale
+from src.note_gen.models.chord import Chord
+from src.note_gen.models.enums import ChordQualityType, ScaleDegree
+from src.note_gen.models.scale_type import ScaleType
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +18,7 @@ class ScaleInfo(BaseModel):
     @field_validator('scale_type')
     def validate_scale_type(cls, value: ScaleType) -> ScaleType:
         if value not in [ScaleType.MAJOR, ScaleType.MINOR]:
-            raise ValueError("Scale type must be either 'MAJOR' or 'MINOR'")
+            raise ValueError(f'Scale type must be either {ScaleType.MAJOR.value} or {ScaleType.MINOR.value}')
         return value
 
     # Define chord qualities for MAJOR and MINOR scales
@@ -39,6 +41,11 @@ class ScaleInfo(BaseModel):
         6: ChordQualityType.MAJOR,
         7: ChordQualityType.MAJOR
     }
+
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        validate_assignment=True
+    )
 
     def get_note_for_degree(self, degree: int) -> Optional[Note]:
         """Get the note for a given scale degree."""

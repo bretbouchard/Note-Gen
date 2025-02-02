@@ -36,58 +36,125 @@ MONGODB_URL = os.getenv("MONGODB_TEST_URI", "mongodb://localhost:27017")
 class MockDatabase:
     """Mock database for testing."""
     def __init__(self):
-        self.chord_progressions = {}
-        self.note_patterns = {}
-        self.rhythm_patterns = {}
-        self.presets = {}
-
-    async def find_one(self, collection, query):
-        """Mock find_one operation."""
-        return self.get_collection(collection).get(query.get("_id"))
-
-    async def find(self, collection, query):
-        """Mock find operation."""
-        collection_data = self.get_collection(collection)
-        for doc in collection_data.values():
-            if all(doc.get(key) == value for key, value in query.items()):
-                yield doc
-        
-        # If no query is provided, yield all documents
-        if not query:
-            for doc in collection_data.values():
-                yield doc
-
-    async def insert_one(self, collection, document):
-        """Mock insert_one operation."""
-        self.get_collection(collection)[document["_id"]] = document
-
-    async def insert_many(self, collection, documents):
-        """Mock insert_many operation."""
-        for document in documents:
-            if "id" in document:
-                self.get_collection(collection)[document["id"]] = document
-            else:
-                raise ValueError("All documents must have an id field")
-
-    async def delete_one(self, collection, query):
-        """Mock delete_one operation."""
-        collection_data = self.get_collection(collection)
-        if query.get("_id") in collection_data:
-            del collection_data[query["_id"]]
-
-    def get_collection(self, collection_name):
-        """Get the appropriate collection dictionary."""
-        collections = {
-            "chord_progressions": self.chord_progressions,
-            "note_patterns": self.note_patterns,
-            "rhythm_patterns": self.rhythm_patterns,
-            "presets": self.presets
+        self._collections = {
+            'chord_progressions': {},
+            'note_patterns': {},
+            'rhythm_patterns': {},
+            'presets': {}
         }
-        return collections.get(collection_name, {})
+        self.name = "test_db"  # Add name attribute for testing
+        
+        class Collection:
+            def __init__(self, data):
+                self.data = data
+
+            def find(self, query=None):
+                if query is None:
+                    query = {}
+                results = []
+                for doc in self.data.values():
+                    if all(doc.get(k) == v for k, v in query.items()):
+                        results.append(doc)
+
+                class Cursor:
+                    def __init__(self, results):
+                        self.results = results
+
+                    async def to_list(self, length=None):
+                        return self.results[:length] if length else self.results
+
+                    async def __aiter__(self):
+                        for result in self.results:
+                            yield result
+
+                return Cursor(results)
+
+            async def find_one(self, query=None):
+                if query is None:
+                    query = {}
+                if '_id' in query:
+                    return self.data.get(query['_id'])
+                if 'id' in query:
+                    for doc in self.data.values():
+                        if doc.get('id') == query['id']:
+                            return doc
+                for doc in self.data.values():
+                    if all(doc.get(k) == v for k, v in query.items()):
+                        return doc
+                return None
+
+            async def insert_one(self, document):
+                if '_id' not in document:
+                    document['_id'] = str(len(self.data) + 1)
+                self.data[document['_id']] = document
+                return type('InsertOneResult', (), {'inserted_id': document['_id']})
+
+            async def delete_one(self, query):
+                if '_id' in query:
+                    return self.data.pop(query['_id'], None)
+                return None
+
+            async def update_one(self, query, update, upsert=False):
+                if '_id' in query:
+                    doc = self.data.get(query['_id'])
+                    if doc:
+                        doc.update(update.get('$set', {}))
+                        return type('UpdateResult', (), {'modified_count': 1})
+                return type('UpdateResult', (), {'modified_count': 0})
+
+            async def insert_many(self, documents):
+                inserted_ids = []
+                for document in documents:
+                    if '_id' not in document and 'id' in document:
+                        document['_id'] = document['id']
+                    if '_id' not in document:
+                        document['_id'] = str(len(self.data) + 1)
+                    self.data[document['_id']] = document
+                    inserted_ids.append(document['_id'])
+                return type('InsertManyResult', (), {'inserted_ids': inserted_ids})
+
+            @staticmethod
+            async def __aiter__(results):
+                for result in results:
+                    yield result
+
+        # Create collection properties
+        for collection_name, data in self._collections.items():
+            setattr(self, collection_name, Collection(data))
+
+    async def insert_many(self, collection_name, documents):
+        """Mock insert_many operation."""
+        collection = getattr(self, collection_name)
+        return await collection.insert_many(documents)
+
+    def insert_data(self, collection_name, data):
+        """Insert data into the mock database."""
+        collection = getattr(self, collection_name)
+        for document in data:
+            if '_id' not in document:
+                document['_id'] = document.get('id', str(len(collection.data) + 1))
+            collection.data[document['_id']] = document
 
 @pytest.fixture
 def mock_db():
     return MockDatabase()
+
+@pytest.fixture
+def mock_db_with_data():
+    db = MockDatabase()
+    db.insert_data('note_patterns', [
+        {"_id": "note_pattern_1", "name": "Pattern 1", "description": "This is pattern 1"},
+        {"_id": "note_pattern_2", "name": "Pattern 2", "description": "This is pattern 2"},
+    ])
+    db.insert_data('rhythm_patterns', [
+        {"_id": "rhythm_pattern_1", "name": "Pattern 1", "description": "This is pattern 1"},
+        {"_id": "rhythm_pattern_2", "name": "Pattern 2", "description": "This is pattern 2"},
+    ])
+    db.insert_data('chord_progressions', [
+        {"_id": "chord_progression_1", "name": "Progression 1", "description": "This is progression 1"},
+        {"_id": "chord_progression_2", "name": "Progression 2", "description": "This is progression 2"},
+    ])
+    return db
 
 @pytest.fixture
 def test_app():

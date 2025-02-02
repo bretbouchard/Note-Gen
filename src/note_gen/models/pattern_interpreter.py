@@ -1,5 +1,5 @@
 from __future__ import annotations
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 from src.note_gen.models.musical_elements import Note
 from src.note_gen.models.note_event import NoteEvent
 from src.note_gen.models.scale_degree import ScaleDegree
@@ -22,9 +22,9 @@ class PatternInterpreter(BaseModel):
         _current_index (int): The current index in the pattern. Defaults to 0.
     """
 
-    model_config = ConfigDict(arbitrary_types_allowed=True)
+    model_config = ConfigDict(arbitrary_types_allowed=True, from_attributes=True)
     scale: Scale
-    pattern: Sequence[Union[int, str, Note, ScaleDegree, Dict[str, Any]]]
+    pattern: List[Union[int, str, Note, ScaleDegree, Dict[str, Any]]]
     _current_index: int = 0
 
     def __init__(
@@ -45,29 +45,101 @@ class PatternInterpreter(BaseModel):
             raise ValueError("Scale must be an instance of Scale.")
         if not pattern:
             raise ValueError("Pattern cannot be empty.")
-        super().__init__(scale=scale, pattern=pattern)
-        self.scale = scale
-        self.pattern = pattern
-        self._current_index = 0
+        
+        # Convert pattern elements to the correct types
+        valid_elements = []
+        for element in pattern:
+            if isinstance(element, (int, str, Note, ScaleDegree, dict)):
+                valid_elements.append(element)
+            elif hasattr(element, 'note_name') and hasattr(element, 'octave'):
+                # Convert Note-like objects to Note instances
+                valid_elements.append(Note(
+                    note_name=element.note_name,
+                    octave=element.octave,
+                    duration=getattr(element, 'duration', 1.0),
+                    velocity=getattr(element, 'velocity', 100)
+                ))
+            else:
+                raise ValueError(f"Invalid pattern element type: {type(element)}")
+        
+        super().__init__(scale=scale, pattern=valid_elements)
 
     def get_next_note(self) -> Note:
-        """Get the next note in the pattern. Raises an error if the pattern is empty.
-
-        Returns:
-            Note: The next note in the pattern.
-
-        Raises:
-            ValueError: If the pattern is empty.
-        """
+        """Get the next note in the pattern. Raises an error if the pattern is empty."""
         if not self.pattern:
-            raise ValueError("Pattern is empty. Cannot retrieve next note.")
-        result = self._interpret_current_element()
+            raise ValueError("Pattern is empty")
+
+        # Get the current element
+        element = self.pattern[self._current_index]
+
+        # Convert element to Note if needed
+        if isinstance(element, Note):
+            note = element
+        elif isinstance(element, ScaleDegree):
+            if element.value is not None:
+                note = self.scale.get_scale_degree(int(element.value))
+            else:
+                raise ValueError("ScaleDegree value cannot be None")
+        elif isinstance(element, int):
+            note = Note.from_midi(element, velocity=64, duration=1.0)
+        elif isinstance(element, str):
+            note = Note.from_full_name(element)
+        else:
+            raise ValueError(f"Unsupported element type: {type(element)}")
+
+        # Increment index and wrap around
         self._current_index = (self._current_index + 1) % len(self.pattern)
-        return result
+
+        return note
+
+    def interpret(self, pattern: Sequence[Union[int, str, Note, ScaleDegree]], chord: Any, scale_info: Any) -> List[NoteEvent]:
+        """Interpret a pattern into a sequence of NoteEvents."""
+        note_events = []
+        for element in pattern:
+            if isinstance(element, Note):
+                note_events.append(NoteEvent(note=element))
+            elif isinstance(element, ScaleDegree):
+                if element.value is not None:
+                    note = scale_info.get_scale_degree(int(element.value))
+                    note_events.append(NoteEvent(note=note))
+                else:
+                    raise ValueError("ScaleDegree value cannot be None")
+            elif isinstance(element, int):
+                note = Note.from_midi(element, velocity=64, duration=1.0)
+                note_events.append(NoteEvent(note=note))
+            elif isinstance(element, str):
+                note = Note.from_full_name(element)
+                note_events.append(NoteEvent(note=note))
+            else:
+                raise ValueError(f"Unsupported element type: {type(element)}")
+        return note_events
 
     def reset(self) -> None:
         """Reset the pattern interpreter to the beginning of the pattern."""
         self._current_index = 0
+
+    def _interpret_current_element(self) -> Note:
+        element = self.pattern[self._current_index]
+        if element is None:
+            raise ValueError("Current element cannot be None")
+
+        # If it's already a Note instance, just return it
+        if isinstance(element, Note):
+            return element
+        
+        # If it's a ScaleDegree, convert it to a Note using the scale
+        if isinstance(element, ScaleDegree):
+            return self.scale.get_scale_degree(element.value)
+            
+        # If it's an int, treat it as a MIDI note number
+        if isinstance(element, int):
+            return Note.from_midi(element, velocity=100, duration=1.0)
+            
+        # If it's a str, parse it into a Note
+        if isinstance(element, str):
+            return Note.from_full_name(element)
+            
+        raise ValueError(f"Unsupported pattern element type: {type(element)}")
 
     def process(self) -> List[Note]:
         """Process the pattern based on the current scale and generate musical sequences."""
@@ -93,35 +165,6 @@ class PatternInterpreter(BaseModel):
 
         return result
 
-    def _interpret_current_element(self) -> Note:
-        element = self.pattern[self._current_index]
-        if element is None:
-            raise ValueError("Current element cannot be None")
-
-        # If it’s already a Note instance, just return it
-        if isinstance(element, Note):
-            return element
-
-        # If it’s a ScaleDegree, interpret element.value as the scale degree
-        if isinstance(element, ScaleDegree):
-            if element.value is None:
-                raise ValueError("ScaleDegree value cannot be None")
-            return self.scale.get_scale_degree(int(element.value))
-
-        # If it’s an int, treat it as a direct MIDI or a scale degree (depending on your design)
-        if isinstance(element, int):
-            # If you want it to mean "the nth scale degree," do:
-            return self.scale.get_scale_degree(element)
-            # OR, if you want it to be “MIDI number,” do:
-            # return Note.from_midi(element, velocity=64, duration=1.0)
-
-        # If it’s a str, parse it into a Note:
-        if isinstance(element, str):
-            return Note.from_full_name(element)
-
-        # If it's something else, raise an error
-        raise ValueError(f"Unsupported pattern element type: {type(element)}")
-
 
 class ScalePatternInterpreter(PatternInterpreter):
     """Interpreter for scale patterns.
@@ -141,27 +184,6 @@ class ScalePatternInterpreter(PatternInterpreter):
             pattern (Sequence[Union[int, str, Note, ScaleDegree, Dict[str, Any]]]): The pattern to interpret.
         """
         super().__init__(scale=scale, pattern=pattern)
-
-    def interpret(self, pattern: Sequence[Union[int, str, Note, ScaleDegree]], chord: Any, scale_info: Any) -> List[NoteEvent]:       
-        note_events = []
-        for element in pattern:
-            if isinstance(element, Note):
-                note_events.append(NoteEvent(note=element))  # Create NoteEvent from Note
-            elif isinstance(element, ScaleDegree):
-                if element.value is not None:
-                    note = scale_info.get_scale_degree(int(element.value))
-                    note_events.append(NoteEvent(note=note))  # Create NoteEvent from ScaleDegree
-                else:
-                    raise ValueError("ScaleDegree value cannot be None")
-            elif isinstance(element, int):
-                note = Note.from_midi(element, velocity=64, duration=1.0)  # Assuming int is a MIDI number
-                note_events.append(NoteEvent(note=note))  # Create NoteEvent from MIDI
-            elif isinstance(element, str):
-                note = Note.from_full_name(element)  # Assuming str is a note name
-                note_events.append(NoteEvent(note=note))  # Create NoteEvent from Note
-            else:
-                raise ValueError(f"Unsupported element type: {type(element)}")
-        return note_events  # Return NoteEvent instances
 
 
 class ArpeggioPatternInterpreter(PatternInterpreter):

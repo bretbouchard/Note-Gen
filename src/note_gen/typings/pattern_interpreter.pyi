@@ -2,7 +2,7 @@
 
 from typing import List
 
-from src.note_gen.models.musical_elements import Chord
+from src.note_gen.models.chord import Chord
 from src.note_gen.models.note import Note
 from src.note_gen.models.patterns import NotePattern
 from src.note_gen.models.scale_info import ScaleInfo

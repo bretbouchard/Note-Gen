@@ -3,7 +3,8 @@ from typing import List, Optional
 from src.note_gen.models.chord_progression import ChordProgression
 from src.note_gen.models.scale_info import ScaleInfo
 from src.note_gen.models.enums import ChordQualityType, ScaleType
-from src.note_gen.models.musical_elements import Note, Chord
+from src.note_gen.models.note import Note
+from src.note_gen.models.chord import Chord
 from src.note_gen.models.fake_scale_info import FakeScaleInfo
 from pydantic import ValidationError
 import logging
@@ -30,7 +31,7 @@ class TestChordProgression(unittest.TestCase):
             name="Test Progression",
             chords=chords,
             key="C",
-            scale_type=ScaleType.MAJOR,
+            scale_type=ScaleType.MINOR,
             scale_info=FakeScaleInfo(root=Note(note_name='C', octave=4, duration=1.0, velocity=100)),
         )
         self.assertEqual(progression.name, "Test Progression")

@@ -10,6 +10,7 @@ from src.note_gen.models.chord_progression import ChordProgression
 import logging
 from fastapi.encoders import jsonable_encoder
 from json import JSONEncoder
+from fastapi.responses import JSONResponse
 
 logger = logging.getLogger(__name__)
 
@@ -76,7 +77,7 @@ async def create_chord_progression(chord_progression: ChordProgression, db: moto
         for chord in chord_progression.chords:
             if isinstance(chord.quality, ChordQualityType):
                 chord.quality = chord.quality.name  # Convert to string
-        return serialize_chord_progression(chord_progression)
+        return JSONResponse(status_code=201, content=serialize_chord_progression(chord_progression))
     except Exception as e:
         logger.error(f"Error creating chord progression: {e}")
         logger.error(f"Request data that caused error: {chord_progression.dict()}")

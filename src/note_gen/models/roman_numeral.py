@@ -1,106 +1,105 @@
+from typing import Optional, Dict, ClassVar
+from pydantic import BaseModel, ConfigDict, field_validator
+import re
+
 from src.note_gen.models.enums import ChordQualityType
-from src.note_gen.models.musical_elements import Chord
+from src.note_gen.models.chord import Chord
 from src.note_gen.models.scale import Scale
-import logging
 
-logger = logging.getLogger(__name__)
 
-class RomanNumeral:
-    ROMAN_TO_INT = {'I': 1, 'II': 2, 'III': 3, 'IV': 4, 'V': 5, 'VI': 6, 'VII': 7}
-    INT_TO_ROMAN = {v: k for k, v in ROMAN_TO_INT.items()}
+class RomanNumeral(BaseModel):
+    """A roman numeral representation of a scale degree and chord quality."""
+    scale_degree: int
+    quality: Optional[ChordQualityType] = ChordQualityType.MAJOR
 
-    def __init__(self, scale_degree: int = None, quality: ChordQualityType = None) -> None:
-        if scale_degree is not None and (scale_degree < 1 or scale_degree > 7):
-            raise ValueError("Invalid scale degree. Must be between 1 and 7.")
-        self.scale_degree = scale_degree
-        self.quality = quality if quality is not None else ChordQualityType.MAJOR
+    # Class constants
+    INT_TO_ROMAN: ClassVar[Dict[int, str]] = {
+        1: "I",
+        2: "II",
+        3: "III",
+        4: "IV",
+        5: "V",
+        6: "VI",
+        7: "VII"
+    }
+
+    ROMAN_TO_INT: ClassVar[Dict[str, int]] = {
+        "I": 1, "II": 2, "III": 3, "IV": 4, "V": 5, "VI": 6, "VII": 7,
+        "i": 1, "ii": 2, "iii": 3, "iv": 4, "v": 5, "vi": 6, "vii": 7
+    }
+
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        use_enum_values=True,
+        validate_assignment=True
+    )
+
+    @field_validator('scale_degree')
+    @classmethod
+    def validate_scale_degree(cls, value: int) -> int:
+        """Validate that scale_degree is between 1 and 7."""
+        if not (1 <= value <= 7):
+            raise ValueError("Scale degree must be between 1 and 7")
+        return value
 
     @classmethod
     def from_scale_degree(cls, degree: int, quality: ChordQualityType) -> str:
-        logger.debug(f"Received scale_degree: {degree}, quality: {quality}")
-        logger.debug("Entering from_scale_degree method")
-        if degree < 1 or degree > 7:
-            logger.error("Invalid scale degree. Must be between 1 and 7.")
-            logger.debug("Raising ValueError for invalid scale degree.")
-            raise ValueError("Invalid scale degree. Must be between 1 and 7.")
-        logger.debug("Valid scale degree, proceeding with conversion")
-        numeral = cls.INT_TO_ROMAN[degree]
+        """Convert a scale degree and quality to a roman numeral string."""
+        if not (1 <= degree <= 7):
+            raise ValueError("Scale degree must be between 1 and 7")
+
+        # Get the base roman numeral
+        roman = cls.INT_TO_ROMAN[degree]
         
+        # Apply quality modifications
         if quality == ChordQualityType.MINOR:
-            return numeral.lower()
-        elif quality == ChordQualityType.AUGMENTED:
-            return numeral + '+'
+            roman = roman.lower()
         elif quality == ChordQualityType.DIMINISHED:
-            return numeral.lower() + 'o'
-        elif quality == ChordQualityType.DOMINANT7:
-            return numeral + '7'
-        elif quality == ChordQualityType.MAJOR7:
-            return numeral + 'Δ'
+            roman = roman.lower() + "o"
+        elif quality == ChordQualityType.AUGMENTED:
+            roman = roman + "+"
         elif quality == ChordQualityType.MINOR7:
-            return numeral.lower() + '7'
-        
-        return numeral
+            roman = roman.lower() + "7"
+        elif quality == ChordQualityType.MAJOR7:
+            roman = roman + "Δ"
+        elif quality == ChordQualityType.DOMINANT7:
+            roman = roman + "7"
 
-    @classmethod
-    def from_string(cls, numeral: str) -> 'RomanNumeral':
-        """Convert a Roman numeral string to a RomanNumeral instance."""
-        if not isinstance(numeral, str):
-            raise TypeError(f"Expected string, got {type(numeral)}")
-
-        # Handle patterns with dashes (e.g. 'I-IV-V')
-        if '-' in numeral:
-            return [cls.from_string(n) for n in numeral.split('-')]
-
-        # Check for quality modifiers
-        quality = ChordQualityType.MAJOR  # Default quality
-        base_numeral = numeral  # Keep original case for comparison
-
-        # Handle diminished chords first
-        if 'o' in numeral.lower():
-            quality = ChordQualityType.DIMINISHED
-            base_numeral = base_numeral.replace('O', '').replace('o', '')
-        # Check if the numeral is lowercase (indicates MINOR)
-        elif numeral.islower() and numeral.upper() in cls.ROMAN_TO_INT:
-            quality = ChordQualityType.MINOR
-            base_numeral = numeral.upper()
-        elif '+' in numeral:
-            quality = ChordQualityType.AUGMENTED
-            base_numeral = base_numeral.replace('+', '')
-        elif '7' in numeral:
-            if numeral.islower():
-                quality = ChordQualityType.MINOR7
-            else:
-                quality = ChordQualityType.DOMINANT7
-            base_numeral = base_numeral.replace('7', '')
-        elif 'Δ' in numeral:
-            quality = ChordQualityType.MAJOR7
-            base_numeral = base_numeral.replace('Δ', '')
-        else:
-            base_numeral = numeral.upper()
-
-        # Convert Roman numeral to scale degree
-        try:
-            scale_degree = cls.ROMAN_TO_INT[base_numeral]
-            return cls(scale_degree=scale_degree, quality=quality)
-        except KeyError:
-            raise ValueError(f"Invalid Roman numeral: {numeral}")
+        return roman
 
     @classmethod
     def to_scale_degree(cls, numeral: str) -> int:
-        """Convert a Roman numeral to its corresponding scale degree."""
-        roman = cls.from_string(numeral)
-        return roman.scale_degree
+        """Convert a roman numeral string to a scale degree."""
+        if not numeral:
+            raise ValueError("Roman numeral cannot be empty")
+
+        # Remove any quality modifiers (o, +, 7, Δ)
+        base_numeral = re.match(r"^[IiVv]+", numeral)
+        if not base_numeral:
+            raise ValueError(f"Invalid roman numeral: {numeral}")
+        
+        base = base_numeral.group().upper()
+        if base not in cls.ROMAN_TO_INT:
+            raise ValueError(f"Invalid roman numeral: {numeral}")
+        
+        # Check if there are any invalid characters after the base numeral
+        valid_suffixes = ["o", "+", "7", "Δ"]
+        suffix = numeral[len(base_numeral.group()):]
+        if suffix and not any(suffix == s for s in valid_suffixes):
+            raise ValueError(f"Invalid roman numeral: {numeral}")
+        
+        return cls.ROMAN_TO_INT[base]
 
     @classmethod
     def get_roman_numeral_from_chord(cls, chord: Chord, scale: Scale) -> str:
+        """Get the roman numeral representation of a chord in a scale."""
         try:
-            scale_degree = scale.get_degree_of_note(chord.root)
+            degree = scale.get_degree_of_note(chord.root)
+            return cls.from_scale_degree(degree, chord.quality)
         except ValueError as e:
-            raise ValueError(f"Failed to get degree of note {chord.root} in scale {scale}: {str(e)}")
+            raise ValueError(str(e))
         except Exception as e:
-            raise ValueError(f"An unexpected error occurred while getting degree of note {chord.root} in scale {scale}: {str(e)}")
-    
-        quality = chord.quality or ChordQualityType.MAJOR
-        logger.debug(f"Chord quality in get_roman_numeral_from_chord: {quality}")
-    
-        return cls.from_scale_degree(scale_degree, quality)
+            raise ValueError(f"An unexpected error occurred: {str(e)}")
+
+    def __str__(self) -> str:
+        return f"RomanNumeral(scale_degree={self.scale_degree}, quality={self.quality})"

@@ -1,7 +1,8 @@
 import pytest
 from pydantic import ValidationError
 from src.note_gen.models.note import Note
-from src.note_gen.models.musical_elements import Chord, ChordQualityType
+from src.note_gen.models.chord import Chord
+from src.note_gen.models.musical_elements import ChordQualityType
 
 
 def test_chord_quality_variations() -> None:

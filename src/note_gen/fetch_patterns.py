@@ -5,9 +5,10 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from src.note_gen.models.chord_progression import ChordProgression
 from src.note_gen.models.rhythm_pattern import RhythmPattern, RhythmNote
-from src.note_gen.models.musical_elements import Chord, Note
+from src.note_gen.models.chord import Chord
+from src.note_gen.models.note import Note
 from src.note_gen.models.enums import ChordQualityType
-from src.note_gen.models.note_pattern import NotePatternResponse as NotePattern
+from src.note_gen.models.patterns import NotePattern
 from src.note_gen.database import get_db
 import logging
 import sys
@@ -23,6 +24,12 @@ def process_chord_data(chord_data: Dict[str, Any], db_name: str) -> Dict[str, An
 
     # If we're processing a single chord object
     if 'root' in chord_data:
+        # Ensure root is properly formatted
+        if isinstance(chord_data['root'], dict):
+            if 'duration' not in chord_data['root']:
+                chord_data['root']['duration'] = 1.0
+            if 'velocity' not in chord_data['root']:
+                chord_data['root']['velocity'] = 100
         return chord_data
 
     # If we're processing a chord progression
@@ -37,9 +44,26 @@ def process_chord_data(chord_data: Dict[str, Any], db_name: str) -> Dict[str, An
             if not isinstance(chord, dict):
                 logger.error(f"Invalid chord format: {chord}")
                 raise ValueError(f"Invalid chord format: {chord}")
+            
+            # Process the root note
+            if 'root' in chord and isinstance(chord['root'], dict):
+                if 'duration' not in chord['root']:
+                    chord['root']['duration'] = 1.0
+                if 'velocity' not in chord['root']:
+                    chord['root']['velocity'] = 100
+            
             processed_chords.append(chord)
         
         chord_data['chords'] = processed_chords
+
+        # Ensure scale_info is present and properly formatted
+        if 'scale_info' in chord_data and isinstance(chord_data['scale_info'], dict):
+            if 'root' in chord_data['scale_info'] and isinstance(chord_data['scale_info']['root'], dict):
+                if 'duration' not in chord_data['scale_info']['root']:
+                    chord_data['scale_info']['root']['duration'] = 1.0
+                if 'velocity' not in chord_data['scale_info']['root']:
+                    chord_data['scale_info']['root']['velocity'] = 100
+
         return chord_data
 
     logger.error("Invalid chord data format")
@@ -52,8 +76,21 @@ async def fetch_chord_progressions(db: AsyncIOMotorDatabase[Dict[str, Any]]) -> 
         cursor = db.chord_progressions.find({})
         fetched_progressions = await cursor.to_list(length=None)
         logger.debug(f'Fetched chord progressions: {fetched_progressions}')  
-        # Convert fetched data to ChordProgression instances
-        return [ChordProgression(**progression) for progression in fetched_progressions]
+        
+        # Process each progression before creating the ChordProgression instance
+        processed_progressions = []
+        for progression in fetched_progressions:
+            try:
+                # Process the chord data
+                processed_data = process_chord_data(progression, db.name)
+                # Create ChordProgression instance
+                chord_progression = ChordProgression(**processed_data)
+                processed_progressions.append(chord_progression)
+            except Exception as e:
+                logger.error(f"Error processing chord progression: {e}")
+                continue
+                
+        return processed_progressions
     except Exception as e:
         logger.error(f"Error fetching chord progressions: {e}")
         return []

@@ -1,25 +1,13 @@
-# src/note_gen/models/note.py
-import re
-from pydantic import BaseModel, Field, validator, ValidationError, root_validator, field_validator, ConfigDict
-from typing import Any, ClassVar, Dict, Tuple, Optional, Union
-import logging
-
-# Configure logging to output to console
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
-
-class NoteConfig(ConfigDict):
-    arbitrary_types_allowed = True
-    use_enum_values = True
-    validate_assignment = True
+from typing import Dict, ClassVar, Optional, Tuple, Any, Union
+from pydantic import BaseModel, field_validator, ConfigDict
 
 class Note(BaseModel):
-    "A musical note with optional MIDI number auto-population."
+    """A musical note with a name, octave, duration, and velocity."""
     note_name: str
     octave: int
-    duration: float = Field(default=1.0)
-    velocity: int = Field(default=64)
+    duration: float = 1.0  # Default duration of 1 beat
+    velocity: int = 100  # Default MIDI velocity
     stored_midi_number: Optional[int] = None
-
 
     # Maps note names to their semitone values
     NOTE_TO_SEMITONE: ClassVar[Dict[str, int]] = {
@@ -32,282 +20,243 @@ class Note(BaseModel):
         'B': 11
     }
 
-    # Maps semitone values to their note names (using sharps)
+    # Maps semitone values to their preferred note names
     SEMITONE_TO_NOTE: ClassVar[Dict[int, str]] = {
-        0: 'C', 1: 'C#', 2: 'D',
-        3: 'D#', 4: 'E', 5: 'F',
-        6: 'F#', 7: 'G', 8: 'G#',
-        9: 'A', 10: 'A#', 11: 'B'
+        0: 'C', 1: 'C#', 2: 'D', 3: 'Eb',
+        4: 'E', 5: 'F', 6: 'F#', 7: 'G',
+        8: 'Ab', 9: 'A', 10: 'Bb', 11: 'B'
     }
 
+    INVALID_NOTE_NAME_ERROR: ClassVar[str] = "Invalid note name format:"
+
+    model_config = ConfigDict(arbitrary_types_allowed=True, from_attributes=True)
+
     @field_validator('note_name')
-    def validate_note_name(cls, value):
-        if value not in cls.NOTE_TO_SEMITONE:
-            raise ValueError(f'Invalid note name: {value}. Must be one of {list(cls.NOTE_TO_SEMITONE.keys())}.')
-        return value
-
-    @field_validator('octave')
-    def validate_octave(cls, value):
-        if not (0 <= value <= 8):
-            raise ValueError('Octave must be between 0 and 8.')
-        return value
-
-    @field_validator('octave')
     @classmethod
-    def validate_octave(cls, octave):
-        if octave < 0 or octave > 8:
+    def validate_note_name(cls, v: str) -> str:
+        try:
+            normalized = cls.normalize_note_name(v)
+            if normalized not in cls.NOTE_TO_SEMITONE:
+                raise ValueError(cls.INVALID_NOTE_NAME_ERROR)
+            return normalized
+        except ValueError:
+            raise ValueError(cls.INVALID_NOTE_NAME_ERROR)
+
+    @field_validator('octave')
+    def validate_octave(cls, v: int) -> int:
+        """Validate the octave value."""
+        if not (0 <= v <= 8):
             raise ValueError("Invalid octave:")
-        return octave
-
-    @field_validator('note_name')
-    @classmethod
-    @classmethod
-    def validate_note_name(cls, note_name):
-        if not re.match(r'^[A-G][#b]?\d?$', note_name):
-            raise ValueError(f"Invalid note name: {note_name}")  # Include the invalid note name
-        return note_name
+        return v
 
     @field_validator('duration')
-    @classmethod
-    def validate_duration(cls, duration):
-        if duration <= 0:
-            raise ValueError("Input should be greater than 0")
-        return duration
+    def validate_duration(cls, v: float) -> float:
+        """Validate that the duration is positive."""
+        if v <= 0:
+            raise ValueError("Input should be greater than 0:")
+        return v
 
     @field_validator('velocity')
-    @classmethod
-    def validate_velocity(cls, velocity):
-        if not (0 <= velocity <= 127):
-            raise ValueError('Velocity must be between 0 and 127')
-        return velocity
-
-    @classmethod
-    def calculate_midi_number(cls, note_name: str, octave: int) -> int:
-        note_to_semitone = {
-            'C': 0, 'C#': 1, 'D': 2, 'D#': 3, 'E': 4, 'F': 5, 'F#': 6, 'G': 7, 'G#': 8, 'A': 9, 'A#': 10, 'B': 11
-        }
-        semitone = note_to_semitone.get(note_name)
-        if semitone is None:
-            raise ValueError("Invalid note name:")  # Updated error message
-        
-        midi_number = (octave + 1) * 12 + semitone  # MIDI numbers start from C-1 (MIDI 0)
-        if midi_number < 0 or midi_number > 127:
-            raise ValueError("MIDI number out of range:")
-        return midi_number
-
-    @classmethod
-    def normalize_note_name(cls, note_name: str) -> str:
-        """Normalize the note name to uppercase and valid accidentals."""
-        match = re.match(r"^[A-Ga-g][#b]?\d{0,1}$", note_name)
-        if not match:
-            raise ValueError("Invalid note name:")  # Reverted error message  
-        # Keep the accidental in the same case
-        base_note = note_name[0].upper()
-        if len(note_name) > 1 and note_name[1] in ['#', 'b']:
-            return base_note + note_name[1]
-        return base_note
-
-    @classmethod
-    def from_full_name(cls, full_name: str, duration: float = 1.0, velocity: int = 64) -> 'Note':
-        """Create a Note from a full note name (e.g. 'C#4')."""
-        match = re.match(r"^([A-Ga-g][#b]?)(\d+)$", full_name)
-        if not match:
-            raise ValueError("Invalid note name format")
-        note_name, octave = match.groups()
-        return cls(note_name=cls.normalize_note_name(note_name), octave=int(octave), duration=duration, velocity=velocity)
-
-    @classmethod
-    def from_midi(cls, midi_number: int, velocity: int = 64, duration: float = 1.0) -> "Note":
-        """Create a Note from a MIDI number (0–127)."""
-        if not (0 <= midi_number <= 127):
-            raise ValueError("MIDI number out of range:")
-        note_name, octave = cls._midi_to_note_octave(midi_number)
-        return cls(
-            note_name=note_name,
-            octave=octave,
-            duration=duration,
-            velocity=velocity,
-        )
-
-    @classmethod
-    def from_name(cls, note_name: str, octave: int = 4, duration: float = 1.0, velocity: int = 64):
-        logging.debug(f"Creating Note from name: {note_name}, octave: {octave}, duration: {duration}, velocity: {velocity}")
-        if not isinstance(note_name, str) or not note_name:
-            raise ValueError("Invalid note name: Must be a non-empty string")
-        match = re.match(r'([A-G][#b]?)(\d?)', note_name)
-        if not match:
-            raise ValueError("Invalid note name:")  # Updated error message
-        note_name, octave = match.groups()
-        octave = int(octave) if octave else 4
-        if octave < 0 or octave > 8:
-            raise ValueError("Invalid octave:")
-        midi_number = cls.calculate_midi_number(note_name, octave)
-        if midi_number < 0 or midi_number > 127:
-            raise ValueError("MIDI number out of range:")
-        return cls(note_name=cls.normalize_note_name(note_name), octave=octave, duration=duration, velocity=velocity)
-
-    @classmethod
-    def from_midi_number(cls, midi_number: int, duration: float, velocity: int) -> 'Note':
-        """Create a Note from a MIDI number."""
-        if not (0 <= midi_number <= 127):
-            raise ValueError("MIDI number out of range:")
-        # Logic to convert MIDI number to note name and octave
-        note_name, octave = cls._midi_to_note_octave(midi_number)
-        
-        # Validate octave range
-        if octave < 0 or octave > 8:
-            raise ValueError("Invalid octave:")
-    
-        # Create new note with transposed values
-        return cls(note_name=note_name, octave=octave, duration=duration, velocity=velocity)
-
-    @classmethod
-    def fill_missing_fields(cls, data: Dict[str, Any]) -> Dict[str, Any]:
-        if data is None:
-            raise ValueError("Expected a dict, int, or str for Note")
-
-        if isinstance(data, int):
-            return cls._fill_from_midi(data)
-
-        if isinstance(data, str):
-            raise ValueError("Invalid note name format")
-
-        if not isinstance(data, dict):
-            raise ValueError("Expected a dict, int, or str for Note")  # Updated error message
-
-        if not data:
-            return {'note_name': 'C', 'octave': 4, 'duration': 1.0, 'velocity': 64}
-
-        # Validate note_name format
-        if 'note_name' in data and not re.match(r'^[A-G][#b]?\d?$', data['note_name']):
-            raise ValueError("Unrecognized note name")  # Ensure consistency with initialization error message
-
-        # Add octave validation here
-        if 'octave' in data:
-            if data['octave'] < 0 or data['octave'] > 8:
-                raise ValueError(f"Octave must be between 0 and 8: {data['octave']}")
-
-        # Set default values for missing fields
-        data.setdefault('duration', 1.0)
-        data.setdefault('velocity', 64)
-
-        if 'note_name' not in data:
-            raise ValueError("Missing note_name in dictionary")
-        if 'octave' not in data:
-            raise ValueError("Missing octave in dictionary")
-        data['stored_midi_number'] = None
-        return data
-
-    @classmethod
-    def _fill_from_midi(cls, midi_number: int) -> Dict[str, Any]:
-        if not (0 <= midi_number <= 127):
-            raise ValueError("MIDI number out of range:")
-        note_name, octave = cls._midi_to_note_octave(midi_number)
-        return {
-            "note_name": note_name, 
-            "octave": octave,
-            "stored_midi_number": midi_number  
-        }
-
-    @classmethod
-    def _fill_from_dict(cls, data: Dict[str, Any]) -> Dict[str, Any]:
-        if 'note_name' not in data:
-            raise ValueError("Missing note_name in dictionary")
-        if 'octave' not in data:
-            raise ValueError("Missing octave in dictionary")
-        data['stored_midi_number'] = cls.calculate_midi_number(data['note_name'], data['octave'])
-        return data
-
-    @classmethod
-    def _fill_from_str(cls, note_str: str) -> Dict[str, Any]:
-        match = re.match(r'([A-Ga-g][#b]?)(\d+)', note_str)
-        if not match:
-            raise ValueError("Invalid note name format")
-        note_name, octave = match.groups()
-        return {
-            "note_name": note_name,
-            "octave": int(octave),
-            "stored_midi_number": cls.calculate_midi_number(note_name, int(octave))
-        }
-
-    @classmethod
-    def note_name_to_midi(cls, note_name: str) -> int:
-        """Convert a note name to its MIDI offset."""
-        note_to_number = {
-            "C": 0, "C#": 1, "D": 2, "D#": 3, "E": 4, "F": 5,
-            "F#": 6, "G": 7, "G#": 8, "A": 9, "A#": 10, "B": 11
-        }
-        if note_name not in note_to_number:
-            raise ValueError("Unrecognized note name")
-        return note_to_number[note_name]
+    def validate_velocity(cls, v: int) -> int:
+        """Validate that the velocity is within MIDI range (0-127)."""
+        if not (0 <= v <= 127):
+            raise ValueError(f"Velocity must be between 0 and 127: {v}")
+        return v
 
     @property
     def midi_number(self) -> int:
         """Get the MIDI number for this note."""
+        if self.stored_midi_number is not None:
+            return self.stored_midi_number
         return self._note_octave_to_midi(self.note_name, self.octave)
+
+    @classmethod
+    def _note_octave_to_midi(cls, note_name: str, octave: int) -> int:
+        """Convert a note name and octave to a MIDI number."""
+        if note_name not in cls.NOTE_TO_SEMITONE:
+            raise ValueError("Unrecognized note name:")
+        semitone = cls.NOTE_TO_SEMITONE[note_name]
+        midi_number = (octave + 1) * 12 + semitone
+        if not (0 <= midi_number <= 127):
+            raise ValueError(f"MIDI number out of range: {midi_number}")
+        return midi_number
 
     @classmethod
     def _midi_to_note_octave(cls, midi_number: int) -> Tuple[str, int]:
         """Convert a MIDI number to a note name and octave."""
         if not (0 <= midi_number <= 127):
-            raise ValueError("MIDI number out of range:")
-        semitone_to_note = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
+            raise ValueError(f"MIDI number out of range: {midi_number}")
         octave = (midi_number // 12) - 1
-        note_index = midi_number % 12
-        # Handle edge cases for octave 0
-        if octave < 0:
+        if midi_number == 0:  # Special case for MIDI note 0 (C0)
             octave = 0
-        # For MIDI number 127, we should allow octave 10
-        if octave > 10:
-            raise ValueError("Invalid octave:")
-        return semitone_to_note[note_index], octave
+        semitone = midi_number % 12
+        note_name = cls.SEMITONE_TO_NOTE[semitone]
+        return note_name, octave
 
-    @staticmethod
-    def _note_octave_to_midi(note_name: str, octave: int) -> int:
-        """Convert a note name and octave to a MIDI number."""
-        if not (0 <= octave <= 10):
-            raise ValueError("Invalid octave:")
-        note_to_semitone = {
-            'C': 0, 'C#': 1, 'Db': 1, 'D': 2, 'D#': 3, 'Eb': 3,
-            'E': 4, 'F': 5, 'F#': 6, 'Gb': 6, 'G': 7, 'G#': 8,
-            'Ab': 8, 'A': 9, 'A#': 10, 'Bb': 10, 'B': 11
-        }
-        if note_name not in note_to_semitone:
-            raise ValueError("Unrecognized note name")
-        return note_to_semitone[note_name] + (octave + 1) * 12
+    @classmethod
+    def from_midi(cls, midi_number: int, velocity: int = 100, duration: float = 1.0) -> 'Note':
+        """Creates a Note instance from a MIDI number."""
+        if not (0 <= midi_number <= 127):
+            raise ValueError(f"Invalid MIDI number: {midi_number}")
+        note_name = cls.SEMITONE_TO_NOTE[midi_number % 12]
+        octave = midi_number // 12 - 1
+        return cls(note_name=note_name, octave=octave, velocity=velocity, duration=duration)
 
-    def to_dict(self) -> Dict[str, Any]:
-        """Return a dictionary representation of the note, including stored_midi_number."""
-        return {
-            'note_name': self.note_name,
-            'octave': self.octave,
-            'duration': self.duration,
-            'velocity': self.velocity,
-            'stored_midi_number': self.stored_midi_number
-        }  
+    @classmethod
+    def from_full_name(cls, full_name: str, duration: float = 1.0, velocity: int = 100) -> 'Note':
+        """Create a Note from a full note name (e.g., 'C4')."""
+        # Validate the note name format
+        if len(full_name) < 2 or not full_name[-1].isdigit():
+            raise ValueError('Invalid note name format:')
+        
+        # Handle cases like 'C#4' or 'Bb3'
+        if full_name[-2].isdigit():
+            octave = int(full_name[-2:])
+            note_name = full_name[:-2]
+        else:
+            octave = int(full_name[-1])
+            note_name = full_name[:-1]
+        
+        note_name = cls.normalize_note_name(note_name)
+        if note_name not in cls.NOTE_TO_SEMITONE:
+            raise ValueError('Invalid note name format:')
+        return cls(note_name=note_name, octave=octave, duration=duration, velocity=velocity)
 
-    def get_note_at_interval(self, interval: int) -> str:
-        """Get the note name at the specified interval from this note."""
-        base_semitone = self.NOTE_TO_SEMITONE[self.note_name]
-        new_semitone = (base_semitone + interval) % 12
-        return self.SEMITONE_TO_NOTE[new_semitone]
+    @classmethod
+    def from_name(cls, note_str: str, duration: float = 1.0, velocity: int = 100) -> 'Note':
+        """Create a Note from a string like 'C4' or 'F#5'."""
+        if len(note_str) < 2:
+            raise ValueError("Invalid note name format")
+            
+        try:
+            # Split into note name and octave
+            if note_str[-2].isdigit():  # Handle cases like 'C#4'
+                octave = int(note_str[-2:])
+                note_name = note_str[:-2]
+            else:  # Handle cases like 'C4'
+                octave = int(note_str[-1])
+                note_name = note_str[:-1]
+                
+            note_name = cls.normalize_note_name(note_name)
+            return cls(note_name=note_name, octave=octave, duration=duration, velocity=velocity)
+        except (ValueError, IndexError):
+            raise ValueError(cls.INVALID_NOTE_NAME_ERROR)
+
+    @classmethod
+    def from_midi_number(cls, midi_number: int, duration: float = 1.0, velocity: int = 100) -> 'Note':
+        """Alias for from_midi for backward compatibility."""
+        return cls.from_midi(midi_number, duration, velocity)
 
     def transpose(self, semitones: int) -> 'Note':
-        new_semitone = (self.NOTE_TO_SEMITONE[self.note_name] + semitones) % 12
-        new_octave = self.octave + (self.NOTE_TO_SEMITONE[self.note_name] + semitones) // 12
-    
-        # Check for valid octave range
-        if new_octave < 0:
+        """Transpose the note by a number of semitones."""
+        new_midi = self.midi_number + semitones
+        try:
+            return self.from_midi(new_midi, self.duration, self.velocity)
+        except ValueError:
             raise ValueError("MIDI number out of range")
-        elif new_octave > 8:
-            raise ValueError("MIDI number out of range")
-    
-        new_note_name = self.SEMITONE_TO_NOTE[new_semitone]
-        return Note(note_name=new_note_name, octave=new_octave, duration=self.duration, velocity=self.velocity)
+
+    @classmethod
+    def normalize_note_name(cls, note_name: str) -> str:
+        """Normalize a note name to standard format."""
+        if not note_name or not note_name.strip():
+            raise ValueError(cls.INVALID_NOTE_NAME_ERROR)
+        
+        # Convert to uppercase first character, lowercase rest
+        try:
+            normalized = note_name[0].upper() + note_name[1:].lower()
+            
+            # Handle special cases for accidentals
+            if len(normalized) > 1 and normalized[1] in ['b', '#']:
+                if normalized[1] == 'b':
+                    normalized = normalized[0] + 'b'  # Keep 'b' lowercase
+                else:
+                    normalized = normalized[0] + '#'  # Keep '#' as is
+            
+            # Validate that the normalized note name is valid
+            if normalized not in cls.NOTE_TO_SEMITONE:
+                raise ValueError(cls.INVALID_NOTE_NAME_ERROR)
+            
+            return normalized
+        except IndexError:
+            raise ValueError(cls.INVALID_NOTE_NAME_ERROR)
+
+    @classmethod
+    def fill_missing_fields(cls, data: Union[Dict[str, Any], int, str]) -> Dict[str, Any]:
+        """Fill in missing fields for note creation."""
+        if isinstance(data, dict):
+            if not data:
+                # Allow empty dict and fill with defaults
+                result = {
+                    'note_name': 'C',
+                    'octave': 4,
+                    'duration': 1.0,
+                    'velocity': 64,
+                    'stored_midi_number': None
+                }
+            else:
+                result = {
+                    'duration': 1.0,
+                    'velocity': 64,
+                    'stored_midi_number': None,
+                    **data
+                }
+                if "note_name" in result:
+                    try:
+                        result["note_name"] = cls.normalize_note_name(result["note_name"])
+                        if result["note_name"] not in cls.NOTE_TO_SEMITONE:
+                            raise ValueError("Unrecognized note name")
+                    except ValueError:
+                        raise ValueError("Unrecognized note name")
+                if "octave" in result and not (0 <= result["octave"] <= 8):
+                    raise ValueError(f"Octave must be between 0 and 8: {result['octave']}")
+            return result
+        elif isinstance(data, int):
+            note_name, octave = cls._midi_to_note_octave(data)
+            return {
+                'note_name': note_name,
+                'octave': octave,
+                'duration': 1.0,
+                'velocity': 64,
+                'stored_midi_number': data
+            }
+        elif isinstance(data, str):
+            try:
+                note = cls.from_name(data)
+                return note.model_dump()
+            except ValueError:
+                raise ValueError(cls.INVALID_NOTE_NAME_ERROR)
+        else:
+            raise ValueError("Expected a dict, int, or str for Note")
+
+    def __eq__(self, other: object) -> bool:
+        """Compare two notes for equality."""
+        if not isinstance(other, Note):
+            return NotImplemented
+        return (
+            self.note_name == other.note_name
+            and self.octave == other.octave
+            and self.duration == other.duration
+            and self.velocity == other.velocity
+        )
+
+    @classmethod
+    def note_name_to_midi(cls, note_name: str) -> int:
+        """Convert a note name to its MIDI number offset (0-11)."""
+        try:
+            normalized = cls.normalize_note_name(note_name)
+            if normalized not in cls.NOTE_TO_SEMITONE:
+                raise ValueError("Unrecognized note name")
+            return cls.NOTE_TO_SEMITONE[normalized]
+        except ValueError as e:
+            # Re-raise with the same message
+            raise ValueError("Unrecognized note name")
 
     def full_note_name(self) -> str:
-        """Return the full note name."""
-        return f'{self.note_name}{self.octave}' if self.octave is not None else self.note_name
+        """Get the full note name including octave."""
+        return f"{self.note_name}{self.octave}"
 
     def __str__(self) -> str:
-        return self.full_note_name()
+        return f'{self.note_name}{self.octave}'
+
+    def __repr__(self) -> str:
+        return f'Note(note_name={self.note_name}, octave={self.octave}, duration={self.duration}, velocity={self.velocity})'
