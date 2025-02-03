@@ -162,7 +162,7 @@ def test_app():
 
 @pytest.fixture
 async def async_client():
-    async with httpx.AsyncClient(app=app, base_url="http://test") as client:
+    async with httpx.AsyncClient(base_url="http://test") as client:
         yield client
 
 @pytest.fixture(scope="session")

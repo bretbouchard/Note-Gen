@@ -1,7 +1,10 @@
 """Database connection module."""
 
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
+from motor import motor_asyncio
 from src.note_gen.models.chord_progression import ChordProgression
+from src.note_gen.models.note_pattern import NotePattern
+from src.note_gen.models.rhythm_pattern import RhythmPattern
 from typing import Any, AsyncGenerator, Dict, List, Optional
 import logging
 from contextlib import asynccontextmanager
@@ -152,3 +155,15 @@ async def get_chord_progressions(db: AsyncIOMotorDatabase) -> List[Dict[str, Any
     except Exception as e:
         logger.error(f"Error fetching chord progressions: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+async def get_chord_progression_by_name(name: str, db: motor_asyncio.AsyncIOMotorDatabase) -> Optional[ChordProgression]:
+    chord_progression = await db.chord_progressions.find_one({"name": name})
+    return chord_progression
+
+async def get_note_pattern_by_name(name: str, db: motor_asyncio.AsyncIOMotorDatabase) -> Optional[NotePattern]:
+    note_pattern = await db.note_patterns.find_one({"name": name})
+    return note_pattern
+
+async def get_rhythm_pattern_by_name(name: str, db: motor_asyncio.AsyncIOMotorDatabase) -> Optional[RhythmPattern]:
+    rhythm_pattern = await db.rhythm_patterns.find_one({"name": name})
+    return rhythm_pattern

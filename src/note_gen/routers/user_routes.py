@@ -11,7 +11,8 @@ from src.note_gen.models.chord import Chord
 from src.note_gen.models.chord_progression import ChordProgression 
 from src.note_gen.models.scale_info import ScaleInfo
 from src.note_gen.models.patterns import NotePattern, NotePatternData
-from src.note_gen.database import get_db
+from src.note_gen.database import get_db, get_chord_progression_by_name, get_note_pattern_by_name, get_rhythm_pattern_by_name
+from src.note_gen.routers.note_sequence_routes import router as note_sequence_router
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -150,11 +151,29 @@ async def generate_sequence(request: GenerateSequenceRequest, db: AsyncIOMotorDa
     """
     Generate a musical sequence based on the provided progression, note pattern, and rhythm pattern.
     """
+    logger.debug("Received request: %s", request)
     try:
+        logger.info("Request data: %s", request.dict())
+        # Fetch chord progression by name
+        chord_progression = await get_chord_progression_by_name(request.progression_name, db)
+        if not chord_progression:
+            raise HTTPException(status_code=404, detail="Chord progression not found")
+
+        # Fetch note pattern by name
+        note_pattern = await get_note_pattern_by_name(request.note_pattern_name, db)
+        if not note_pattern:
+            raise HTTPException(status_code=404, detail="Note pattern not found")
+
+        # Fetch rhythm pattern by name
+        rhythm_pattern = await get_rhythm_pattern_by_name(request.rhythm_pattern_name, db)
+        if not rhythm_pattern:
+            raise HTTPException(status_code=404, detail="Rhythm pattern not found")
+
         # Logic to generate the sequence
-        return GenerateSequenceResponse(notes=[], progression_name="", note_pattern_name="", rhythm_pattern_name="")
+        return GenerateSequenceResponse(notes=[], progression_name=request.progression_name, note_pattern_name=request.note_pattern_name, rhythm_pattern_name=request.rhythm_pattern_name)
     except Exception as e:
-        logger.error(f"Error generating sequence: {e}", exc_info=True)
+        logger.error("Error occurred: %s", str(e), exc_info=True)
+        logger.error("Request data: %s", request.dict())
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
 @router.post("/generate-sequence-new", response_model=GenerateSequenceResponse)
@@ -179,4 +198,21 @@ async def test_db_connection(db: AsyncIOMotorDatabase[Dict[str, Any]] = Depends(
             return {"message": "No chord progressions found."}
     except Exception as e:
         logger.error(f"Database connection error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal Server Error")
+
+def get_current_user_id():
+    # Replace with actual user identification logic
+    return "some_user_id"
+
+@router.get("/users/me")
+async def get_current_user(db: AsyncIOMotorDatabase = Depends(get_db), user_id: str = Depends(get_current_user_id)):
+    try:
+        user = await db.users.find_one({"_id": ObjectId(user_id)})
+        if user is None:
+            logger.warning(f"User not found for ID: {user_id}")
+            raise HTTPException(status_code=404, detail="User not found")
+        return user
+    except Exception as e:
+        logger.error(f"Error retrieving user with ID {user_id}: {e}", exc_info=True)
+        logger.error(f"Error details: {e.__dict__}")
         raise HTTPException(status_code=500, detail="Internal Server Error")

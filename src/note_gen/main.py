@@ -3,6 +3,7 @@ from src.note_gen.routers.user_routes import router as user_routes
 from src.note_gen.routers.chord_progression_routes import router as chord_progression_routes
 from src.note_gen.routers.rhythm_pattern_routes import router as rhythm_pattern_routes
 from src.note_gen.routers.note_pattern_routes import router as note_pattern_routes
+from src.note_gen.routers.note_sequence_routes import router as note_sequence_router
 from src.note_gen.database import get_db
 from src.note_gen.import_presets import ensure_indexes, import_presets_if_empty
 import logging
@@ -57,6 +58,7 @@ app.include_router(user_routes, prefix="/users")
 app.include_router(chord_progression_routes, prefix="/api")
 app.include_router(rhythm_pattern_routes, prefix="/api")
 app.include_router(note_pattern_routes, prefix="/api")
+app.include_router(note_sequence_router, prefix="/api")
 
 class LogMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):

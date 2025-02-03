@@ -45,8 +45,9 @@ async def test_db():
     client.close()
 
 @pytest.fixture
-async def client(test_db):
-    async with httpx.AsyncClient(app=app, base_url="http://test") as c:
+async def client():
+    loop = asyncio.get_running_loop()
+    async with httpx.AsyncClient(base_url="http://localhost:8000") as c:
         yield c
 
 # Consolidated tests for note pattern functionality

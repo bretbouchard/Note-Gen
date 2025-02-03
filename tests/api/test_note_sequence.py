@@ -1,11 +1,10 @@
 import pytest
 import httpx
-from main import app
 from src.note_gen.models.note import Note
 
-@pytest.fixture
+@pytest.fixture 
 async def client():
-    async with httpx.AsyncClient(app=app, base_url="http://test") as c:
+    async with httpx.AsyncClient(base_url="http://localhost:8000") as c:
         yield c
 
 @pytest.mark.asyncio

@@ -115,6 +115,10 @@ mongosh
 use note_gen
 ```
 
+```
+mongo mongodb://localhost:27017/note_gen
+```
+
 Tests:
 
 ```bash

@@ -13,6 +13,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import ValidationError  # Fix the syntax error here
 from src.note_gen.models.note import Note
 from src.note_gen.models.chord_progression import ChordProgression, ChordQualityType
+import asyncio
 
 pytestmark = pytest.mark.asyncio  # This marks all test functions in the file as async
 
@@ -167,10 +168,11 @@ async def client() -> AsyncGenerator[AsyncClient, None]:
 
 @pytest.fixture
 async def test_client(app: FastAPI) -> AsyncGenerator[AsyncClient, None]:
+    loop = asyncio.get_running_loop()
     app.dependency_overrides[get_db] = lambda: MockDatabase()
     async with AsyncClient(
         transport=ASGITransport(app=app),
-        base_url="http://test",
+        base_url="http://localhost:8000",
         follow_redirects=True
     ) as client:
         yield client

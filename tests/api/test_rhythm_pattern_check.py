@@ -5,10 +5,12 @@ from src.note_gen.models.rhythm_pattern import RhythmPattern, RhythmPatternData,
 from bson import ObjectId
 import uuid
 import httpx
+import asyncio
 
 @pytest.fixture
 async def client():
-    async with httpx.AsyncClient(base_url="http://127.0.0.1:8000", verify=False) as c:
+    loop = asyncio.get_running_loop()
+    async with httpx.AsyncClient(base_url="http://localhost:8000", verify=False) as c:
         yield c
 
 # Consolidated tests for rhythm pattern functionality
