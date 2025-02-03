@@ -147,33 +147,42 @@ async def create_chord_progression(progression: ChordProgression, db: AsyncIOMot
         raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
 
 @router.post("/generate-sequence", response_model=GenerateSequenceResponse)
-async def generate_sequence(request: GenerateSequenceRequest, db: AsyncIOMotorDatabase[Dict[str, Any]] = Depends(get_db)) -> GenerateSequenceResponse:
-    """
-    Generate a musical sequence based on the provided progression, note pattern, and rhythm pattern.
-    """
-    logger.debug("Received request: %s", request)
+async def generate_sequence(request: GenerateSequenceRequest, db: AsyncIOMotorDatabase = Depends(get_db)) -> GenerateSequenceResponse:
+    logger.debug("Test log entry: generate_sequence function called.")  # Breakpoint 1
     try:
-        logger.info("Request data: %s", request.dict())
+        logger.debug("Received request: %s", request)
+        logger.info("Request data: %s", request.dict())  # Log the request data
+        
         # Fetch chord progression by name
+        logger.debug("Fetching chord progression by name: %s", request.progression_name)  # Breakpoint 2
         chord_progression = await get_chord_progression_by_name(request.progression_name, db)
+        logger.debug("Fetched chord progression: %s", chord_progression)  # Breakpoint 3
         if not chord_progression:
+            logger.error(f"Chord progression '{request.progression_name}' not found.")
             raise HTTPException(status_code=404, detail="Chord progression not found")
-
+        
         # Fetch note pattern by name
+        logger.debug("Fetching note pattern by name: %s", request.note_pattern_name)  # Breakpoint 4
         note_pattern = await get_note_pattern_by_name(request.note_pattern_name, db)
+        logger.debug("Fetched note pattern: %s", note_pattern)  # Breakpoint 5
         if not note_pattern:
+            logger.error(f"Note pattern '{request.note_pattern_name}' not found.")
             raise HTTPException(status_code=404, detail="Note pattern not found")
-
+        
         # Fetch rhythm pattern by name
+        logger.debug("Fetching rhythm pattern by name: %s", request.rhythm_pattern_name)  # Breakpoint 6
         rhythm_pattern = await get_rhythm_pattern_by_name(request.rhythm_pattern_name, db)
+        logger.debug("Fetched rhythm pattern: %s", rhythm_pattern)  # Breakpoint 7
         if not rhythm_pattern:
+            logger.error(f"Rhythm pattern '{request.rhythm_pattern_name}' not found.")
             raise HTTPException(status_code=404, detail="Rhythm pattern not found")
-
-        # Logic to generate the sequence
+        
+        # More processing...
+        logger.info("Successfully generated sequence for progression: %s", request.progression_name)
         return GenerateSequenceResponse(notes=[], progression_name=request.progression_name, note_pattern_name=request.note_pattern_name, rhythm_pattern_name=request.rhythm_pattern_name)
     except Exception as e:
-        logger.error("Error occurred: %s", str(e), exc_info=True)
-        logger.error("Request data: %s", request.dict())
+        logger.exception("An error occurred while generating sequence:")
+        logger.error("Exception details: %s", str(e))
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
 @router.post("/generate-sequence-new", response_model=GenerateSequenceResponse)

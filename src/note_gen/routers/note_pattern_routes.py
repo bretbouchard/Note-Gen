@@ -22,7 +22,7 @@ async def create_note_pattern(note_pattern: NotePattern, db: motor_asyncio.Async
     missing_fields = [field for field in required_fields if not getattr(note_pattern, field)]
     if missing_fields:
         logger.error(f"Missing required fields: {', '.join(missing_fields)}")
-        raise HTTPException(status_code=400, detail=f'Missing required fields: {', '.join(missing_fields)}')
+        raise HTTPException(status_code=400, detail=f"Missing required fields: {', '.join(missing_fields)}")
     try:
         logger.info(f"Creating note pattern: {note_pattern}")
         result = await db.note_patterns.insert_one(note_pattern.dict())

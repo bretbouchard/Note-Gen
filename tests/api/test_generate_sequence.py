@@ -17,12 +17,15 @@ async def client():
 @pytest.mark.asyncio
 async def test_generate_sequence_from_presets(client) -> None:
     request_data = {
-        "progression_name": "I-IV-V",  # Ensure this progression exists in your database
+        "progression_name": "I-IV-V-I",  # Updated to a valid progression name
         "note_pattern_name": "Simple Triad",  # Ensure this pattern exists
-        "rhythm_pattern_name": "jazz",  # Ensure this pattern exists
+        "rhythm_pattern_name": "quarter_notes",  # Updated to a valid rhythm pattern name
         "scale_info": {
-            "root": "C",
-            "octave": 4
+            "root": {
+                "note_name": "C",  # Correct structure for root
+                "octave": 4
+            },
+            "scale_type": "MAJOR"  # Optional: include scale type if needed
         }
     }
     response = await client.post("/generate-sequence", json=request_data)
@@ -105,9 +108,9 @@ async def test_generate_sequence_invalid_rhythm_pattern(client) -> None:
 @pytest.mark.asyncio
 async def test_note_sequence(client):
     request_data = {
-        "progression_name": "I-IV-V",  # Updated to a valid progression
+        "progression_name": "I-IV-V-I",  # Updated to a valid progression name
         "note_pattern_name": "Simple Triad",  # Example note pattern
-        "rhythm_pattern_name": "jazz",  # Using 'jazz' rhythm pattern
+        "rhythm_pattern_name": "quarter_notes",  # Updated to a valid rhythm pattern name
         "scale_info": {"root": {"note_name": "C", "octave": 4}, "scale_type": "MAJOR"}
     }
     logger.debug("Request Data:", request_data)  # Log the request data
@@ -129,9 +132,9 @@ async def test_note_sequence(client):
 async def test_generate_sequence_functionality(client):
     # Test generate sequence from presets
     request_data = {
-        "progression_name": "I-IV-V-I",  # Using actual preset progression
+        "progression_name": "I-IV-V-I",  # Updated to a valid progression name
         "note_pattern_name": "Simple Triad",  # Using actual preset note pattern
-        "rhythm_pattern_name": "quarter_notes",  # Using actual preset rhythm pattern
+        "rhythm_pattern_name": "quarter_notes",  # Updated to a valid rhythm pattern name
         "scale_info": {
             "root": {
                 "note_name": "C",
@@ -224,9 +227,9 @@ async def test_generate_sequence_functionality(client):
 
     # Test note sequence
     request_data = {
-        "progression_name": "I-IV-V",  # Updated to a valid progression
+        "progression_name": "I-IV-V-I",  # Updated to a valid progression name
         "note_pattern_name": "Simple Triad",  # Example note pattern
-        "rhythm_pattern_name": "jazz",  # Using 'jazz' rhythm pattern
+        "rhythm_pattern_name": "quarter_notes",  # Updated to a valid rhythm pattern name
         "scale_info": {"root": {"note_name": "C", "octave": 4}, "scale_type": "MAJOR"}
     }
     logger.debug("Request Data:", request_data)  # Log the request data
@@ -244,9 +247,9 @@ async def test_generate_sequence_functionality(client):
 
     # Test generate sequence from presets with note structure check
     request_data = {
-        "progression_name": "I-IV-V-I",  # Using actual preset progression
+        "progression_name": "I-IV-V-I",  # Updated to a valid progression name
         "note_pattern_name": "Simple Triad",  # Using actual preset note pattern
-        "rhythm_pattern_name": "quarter_notes",  # Using actual preset rhythm pattern
+        "rhythm_pattern_name": "quarter_notes",  # Updated to a valid rhythm pattern name
         "scale_info": {
             "root": {
                 "note_name": "C",

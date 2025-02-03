@@ -21,15 +21,16 @@ import os
 # Ensure logs directory exists
 os.makedirs('logs', exist_ok=True)
 
+# Configure logging to file
 logging.basicConfig(
     level=logging.DEBUG,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('logs/app.log', mode='a', encoding='utf-8'),  # Log to app.log
+        logging.FileHandler('logs/app.log'),
+        logging.StreamHandler()
     ]
 )
 logger = logging.getLogger(__name__)
-logger.debug("Logging configured successfully.")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
@@ -54,6 +55,7 @@ mongodb_client: AsyncIOMotorClient = AsyncIOMotorClient("mongodb://localhost:270
 app.lifespan = lifespan
 
 # Include routers with prefixes to avoid conflicts
+app.include_router(user_routes)
 app.include_router(user_routes, prefix="/users")
 app.include_router(chord_progression_routes, prefix="/api")
 app.include_router(rhythm_pattern_routes, prefix="/api")
@@ -81,5 +83,6 @@ async def main():
 if __name__ == '__main__':
     import asyncio
     logger.debug("Test log entry: Application has started successfully.")
-    logger.debug("Test log entry: Application has started successfully.")
-    asyncio.run(main())
+    logger.debug("Test log entry: Starting the FastAPI application...")
+    import uvicorn
+    uvicorn.run(app, host='0.0.0.0', port=8000)
