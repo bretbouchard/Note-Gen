@@ -68,14 +68,22 @@ async def get_db() -> AsyncGenerator[AsyncIOMotorDatabase[Any], None]:
     global _client, _db
     if _db is None:
         logger.debug("Getting database instance...")
-        client = await get_client()
-        db_name = TEST_DB_NAME if os.getenv("TESTING") else DB_NAME
-        logger.debug(f"Using database: {db_name}")
-        _db = client[db_name]
-        logger.info(f"Successfully connected to database: {db_name}")
-        logger.info(f"Database connection established for database: {db_name}")
-    
+        try:
+            client = await get_client()
+            db_name = TEST_DB_NAME if os.getenv("TESTING") else DB_NAME
+            logger.debug(f"Using database: {db_name}")
+            _db = client[db_name]
+            logger.info(f"Successfully connected to database: {db_name}")
+            logger.debug(f"Database instance: {_db}")
+            logger.debug(f"_db is initialized: {_db is not None}")
+        except Exception as e:
+            logger.error(f"Failed to retrieve database instance: {e}", exc_info=True)
+            raise
+    else:
+        logger.debug("Using existing database instance.")
+        logger.debug(f"_db is initialized: {_db is not None}")
     try:
+        logger.debug("Yielding database instance...")
         yield _db
     except Exception as e:
         logger.error(f"Error occurred while using database: {e}", exc_info=True)

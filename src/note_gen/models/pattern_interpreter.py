@@ -81,11 +81,15 @@ class PatternInterpreter(BaseModel):
             else:
                 raise ValueError("ScaleDegree value cannot be None")
         elif isinstance(element, int):
-            note = Note.from_midi(element, velocity=64, duration=1.0)
+            note = Note.from_midi(element, velocity=64, duration=1)
         elif isinstance(element, str):
             note = Note.from_full_name(element)
         else:
             raise ValueError(f"Unsupported element type: {type(element)}")
+
+        # Check if note is an instance of Note
+        if not isinstance(note, Note):
+            raise TypeError("Expected a Note instance")
 
         # Increment index and wrap around
         self._current_index = (self._current_index + 1) % len(self.pattern)
@@ -105,7 +109,7 @@ class PatternInterpreter(BaseModel):
                 else:
                     raise ValueError("ScaleDegree value cannot be None")
             elif isinstance(element, int):
-                note = Note.from_midi(element, velocity=64, duration=1.0)
+                note = Note.from_midi(element, velocity=64, duration=1)
                 note_events.append(NoteEvent(note=note))
             elif isinstance(element, str):
                 note = Note.from_full_name(element)
@@ -133,7 +137,7 @@ class PatternInterpreter(BaseModel):
             
         # If it's an int, treat it as a MIDI note number
         if isinstance(element, int):
-            return Note.from_midi(element, velocity=100, duration=1.0)
+            return Note.from_midi(element, velocity=100, duration=1)
             
         # If it's a str, parse it into a Note
         if isinstance(element, str):
@@ -152,7 +156,7 @@ class PatternInterpreter(BaseModel):
                 note = self.scale.get_scale_degree(int(element.value)) if isinstance(element.value, str) and element.value.isdigit() else None
             elif isinstance(element, int):
                 note = Note.from_midi(
-                    element, velocity=64, duration=1.0
+                    element, velocity=64, duration=1
                 )  # Assuming a method exists to create Note from MIDI number
                 result.append(note)
             elif isinstance(element, str):

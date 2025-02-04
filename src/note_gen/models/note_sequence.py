@@ -54,7 +54,7 @@ class NoteSequence(BaseModel):
     def add_note(self, note: Union[Note, int], position: float = 0.0, duration: float = 1.0, velocity: int = 100) -> None:
         """Add a note to the sequence at the specified position."""
         if isinstance(note, int):
-            note = Note.from_midi(note, duration=duration, velocity=velocity)
+            note = Note.from_midi(note, duration=int(duration), velocity=velocity)
         event = NoteEvent(note=note, position=position, duration=duration, velocity=velocity)
         self.events.append(event)
 

@@ -1,15 +1,20 @@
 # src/note_gen/models/chord.py
 from typing import List, Dict, Any, Optional, Union
 from pydantic import BaseModel, Field, ConfigDict, field_validator
+import logging
 
 from src.note_gen.models.note import Note
 from src.note_gen.models.chord_quality import ChordQualityType
 
+# Set up logging configuration
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 class Chord(BaseModel):
     """A musical chord consisting of a root note and quality."""
     root: Note
-    quality: ChordQualityType = Field(default=ChordQualityType.MAJOR)
-    notes: Optional[List[Note]] = None
+    quality: Optional[ChordQualityType] = Field(default=ChordQualityType.MAJOR)
+    notes: Optional[List[Note]] = Field(default=None)
     inversion: int = Field(default=0, description="Inversion of the chord (0 = root position)")
 
     model_config = ConfigDict(
@@ -40,23 +45,22 @@ class Chord(BaseModel):
         """Generate the notes that make up this chord."""
         intervals = self.quality.get_intervals()
         root_midi = self.root.midi_number
-        notes = [self.root]
+        notes: List[Note] = [self.root]
         
         for interval in intervals[1:]:  # Skip first interval (0) since we already have root
             next_midi = root_midi + interval
-            next_note = Note.from_midi(next_midi)
-            # Set duration and velocity to match root note
-            next_note.duration = self.root.duration
+            next_note = Note.from_midi(next_midi, duration=int(self.root.duration))
+            # Set velocity to match root note
             next_note.velocity = self.root.velocity
             notes.append(next_note)
             
         return notes
 
     def generate_notes(self) -> List[Note]:
-        """Generate all notes in the chord based on root note and quality."""
-        if not self.notes:  # Only generate if notes haven't been generated yet
+        logger.info("Generating notes for chord...")  # Log when generating notes
+        if self.notes is None:  # Only generate if notes haven't been generated yet
             self.notes = self._generate_chord_notes()
-            
+
         # Apply inversion if specified
         if self.inversion > 0:
             notes = self.notes.copy()
@@ -65,11 +69,12 @@ class Chord(BaseModel):
                 first_note = notes.pop(0)
                 notes.append(first_note.transpose(12))
             self.notes = notes
-            
+
+        logger.info("Notes generated successfully.")  # Log successful generation
         return self.notes
 
     def get_notes(self) -> List[Note]:
-        """Get all notes in the chord based on quality and inversion."""
+        logger.info("Getting notes for chord...")  # Log when getting notes
         return self.generate_notes()
 
     @classmethod
@@ -105,15 +110,22 @@ class Chord(BaseModel):
         new_root = self.root.transpose(semitones)
         return Chord(root=new_root, quality=self.quality, inversion=self.inversion)
 
-    def __init__(self, **data: Any) -> None:
-        super().__init__(**data)
-        # Generate notes immediately upon initialization
-        self.notes = self.generate_notes()
-
     def to_dict(self) -> Dict[str, Any]:
-        """Convert the chord to a dictionary."""
         return {
-            'root': self.root.to_dict() if self.root else None,
-            'quality': self.quality.value,
+            'root': self.root,
+            'quality': self.quality,
+            'notes': [note.to_dict() for note in self.notes] if self.notes is not None else None,
             'inversion': self.inversion
         }
+
+    def some_function(self) -> None:
+        # Function implementation
+        pass
+
+    def another_function(self) -> None:
+        # Example logic to demonstrate reachability
+        if self.notes is not None:
+            for note in self.notes:
+                print(note.to_dict())  # Print each note's dictionary representation
+        else:
+            print("No notes available")

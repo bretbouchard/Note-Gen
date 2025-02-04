@@ -5,91 +5,9 @@ import logging
 import re
 from enum import Enum
 
-from src.note_gen.models.note import Note
-from src.note_gen.models.scale import Scale
 from src.note_gen.models.scale_degree import ScaleDegree
 from src.note_gen.models.roman_numeral import RomanNumeral
-
-class Note(BaseModel):
-    note_name: str
-    octave: int
-    duration: float = 1.0
-    velocity: int = 100
-    stored_midi_number: Optional[int] = None
-
-    NOTE_TO_SEMITONE: ClassVar[Dict[str, int]] = {
-        'C': 0, 'C#': 1, 'Db': 1,
-        'D': 2, 'D#': 3, 'Eb': 3,
-        'E': 4,
-        'F': 5, 'F#': 6, 'Gb': 6,
-        'G': 7, 'G#': 8, 'Ab': 8,
-        'A': 9, 'A#': 10, 'Bb': 10,
-        'B': 11
-    }
-
-    SEMITONE_TO_NOTE: ClassVar[Dict[int, str]] = {
-        0: 'C', 1: 'C#', 2: 'D',
-        3: 'D#', 4: 'E', 5: 'F',
-        6: 'F#', 7: 'G', 8: 'G#',
-        9: 'A', 10: 'A#', 11: 'B'
-    }
-
-    def to_midi_number(self) -> int:
-        """Convert the note to its MIDI number representation.
-        
-        Returns:
-            int: The MIDI number for this note (0-127)
-            
-        Raises:
-            ValueError: If the resulting MIDI number would be out of range (0-127)
-        """
-        if self.stored_midi_number is not None:
-            return self.stored_midi_number
-            
-        # Get the semitone value for the note name
-        try:
-            semitone = self.NOTE_TO_SEMITONE[self.note_name]
-        except KeyError:
-            raise ValueError(f"Invalid note name: {self.note_name}")
-            
-        # Calculate MIDI number: (octave + 1) * 12 + semitone
-        midi_number = (self.octave + 1) * 12 + semitone
-        
-        # Validate MIDI number range
-        if midi_number < 0 or midi_number > 127:
-            raise ValueError(f"Resulting MIDI number {midi_number} is out of valid range (0-127)")
-            
-        return midi_number
-
-    @classmethod
-    def from_midi_number(cls, midi_number: int, duration: float = 1.0, velocity: int = 100) -> 'Note':
-        """Create a Note from a MIDI number.
-        
-        Args:
-            midi_number: The MIDI number (0-127)
-            duration: Note duration in beats
-            velocity: Note velocity (0-127)
-            
-        Returns:
-            Note: A new Note instance
-            
-        Raises:
-            ValueError: If midi_number is out of range
-        """
-        if not 0 <= midi_number <= 127:
-            raise ValueError(f"MIDI number {midi_number} is out of valid range (0-127)")
-            
-        octave = (midi_number // 12) - 1
-        semitone = midi_number % 12
-        note_name = cls.SEMITONE_TO_NOTE[semitone]
-        
-        return cls(
-            note_name=note_name,
-            octave=octave,
-            duration=duration,
-            velocity=velocity,
-            stored_midi_number=midi_number
-        )
+from src.note_gen.models.note import Note
 
 class ScaleType(str, Enum):
     MAJOR = 'MAJOR'
@@ -174,7 +92,7 @@ class Scale(BaseModel):
                 
             new_note = Note.from_midi_number(
                 midi_number=new_midi,
-                duration=self.root.duration,
+                duration=int(self.root.duration),
                 velocity=self.root.velocity
             )
             scale_notes.append(new_note)
@@ -184,7 +102,7 @@ class Scale(BaseModel):
         if octave_midi <= 127:
             octave_note = Note.from_midi_number(
                 midi_number=octave_midi,
-                duration=self.root.duration,
+                duration=int(self.root.duration),
                 velocity=self.root.velocity
             )
             scale_notes.append(octave_note)

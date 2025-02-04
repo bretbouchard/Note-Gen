@@ -11,12 +11,27 @@ import tracemalloc
 from dotenv import load_dotenv
 import os
 import uvicorn
+import json
+import os
 
 load_dotenv()  # Load environment variables from .env file
 
 # Get the absolute path to the logs directory
 base_dir = os.path.dirname(os.path.abspath(__file__))
 
+# Create logs directory if it doesn't exist
+os.makedirs('logs', exist_ok=True)
+
+import logging
+import logging.config
+
+# Load logging config
+with open('logging_config.json', 'r') as f:
+    config = json.load(f)
+logging.config.dictConfig(config)
+
+# Set up the logger
+logger = logging.getLogger(__name__)
 
 # Database connection
 DATABASE_URL = 'mongodb://localhost:27017/'
@@ -35,7 +50,7 @@ class DBConnection:
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         self.client.close()  # Close the client when done
 
-async def get_db():
+async def get_db() -> AsyncIOMotorDatabase:
     db = client.note_gen  # Use your database name here
     return db  # Return the database connection directly
 
@@ -77,25 +92,13 @@ app = FastAPI()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     try:
-        print('FastAPI application starting...')
+        logger.info('FastAPI application starting...')
+        await run_imports()
+        logger.info("Application started...")
     except Exception as e:
-        print(f"Logging error: {e}")
-    try:
-        await run_imports()  # This will handle initialization and importing presets
-    except Exception as e:
-        try:
-            print(f"Error during database initialization: {e}")
-        except Exception as e:
-            print(f"Logging error: {e}")
-    try:
-        print("Application started...")
-    except Exception as e:
-        print(f"Logging error: {e}")
-    yield  # This is where the application runs
-    try:
-        print("Shutting down the application...")
-    except Exception as e:
-        print(f"Logging error: {e}")
+        logger.error(f"Error during startup: {str(e)}", exc_info=True)
+    yield
+    logger.info("Shutting down the application...")
 
 app = FastAPI(lifespan=lifespan)
 
@@ -112,55 +115,43 @@ chord_generator = ChordProgressionGenerator(scale_info=scale_info)
 @app.post("/generate_progression/")
 async def generate_progression(request: ChordProgressionRequest) -> List[ScaleDegree]:
     try:
-        try:
-            print("Generating chord progression...")
-        except Exception as e:
-            print(f"Logging error: {e}")
+        logger.info("Generating chord progression...")
         return chord_generator.generate_progression(
             style=request.style,
             start_degree=request.start_degree
         )
-    except ValueError as e:
-        try:
-            print(f"Error generating chord progression: {e}")
-        except Exception as e:
-            print(f"Logging error: {e}")
+    except Exception as e:
+        logger.error(f"An error occurred: {e}")
         raise HTTPException(status_code=400, detail=str(e))
 
 @app.post("/generate_note_sequence/")
 async def generate_note_sequence(chord_progression: str) -> List[str]:
     """Generate a note sequence based on a given chord progression."""
     try:
-        try:
-            print("Generating note sequence...")
-        except Exception as e:
-            print(f"Logging error: {e}")
+        logger.info("Generating note sequence...")
         progression = chord_generator.parse_progression(chord_progression)
         note_sequence = chord_generator.generate_notes_from_chord(progression)
         return note_sequence
     except Exception as e:
-        try:
-            print(f"Error generating note sequence: {e}")
-        except Exception as e:
-            print(f"Logging error: {e}")
+        logger.error(f"An error occurred: {e}")
         raise HTTPException(status_code=400, detail=str(e))
 
 @app.get("/progression/{progression_id}")
 async def get_progression(progression_id: int) -> dict[str, str | int]:
     """Retrieve a specific chord progression by ID."""
     try:
-        print("Retrieving chord progression...")
+        logger.info("Retrieving chord progression...")
     except Exception as e:
-        print(f"Logging error: {e}")
+        logger.error(f"An error occurred: {e}")
     # Logic to retrieve the progression based on ID (implement as needed)
     return {"progression_id": progression_id, "progression": "example"}
 
 @app.get("/")
 async def read_root() -> dict[str, str]:
     try:
-        print("Root endpoint accessed")
+        logger.info("Root endpoint accessed")
     except Exception as e:
-        print(f"Logging error: {e}")
+        logger.error(f"An error occurred: {e}")
     return {"message": "Welcome to the Chord Progression Generator API!"}
 
 # Add more endpoints as needed

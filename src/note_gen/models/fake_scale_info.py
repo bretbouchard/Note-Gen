@@ -6,7 +6,6 @@ from src.note_gen.models.scale import Scale
 from typing import Optional, Any, Dict, ClassVar
 import logging
 
-logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 class FakeScaleInfo(BaseModel):

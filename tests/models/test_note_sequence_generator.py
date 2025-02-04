@@ -1,5 +1,5 @@
 import pytest
-from src.note_gen.models.note_sequence_generator import NoteSequenceGenerator
+from src.note_gen.generators.note_sequence_generator import NoteSequenceGenerator
 from src.note_gen.models.chord_progression import ChordProgression
 from src.note_gen.models.note_sequence import NoteSequence
 from src.note_gen.models.rhythm_pattern import RhythmPattern, RhythmPatternData, RhythmNote

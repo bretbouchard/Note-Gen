@@ -5,6 +5,7 @@ import re
 from src.note_gen.models.enums import ChordQualityType
 from src.note_gen.models.chord import Chord
 from src.note_gen.models.scale import Scale
+from src.note_gen.models.note import Note
 
 
 class RomanNumeral(BaseModel):

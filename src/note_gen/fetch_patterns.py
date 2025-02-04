@@ -8,10 +8,11 @@ from src.note_gen.models.rhythm_pattern import RhythmPattern, RhythmNote
 from src.note_gen.models.chord import Chord
 from src.note_gen.models.note import Note
 from src.note_gen.models.enums import ChordQualityType
-from src.note_gen.models.patterns import NotePattern
+from src.note_gen.models.patterns import NotePattern, NotePatternData
 from src.note_gen.database import get_db
 import logging
 import sys
+from pydantic import ValidationError
 
 # Configure logging for asynchronous operations
 logging.basicConfig(level=logging.DEBUG, stream=sys.stdout)
@@ -90,6 +91,7 @@ async def fetch_chord_progressions(db: AsyncIOMotorDatabase[Dict[str, Any]]) -> 
                 logger.error(f"Error processing chord progression: {e}")
                 continue
                 
+        logger.debug(f'Final list of fetched ChordProgression instances: {processed_progressions}')
         return processed_progressions
     except Exception as e:
         logger.error(f"Error fetching chord progressions: {e}")
@@ -110,6 +112,7 @@ async def _fetch_chord_progressions(db: AsyncIOMotorDatabase[Dict[str, Any]]) ->
             except Exception as e:
                 logger.error(f"Error creating ChordProgression from document: {e}")
                 continue
+        logger.debug(f'Final list of fetched ChordProgression instances: {chord_progressions}')
         return chord_progressions
     except Exception as e:
         logger.error(f"Error fetching chord progressions: {e}")
@@ -166,7 +169,9 @@ async def fetch_rhythm_patterns(db: AsyncIOMotorDatabase[Dict[str, Any]]) -> Lis
         cursor = db.rhythm_patterns.find({})
         fetched_patterns = await cursor.to_list(length=None)
         logger.debug(f'Fetched rhythm patterns: {fetched_patterns}')  
-        return [RhythmPattern(**pattern) for pattern in fetched_patterns]
+        patterns = [RhythmPattern(**pattern) for pattern in fetched_patterns]
+        logger.debug(f'Final list of fetched RhythmPattern instances: {patterns}')
+        return patterns
     except Exception as e:
         logger.error(f"Error fetching rhythm patterns: {e}")
         return []
@@ -183,6 +188,7 @@ async def _fetch_rhythm_patterns(db: AsyncIOMotorDatabase[Dict[str, Any]]) -> Li
             except Exception as e:
                 logger.error(f"Error creating RhythmPattern from document: {e}")
                 continue
+        logger.debug(f'Final list of fetched RhythmPattern instances: {patterns}')
         return patterns
     except Exception as e:
         logger.error(f"Error fetching rhythm patterns: {e}")
@@ -207,7 +213,7 @@ async def _fetch_rhythm_pattern_by_id(pattern_id: str, db: AsyncIOMotorDatabase[
         logger.error(f"Error fetching rhythm pattern by id {pattern_id}: {e}")
         return None
 
-async def fetch_note_patterns(db: Optional[AsyncIOMotorDatabase[Dict[str, Any]]] = None) -> List[NotePattern]:
+async def fetch_note_patterns(db: Optional[AsyncIOMotorDatabase[Dict[str, Any]]] = None) -> Dict[int, NotePattern]:
     logger.debug(f"Type of db: {type(db)}")  
     """Fetch all note patterns from the database."""
     if db is None:
@@ -215,31 +221,37 @@ async def fetch_note_patterns(db: Optional[AsyncIOMotorDatabase[Dict[str, Any]]]
             return await _fetch_note_patterns(db)
     return await _fetch_note_patterns(db)
 
-async def _fetch_note_patterns(db: AsyncIOMotorDatabase[Dict[str, Any]]) -> List[NotePattern]:
+async def _fetch_note_patterns(db: AsyncIOMotorDatabase[Dict[str, Any]]) -> Dict[int, NotePattern]:
     try:
         patterns = []
-        async for doc in db.note_patterns.find({}):
-            logger.debug(f"Fetched document from MongoDB: {doc}")  
-            logger.debug(f"Fetched document: {doc}")  
+        async for document in db.note_patterns.find({}):
+            logger.debug(f'Fetched document from MongoDB: {document}')
             try:
-                if doc is not None and isinstance(doc, dict):
-                    # Log the keys in the document for debugging
-                    logger.debug(f"Document keys: {list(doc.keys())}")
-                    # Log the entire document for clarity
-                    logger.debug(f"Full document content: {doc}")
-                    # Filter out unexpected fields
-                    valid_fields = {key: doc[key] for key in NotePattern.__annotations__.keys() if key in doc}
-                    logger.debug(f"Valid fields for NotePattern: {valid_fields}")  
-                    pattern = NotePattern(**valid_fields)
-                    patterns.append(pattern)
-            except Exception as e:
-                logger.error(f"Error creating NotePattern from document: {e}")
+                # Map the pattern to the expected data structure
+                data = NotePatternData(notes=[{"note_name": str(note), "octave": 4, "duration": 1.0, "velocity": 100} for note in document['pattern']])
+                logger.debug(f'Validated data: {data}')
+            except ValidationError as e:
+                logger.error(f'Error creating NotePattern from document: {e}')
                 continue
-        logger.debug(f"Final patterns list: {patterns}")  
-        return patterns
+            
+            note_pattern = NotePattern(
+                id=str(document['_id']),
+                name=document['name'],
+                data=data,
+                description=document.get('description', ''),
+                tags=document.get('tags', []),
+                complexity=document.get('complexity', None),
+                style=document.get('style', None)
+            )
+            patterns.append(note_pattern)
+
+        # Convert to a more usable format with custom indices
+        indexed_patterns = {i + 1: pattern for i, pattern in enumerate(patterns)}
+        logger.debug(f'Final indexed list of fetched NotePattern instances: {indexed_patterns}')
+        return indexed_patterns
     except Exception as e:
         logger.error(f"Error fetching note patterns: {e}")
-        return patterns
+        return {}
 
 async def fetch_note_pattern_by_id(pattern_id: str, db: Optional[AsyncIOMotorDatabase[Any]] = None) -> Optional[NotePattern]:
     logger.debug(f"Type of db: {type(db)}")  
@@ -251,10 +263,28 @@ async def fetch_note_pattern_by_id(pattern_id: str, db: Optional[AsyncIOMotorDat
 
 async def _fetch_note_pattern_by_id(pattern_id: str, db: AsyncIOMotorDatabase[Dict[str, Any]]) -> Optional[NotePattern]:
     try:
-        doc = await db.note_patterns.find_one({"id": pattern_id})
-        logger.debug(f"Fetched document from MongoDB: {doc}")  
-        if doc:
-            return NotePattern(**doc)
+        document = await db.note_patterns.find_one({"id": pattern_id})
+        logger.debug(f"Fetched document from MongoDB: {document}")  
+        if document:
+            try:
+                # Map the pattern to the expected data structure
+                data = NotePatternData(notes=[{"note_name": str(note), "octave": 4, "duration": 1.0, "velocity": 100} for note in document['pattern']])
+                logger.debug(f'Validated data: {data}')
+            except ValidationError as e:
+                logger.error(f'Error creating NotePattern from document: {e}')
+                return None
+            
+            note_pattern = NotePattern(
+                id=str(document['_id']),
+                name=document['name'],
+                data=data,
+                description=document.get('description', ''),
+                tags=document.get('tags', []),
+                complexity=document.get('complexity', None),
+                style=document.get('style', None)
+            )
+            logger.debug(f'Created NotePattern instance: {note_pattern}')
+            return note_pattern
         return None
     except Exception as e:
         logger.error(f"Error fetching note pattern by id {pattern_id}: {e}")

@@ -13,6 +13,7 @@ from src.note_gen.models.scale_info import ScaleInfo
 from src.note_gen.models.patterns import NotePattern, NotePatternData
 from src.note_gen.database import get_db, get_chord_progression_by_name, get_note_pattern_by_name, get_rhythm_pattern_by_name
 from src.note_gen.routers.note_sequence_routes import router as note_sequence_router
+from src.note_gen.generators.note_sequence_generator import NoteSequenceGenerator  # Import NoteSequenceGenerator
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -45,12 +46,6 @@ class ApiNotePattern(BaseModel):
     data: Optional[Union[NotePatternData, List[int]]] = None
 
 
-
-class GenerateSequenceRequest(BaseModel):
-    progression_name: str = Field(description="Name of the chord progression preset")
-    note_pattern_name: str = Field(description="Name of the note pattern preset")
-    scale_info: ScaleInfo = Field(description="Scale information")
-
 class GeneratedNote(BaseModel):
     note_name: str = Field(description="Name of the note (e.g., C, F#)")
     octave: int = Field(description="Octave number")
@@ -62,6 +57,7 @@ class GenerateSequenceResponse(BaseModel):
     notes: List[GeneratedNote] = Field(description="Generated sequence of notes")
     progression_name: str = Field(description="Name of the chord progression used")
     note_pattern_name: str = Field(description="Name of the note pattern used")
+    rhythm_pattern_name: str = Field(description="Name of the rhythm pattern used")
 
 def get_next_id() -> str:
     return str(ObjectId())
@@ -146,68 +142,78 @@ async def create_chord_progression(progression: ChordProgression, db: AsyncIOMot
         logger.error(f"Error details: {e.__dict__}")
         raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
 
-@router.post("/generate-sequence", response_model=GenerateSequenceResponse)
-async def generate_sequence(request: GenerateSequenceRequest, db: AsyncIOMotorDatabase = Depends(get_db)) -> GenerateSequenceResponse:
-    logger.debug("Test log entry: generate_sequence function called.")  # Breakpoint 1
-    try:
-        logger.debug("Received request: %s", request)
-        logger.info("Request data: %s", request.dict())  # Log the request data
+# async def generate_sequence(request: GenerateSequenceRequest, db: AsyncIOMotorDatabase = Depends(get_db)) -> GenerateSequenceResponse:
+#     logger.debug("Incoming request data: %s", request.dict())  # Log the entire request data
+#     try:
+#         logger.info("Fetching chord progression from the database...")
+#         progression = await db.chord_progressions.find_one({"name": request.progression_name})
+#         logger.debug("Fetched progression: %s", progression)
+#         if progression is None:
+#             logger.error("Chord progression '%s' not found in the database.", request.progression_name)
+#             raise HTTPException(status_code=404, detail="Chord progression not found.")
         
-        # Fetch chord progression by name
-        logger.debug("Fetching chord progression by name: %s", request.progression_name)  # Breakpoint 2
-        chord_progression = await get_chord_progression_by_name(request.progression_name, db)
-        logger.debug("Fetched chord progression: %s", chord_progression)  # Breakpoint 3
-        if not chord_progression:
-            logger.error(f"Chord progression '{request.progression_name}' not found.")
-            raise HTTPException(status_code=404, detail="Chord progression not found")
+#         logger.info("Fetching note pattern from the database...")
+#         note_pattern = await db.note_patterns.find_one({"name": request.note_pattern_name})
+#         logger.debug("Fetched note pattern: %s", note_pattern)
+#         if note_pattern is None:
+#             logger.error("Note pattern '%s' not found in the database.", request.note_pattern_name)
+#             raise HTTPException(status_code=404, detail="Note pattern not found.")
         
-        # Fetch note pattern by name
-        logger.debug("Fetching note pattern by name: %s", request.note_pattern_name)  # Breakpoint 4
-        note_pattern = await get_note_pattern_by_name(request.note_pattern_name, db)
-        logger.debug("Fetched note pattern: %s", note_pattern)  # Breakpoint 5
-        if not note_pattern:
-            logger.error(f"Note pattern '{request.note_pattern_name}' not found.")
-            raise HTTPException(status_code=404, detail="Note pattern not found")
+#         logger.info("Fetching rhythm pattern from the database...")
+#         rhythm_pattern = await db.rhythm_patterns.find_one({"name": request.rhythm_pattern_name})
+#         logger.debug("Fetched rhythm pattern: %s", rhythm_pattern)
+#         if rhythm_pattern is None:
+#             logger.error("Rhythm pattern '%s' not found in the database.", request.rhythm_pattern_name)
+#             raise HTTPException(status_code=404, detail="Rhythm pattern not found.")
         
-        # Fetch rhythm pattern by name
-        logger.debug("Fetching rhythm pattern by name: %s", request.rhythm_pattern_name)  # Breakpoint 6
-        rhythm_pattern = await get_rhythm_pattern_by_name(request.rhythm_pattern_name, db)
-        logger.debug("Fetched rhythm pattern: %s", rhythm_pattern)  # Breakpoint 7
-        if not rhythm_pattern:
-            logger.error(f"Rhythm pattern '{request.rhythm_pattern_name}' not found.")
-            raise HTTPException(status_code=404, detail="Rhythm pattern not found")
-        
-        # More processing...
-        logger.info("Successfully generated sequence for progression: %s", request.progression_name)
-        return GenerateSequenceResponse(notes=[], progression_name=request.progression_name, note_pattern_name=request.note_pattern_name, rhythm_pattern_name=request.rhythm_pattern_name)
-    except Exception as e:
-        logger.exception("An error occurred while generating sequence:")
-        logger.error("Exception details: %s", str(e))
-        raise HTTPException(status_code=500, detail="Internal Server Error")
+#         logger.info("All patterns fetched successfully. Proceeding to generate sequence...")
+#         # Proceed with the sequence generation logic here
+#         generator = NoteSequenceGenerator(
+#             chord_progression=progression,
+#             rhythm_pattern=rhythm_pattern
+#         )
+#         generated_notes = generator.generate()
+#         return GenerateSequenceResponse(
+#             notes=generated_notes,
+#             progression_name=request.progression_name,
+#             note_pattern_name=request.note_pattern_name,
+#             rhythm_pattern_name=request.rhythm_pattern_name
+#         )
+#     except Exception as e:
+#         logger.error(f"Unexpected error occurred: {e}", exc_info=True)
+#         raise HTTPException(status_code=500, detail="Internal Server Error")
 
-@router.post("/generate-sequence-new", response_model=GenerateSequenceResponse)
-async def generate_sequence_new(request: GenerateSequenceRequest, db: AsyncIOMotorDatabase[Dict[str, Any]] = Depends(get_db)) -> GenerateSequenceResponse:
-    """
-    Generate a musical sequence based on the provided progression, note pattern, and rhythm pattern.
-    """
-    try:
-        # Logic to generate the sequence
-        return GenerateSequenceResponse(notes=[], progression_name="", note_pattern_name="", rhythm_pattern_name="")
-    except Exception as e:
-        logger.error(f"Error generating new sequence: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail="Internal Server Error")
+# @router.post("/generate-sequence-new", response_model=GenerateSequenceResponse)
+# async def generate_sequence_new(request: GenerateSequenceRequest, db: AsyncIOMotorDatabase[Dict[str, Any]] = Depends(get_db)) -> GenerateSequenceResponse:
+#     """
+#     Generate a musical sequence based on the provided progression, note pattern, and rhythm pattern.
+#     """
+#     try:
+#         # Logic to generate the sequence
+#         return GenerateSequenceResponse(notes=[], progression_name="", note_pattern_name="", rhythm_pattern_name="")
+#     except Exception as e:
+#         logger.error(f"Error generating new sequence: {e}", exc_info=True)
+#         raise HTTPException(status_code=500, detail="Internal Server Error")
 
 @router.get("/test-db", response_model=Dict[str, Any])
 async def test_db_connection(db: AsyncIOMotorDatabase[Dict[str, Any]] = Depends(get_db)) -> Dict[str, Any]:
+    logger.debug("Testing database connection...")
+    logger.info("Database instance type: %s", type(db))
     try:
-        chord_progression = await db.chord_progressions.find_one()
-        if chord_progression:
-            return chord_progression
+        logger.info("Fetching chord progressions from the database.")
+        cursor = await db.chord_progressions.find()  # Fetch the cursor
+        logger.debug("Cursor: %s", cursor)
+        progressions = await cursor.to_list(length=100)  # Specify length to get the data
+        logger.info("Fetched chord progressions: %s", progressions)
+        if progressions:
+            return progressions[0]
         else:
+            logger.warning("No chord progressions found.")
             return {"message": "No chord progressions found."}
     except Exception as e:
         logger.error(f"Database connection error: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail="Internal Server Error")
+        logger.error(f"Error details: {e.__dict__}")
+        raise HTTPException(status_code=500, detail="Database connection error")
 
 def get_current_user_id():
     # Replace with actual user identification logic

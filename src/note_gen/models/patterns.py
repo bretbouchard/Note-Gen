@@ -46,6 +46,7 @@ class NotePattern(BaseModel):
     complexity: Optional[float] = Field(None, description="Pattern complexity")
     notes: Optional[List[Note]] = Field(default=None, description="List of notes in the pattern")
     data: Optional[Union[NotePatternData, List[Union[int, List[int]]]]] = Field(default=None, description="Additional pattern data")
+    style: Optional[str] = Field(default=None, description="Pattern style")
     is_test: Optional[bool] = Field(default=None, description="Test flag")
 
     @property

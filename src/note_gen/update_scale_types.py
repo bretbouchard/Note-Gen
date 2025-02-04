@@ -2,7 +2,6 @@ import asyncio
 from motor.motor_asyncio import AsyncIOMotorClient
 import logging
 
-logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 async def update_scale_types():

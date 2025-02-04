@@ -15,13 +15,7 @@ from bson import ObjectId
 logger = logging.getLogger(__name__)
 
 class ChordProgression(BaseModel):
-    class Config:
-        json_encoders = {ObjectId: str}
-        arbitrary_types_allowed = True
-
-    logger: ClassVar[logging.Logger] = logging.getLogger(__name__)  
-
-    id: Optional[str] = None
+    id: Optional[str] = Field(default_factory=uuid.uuid4)
     name: str
     chords: List[Chord]
     key: str
@@ -30,21 +24,30 @@ class ChordProgression(BaseModel):
     quality: Optional[ChordQualityType] = ChordQualityType.MAJOR
     complexity: Optional[float] = None
 
-    def __init__(self, **data):
+    class Config:
+        json_encoders = {ObjectId: str}
+        arbitrary_types_allowed = True
+        orm_mode = True
+
+    logger: ClassVar[logging.Logger] = logging.getLogger(__name__)  
+
+    def __init__(self, **data) -> None:
         super().__init__(**data)
         if not self.chords:
             raise ValueError("Chords cannot be empty.")
         if self.complexity is not None and (self.complexity < 0 or self.complexity > 1):
             raise ValueError("Complexity must be between 0 and 1.")
+        if self.id is not None and not isinstance(self.id, str):
+            self.id = str(self.id)
 
     @field_validator('complexity')
-    def validate_complexity(cls, v):
+    def validate_complexity(cls, v) -> float:
         if v is not None and (v < 0 or v > 1):
             raise ValueError("Complexity must be between 0 and 1.")
         return v
 
     @field_validator('chords')
-    def validate_chords(cls, v):
+    def validate_chords(cls, v) -> List[Chord]:
         if not v:
             raise ValueError("Chords cannot be empty.")
         for chord in v:
@@ -58,32 +61,32 @@ class ChordProgression(BaseModel):
         return v
 
     @field_validator('key')
-    def validate_key(cls, value):
+    def validate_key(cls, value: str) -> str:
         if not value:
             raise ValueError('Key cannot be empty.')
         return value
 
     @field_validator('scale_type')
-    def validate_scale_type(cls, value):
+    def validate_scale_type(cls, value: ScaleType) -> ScaleType:
         if value not in ScaleType:
             valid_types = [t.value for t in ScaleType]
             raise ValueError(f'Invalid scale type. Must be one of: {", ".join(valid_types)}')
         return value
 
     @field_validator('quality')
-    def validate_quality(cls, v):
+    def validate_quality(cls, v: ChordQualityType) -> ChordQualityType:
         if not isinstance(v, ChordQualityType):
             raise ValueError('Quality must be an instance of ChordQualityType.')
         return v
 
     @field_validator('scale_info')
-    def validate_scale_info(cls, scale_info):
+    def validate_scale_info(cls, scale_info: Union[ScaleInfo, FakeScaleInfo]) -> Union[ScaleInfo, FakeScaleInfo]:
         if not isinstance(scale_info, (ScaleInfo, FakeScaleInfo)):
             raise ValueError('Scale info must be an instance of ScaleInfo or FakeScaleInfo.')
         return scale_info
 
     @field_validator('chords')
-    def validate_chords_quality(cls, chords):
+    def validate_chords_quality(cls, chords: List[Chord]) -> List[Chord]:
         for chord in chords:
             logger.debug(f"Validating chord quality: {chord.quality}")
             if not isinstance(chord.quality, ChordQualityType):
@@ -94,7 +97,7 @@ class ChordProgression(BaseModel):
         return chords
 
     @model_validator(mode='before')
-    def check_required_fields(cls, values):
+    def check_required_fields(cls, values: Dict[str, Any]) -> Dict[str, Any]:
         if not values.get('name'):
             raise ValueError('Name is required')
         if not values.get('key'):
@@ -118,7 +121,7 @@ class ChordProgression(BaseModel):
     def transpose(self, interval: int) -> None:
         pass
 
-    def dict(self, *args, **kwargs):
+    def dict(self, *args, **kwargs) -> Dict[str, Any]:
         """
         DEPRECATED: Use model_dump() instead.
         Convert the model to a dictionary.
@@ -128,7 +131,7 @@ class ChordProgression(BaseModel):
             del original_dict['id']
         return original_dict
 
-    def to_dict(self, *args, **kwargs):
+    def to_dict(self, *args, **kwargs) -> Dict[str, Any]:
         """
         Convert the model to a dictionary.
         """
@@ -172,7 +175,7 @@ class ChordProgression(BaseModel):
 
     def to_roman_numerals(self) -> List[RomanNumeral]:
         scale = Scale(root=Note(note_name=self.key, octave=4, duration=1, velocity=100), scale_type=ScaleType(self.scale_type))
-        pass
+        # Removed unreachable code
 
     def __str__(self) -> str:
         return f"{self.name}: {' '.join(str(chord) for chord in self.chords)}"
@@ -182,10 +185,24 @@ class ChordProgression(BaseModel):
                 f"scale_type: {self.scale_type!r}, "
                 f"chords: List[Chord]={self.chords!r})")
 
-    def json(self, *args, **kwargs):
+    def json(self, *args, **kwargs) -> Dict[str, Any]:
         original_dict = self.dict(*args, **kwargs)
         if 'chords' in original_dict:
             for chord in original_dict['chords']:
                 if isinstance(chord['quality'], ChordQualityType):
                     chord['quality'] = chord['quality'].value
         return original_dict
+
+
+class ChordProgressionResponse(BaseModel):
+    id: str
+    name: str
+    chords: List[Chord]
+    key: str
+    scale_type: ScaleType
+    scale_info: Union[ScaleInfo, FakeScaleInfo]
+    quality: Optional[ChordQualityType]
+    complexity: Optional[float]
+
+    class Config:
+        orm_mode = True

@@ -1,6 +1,7 @@
 """Data structures for musical note patterns."""
 
 from __future__ import annotations
+from uuid import uuid4
 
 from typing import List, Optional, Union, Literal
 from pydantic import BaseModel, Field, model_validator
@@ -14,6 +15,21 @@ from src.note_gen.models.note import Note
 DirectionType = Literal["forward", "backward", "random", "alternating"]
 ApproachType = Literal["chromatic", "diatonic", "below", "above"]
 NoteType = Union[Note, ScaleDegree, Chord]
+
+
+class NotePattern(BaseModel):
+    id: str = Field(default_factory=uuid4, alias='id')
+    name: str
+    notes: Optional[List[Note]]
+    pattern_type: str = Field(..., description="Type of pattern")
+    description: str
+    tags: List[str]
+    complexity: float = Field(..., description="Pattern complexity")
+    data: Optional[List[int]]
+    is_test: Optional[bool] = False
+    
+    class Config:
+        orm_mode = True
 
 
 class NotePatternResponse(BaseModel):

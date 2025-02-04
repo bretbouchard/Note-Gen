@@ -5,13 +5,9 @@ import re
 from typing import List, Optional, Any, Dict, Union
 from pydantic import BaseModel, Field, field_validator, model_validator
 import uuid
+from src.note_gen.models.note import Note
 
-# Configure logging
-logging.basicConfig(
-    stream=sys.stdout,
-    level=logging.DEBUG,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-)
+# Ensure logger is set up correctly
 logger = logging.getLogger(__name__)
 
 
@@ -200,18 +196,16 @@ class RhythmPatternData(BaseModel):
             raise ValueError("Duration must be positive")
         return v
 
-
 class RhythmPattern(BaseModel):
     """Represents a pattern for generating rhythmic notes."""
-
-    id: Optional[str] = Field(default_factory=lambda: str(uuid.uuid4()))
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), alias='id')
     name: str
     data: RhythmPatternData
-    description: Optional[str] = Field("", description="Pattern description")
-    tags: List[str] = Field(default_factory=list, description="Tags for categorization")
-    complexity: float = Field(1.0, description="Pattern complexity score (1-10)")
-    style: Optional[str] = Field(None, description="Musical style (e.g., jazz, rock)")
-    pattern: str = Field(default="", description="String representation of the rhythm pattern")
+    description: Optional[str] = Field('', description='Pattern description')
+    tags: List[str] = Field(default_factory=list, description='Tags for categorization')
+    complexity: float = Field(..., description='Pattern complexity score (1-10)')
+    style: Optional[str] = Field(None, description='Musical style (e.g., jazz, rock)')
+    pattern: str = Field(default='', description='String representation of the rhythm pattern')
     is_test: bool = Field(default=False)
 
     @model_validator(mode='before')
@@ -227,13 +221,6 @@ class RhythmPattern(BaseModel):
         """Validate name."""
         if not value:
             raise ValueError("Name cannot be empty")
-        return value
-
-    @field_validator("pattern")
-    def validate_pattern(cls, value: str) -> str:
-        """Validate pattern string."""
-        if value and not re.match(r"^[1-9\.\- ]+$", value):
-            raise ValueError("Pattern can only contain numbers 1-9, dots (.), hyphens (-), and spaces.")
         return value
 
     def get_events_in_range(
@@ -360,7 +347,7 @@ class RhythmPatternSimple(BaseModel):
         active_notes = [note for note in self.pattern if not note.is_rest]
         if not active_notes:
             return 0.0
-        return sum(note.velocity for note in active_notes) / len(active_notes)
+        return sum(note.velocity for note in self.pattern if not note.is_rest) / len(active_notes)
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert the rhythm pattern to a dictionary."""

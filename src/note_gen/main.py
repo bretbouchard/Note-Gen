@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Depends
 from src.note_gen.routers.user_routes import router as user_routes
 from src.note_gen.routers.chord_progression_routes import router as chord_progression_routes
 from src.note_gen.routers.rhythm_pattern_routes import router as rhythm_pattern_routes
@@ -6,6 +6,7 @@ from src.note_gen.routers.note_pattern_routes import router as note_pattern_rout
 from src.note_gen.routers.note_sequence_routes import router as note_sequence_router
 from src.note_gen.database import get_db
 from src.note_gen.import_presets import ensure_indexes, import_presets_if_empty
+from src.note_gen.update_database import update_database
 import logging
 import os
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -22,14 +23,6 @@ import os
 os.makedirs('logs', exist_ok=True)
 
 # Configure logging to file
-logging.basicConfig(
-    level=logging.DEBUG,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('logs/app.log'),
-        logging.StreamHandler()
-    ]
-)
 logger = logging.getLogger(__name__)
 
 @asynccontextmanager
@@ -75,10 +68,16 @@ class LogMiddleware(BaseHTTPMiddleware):
 
 app.add_middleware(LogMiddleware)
 
+@app.on_event("startup")
+async def startup_event():
+    async with get_db() as db:
+        await update_database(db)
+
 async def main():
     async with get_db() as db:  
         await ensure_indexes(db)
         await import_presets_if_empty(db)
+        await update_database(db)
 
 if __name__ == '__main__':
     import asyncio

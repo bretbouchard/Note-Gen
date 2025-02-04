@@ -31,6 +31,9 @@ class Note(BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True, from_attributes=True)
 
+    def __init__(self, note_name: str, octave: int, duration: float = 1.0, velocity: int = 100, stored_midi_number: Optional[int] = None):
+        super().__init__(note_name=note_name, octave=octave, duration=duration, velocity=velocity, stored_midi_number=stored_midi_number)
+
     @field_validator('note_name')
     @classmethod
     def validate_note_name(cls, v: str) -> str:
@@ -94,13 +97,16 @@ class Note(BaseModel):
         return note_name, octave
 
     @classmethod
-    def from_midi(cls, midi_number: int, velocity: int = 100, duration: float = 1.0) -> 'Note':
+    def from_midi(cls, midi_number: int, velocity: int = 100, duration: int = 1) -> 'Note':
         """Creates a Note instance from a MIDI number."""
         if not (0 <= midi_number <= 127):
             raise ValueError(f"Invalid MIDI number: {midi_number}")
+        if not isinstance(duration, int):
+            raise TypeError("duration must be an int")
         note_name = cls.SEMITONE_TO_NOTE[midi_number % 12]
         octave = midi_number // 12 - 1
-        return cls(note_name=note_name, octave=octave, velocity=velocity, duration=duration)
+        duration = int(duration)
+        return cls(note_name=note_name, octave=octave, velocity=velocity, duration=float(duration))
 
     @classmethod
     def from_full_name(cls, full_name: str, duration: float = 1.0, velocity: int = 100) -> 'Note':
@@ -145,19 +151,20 @@ class Note(BaseModel):
     @classmethod
     def from_midi_number(cls, midi_number: int, duration: float = 1.0, velocity: int = 100) -> 'Note':
         """Alias for from_midi for backward compatibility."""
-        return cls.from_midi(midi_number, duration, velocity)
+        return cls.from_midi(midi_number, duration=int(duration), velocity=velocity)
 
     def transpose(self, semitones: int) -> 'Note':
         """Transpose the note by a number of semitones."""
         new_midi = self.midi_number + semitones
         try:
-            return self.from_midi(new_midi, self.duration, self.velocity)
+            return self.from_midi(new_midi, int(self.duration), self.velocity)
         except ValueError:
             raise ValueError("MIDI number out of range")
 
     @classmethod
     def normalize_note_name(cls, note_name: str) -> str:
-        """Normalize a note name to standard format."""
+        if not isinstance(note_name, str):
+            raise TypeError("note_name must be a str")
         if not note_name or not note_name.strip():
             raise ValueError(cls.INVALID_NOTE_NAME_ERROR)
         
@@ -202,13 +209,20 @@ class Note(BaseModel):
                 }
                 if "note_name" in result:
                     try:
-                        result["note_name"] = cls.normalize_note_name(result["note_name"])
+                        result["note_name"] = cls.normalize_note_name(str(result["note_name"]))
                         if result["note_name"] not in cls.NOTE_TO_SEMITONE:
                             raise ValueError("Unrecognized note name")
                     except ValueError:
                         raise ValueError("Unrecognized note name")
-                if "octave" in result and not (0 <= result["octave"] <= 8):
-                    raise ValueError(f"Octave must be between 0 and 8: {result['octave']}")
+                if "octave" in result and isinstance(result["octave"], (int, str)):
+                    if isinstance(result["octave"], str):
+                        if not result["octave"].isdigit():
+                            raise ValueError(f"Octave must be an integer: {result['octave']}")
+                        octave = int(result["octave"])
+                    else:
+                        octave = result["octave"]
+                    if not (0 <= octave <= 8):
+                        raise ValueError(f"Octave must be between 0 and 8: {result['octave']}")
             return result
         elif isinstance(data, int):
             note_name, octave = cls._midi_to_note_octave(data)
@@ -260,3 +274,13 @@ class Note(BaseModel):
 
     def __repr__(self) -> str:
         return f'Note(note_name={self.note_name}, octave={self.octave}, duration={self.duration}, velocity={self.velocity})'
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert the Note instance to a dictionary."""
+        return {
+            "note_name": self.note_name,
+            "octave": self.octave,
+            "duration": self.duration,
+            "velocity": self.velocity,
+            "stored_midi_number": self.stored_midi_number,
+        }

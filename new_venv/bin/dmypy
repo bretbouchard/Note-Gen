@@ -1,4 +1,4 @@
-#!/Users/bretbouchard/apps/Note-Gen/backend/new_venv/bin/python3.11
+#!/Users/bretbouchard/apps/Note_Gen/backend/new_venv/bin/python3
 # -*- coding: utf-8 -*-
 import re
 import sys

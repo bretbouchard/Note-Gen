@@ -69,7 +69,10 @@ class Scale(BaseModel):
         if not 1 <= degree <= scale_length:
             raise ValueError(f"Scale degree must be between 1 and {scale_length}")
         
-        return self.notes[degree - 1]
+        if self.notes is not None:
+            return self.notes[degree - 1]
+        else:
+            raise ValueError("Notes have not been generated for this scale")
 
     def get_triad(self, degree: int) -> List[Note]:
         """Get a triad starting at the given scale degree (1-based indexing).
@@ -97,7 +100,10 @@ class Scale(BaseModel):
         if any(pos >= scale_length for pos in positions):
             raise ValueError(f"Cannot build triad at degree {degree} - would exceed scale length")
         
-        return [self.notes[pos] for pos in positions]
+        if self.notes is not None:
+            return [self.notes[pos] for pos in positions]
+        else:
+            raise ValueError("Notes have not been generated for this scale")
 
     def transpose(self, semitones: int) -> 'Scale':
         """Transpose the scale by a number of semitones."""
