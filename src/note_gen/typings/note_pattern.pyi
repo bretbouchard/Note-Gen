@@ -12,7 +12,7 @@ class NotePatternData:
     intervals: List[int] | None
     duration: float
     position: float
-    velocity: int | None
+    velocity: int
     direction: str
     use_chord_tones: bool
     use_scale_mode: bool
@@ -20,9 +20,12 @@ class NotePatternData:
     restart_on_chord: bool
     octave_range: List[int] | None
     default_duration: float
+    index: int
 
 class NotePattern:
     name: str
+    id: str
+    index: int
     data: NotePatternData
     description: str | None
     tags: List[str]

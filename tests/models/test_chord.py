@@ -39,8 +39,10 @@ def test_create_chord() -> None:
     assert chord.quality == ChordQualityType.MAJOR
 
 
-def test_chord_initialization():
+def test_chord_initialization() -> None:
     chord = Chord(root=Note(note_name='C', octave=4), quality=ChordQualityType.MAJOR)
+    logger.debug(f"Chord initialized with quality: {chord.quality}")
+    logger.debug(f"Chord notes: {[note.note_name for note in chord.notes]}")
     assert chord.quality == ChordQualityType.MAJOR  # Ensure quality is set correctly
 
 
@@ -63,6 +65,9 @@ def test_chord_inversion() -> None:
     print("Starting test_chord_inversion")
     root_note = Note.from_name("C4", duration=1.0, velocity=64)
     chord = Chord(root=root_note, quality=ChordQualityType.MAJOR, inversion=1)
+    print(f"Chord notes before assertion: {chord.notes}")
+    logger.debug(f"Chord inversion: {chord.inversion}")
+    logger.debug(f"Chord notes after inversion: {[note.note_name for note in chord.notes]}")
     assert len(chord.notes) == 3  # Major chord should have 3 notes
     assert chord.notes[0].note_name == "E"  # Expecting the first note to be E
     assert chord.notes[1].note_name == "G"  # Expecting the second note to be G
@@ -79,19 +84,15 @@ def test_chord_invalid_inversion() -> None:
 
 def test_chord_MAJOR_with_seventh() -> None:
     print("Starting test_chord_MAJOR_with_seventh")
-    root_note = Note.from_name("C4", duration=1.0, velocity=64)
+    root_note = Note.from_name("C4", duration=1.0, velocity=100)  # Change velocity to 100
     chord = Chord(root=root_note, quality='maj7')  # Pass as string
 
-    print(f"Chord created: {chord}")
-    print(f"Chord quality: {chord.quality}")
-    print(f"Chord notes: {[note.note_name for note in chord.notes]}")
-    print(f"Chord note octaves: {[note.octave for note in chord.notes]}")
-    print(f"Chord note durations: {[note.duration for note in chord.notes]}")
-    print(f"Chord note velocities: {[note.velocity for note in chord.notes]}")
+    logger.debug(f"Chord created: {chord}")
+    logger.debug(f"Chord quality: {chord.quality}")
+    logger.debug(f"Chord notes before assertion: {chord.notes}")
 
     # Assert quality
     assert chord.quality == ChordQualityType.MAJOR7  # Changed from MAJOR_7
-    # Assert specific properties of the notes
     assert len(chord.notes) == 4  # Major 7 chord should have 4 notes
     assert chord.notes[0].note_name == "C"
     assert chord.notes[1].note_name == "E"
@@ -105,10 +106,10 @@ def test_chord_MAJOR_with_seventh() -> None:
     assert chord.notes[1].duration == 1.0  # Assert duration
     assert chord.notes[2].duration == 1.0  # Assert duration
     assert chord.notes[3].duration == 1.0  # Assert duration
-    assert chord.notes[0].velocity == 64  # Assert velocity
-    assert chord.notes[1].velocity == 64  # Assert velocity
-    assert chord.notes[2].velocity == 64  # Assert velocity
-    assert chord.notes[3].velocity == 64  # Assert velocity
+    assert chord.notes[0].velocity == 100  # Assert velocity
+    assert chord.notes[1].velocity == 100  # Assert velocity
+    assert chord.notes[2].velocity == 100  # Assert velocity
+    assert chord.notes[3].velocity == 100  # Assert velocity
 
 
 def test_chord_transposition() -> None:
@@ -116,4 +117,6 @@ def test_chord_transposition() -> None:
     root_note = Note.from_name("C4")
     chord = Chord(root=root_note, quality=ChordQualityType.MINOR)
     transposed_chord = chord.transpose(2)  # Transpose up by 2 semitones
+    logger.debug(f"Transposed chord: {transposed_chord}")
+    logger.debug(f"Transposed chord notes: {[note.note_name for note in transposed_chord.notes]}")
     assert transposed_chord.root.note_name == "D"

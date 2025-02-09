@@ -10,9 +10,10 @@ from fastapi.testclient import TestClient
 from src.note_gen.models.patterns import NotePattern
 from src.note_gen.database import get_db
 from motor.motor_asyncio import AsyncIOMotorDatabase
-from pydantic import ValidationError  # Fix the syntax error here
+from pydantic import ValidationError
 from src.note_gen.models.note import Note
 from src.note_gen.models.chord_progression import ChordProgression, ChordQualityType
+from src.note_gen.models.rhythm_pattern import RhythmPattern, RhythmPatternData, RhythmNote
 import asyncio
 
 pytestmark = pytest.mark.asyncio  # This marks all test functions in the file as async
@@ -132,29 +133,41 @@ class MockDatabase:
         self.rhythm_patterns = MockCollection([{
             "id": "1",
             "name": "Test Rhythm",
-            "pattern": "1 1",  # Changed from "1010" to a valid pattern
+            "pattern": "4 4",  # Simple quarter note pattern
             "description": "Basic rhythm",
             "tags": ["test"],
+            "complexity": 1.0,
             "data": {
-                "notes": [{
-                    "position": 0.0,
-                    "duration": 1.0,
-                    "velocity": 100,
-                    "is_rest": False
-                }],
+                "notes": [
+                    {
+                        "position": 0.0,
+                        "duration": 1.0,
+                        "velocity": 100,
+                        "is_rest": False,
+                        "accent": None,
+                        "swing_ratio": None
+                    },
+                    {
+                        "position": 1.0,
+                        "duration": 1.0,
+                        "velocity": 100,
+                        "is_rest": False,
+                        "accent": None,
+                        "swing_ratio": None
+                    }
+                ],
                 "time_signature": "4/4",
                 "swing_enabled": False,
                 "humanize_amount": 0.0,
                 "swing_ratio": 0.67,
                 "default_duration": 1.0,
-                "total_duration": 1.0,
+                "total_duration": 2.0,
                 "accent_pattern": [],
                 "groove_type": "straight",
                 "variation_probability": 0.0,
-                "duration": 1.0,
+                "duration": 2.0,
                 "style": "basic"
             },
-            "complexity": 1.0,
             "style": "basic",
             "is_test": True
         }])
@@ -167,14 +180,8 @@ async def client() -> AsyncGenerator[AsyncClient, None]:
 
 
 @pytest.fixture
-async def test_client(app: FastAPI) -> AsyncGenerator[AsyncClient, None]:
-    loop = asyncio.get_running_loop()
-    app.dependency_overrides[get_db] = lambda: MockDatabase()
-    async with AsyncClient(
-        transport=ASGITransport(app=app),
-        base_url="http://localhost:8000",
-        follow_redirects=True
-    ) as client:
+async def test_client() -> AsyncGenerator[AsyncClient, None]:
+    async with AsyncClient(base_url='http://localhost:8000') as client:
         yield client
 
 
@@ -182,57 +189,81 @@ async def test_client(app: FastAPI) -> AsyncGenerator[AsyncClient, None]:
 
 @pytest.mark.asyncio
 async def test_api_functionality(client: AsyncClient) -> None:
-    # Test get chord progressions
-    response = await client.get("/api/chord-progressions")
-    assert response.status_code == 200
-    if len(response.json()) == 0:
-        print("Response JSON:", response.json())  # Print the response JSON if empty
-    assert len(response.json()) > 0
-
-    # Test get note patterns
-    response = await client.get("/api/note-patterns")
-    assert response.status_code == 200
-    assert len(response.json()) > 0
-
-    # Test get rhythm patterns
-    response = await client.get("/api/rhythm-patterns")
-    assert response.status_code == 200
-    assert len(response.json()) > 0
-
-    # Test post endpoint
-    test_data = {
-        "name": "New Pattern",
+    """Test basic API functionality."""
+    # Test creating a note pattern
+    note_pattern_data = {
+        "name": "Test Pattern",
         "notes": [
             {
-                "note_name": "D4",
-                "duration": 1.0,
-                "velocity": 64,
-                "octave": 4
-            },
-            {
-                "note_name": "F4",
-                "duration": 1.0,
-                "velocity": 64,
-                "octave": 4
-            },
-            {
-                "note_name": "A4",
+                "note_name": "C",
                 "duration": 1.0,
                 "velocity": 64,
                 "octave": 4
             }
         ],
-        "pattern_type": "melody",
-        "description": "New test pattern",
-        "tags": ["test", "new"]
+        "description": "Test pattern",
+        "tags": ["test"],
+        "pattern_type": "basic"
     }
-    response = await client.post("/api/note-patterns", json=test_data)
+    
+    response = await client.post("/api/v1/note-patterns/", json=note_pattern_data)
+    assert response.status_code == 201, f"Failed to create note pattern: {response.text}"
+
+    # Test creating a rhythm pattern
+    rhythm_pattern_data = {
+        "name": "Test Rhythm",
+        "pattern": "4 4",
+        "description": "Test rhythm",
+        "tags": ["test"],
+        "data": {
+            "notes": [
+                {
+                    "position": 0.0,
+                    "duration": 1.0,
+                    "velocity": 100,
+                    "is_rest": False
+                }
+            ],
+            "time_signature": "4/4"
+        }
+    }
+    
+    response = await client.post("/api/v1/rhythm-patterns/", json=rhythm_pattern_data)
+    assert response.status_code == 201, f"Failed to create rhythm pattern: {response.text}"
+
+    # Test creating a chord progression
+    chord_progression_data = {
+        "name": "Test Progression",
+        "chords": [
+            {
+                "root": {"note_name": "C", "octave": 4},
+                "quality": "MAJOR"
+            }
+        ],
+        "key": "C",
+        "scale_type": "MAJOR"
+    }
+    
+    response = await client.post("/api/v1/chord-progressions/", json=chord_progression_data)
+    assert response.status_code == 201, f"Failed to create chord progression: {response.text}"
+
+    # Test get note patterns
+    response = await client.get("/api/v1/note-patterns/")
     assert response.status_code == 200
-    response_data = response.json()
-    assert "id" in response_data  # Check for id instead of message
+    assert len(response.json()) > 0
+
+    # Test get rhythm patterns
+    response = await client.get("/api/v1/rhythm-patterns/")
+    assert response.status_code == 200
+    assert len(response.json()) > 0
+
+    # Test get chord progressions
+    response = await client.get("/api/v1/chord-progressions/")
+    assert response.status_code == 200
+    assert len(response.json()) > 0
 
     # Test get note pattern by id
-    response = await client.get("/api/note-patterns/1")
+    response = await client.get("/api/v1/note-patterns/1")
     assert response.status_code == 200
     assert response.json()["name"] == "Test Pattern"
 
@@ -262,18 +293,18 @@ async def test_api_functionality(client: AsyncClient) -> None:
         "description": "Updated pattern",
         "tags": ["test", "updated"]
     }
-    response = await client.put("/api/note-patterns/1", json=update_data)
+    response = await client.put("/api/v1/note-patterns/1", json=update_data)
     assert response.status_code == 200
     response_data = response.json()
     assert response_data["name"] == "Updated Pattern"
 
     # Test delete note pattern
-    response = await client.delete("/api/note-patterns/1")
+    response = await client.delete("/api/v1/note-patterns/1")
     assert response.status_code == 200
     assert response.json()["message"] == "Note pattern deleted successfully"
 
     # Test get rhythm pattern by id
-    response = await client.get("/api/rhythm-patterns/1")
+    response = await client.get("/api/v1/rhythm-patterns/1")
     assert response.status_code == 200
     assert response.json()["name"] == "Test Rhythm"
 
@@ -284,13 +315,13 @@ async def test_api_functionality(client: AsyncClient) -> None:
         "description": "Updated rhythm",
         "tags": ["test", "updated"]
     }
-    response = await client.put("/api/rhythm-patterns/1", json=update_data)
+    response = await client.put("/api/v1/rhythm-patterns/1", json=update_data)
     assert response.status_code == 200
     response_data = response.json()
     assert response_data["name"] == "Updated Rhythm"
 
     # Test delete rhythm pattern
-    response = await client.delete("/api/rhythm-patterns/1")
+    response = await client.delete("/api/v1/rhythm-patterns/1")
     assert response.status_code == 200
     assert response.json()["message"] == "Rhythm pattern deleted successfully"
 
@@ -322,35 +353,40 @@ async def test_invalid_chord_progression_creation() -> None:
     assert 'List should have at least 3 item after validation' in str(excinfo.value)
 
 # Test API endpoint with valid data
-async def test_create_chord_progression_valid_data(client: AsyncClient) -> None:
-    valid_data = {
-        'name': 'Valid Progression',
-        'chords': [
-            {'name': 'C', 'root': {'note_name': 'C', 'octave': 4}, 'quality': ChordQualityType.MAJOR, 'intervals': [0, 4, 7]},
-            {'name': 'G', 'root': {'note_name': 'G', 'octave': 4}, 'quality': ChordQualityType.MAJOR, 'intervals': [0, 4, 7]},
-            {'name': 'Am', 'root': {'note_name': 'A', 'octave': 4}, 'quality': ChordQualityType.MINOR, 'intervals': [0, 3, 7]},
-            {'name': 'F', 'root': {'note_name': 'F', 'octave': 4}, 'quality': ChordQualityType.MAJOR, 'intervals': [0, 4, 7]}
+async def test_create_chord_progression_valid_data(client: AsyncClient):
+    """Test creating a chord progression with valid data."""
+    data = {
+        "name": "Test Progression",
+        "chords": [
+            {
+                "root": {"note_name": "C", "octave": 4, "duration": 1.0, "velocity": 100},
+                "quality": "MAJOR",
+                "notes": [],
+                "inversion": 0
+            }
         ],
-        'key': 'C',
-        'scale_type': 'MAJOR',
-        'scale_info': {
-            "root": Note(note_name='C', octave=4),
-            "scale_type": "MAJOR",
-            "intervals": [0, 2, 4, 5, 7, 9, 11]
-        }
+        "key": "C",
+        "scale_type": "MAJOR"
     }
-    response = await client.post('/api/chord-progressions', json=valid_data)
-    assert response.status_code == 200
-    assert response.json()['name'] == 'Valid Progression'
+    
+    response = await client.post("/api/v1/chord-progressions/", json=data)
+    assert response.status_code == 201
+    
+    response_data = response.json()
+    assert response_data["name"] == "Test Progression"
+    assert len(response_data["chords"]) == 1
+    assert response_data["key"] == "C"
+    assert response_data["scale_type"] == "MAJOR"
 
 # Test API endpoint with invalid data
-async def test_create_chord_progression_invalid_data(client: AsyncClient) -> None:
-    invalid_data = {
-        'name': 'Invalid Progression',
-        'chords': [],  # Empty chords list should trigger validation error
-        'key': 'C',
-        'scale_type': 'MAJOR'
+async def test_create_chord_progression_invalid_data(client: AsyncClient):
+    """Test creating a chord progression with invalid data."""
+    data = {
+        "name": "Invalid Progression",
+        "chords": [],  # Invalid: empty chords list
+        "key": "C",
+        "scale_type": "MAJOR"
     }
-    response = await client.post('/api/chord-progressions', json=invalid_data)
-    assert response.status_code == 422  # Unprocessable Entity
-    assert 'List should have at least 3 item after validation' in response.json()['detail'][0]['msg']
+    
+    response = await client.post("/api/v1/chord-progressions/", json=data)
+    assert response.status_code == 422

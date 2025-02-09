@@ -9,21 +9,15 @@ from src.note_gen.models.rhythm_pattern import (
     RhythmPatternData,
     RhythmNote
 )
-from src.note_gen.database import get_db, MONGO_URL, TEST_DB_NAME, MONGO_SETTINGS
+from src.note_gen.database import get_db, TEST_DB_NAME, MONGODB_URI
 from bson import ObjectId
 import asyncio
-
-# Create a new event loop for the tests
-@pytest.fixture(scope="session")
-def event_loop():
-    loop = asyncio.new_event_loop()
-    yield loop
-    loop.close()
+from src.note_gen.database.db import init_db, close_mongo_connection
 
 # Setup test database
 @pytest.fixture(autouse=True)
 async def test_db():
-    client = AsyncIOMotorClient(MONGO_URL, **MONGO_SETTINGS)
+    client = AsyncIOMotorClient(MONGODB_URI, serverSelectionTimeoutMS=5000)
     db = client[TEST_DB_NAME]
     
     # Override the get_db dependency
@@ -42,12 +36,11 @@ async def test_db():
     await db.note_patterns.delete_many({})
     await db.rhythm_patterns.delete_many({})
     app.dependency_overrides.clear()
-    client.close()
+    await close_mongo_connection()
 
 @pytest.fixture
 async def client():
-    loop = asyncio.get_running_loop()
-    async with httpx.AsyncClient(base_url="http://localhost:8000") as c:
+    async with httpx.AsyncClient(base_url="http://test") as c:
         yield c
 
 # Consolidated tests for note pattern functionality

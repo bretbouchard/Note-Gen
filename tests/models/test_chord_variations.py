@@ -33,3 +33,7 @@ def test_chord_quality_variations() -> None:
     # Test an invalid quality string
     with pytest.raises(ValueError):
         Chord(root=root_note, quality='invalid_quality')
+
+    # Test another invalid quality string
+    with pytest.raises(ValueError):
+        Chord(root=root_note, quality='another_invalid_quality')

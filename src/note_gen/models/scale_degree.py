@@ -6,11 +6,8 @@ from pydantic import BaseModel, ConfigDict, field_validator
 class ScaleDegree(BaseModel):
     """A scale degree with a value."""
     value: int
-
     model_config = ConfigDict(
-        arbitrary_types_allowed=True,
-        use_enum_values=True,
-        validate_assignment=True
+        arbitrary_types_allowed=True
     )
 
     @field_validator('value')

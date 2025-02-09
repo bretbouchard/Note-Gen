@@ -1,6 +1,6 @@
 import pytest
 from src.note_gen.models.chord import Chord
-from src.note_gen.models.chord_progression_generator import ChordProgressionGenerator
+from src.note_gen.generators.chord_progression_generator import ChordProgressionGenerator
 from src.note_gen.models.scale_info import ScaleInfo
 from src.note_gen.models.enums import ScaleType, ChordQualityType
 from src.note_gen.models.note import Note

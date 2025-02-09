@@ -1,12 +1,18 @@
+import asyncio
+import logging
 import os
 import sys
-import pytest
-import asyncio
+from typing import Any, AsyncGenerator, Dict, Generator, List, Optional, Tuple
+
 import motor.motor_asyncio
-import logging
-import httpx
+import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
+from pydantic import BaseModel, field_validator
+from pytest_asyncio import fixture
+
+from src.note_gen.dependencies import get_db
 
 # Add the project root to the Python path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -17,183 +23,324 @@ app = FastAPI()
 # Import your route handlers
 from src.note_gen.routers.user_routes import router as user_router
 from src.note_gen.routers.chord_progression_routes import router as chord_progression_router
+from src.note_gen.routes.note_sequences import router as note_sequence_router
+from src.note_gen.routes.rhythm_patterns import router as rhythm_patterns_router
+from src.note_gen.routers.note_pattern_routes import router as note_pattern_router
 
 # Include the routers
-app.include_router(user_router)
-app.include_router(chord_progression_router)
+app.include_router(user_router, prefix="/users")
+app.include_router(chord_progression_router, prefix="/chord-progressions")
+app.include_router(note_sequence_router, prefix="/note-sequences")
+app.include_router(rhythm_patterns_router, prefix="/rhythm-patterns")
+app.include_router(note_pattern_router, prefix="/api")
 
 # Set testing environment variable
 os.environ["TESTING"] = "1"
 os.environ["MONGODB_TEST_URI"] = "mongodb://localhost:27017/test_note_gen"
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 # MongoDB connection settings
 MONGODB_URL = os.getenv("MONGODB_TEST_URI", "mongodb://localhost:27017")
 
+class Note(BaseModel):
+    note_name: str
+    octave: int
+    duration: float
+    velocity: int
+
+class NotePatternData(BaseModel):
+    notes: List[Dict[str, Any]]
+    duration: float
+    position: float
+    velocity: int
+    intervals: List[Any]
+    index: int
+
+class NotePattern(BaseModel):
+    id: str
+    name: str
+    description: str
+    tags: List[str]
+    notes: List[Note]
+    data: NotePatternData
+    intervals: List[Any]
+    duration: float
+    position: float
+    velocity: float
+
+class Chord(BaseModel):
+    pass  # Define the Chord model
+
+class ChordProgression(BaseModel):
+    index: int
+    id: str
+    name: str
+    chords: List[Chord]
+    key: str
+    scale_type: str
+    complexity: float
+
+class RhythmNote(BaseModel):
+    position: float
+    duration: float
+    velocity: int
+    is_rest: bool
+
+class RhythmPatternData(BaseModel):
+    notes: List[RhythmNote]
+    time_signature: str
+    swing_ratio: Optional[float]
+    default_duration: Optional[float]
+    total_duration: Optional[float]
+    groove_type: Optional[str]
+
+    class Config:
+        arbitrary_types_allowed = True
+
+    @field_validator('notes')
+    def validate_notes(cls, value):
+        if not value:
+            raise ValueError('Notes must not be empty')
+        return value
+
+class RhythmPattern(BaseModel):
+    id: Optional[str]
+    name: str
+    data: RhythmPatternData
+    description: str
+    tags: List[str]
+    complexity: Optional[float]
+    style: Optional[str]
+
+    class Config:
+        arbitrary_types_allowed = True
+
+    @field_validator('name')
+    def validate_name(cls, value):
+        if not value:
+            raise ValueError('Name must not be empty')
+        return value
+
 class MockDatabase:
     """Mock database for testing."""
-    def __init__(self):
-        self._collections = {
+
+    def __init__(self, uri: str) -> None:
+        self.client = motor.motor_asyncio.AsyncIOMotorClient(uri)
+        self._collections: Dict[str, Any] = {
             'chord_progressions': {},
             'note_patterns': {},
             'rhythm_patterns': {},
             'presets': {}
         }
         self.name = "test_db"  # Add name attribute for testing
-        
-        class Collection:
-            def __init__(self, data):
-                self.data = data
 
-            def find(self, query=None):
-                if query is None:
-                    query = {}
-                results = []
-                for doc in self.data.values():
-                    if all(doc.get(k) == v for k, v in query.items()):
-                        results.append(doc)
+    async def find(self, query: Optional[Dict[str, Any]] = None) -> AsyncGenerator[Dict[str, Any], None]:
+        results: List[Dict[str, Any]] = []
+        if query is None:
+            query = {}
+        for doc in self._collections.values():
+            if all(doc.get(k) == v for k, v in query.items()):
+                results.append(doc)
+        for result in results:
+            yield result
 
-                class Cursor:
-                    def __init__(self, results):
-                        self.results = results
+    async def insert_data(self, collection_name: str, data: List[Dict[str, Any]]) -> None:
+        collection = getattr(self, collection_name)
+        for document in data:
+            if '_id' not in document:
+                document['_id'] = str(len(collection) + 1)
+            collection[document['_id']] = document
 
-                    async def to_list(self, length=None):
-                        return self.results[:length] if length else self.results
+    async def create_index(self, collection_name: str, keys: List[Tuple[str, int]], unique: bool = False) -> None:
+        pass
 
-                    async def __aiter__(self):
-                        for result in self.results:
-                            yield result
+    class Collection:
+        def __init__(self, data: Dict[str, Any]) -> None:
+            self.data = data
 
-                return Cursor(results)
+        async def find(self, query: Optional[Dict[str, Any]] = None) -> AsyncGenerator[Dict[str, Any], None]:
+            results: List[Dict[str, Any]] = []
+            if query is None:
+                query = {}
+            for doc in self.data.values():
+                if all(doc.get(k) == v for k, v in query.items()):
+                    results.append(doc)
+            for result in results:
+                yield result
 
-            async def find_one(self, query=None):
-                if query is None:
-                    query = {}
-                if '_id' in query:
-                    return self.data.get(query['_id'])
-                if 'id' in query:
-                    for doc in self.data.values():
-                        if doc.get('id') == query['id']:
-                            return doc
-                for doc in self.data.values():
-                    if all(doc.get(k) == v for k, v in query.items()):
-                        return doc
-                return None
+        async def find_one(self, query: Optional[Dict[str, Any]] = None) -> Optional[Dict[str, Any]]:
+            if query is None:
+                query = {}
+            if '_id' in query:
+                return self.data.get(query['_id'], None)  # Ensure it returns None if not found
+            return None
 
-            async def insert_one(self, document):
+        async def insert_one(self, document: Dict[str, Any]) -> Dict[str, Any]:
+            if '_id' not in document:
+                document['_id'] = str(len(self.data) + 1)
+            self.data[document['_id']] = document
+            return {'inserted_id': document['_id']}
+
+        async def delete_one(self, query: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+            if '_id' in query:
+                return self.data.pop(query['_id'], None)
+            return None
+
+        async def update_one(self, query: Dict[str, Any], update: Dict[str, Any], upsert: bool = False) -> Dict[str, Any]:
+            if '_id' in query:
+                doc = self.data.get(query['_id'])
+                if doc:
+                    doc.update(update.get('$set', {}))
+                    return {'modified_count': 1}
+            return {'modified_count': 0}
+
+        async def insert_many(self, documents: List[Dict[str, Any]]) -> Dict[str, Any]:
+            inserted_ids = []
+            for document in documents:
                 if '_id' not in document:
                     document['_id'] = str(len(self.data) + 1)
                 self.data[document['_id']] = document
-                return type('InsertOneResult', (), {'inserted_id': document['_id']})
+                inserted_ids.append(document['_id'])
+            return {'inserted_ids': inserted_ids}
 
-            async def delete_one(self, query):
-                if '_id' in query:
-                    return self.data.pop(query['_id'], None)
-                return None
+        async def __aiter__(self) -> AsyncGenerator[Dict[str, Any], None]:
+            for result in self.data.values():
+                yield result
 
-            async def update_one(self, query, update, upsert=False):
-                if '_id' in query:
-                    doc = self.data.get(query['_id'])
-                    if doc:
-                        doc.update(update.get('$set', {}))
-                        return type('UpdateResult', (), {'modified_count': 1})
-                return type('UpdateResult', (), {'modified_count': 0})
-
-            async def insert_many(self, documents):
-                inserted_ids = []
-                for document in documents:
-                    if '_id' not in document and 'id' in document:
-                        document['_id'] = document['id']
-                    if '_id' not in document:
-                        document['_id'] = str(len(self.data) + 1)
-                    self.data[document['_id']] = document
-                    inserted_ids.append(document['_id'])
-                return type('InsertManyResult', (), {'inserted_ids': inserted_ids})
-
-            @staticmethod
-            async def __aiter__(results):
-                for result in results:
-                    yield result
-
-        # Create collection properties
+    async def setup_collections(self) -> None:
         for collection_name, data in self._collections.items():
-            setattr(self, collection_name, Collection(data))
+            setattr(self, collection_name, self.Collection(data))
 
-    async def insert_many(self, collection_name, documents):
+    async def insert_many(self, collection_name: str, documents: List[Dict[str, Any]]) -> Dict[str, Any]:
         """Mock insert_many operation."""
         collection = getattr(self, collection_name)
         return await collection.insert_many(documents)
 
-    def insert_data(self, collection_name, data):
-        """Insert data into the mock database."""
-        collection = getattr(self, collection_name)
-        for document in data:
-            if '_id' not in document:
-                document['_id'] = document.get('id', str(len(collection.data) + 1))
-            collection.data[document['_id']] = document
-
-@pytest.fixture
-def mock_db():
-    return MockDatabase()
-
-@pytest.fixture
-def mock_db_with_data():
-    db = MockDatabase()
-    db.insert_data('note_patterns', [
-        {"_id": "note_pattern_1", "name": "Pattern 1", "description": "This is pattern 1"},
-        {"_id": "note_pattern_2", "name": "Pattern 2", "description": "This is pattern 2"},
-    ])
-    db.insert_data('rhythm_patterns', [
-        {"_id": "rhythm_pattern_1", "name": "Pattern 1", "description": "This is pattern 1"},
-        {"_id": "rhythm_pattern_2", "name": "Pattern 2", "description": "This is pattern 2"},
-    ])
-    db.insert_data('chord_progressions', [
-        {"_id": "chord_progression_1", "name": "Progression 1", "description": "This is progression 1"},
-        {"_id": "chord_progression_2", "name": "Progression 2", "description": "This is progression 2"},
-    ])
-    return db
-
-@pytest.fixture
-def test_app():
-    return app
-
-@pytest.fixture
-async def async_client():
-    async with httpx.AsyncClient(base_url="http://test") as client:
-        yield client
-
 @pytest.fixture(scope="session")
-def event_loop():
-    """Create an instance of the default event loop for each test session."""
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    yield loop
-    loop.close()
+async def mongo_client() -> AsyncGenerator[AsyncIOMotorClient, None]:
+    """Create a MongoDB client instance."""
+    try:
+        client = AsyncIOMotorClient(
+            "mongodb://localhost:27017",
+            serverSelectionTimeoutMS=5000
+        )
+        yield client
+    except Exception as e:
+        logger.error(f"Error connecting to MongoDB: {str(e)}")
+        raise
+    finally:
+        try:
+            client.close()
+        except Exception as e:
+            logger.error(f"Error closing MongoDB client: {str(e)}")
+
+@pytest.fixture(scope="function")
+async def clean_test_db() -> AsyncGenerator[None, None]:
+    try:
+        db = AsyncIOMotorClient(os.getenv("MONGODB_TEST_URI", "mongodb://localhost:27017"))[os.getenv("DATABASE_NAME", "note_gen_test")]
+        collections = await db.list_collection_names()
+        for collection in collections:
+            # Drop all indexes first
+            await db[collection].drop_indexes()
+            # Then drop the collection
+            await db.drop_collection(collection)
+        logger.info("Test database cleaned successfully")
+    except Exception as e:
+        logger.error(f"Error cleaning test database: {str(e)}")
+        raise
+
+@pytest.fixture(scope="function")
+async def test_app(clean_test_db: None) -> AsyncGenerator[TestClient, None]:
+    """Create a new FastAPI TestClient instance for each test."""
+    async with TestClient(app) as client:
+        # Override the database dependency
+        app.dependency_overrides[get_db] = lambda: clean_test_db
+        yield client
+        # Clear dependency overrides after test
+        app.dependency_overrides.clear()
+
+@pytest.fixture(scope="function")
+async def setup_test_db(clean_test_db: None) -> AsyncGenerator[AsyncIOMotorDatabase, None]:
+    """Setup test database with proper event loop handling."""
+    try:
+        client = AsyncIOMotorClient(os.getenv("MONGODB_TEST_URI", "mongodb://localhost:27017"))
+        db = client[os.getenv("DATABASE_NAME", "note_gen_test")]
+        
+        # Ensure database is clean
+        await clean_test_db
+        
+        # Setup indexes
+        await ensure_indexes(db)
+        
+        # Import test data
+        await import_presets_if_empty(db)
+        
+        yield db
+        
+        # Cleanup after test
+        await clean_test_db
+        
+    except Exception as e:
+        logger.error(f"Error in setup_test_db: {str(e)}")
+        raise
+    finally:
+        client.close()
 
 @pytest.fixture
-async def clean_test_db(event_loop):
-    """Clean and initialize test database."""
-    client = motor.motor_asyncio.AsyncIOMotorClient(MONGODB_URL)
-    db = client.test_note_gen
+async def init_test_data(mongo_client: AsyncIOMotorClient):
+    """Initialize test data."""
+    db = mongo_client.get_database()
     
-    # Clear all collections
-    await db.chord_progressions.delete_many({})
-    await db.note_patterns.delete_many({})
-    await db.rhythm_patterns.delete_many({})
+    # Test data
+    chord_progression = {
+        "name": "Test Progression",
+        "chords": [
+            {
+                "root": {"note_name": "C", "octave": 4},
+                "quality": "MAJOR",
+                "notes": [],
+                "inversion": 0
+            }
+        ],
+        "key": "C",
+        "scale_type": "MAJOR"
+    }
     
-    yield db
+    note_pattern = {
+        "name": "Test Pattern",
+        "notes": [
+            {
+                "note_name": "C",
+                "octave": 4,
+                "duration": 1.0,
+                "velocity": 100
+            }
+        ],
+        "description": "Test pattern",
+        "tags": ["test"]
+    }
     
-    # Cleanup after tests
-    await db.chord_progressions.delete_many({})
-    await db.note_patterns.delete_many({})
-    await db.rhythm_patterns.delete_many({})
-    client.close()
-
-@pytest.fixture
-async def mongo_client(event_loop):
-    """Create a MongoDB client for testing."""
-    client = motor.motor_asyncio.AsyncIOMotorClient(MONGODB_URL)
-    yield client
-    client.close()
+    rhythm_pattern = {
+        "name": "Test Rhythm",  # Updated to previous test name
+        "id": "test_1",
+        "description": "A simple on-off rhythm pattern.",
+        "tags": ["basic", "rhythm"],
+        "data": {
+            "notes": [
+                {"position": 0, "duration": 1.0, "velocity": 100, "is_rest": False},
+                {"position": 1, "duration": 1.0, "velocity": 100, "is_rest": True},
+                {"position": 2, "duration": 1.0, "velocity": 100, "is_rest": False},
+                {"position": 3, "duration": 1.0, "velocity": 100, "is_rest": True}
+            ],
+            "time_signature": "4/4",
+            "pattern": [1, -1, 1, -1]
+        }
+    }
+    
+    # Insert test data
+    await db.chord_progressions.insert_one(chord_progression)
+    await db.note_patterns.insert_one(note_pattern)
+    await db.rhythm_patterns.insert_one(rhythm_pattern)

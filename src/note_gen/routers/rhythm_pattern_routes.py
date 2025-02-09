@@ -15,27 +15,35 @@ router = APIRouter()
 
 async def create_rhythm_pattern_in_db(pattern: RhythmPattern, db: motor_asyncio.AsyncIOMotorDatabase):
     logger.info(f"Incoming request to create rhythm pattern: {pattern}")
-    # Validate required fields
-    required_fields = ['name', 'pattern']
-    missing_fields = [field for field in required_fields if not getattr(pattern, field)]
-    if missing_fields:
-        logger.error(f"Missing required fields: {', '.join(missing_fields)}")
-        raise HTTPException(status_code=400, detail=f'Missing required fields: {", ".join(missing_fields)}')
+
     try:
+        # Validate pattern with time signature
+        pattern.validate_pattern_with_time_signature()
+
+        # Check for duplicate pattern
+        existing_pattern = await db.rhythm_patterns.find_one({"name": pattern.name})
+        if existing_pattern:
+            logger.error(f"Rhythm pattern with name '{pattern.name}' already exists")
+            raise HTTPException(status_code=409, detail=f"Rhythm pattern with name '{pattern.name}' already exists")
+
+        # Create pattern
         logger.info(f"Creating rhythm pattern: {pattern}")
         result = await db.rhythm_patterns.insert_one(pattern.dict())
         pattern.id = str(result.inserted_id)
         logger.info(f"Rhythm pattern created with ID: {pattern.id}")
         return RhythmPatternResponse(**pattern.dict())
+    except ValueError as e:
+        logger.error(f"Validation error during rhythm pattern creation: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
     except motor_asyncio.errors.DuplicateKeyError as e:
         logger.error(f"Rhythm pattern with the same name already exists: {e}")
-        raise HTTPException(status_code=400, detail="Rhythm pattern with the same name already exists")
+        raise HTTPException(status_code=409, detail="Rhythm pattern with the same name already exists")
     except motor_asyncio.errors.PyMongoError as e:
         logger.error(f"Database error during rhythm pattern creation: {e}")
         raise HTTPException(status_code=500, detail="Database error during creation")
     except Exception as e:
         logger.error(f"Unexpected error during rhythm pattern creation: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail="Internal Server Error")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 @router.post("/rhythm_patterns/", response_model=RhythmPatternResponse)
 async def create_rhythm_pattern(rhythm_pattern: RhythmPattern, db: motor_asyncio.AsyncIOMotorDatabase = Depends(get_db)):
@@ -122,7 +130,7 @@ async def get_rhythm_patterns(db: motor_asyncio.AsyncIOMotorDatabase = Depends(g
     logger.info("Fetching all rhythm patterns")
     try:
         patterns = await db.rhythm_patterns.find().to_list(length=None)
-        logger.debug(f"Fetched {len(patterns)} rhythm patterns from the database")
+        logger.debug(f"Fetched {len(patterns)} rhythm patterns from the database: {patterns}")
         return [RhythmPatternResponse(**pattern) for pattern in patterns]
     except motor_asyncio.errors.PyMongoError as e:
         logger.error(f"Database error fetching rhythm patterns: {e}")

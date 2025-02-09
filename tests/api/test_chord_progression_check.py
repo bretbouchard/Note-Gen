@@ -11,16 +11,8 @@ from bson import ObjectId
 @pytest.fixture
 async def client():
     loop = asyncio.get_running_loop()
-    async with AsyncClient(app=app, base_url="http://localhost:8000") as c:
+    async with AsyncClient(base_url="http://localhost:8000") as c:
         yield c
-
-@pytest.fixture(scope="session")
-def event_loop():
-    policy = asyncio.get_event_loop_policy()
-    loop = policy.new_event_loop()
-    asyncio.set_event_loop(loop)
-    yield loop
-    loop.close()
 
 @pytest_asyncio.fixture(scope="function")
 async def setup_database():

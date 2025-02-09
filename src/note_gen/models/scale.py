@@ -1,8 +1,8 @@
 from typing import List, Optional
 from pydantic import BaseModel
 
-from .note import Note
-from .scale_type import ScaleType
+from src.note_gen.models.note import Note
+from src.note_gen.models.enums import ScaleType
 
 class Scale(BaseModel):
     """A musical scale."""
@@ -104,6 +104,38 @@ class Scale(BaseModel):
             return [self.notes[pos] for pos in positions]
         else:
             raise ValueError("Notes have not been generated for this scale")
+
+    def get_degree_of_note(self, note: Note) -> int:
+        """Get the scale degree of a note within the scale.
+        
+        Args:
+            note: The note to find the degree for.
+            
+        Returns:
+            int: The scale degree (1-based indexing).
+            
+        Raises:
+            ValueError: If the note is not in the scale.
+        """
+        if note not in self.notes:
+            raise ValueError(f"{note} is not in the scale.")
+        return self.notes.index(note) + 1  # 1-based indexing
+
+    def get_note_by_degree(self, degree: int) -> Note:
+        """Get a note at a specific scale degree (1-based indexing).
+        
+        Args:
+            degree: The scale degree (1-based indexing).
+            
+        Returns:
+            Note: The note at the specified scale degree.
+            
+        Raises:
+            ValueError: If the degree is not valid for this scale.
+        """
+        if degree < 1 or degree > len(self.notes):
+            raise ValueError(f"Degree {degree} is out of range for this scale.")
+        return self.notes[degree - 1]  # Convert to 0-based indexing
 
     def transpose(self, semitones: int) -> 'Scale':
         """Transpose the scale by a number of semitones."""

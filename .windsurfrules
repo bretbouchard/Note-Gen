@@ -25,19 +25,19 @@
 - **Fields**:
   - `note_name: str` (required) - The name of the note (e.g., C, D, E).
   - `octave: int` (required) - The octave of the note.
-  - `duration: int` (required) - Duration of the note in beats.
+  - `duration: Union[int, float]` (required) - Duration of the note in beats.
   - `velocity: int` (required) - Velocity of the note (0-127).
   - `NOTE_TO_SEMITONE: ClassVar[dict[str, int]]` - Maps note names to their semitone values.
   - `SEMITONE_TO_NOTE: ClassVar[dict[int, str]]` - Maps semitone values to their note names.
 
 ### 2. ChordProgression
 - **Fields**:
-  - `id: str` (optional) - Unique identifier for the chord progression.
+  - `id: Optional[str]` - Unique identifier for the chord progression.
   - `name: str` (required) - Name of the chord progression.
   - `chords: List[Chord]` (required) - List of chords in the progression.
   - `key: str` (required) - Key of the chord progression.
   - `scale_type: str` (required) - Type of scale (e.g., MAJOR, MINOR).
-  - `complexity: float` (optional) - Complexity rating between 0 and 1.
+  - `complexity: Optional[float]` - Complexity rating between 0 and 1.
 
 ### 3. ChordQuality
 - **Fields**:
@@ -117,6 +117,14 @@
   - `complexity: Optional[float]` (optional) - Pattern complexity.
   - `data: Optional[List[int]]` (optional) - Additional pattern data.
   - `is_test: Optional[bool]` (optional) - Test flag.
+
+### 16. NotePatternData
+- **Fields**:
+  - `notes: List[Dict[str, Any]]` (required) - List of notes in the pattern.
+  - `intervals: Optional[List[int]]` (optional) - List of intervals.
+  - `duration: Union[float, int]` (required) - Pattern duration.
+  - `position: Union[float, int]` (required) - Pattern position.
+  - `velocity: float` (default=100) - Pattern velocity.
 
 ## API Routes
 - **Routes**: Refer to @[src/note_gen/routers/user_routes.py] for a complete list of API routes.

@@ -1,5 +1,6 @@
 from enum import Enum
 from typing import List, Dict, ClassVar
+from pydantic import BaseModel, ConfigDict
 
 class ChordQualityType(str, Enum):
     """Enum representing different chord qualities."""
@@ -94,3 +95,9 @@ class ChordQualityType(str, Enum):
             return cls(aliases[quality_str])
             
         raise ValueError(f"Unrecognized chord quality: {quality_str}")
+
+class ChordQuality(BaseModel):
+    quality_type: ChordQualityType = ChordQualityType.MAJOR
+
+    class Config:
+        arbitrary_types_allowed = True

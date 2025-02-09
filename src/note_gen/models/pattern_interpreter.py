@@ -22,7 +22,9 @@ class PatternInterpreter(BaseModel):
         _current_index (int): The current index in the pattern. Defaults to 0.
     """
 
-    model_config = ConfigDict(arbitrary_types_allowed=True, from_attributes=True)
+    class Config:
+        arbitrary_types_allowed = True
+        from_attributes = True
     scale: Scale
     pattern: List[Union[int, str, Note, ScaleDegree, Dict[str, Any]]]
     _current_index: int = 0
@@ -96,24 +98,24 @@ class PatternInterpreter(BaseModel):
 
         return note
 
-    def interpret(self, pattern: Sequence[Union[int, str, Note, ScaleDegree]], chord: Any, scale_info: Any) -> List[NoteEvent]:
+    def interpret(self, pattern: Sequence[Union[int, str, Note, ScaleDegree]], chord: Any, scale_info: Any, velocity: int = 100) -> List[NoteEvent]:
         """Interpret a pattern into a sequence of NoteEvents."""
         note_events = []
         for element in pattern:
             if isinstance(element, Note):
-                note_events.append(NoteEvent(note=element))
+                note_events.append(NoteEvent(note=element, velocity=velocity))
             elif isinstance(element, ScaleDegree):
                 if element.value is not None:
                     note = scale_info.get_scale_degree(int(element.value))
-                    note_events.append(NoteEvent(note=note))
+                    note_events.append(NoteEvent(note=note, velocity=velocity))
                 else:
                     raise ValueError("ScaleDegree value cannot be None")
             elif isinstance(element, int):
-                note = Note.from_midi(element, velocity=64, duration=1)
-                note_events.append(NoteEvent(note=note))
+                note = Note.from_midi(element, velocity=velocity, duration=1)
+                note_events.append(NoteEvent(note=note, velocity=velocity))
             elif isinstance(element, str):
                 note = Note.from_full_name(element)
-                note_events.append(NoteEvent(note=note))
+                note_events.append(NoteEvent(note=note, velocity=velocity))
             else:
                 raise ValueError(f"Unsupported element type: {type(element)}")
         return note_events

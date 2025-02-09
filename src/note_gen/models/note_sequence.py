@@ -1,7 +1,7 @@
 """Module for handling sequences of musical notes."""
 
 from typing import List, Union, Dict, Any, Optional
-from pydantic import BaseModel, ConfigDict, field_validator, Field, model_validator
+from pydantic import BaseModel, field_validator, Field, ConfigDict
 
 from src.note_gen.models.note import Note
 from src.note_gen.models.chord import Chord
@@ -11,25 +11,13 @@ from src.note_gen.models.note_event import NoteEvent
 class NoteSequence(BaseModel):
     """A sequence of musical notes or events."""
     notes: List[Union[Note, int]]
-    events: List[NoteEvent] = Field(default_factory=list)
-    duration: float = 0.0
-    default_duration: float = 1.0
-
-    model_config = ConfigDict(
-        arbitrary_types_allowed=True,
-        use_enum_values=True,
-        validate_assignment=True
-    )
-
-    @property
-    def total_duration(self) -> float:
-        """Calculate the total duration of the notes in the sequence."""
-        return sum(note.duration for note in self.notes if isinstance(note, Note))
+    events: List[NoteEvent] = []
+    duration: float = Field(default=0.0)
 
     @field_validator('notes')
-    @classmethod
-    def validate_notes(cls, value: List[Union[Note, int]]) -> List[Union[Note, int]]:
-        """Validate and convert notes."""
+    def validate_notes(cls, value):
+        if not value:
+            raise ValueError('Notes must not be empty')
         result = []
         for note in value:
             if isinstance(note, int):
@@ -44,12 +32,20 @@ class NoteSequence(BaseModel):
         return result
 
     @field_validator('duration')
-    @classmethod
-    def validate_duration(cls, value: float) -> float:
+    def validate_duration(cls, value):
         """Validate duration is non-negative."""
         if value < 0:
             raise ValueError("Duration must be non-negative")
         return value
+
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True
+    )
+
+    @property
+    def total_duration(self) -> float:
+        """Calculate the total duration of the notes in the sequence."""
+        return sum(note.duration for note in self.notes if isinstance(note, Note))
 
     def add_note(self, note: Union[Note, int], position: float = 0.0, duration: float = 1.0, velocity: int = 100) -> None:
         """Add a note to the sequence at the specified position."""
@@ -58,9 +54,12 @@ class NoteSequence(BaseModel):
         event = NoteEvent(note=note, position=position, duration=duration, velocity=velocity)
         self.events.append(event)
 
-    def get_notes_at(self, position: float) -> List[Note]:
-        """Get all notes at a specific position."""
-        return [event.note for event in self.events if event.position == position]
+    def get_notes_at(self, position: float) -> List[NoteEvent]:
+        """Get all note events at a specific position."""
+        matching_events = [event for event in self.events if event.position <= position < event.position + event.duration]
+        print(f"Processed events: {self.events}")
+        print(f"Matching events at position {position}: {matching_events}")
+        return matching_events
 
     def clear(self) -> None:
         """Clear all notes and events from the sequence."""
@@ -76,13 +75,19 @@ class NoteSequence(BaseModel):
             "duration": self.duration
         }
 
+    def __len__(self) -> int:
+        """Return the number of notes in the sequence."""
+        return len(self.notes)
+
 
 class SimpleNoteSequence(BaseModel):
     """Model for a sequence of notes."""
     
-    model_config = ConfigDict(arbitrary_types_allowed=True)
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True
+    )
     
-    notes: List[Note] = Field(default_factory=list, description="List of notes in the sequence")
+    notes: List[Note] = []
     
     def add_note(self, note: Note) -> None:
         """Add a note to the sequence."""

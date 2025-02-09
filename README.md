@@ -89,7 +89,7 @@ Create a virtual environment (optional but recommended):
 
 ```bash
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+source new_venv/bin/activate  # On Windows: venv\Scripts\activate
 ```
 
 Install dependencies:
@@ -116,7 +116,6 @@ use note_gen
 ```
 
 mongo mongodb://localhost:27017/note_gen
-
 
 Tests:
 

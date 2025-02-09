@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 # Create a new note pattern
-@router.post("/note-patterns/", response_model=NotePatternResponse)
+@router.post("/note_patterns/", response_model=NotePatternResponse)
 async def create_note_pattern(note_pattern: NotePattern, db: motor_asyncio.AsyncIOMotorDatabase = Depends(get_db)) -> NotePatternResponse:
     """Create a new note pattern."""
     logger.info(f"Incoming request to create note pattern: {note_pattern}")
@@ -39,7 +39,7 @@ async def create_note_pattern(note_pattern: NotePattern, db: motor_asyncio.Async
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
 # Get a single note pattern by ID
-@router.get("/note-patterns/{note_pattern_id}/", response_model=NotePatternResponse)
+@router.get("/note_patterns/{note_pattern_id}/", response_model=NotePatternResponse)
 async def read_note_pattern(note_pattern_id: str, db: motor_asyncio.AsyncIOMotorDatabase = Depends(get_db)) -> NotePatternResponse:
     """Retrieve a note pattern by ID."""
     logger.info(f"Fetching note pattern with ID: {note_pattern_id}")
@@ -57,7 +57,7 @@ async def read_note_pattern(note_pattern_id: str, db: motor_asyncio.AsyncIOMotor
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
 # Get all note patterns
-@router.get("/note-patterns", response_model=List[NotePatternResponse])
+@router.get("/note_patterns", response_model=List[NotePatternResponse])
 async def get_note_patterns(db: motor_asyncio.AsyncIOMotorDatabase = Depends(get_db)) -> List[NotePatternResponse]:
     logger.info("Fetching all note patterns")
     try:
@@ -72,7 +72,7 @@ async def get_note_patterns(db: motor_asyncio.AsyncIOMotorDatabase = Depends(get
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
 # Update a note pattern by ID
-@router.put("/note-patterns/{note_pattern_id}/", response_model=NotePatternResponse)
+@router.put("/note_patterns/{note_pattern_id}/", response_model=NotePatternResponse)
 async def update_note_pattern(note_pattern_id: str, note_pattern: NotePattern, db: motor_asyncio.AsyncIOMotorDatabase = Depends(get_db)) -> NotePatternResponse:
     """Update a note pattern by ID."""
     logger.info(f"Updating note pattern with ID: {note_pattern_id}")
@@ -91,7 +91,7 @@ async def update_note_pattern(note_pattern_id: str, note_pattern: NotePattern, d
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
 # Delete a note pattern by ID
-@router.delete("/note-patterns/{note_pattern_id}/")
+@router.delete("/note_patterns/{note_pattern_id}/")
 async def delete_note_pattern(note_pattern_id: str, db: motor_asyncio.AsyncIOMotorDatabase = Depends(get_db)) -> None:
     """Delete a note pattern by ID."""
     logger.info(f"Deleting note pattern with ID: {note_pattern_id}")

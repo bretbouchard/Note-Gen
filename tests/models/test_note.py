@@ -56,7 +56,7 @@ def test_note_equality() -> None:
     assert note1 == note2
 
 def test_invalid_midi_number_initialization() -> None:
-    with pytest.raises(ValueError, match="MIDI number out of range:"):
+    with pytest.raises(ValueError, match="Invalid MIDI number: 128. MIDI number must be between 0 and 127."):
         Note.from_midi(128, duration=1, velocity=64)
 
 def test_transpose_out_of_range_high() -> None:

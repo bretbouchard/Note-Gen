@@ -21,6 +21,7 @@ class NotePatternData(BaseModel):
     restart_on_chord: bool = Field(default=False, description="Restart on chord")
     octave_range: List[int] = Field(default=[4, 5], description="Octave range")
     default_duration: float = Field(default=1.0, description="Default note duration")
+    index: int = Field(..., description='Index of the note pattern')
 
     class Config:
         json_schema_extra = {

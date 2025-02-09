@@ -1,7 +1,7 @@
 """Module for note event models."""
 
 import logging
-from pydantic import BaseModel, Field, ConfigDict, field_validator, validator, root_validator
+from pydantic import BaseModel, field_validator, Field, ConfigDict
 from typing import Union, Any, Dict, Optional
 
 from src.note_gen.models.note import Note
@@ -15,62 +15,17 @@ logger = logging.getLogger(__name__)
 class NoteEvent(BaseModel):
     """A musical event with timing information."""
     note: Union[Note, ScaleDegree, Chord]
-    position: float = 0.0
-    duration: float = 1.0
+    position: float = Field(default=0.0, ge=0)
+    duration: float = Field(default=1.0, gt=0)
     velocity: int = Field(default=100, ge=0, le=127)
-    channel: int = 0
-    is_rest: bool = False
-
-    model_config = ConfigDict(
-        arbitrary_types_allowed=True,
-        use_enum_values=True,
-        validate_assignment=True,
-        error_messages={
-            'velocity': {
-                'ge': 'MIDI velocity must be between 0 and 127.',
-                'le': 'MIDI velocity must be between 0 and 127.'
-            }
-        }
-    )
+    channel: int = Field(default=0, ge=0, le=15)
+    is_rest: bool = Field(default=False)
 
     @field_validator('note')
-    @classmethod
     def validate_note(cls, value: Any) -> Union[Note, ScaleDegree, Chord]:
         """Validate that note is of correct type."""
         if not isinstance(value, (Note, ScaleDegree, Chord)):
             raise ValueError("Note must be a Note, ScaleDegree, or Chord instance")
-        return value
-
-    @field_validator('position')
-    @classmethod
-    def validate_position(cls, value: float) -> float:
-        """Validate position is non-negative."""
-        if value < 0:
-            raise ValueError("Position cannot be negative.")
-        return value
-
-    @field_validator('duration')
-    @classmethod
-    def validate_duration(cls, value: float) -> float:
-        """Validate duration is positive."""
-        if value <= 0:
-            raise ValueError("Duration must be positive.")
-        return value
-
-    @field_validator('velocity')
-    @classmethod
-    def validate_velocity(cls, value: int) -> int:
-        """Validate velocity is within MIDI range."""
-        if not (0 <= value <= 127):
-            raise ValueError("MIDI velocity must be between 0 and 127.")
-        return value
-
-    @field_validator('channel')
-    @classmethod
-    def validate_channel(cls, value: int) -> int:
-        """Validate channel is within MIDI range."""
-        if not (0 <= value <= 15):
-            raise ValueError("Channel must be between 0 and 15")
         return value
 
     @property
@@ -117,3 +72,7 @@ class NoteEvent(BaseModel):
 
     def __str__(self) -> str:
         return f"NoteEvent(note={self.note}, position={self.position}, duration={self.duration})"
+
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True
+    )

@@ -1,5 +1,7 @@
 from typing import Dict, ClassVar, Optional, Tuple, Any, Union
-from pydantic import BaseModel, field_validator, ConfigDict
+from pydantic import BaseModel, Field, field_validator
+import json
+from loguru import logger
 
 class Note(BaseModel):
     """A musical note with a name, octave, duration, and velocity."""
@@ -27,9 +29,19 @@ class Note(BaseModel):
         8: 'Ab', 9: 'A', 10: 'Bb', 11: 'B'
     }
 
+    # Maps enharmonic equivalents
+    ENHARMONIC_EQUIVALENTS: ClassVar[Dict[str, str]] = {
+        'G#': 'Ab',
+        'A#': 'Bb',
+        'C#': 'Db',
+        'D#': 'Eb',
+        'F#': 'Gb',
+    }
+
     INVALID_NOTE_NAME_ERROR: ClassVar[str] = "Invalid note name format:"
 
-    model_config = ConfigDict(arbitrary_types_allowed=True, from_attributes=True)
+    class Config:
+        from_attributes = True
 
     def __init__(self, note_name: str, octave: int, duration: float = 1.0, velocity: int = 100, stored_midi_number: Optional[int] = None):
         super().__init__(note_name=note_name, octave=octave, duration=duration, velocity=velocity, stored_midi_number=stored_midi_number)
@@ -37,6 +49,7 @@ class Note(BaseModel):
     @field_validator('note_name')
     @classmethod
     def validate_note_name(cls, v: str) -> str:
+        logger.debug(f'Validating note_name: {v}')
         try:
             normalized = cls.normalize_note_name(v)
             if normalized not in cls.NOTE_TO_SEMITONE:
@@ -46,21 +59,27 @@ class Note(BaseModel):
             raise ValueError(cls.INVALID_NOTE_NAME_ERROR)
 
     @field_validator('octave')
+    @classmethod
     def validate_octave(cls, v: int) -> int:
+        logger.debug(f'Validating octave: {v}')
         """Validate the octave value."""
         if not (0 <= v <= 8):
             raise ValueError("Invalid octave:")
         return v
 
     @field_validator('duration')
+    @classmethod
     def validate_duration(cls, v: float) -> float:
+        logger.debug(f'Validating duration: {v}')
         """Validate that the duration is positive."""
         if v <= 0:
             raise ValueError("Input should be greater than 0:")
         return v
 
     @field_validator('velocity')
+    @classmethod
     def validate_velocity(cls, v: int) -> int:
+        logger.debug(f'Validating velocity: {v}')
         """Validate that the velocity is within MIDI range (0-127)."""
         if not (0 <= v <= 127):
             raise ValueError(f"Velocity must be between 0 and 127: {v}")
@@ -72,6 +91,8 @@ class Note(BaseModel):
         if self.stored_midi_number is not None:
             return self.stored_midi_number
         return self._note_octave_to_midi(self.note_name, self.octave)
+
+
 
     @classmethod
     def _note_octave_to_midi(cls, note_name: str, octave: int) -> int:
@@ -97,16 +118,15 @@ class Note(BaseModel):
         return note_name, octave
 
     @classmethod
-    def from_midi(cls, midi_number: int, velocity: int = 100, duration: int = 1) -> 'Note':
+    def from_midi(cls, midi_number: int, velocity: int = 100, duration: float = 1.0) -> 'Note':
         """Creates a Note instance from a MIDI number."""
         if not (0 <= midi_number <= 127):
-            raise ValueError(f"Invalid MIDI number: {midi_number}")
-        if not isinstance(duration, int):
-            raise TypeError("duration must be an int")
+            raise ValueError(f"Invalid MIDI number: {midi_number}. MIDI number must be between 0 and 127.")
+        if not isinstance(duration, (int, float)):
+            raise TypeError("duration must be a number")
         note_name = cls.SEMITONE_TO_NOTE[midi_number % 12]
-        octave = midi_number // 12 - 1
-        duration = int(duration)
-        return cls(note_name=note_name, octave=octave, velocity=velocity, duration=float(duration))
+        octave = max(midi_number // 12 - 1, 0)  # Ensure octave is non-negative
+        return cls(note_name=note_name, octave=octave, velocity=velocity, duration=duration)
 
     @classmethod
     def from_full_name(cls, full_name: str, duration: float = 1.0, velocity: int = 100) -> 'Note':
@@ -151,13 +171,13 @@ class Note(BaseModel):
     @classmethod
     def from_midi_number(cls, midi_number: int, duration: float = 1.0, velocity: int = 100) -> 'Note':
         """Alias for from_midi for backward compatibility."""
-        return cls.from_midi(midi_number, duration=int(duration), velocity=velocity)
+        return cls.from_midi(midi_number, duration=duration, velocity=velocity)
 
     def transpose(self, semitones: int) -> 'Note':
         """Transpose the note by a number of semitones."""
         new_midi = self.midi_number + semitones
         try:
-            return self.from_midi(new_midi, int(self.duration), self.velocity)
+            return self.from_midi(new_midi, duration=self.duration, velocity=self.velocity)
         except ValueError:
             raise ValueError("MIDI number out of range")
 
@@ -284,3 +304,50 @@ class Note(BaseModel):
             "velocity": self.velocity,
             "stored_midi_number": self.stored_midi_number,
         }
+
+    def to_json(self) -> str:
+        return json.dumps({
+            'note_name': self.note_name,
+            'octave': self.octave,
+            'duration': float(self.duration),  # Ensure duration is a float
+            'velocity': int(self.velocity)   # Ensure velocity is an integer
+        })
+
+    def get_note_at_interval(self, interval: int) -> str:
+        """Get the note at a given interval."""
+        note_names = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
+        current_index = note_names.index(self.note_name)
+        new_index = (current_index + interval) % len(note_names)
+        return note_names[new_index]
+
+    def dict(self, *args, **kwargs):
+        """Convert note to dictionary for JSON serialization."""
+        return {
+            'note_name': self.note_name,
+            'octave': self.octave,
+            'duration': self.duration,
+            'velocity': self.velocity
+        }
+
+    def json(self, *args, **kwargs):
+        """Convert note to JSON string."""
+        return json.dumps(self.dict())
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'Note':
+        """Create Note instance from dictionary."""
+        return cls(**data)
+
+    def model_dump(self, **kwargs) -> dict:
+        """Convert the Note object to a dictionary for JSON serialization."""
+        return {
+            "note_name": self.note_name,
+            "octave": self.octave,
+            "duration": self.duration,
+            "velocity": self.velocity,
+            "stored_midi_number": self.stored_midi_number
+        }
+
+    def json(self, **kwargs) -> str:
+        """Convert the Note object to a JSON string."""
+        return json.dumps(self.model_dump())

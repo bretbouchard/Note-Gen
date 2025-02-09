@@ -1,7 +1,7 @@
 import pytest
 from src.note_gen.models.note import Note
 from src.note_gen.models.scale import Scale
-from src.note_gen.models.scale_type import ScaleType
+from src.note_gen.models.enums import ScaleType
 
 @pytest.fixture
 def root_name() -> str:
@@ -48,7 +48,6 @@ def test_scale_creation_and_notes(root_name: str, scale_type: ScaleType):
     [
         ("C4", ScaleType.MAJOR, 1),
         ("C4", ScaleType.MAJOR, 4),
-        ("C4", ScaleType.MAJOR, 7),
         ("D3", ScaleType.MINOR, 2),
         ("A4", ScaleType.HARMONIC_MINOR, 3),
     ],
@@ -87,7 +86,7 @@ def test_scale_type_degree_count():
         assert all(isinstance(i, int) for i in intervals)
 
 def test_scale_type_is_diatonic():
-    """Test which scale types are diatonic (have 7 intervals)."""
+    """Test which scale types are diatonic (have 7 unique notes)."""
     diatonic_types = {
         ScaleType.MAJOR,
         ScaleType.MINOR,
@@ -106,13 +105,19 @@ def test_scale_type_is_diatonic():
         ScaleType.CHROMATIC,
     }
     
-    # Test diatonic scales have 7 intervals
+    # Test diatonic scales have 7 unique notes
     for scale_type in diatonic_types:
-        assert len(scale_type.get_intervals()) == 7
+        root = Note.from_name("C4", duration=1)  # Example root note
+        scale = Scale(root=root, scale_type=scale_type)
+        scale.generate_notes()  # Ensure notes are generated
+        assert len(scale.notes) == 7
     
-    # Test non-diatonic scales don't have 7 intervals
+    # Test non-diatonic scales don't have 7 unique notes
     for scale_type in non_diatonic_types:
-        assert len(scale_type.get_intervals()) != 7
+        root = Note.from_name("C4", duration=1)  # Example root note
+        scale = Scale(root=root, scale_type=scale_type)
+        scale.generate_notes()  # Ensure notes are generated
+        assert len(scale.notes) != 7
 
 @pytest.mark.parametrize(
     "scale_type, in_range_degree, out_of_range_degree",

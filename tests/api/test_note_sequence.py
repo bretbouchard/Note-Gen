@@ -1,6 +1,7 @@
 import pytest
 import httpx
 from src.note_gen.models.note import Note
+from src.note_gen.models.enums import ScaleType
 
 @pytest.fixture 
 async def client():
@@ -13,10 +14,18 @@ async def test_note_sequence(client: httpx.AsyncClient):
         "progression_name": "I-IV-V",  # Updated to a valid progression
         "note_pattern_name": "Simple Triad",  # Example note pattern
         "rhythm_pattern_name": "quarter_notes",  # Example rhythm pattern
-        "scale_info": {"root": {"note_name": "C", "octave": 4}, "scale_type": ""}
+        "scale_info": {
+            "root": {
+                "note_name": "C",
+                "octave": 4,
+                "duration": 1,
+                "velocity": 64
+            },
+            "scale_type": "MAJOR"  # Send as string value
+        }
     }
 
-    response = await client.post("/generate-sequence", json=request_data)
+    response = await client.post("/api/note-sequences/generate-sequence", json=request_data)
     assert response.status_code == 200
     data = response.json()
     assert "notes" in data
@@ -33,12 +42,12 @@ async def test_note_sequence(client: httpx.AsyncClient):
 
 @pytest.mark.asyncio
 async def test_get_note_sequences(client: httpx.AsyncClient) -> None:
-    response = await client.get('/note-sequences')
+    response = await client.get('/api/note-sequences/note-sequences')
     assert response.status_code == 200
     assert isinstance(response.json(), list)
     data = response.json()
     assert len(data) > 0  # Ensure the list is not empty
-    assert data[0]['name'] is not None  # Check if the name is not None
+    assert "notes" in data[0]
 
 @pytest.mark.asyncio
 async def test_note_sequence_functionality(client):
@@ -47,10 +56,18 @@ async def test_note_sequence_functionality(client):
         "progression_name": "I-IV-V",  # Updated to a valid progression
         "note_pattern_name": "Simple Triad",  # Example note pattern
         "rhythm_pattern_name": "quarter_notes",  # Example rhythm pattern
-        "scale_info": {"root": {"note_name": "C", "octave": 4}, "scale_type": "MAJOR"}
+        "scale_info": {
+            "root": {
+                "note_name": "C",
+                "octave": 4,
+                "duration": 1,
+                "velocity": 64
+            },
+            "scale_type": "MAJOR"  # Send as string value
+        }
     }   
 
-    response = await client.post("/generate-sequence", json=request_data)
+    response = await client.post("/api/note-sequences/generate-sequence", json=request_data)
     assert response.status_code == 200
     data = response.json()
     assert "notes" in data
@@ -65,9 +82,9 @@ async def test_note_sequence_functionality(client):
         assert note["note_name"] == expected_note.note_name
         assert note["octave"] == expected_note.octave
 
-    response = await client.get('/note-sequences')
+    response = await client.get('/api/note-sequences/note-sequences')
     assert response.status_code == 200
     assert isinstance(response.json(), list)
     data = response.json()
     assert len(data) > 0  # Ensure the list is not empty
-    assert data[0]['name'] is not None  # Check if the name is not None
+    assert "notes" in data[0]

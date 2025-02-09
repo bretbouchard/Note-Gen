@@ -1,32 +1,31 @@
-# src/note_gen/models/musical_elements.py
-from typing import List, Optional, Dict, Any, ClassVar, Tuple, Union
-from pydantic import BaseModel, ConfigDict, field_validator
 import logging
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)  # You can adjust the level as needed
+
+from typing import List, Optional, Dict, Any, ClassVar, Tuple, Union
+from pydantic import BaseModel, ConfigDict, field_validator, config
 import re
 from enum import Enum
 
 from src.note_gen.models.scale_degree import ScaleDegree
 from src.note_gen.models.roman_numeral import RomanNumeral
 from src.note_gen.models.note import Note
+from src.note_gen.models.enums import ScaleType
 
-class ScaleType(str, Enum):
-    MAJOR = 'MAJOR'
-    NATURAL_MINOR = 'NATURAL_MINOR'
-    HARMONIC_MINOR = 'HARMONIC_MINOR'
-    MELODIC_MINOR = 'MELODIC_MINOR'
-    PENTATONIC_MAJOR = 'PENTATONIC_MAJOR'
-    PENTATONIC_MINOR = 'PENTATONIC_MINOR'
-    BLUES = 'BLUES'
-    WHOLE_TONE = 'WHOLE_TONE'
-    CHROMATIC = 'CHROMATIC'
-    DORIAN = 'DORIAN'
-    PHRYGIAN = 'PHRYGIAN'
-    LYDIAN = 'LYDIAN'
-    MIXOLYDIAN = 'MIXOLYDIAN'
-    LOCRIAN = 'LOCRIAN'
+class Scale(BaseModel):
+    root: Note
+    scale_type: ScaleType
+    notes: List[Note] = []
+    class Config:
+        arbitrary_types_allowed = True
 
-    def get_intervals(self) -> List[int]:
-        """Get the intervals for this scale type."""
+    def model_post_init(self, __context: Any) -> None:
+        """Post-initialization hook to generate notes if not provided."""
+        if not self.notes:
+            self.notes = self._generate_scale_notes()
+
+    def _generate_scale_notes(self) -> List[Note]:
+        """Generate the notes for this scale based on root note and scale type."""
         intervals_map = {
             ScaleType.MAJOR: [0, 2, 4, 5, 7, 9, 11],
             ScaleType.NATURAL_MINOR: [0, 2, 3, 5, 7, 8, 10],
@@ -44,46 +43,12 @@ class ScaleType(str, Enum):
             ScaleType.LOCRIAN: [0, 1, 3, 5, 6, 8, 10],
         }
         
-        if self not in intervals_map:
-            raise ValueError(f"No intervals defined for scale type: {self}")
+        if self.scale_type not in intervals_map:
+            raise ValueError(f"No intervals defined for scale type: {self.scale_type}")
         
-        return intervals_map[self]
-
-    @property
-    def degree_count(self) -> int:
-        """Get the number of degrees in this scale type."""
-        return len(self.get_intervals())
-
-    @property
-    def is_diatonic(self) -> bool:
-        """Check if this scale type is diatonic (has 7 intervals)."""
-        return len(self.get_intervals()) == 7
-
-    def validate_degree(self, degree: int) -> bool:
-        """Validate if a scale degree is valid for this scale type."""
-        return 1 <= degree <= len(self.get_intervals())
-
-    def get_scale_degrees(self) -> List[int]:
-        """Get all valid scale degrees for this scale type."""
-        return list(range(1, len(self.get_intervals()) + 1))
-
-
-class Scale(BaseModel):
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-    root: Note
-    scale_type: ScaleType
-    notes: List[Note] = []
-
-    def model_post_init(self, __context: Any) -> None:
-        """Post-initialization hook to generate notes if not provided."""
-        if not self.notes:
-            self.notes = self._generate_scale_notes()
-
-    def _generate_scale_notes(self) -> List[Note]:
-        """Generate the notes for this scale based on root note and scale type."""
-        intervals = self.scale_type.get_intervals()
+        intervals = intervals_map[self.scale_type]
         scale_notes = []
-        base_midi = self.root.to_midi_number()
+        base_midi = self.root.midi_number
         
         for interval in intervals:
             new_midi = base_midi + interval
@@ -128,7 +93,7 @@ class Scale(BaseModel):
     @property
     def is_diatonic(self) -> bool:
         """Check if this scale is diatonic (has 7 notes)."""
-        return len(self.scale_type.get_intervals()) == 7
+        return len(self.notes) == 7
 
     def get_scale_degrees(self) -> List[int]:
         """Get all valid scale degrees for this scale."""
@@ -136,7 +101,7 @@ class Scale(BaseModel):
 
     def __str__(self) -> str:
         note_names = [note.note_name for note in self.notes]
-        return f"{self.root.note_name} {self.scale_type.value} Scale: {', '.join(note_names)}"
+        return f"{self.root.note_name} {self.scale_type} Scale: {', '.join(note_names)}"
 
 class ChordProgression(BaseModel):
     logger: ClassVar[logging.Logger] = logging.getLogger(__name__)

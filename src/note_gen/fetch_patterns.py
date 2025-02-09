@@ -135,6 +135,7 @@ async def fetch_chord_progression_by_id(id: str, db: AsyncIOMotorDatabase[Dict[s
         processed_data = process_chord_data(result, db.name)
         
         # Create and return the ChordProgression instance
+        logger.debug(f"Chord progression successfully fetched: {processed_data}")
         return ChordProgression(**processed_data)
     except Exception as e:
         logger.error(f"Error fetching chord progression by ID: {id}, Error: {str(e)}")
@@ -169,6 +170,9 @@ async def fetch_rhythm_patterns(db: AsyncIOMotorDatabase[Dict[str, Any]]) -> Lis
         cursor = db.rhythm_patterns.find({})
         fetched_patterns = await cursor.to_list(length=None)
         logger.debug(f'Fetched rhythm patterns: {fetched_patterns}')  
+        logger.debug(f'Detailed fetched rhythm patterns: {fetched_patterns}')  
+        if not fetched_patterns:
+            logger.warning('No rhythm patterns found in the database.')
         patterns = [RhythmPattern(**pattern) for pattern in fetched_patterns]
         logger.debug(f'Final list of fetched RhythmPattern instances: {patterns}')
         return patterns
@@ -227,6 +231,11 @@ async def _fetch_note_patterns(db: AsyncIOMotorDatabase[Dict[str, Any]]) -> Dict
         async for document in db.note_patterns.find({}):
             logger.debug(f'Fetched document from MongoDB: {document}')
             try:
+                # Check if 'pattern' key exists in the document
+                if 'pattern' not in document:
+                    logger.error(f'Missing key "pattern" in document: {document}')
+                    continue
+
                 # Map the pattern to the expected data structure
                 data = NotePatternData(notes=[{"note_name": str(note), "octave": 4, "duration": 1.0, "velocity": 100} for note in document['pattern']])
                 logger.debug(f'Validated data: {data}')

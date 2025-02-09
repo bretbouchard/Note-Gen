@@ -3,11 +3,11 @@ import pytest
 from unittest.mock import patch
 from src.note_gen.models.note import Note
 from src.note_gen.models.scale import Scale
-from src.note_gen.models.scale_type import ScaleType
+from src.note_gen.models.enums import ScaleType
 from src.note_gen.models.chord import Chord
 from src.note_gen.models.chord_quality import ChordQualityType
 from src.note_gen.models.chord_progression import ChordProgression
-from src.note_gen.models.chord_progression_generator import ChordProgressionGenerator
+from src.note_gen.generators.chord_progression_generator import ChordProgressionGenerator
 from src.note_gen.models.fake_scale_info import FakeScaleInfo
 from typing import List, Optional
 import random
@@ -100,9 +100,20 @@ class TestChordProgressionGenerator(unittest.TestCase):
         # Additional assertions here
 
     def test_generate_custom_invalid_degree(self):
+        root_note = Note(note_name='C', octave=4)
+        scale_info = FakeScaleInfo(root=root_note, scale_type=ScaleType.MAJOR)
+        gen = ChordProgressionGenerator(
+            scale_info=scale_info,
+            name="Test Progression",
+            key="C",
+            scale_type=ScaleType.MAJOR,
+            chords=[
+                Chord(root=Note(note_name="C", octave=4), quality=ChordQualityType.MAJOR)
+            ]
+        )
         with pytest.raises(ValueError):
-            chord1 = Chord(root=Note(note_name='C', octave=4), quality='MAJOR')
-            progression = ChordProgression(name='Invalid Progression', chords=[chord1], key='C', scale_type='MAJOR')
+            # Try to generate a chord progression with an invalid scale degree (8 is invalid, valid range is 1-7)
+            gen.generate_custom(degrees=[8], qualities=[ChordQualityType.MAJOR])
 
     def test_generate_custom_valid_chord_instance(self) -> ChordProgression:
         root_note = Note(note_name='C', octave=4)
@@ -123,10 +134,10 @@ class TestChordProgressionGenerator(unittest.TestCase):
         scale_info = FakeScaleInfo(root=Note(note_name="C", octave=4, duration=1, velocity=64), scale_type=ScaleType.MINOR)
         gen = ChordProgressionGenerator(scale_info=scale_info, name="Test Progression", key="C", scale_type=ScaleType.MINOR, chords=[
             Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
-            Chord(root=Note(note_name="F", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
-            Chord(root=Note(note_name="G", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR)
+            Chord(root=Note(note_name="Eb", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MINOR),
+            Chord(root=Note(note_name="G", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MINOR)
         ])
-        with patch.object(random, 'choice', side_effect=[1, ChordQualityType.MAJOR, 3, ChordQualityType.MINOR]):
+        with patch.object(random, 'choice', side_effect=[1, ChordQualityType.MAJOR, 5, ChordQualityType.MINOR]):
             progression = gen.generate_random(length=2)
             self.assertEqual(len(progression.chords), 2)
 

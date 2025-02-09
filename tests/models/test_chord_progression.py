@@ -15,18 +15,15 @@ logger = logging.getLogger(__name__)
 
 
 class TestChordProgression(unittest.TestCase):
-    def test_create_chord_progression_valid_data(self):
-        """
-        Test creation of a chord progression with valid data.
-
-        This test case checks if a chord progression can be created with valid data.
-        It verifies that the chords are initialized correctly.
-        """
+    def test_create_chord_progression_valid_data(self) -> None:
+        logger.debug("Starting test_create_chord_progression_valid_data")
         chords = [
             Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
             Chord(root=Note(note_name="F", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
             Chord(root=Note(note_name="G", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
         ]
+        logger.debug(f"Chords created: {chords}")
+
         progression = ChordProgression(
             name="Test Progression",
             chords=chords,
@@ -34,83 +31,99 @@ class TestChordProgression(unittest.TestCase):
             scale_type=ScaleType.MINOR,
             scale_info=FakeScaleInfo(root=Note(note_name='C', octave=4, duration=1.0, velocity=100)),
         )
+        logger.debug(f"ChordProgression created: {progression}")
         self.assertEqual(progression.name, "Test Progression")
         self.assertEqual(len(progression.chords), 3)
 
-    def test_empty_chords(self):
-        """
-        Test creation of a chord progression with empty chords, expecting a ValueError.
-
-        This test case checks if creating a chord progression with empty chords raises a ValueError.
-        """
-        with self.assertRaises(ValueError):
-            ChordProgression(
-                name="Empty Progression",
+    def test_empty_chords(self) -> None:
+        logger.debug("Starting test_empty_chords")
+        with self.assertRaises(ValidationError):
+            progression = ChordProgression(
+                name="Empty Chords",
                 chords=[],
                 key="C",
-                scale_type=ScaleType.MAJOR,
+                scale_type=ScaleType.MINOR,
                 scale_info=FakeScaleInfo(root=Note(note_name='C', octave=4, duration=1.0, velocity=100)),
             )
+            logger.debug("ValidationError expected for empty chords.")
 
-    def test_invalid_complexity(self):
-        """
-        Test creation of a chord progression with invalid complexity, expecting a ValueError.
-
-        This test case checks if creating a chord progression with invalid complexity raises a ValueError.
-        """
-        chords = [
-            Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
-        ]
-        with self.assertRaises(ValueError):
-            ChordProgression(
+    def test_invalid_complexity(self) -> None:
+        logger.debug("Starting test_invalid_complexity")
+        with self.assertRaises(ValidationError):
+            progression = ChordProgression(
                 name="Invalid Complexity",
-                chords=chords,
+                chords=[
+                    Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100)),
+                ],
                 key="C",
-                scale_type=ScaleType.MAJOR,
+                scale_type=ScaleType.MINOR,
                 scale_info=FakeScaleInfo(root=Note(note_name='C', octave=4, duration=1.0, velocity=100)),
-                complexity=1.5  # Invalid complexity
+                complexity=1.5,
             )
+            logger.debug("ValidationError expected for invalid complexity.")
 
-    def test_model_dump(self):
+    def test_model_dump(self) -> None:
+        logger.debug("Starting test_model_dump")
         """
-        Test the model dump functionality of the chord progression.
+        Test the model's dump functionality.
 
-        This test case checks if the model dump functionality works correctly.
+        This test case checks if the model can be converted to a dictionary correctly.
         """
         chords = [
-            Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
+            Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100)),
+            Chord(root=Note(note_name="F", octave=4, duration=1.0, velocity=100)),
         ]
         progression = ChordProgression(
-            name="Test Progression",
+            name="Test Model Dump",
             chords=chords,
             key="C",
             scale_type=ScaleType.MAJOR,
             scale_info=FakeScaleInfo(root=Note(note_name='C', octave=4, duration=1.0, velocity=100)),
         )
-        dump = progression.dict()
-        self.assertEqual(dump['name'], "Test Progression")
+        logger.debug(f"ChordProgression created: {progression}")
+        self.assertEqual(progression.dict(), {
+            'id': progression.id,
+            'name': "Test Model Dump",
+            'chords': chords,
+            'key': "C",
+            'scale_type': ScaleType.MAJOR,
+            'scale_info': progression.scale_info,
+            'quality': progression.quality,
+            'complexity': progression.complexity,
+        })
 
     def test_to_dict(self):
+        logger.debug("Starting test_to_dict")
         """
-        Test the to_dict method of the chord progression.
+        Test the model's conversion to a dictionary.
 
-        This test case checks if the to_dict method works correctly.
+        This test case checks if the model can be converted to a dictionary correctly using the to_dict method.
         """
         chords = [
-            Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
+            Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100)),
+            Chord(root=Note(note_name="F", octave=4, duration=1.0, velocity=100)),
         ]
         progression = ChordProgression(
-            name="Test Progression",
+            name="Test To Dict",
             chords=chords,
             key="C",
             scale_type=ScaleType.MAJOR,
             scale_info=FakeScaleInfo(root=Note(note_name='C', octave=4, duration=1.0, velocity=100)),
         )
-        dict_representation = progression.to_dict()
-        self.assertEqual(dict_representation['name'], "Test Progression")
-        self.assertEqual(len(dict_representation['chords']), 1)
+        logger.debug(f"ChordProgression created: {progression}")
+        self.assertEqual(progression.to_dict(), {
+            'id': progression.id,
+            'name': "Test To Dict",
+            'chords': chords,
+            'key': "C",
+            'scale_type': ScaleType.MAJOR,
+            'scale_info': progression.scale_info,
+            'quality': progression.quality,
+            'complexity': progression.complexity,
+        })
 
-    def test_add_chord(self):
+    def test_add_chord(self) -> None:
+        logger.debug("Starting test_add_chord")
         """
         Test adding a chord to the progression.
 
@@ -126,56 +139,63 @@ class TestChordProgression(unittest.TestCase):
             scale_type=ScaleType.MAJOR,
             scale_info=FakeScaleInfo(root=Note(note_name='C', octave=4, duration=1.0, velocity=100)),
         )
+        logger.debug(f"ChordProgression created: {progression}")
         new_chord = Chord(root=Note(note_name="G", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR)
+        logger.debug(f"New chord created: {new_chord}")
         progression.add_chord(new_chord)
+        logger.debug(f"Chord added to progression: {progression.chords}")
         assert len(progression.chords) == 3
         assert progression.chords[-1] == new_chord
         logger.debug("Add chord test executed")
 
-    def test_chord_progression_edge_cases(self):
+    def test_chord_progression_edge_cases(self) -> None:    
+        logger.debug("Starting test_chord_progression_edge_cases")
         """
         Test edge cases for chord progression creation.
 
         This test case checks for edge cases such as empty chords, invalid complexity, and invalid chord qualities.
         """
         # Test empty chords
-        with self.assertRaises(ValueError):
+        logger.debug("Testing empty chords edge case")
+        with self.assertRaises(ValidationError):
             ChordProgression(
-                name="Empty Progression",
+                name="Empty Chords",
                 chords=[],
                 key="C",
-                scale_type=ScaleType.MAJOR,
+                scale_type=ScaleType.MINOR,
                 scale_info=FakeScaleInfo(root=Note(note_name='C', octave=4, duration=1.0, velocity=100)),
             )
-            logger.debug("Empty chords edge case test executed")
+            logger.debug("ValidationError expected for empty chords.")
 
         # Test invalid complexity
+        logger.debug("Testing invalid complexity edge case")
         chords = [
-            Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
+            Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100)),
         ]
-        with self.assertRaises(ValueError):
+        with self.assertRaises(ValidationError):
             ChordProgression(
                 name="Invalid Complexity",
                 chords=chords,
                 key="C",
-                scale_type=ScaleType.MAJOR,
+                scale_type=ScaleType.MINOR,
                 scale_info=FakeScaleInfo(root=Note(note_name='C', octave=4, duration=1.0, velocity=100)),
-                complexity=1.5  # Invalid complexity
+                complexity=1.5,
             )
-            logger.debug("Invalid complexity edge case test executed")
+            logger.debug("ValidationError expected for invalid complexity.")
 
         # Test invalid chord qualities
-        with self.assertRaises(ValueError):
+        logger.debug("Testing invalid chord quality edge case")
+        with self.assertRaises(ValidationError):
             ChordProgression(
                 name="Invalid Chord Quality",
                 chords=[
                     Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality="INVALID_QUALITY"),
                 ],
                 key="C",
-                scale_type=ScaleType.MAJOR,
+                scale_type=ScaleType.MINOR,
                 scale_info=FakeScaleInfo(root=Note(note_name='C', octave=4, duration=1.0, velocity=100)),
             )
-            logger.debug("Invalid chord quality edge case test executed")
+            logger.debug("ValidationError expected for invalid chord quality.")
 
 if __name__ == "__main__":
     unittest.main()

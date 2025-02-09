@@ -1,8 +1,7 @@
 from motor import motor_asyncio
 from motor.motor_asyncio import AsyncIOMotorClient
 import uuid
-
-# Import the actual presets
+from typing import List, Dict, Any
 from src.note_gen.models.presets import (
     COMMON_PROGRESSIONS,
     NOTE_PATTERNS,
@@ -11,87 +10,56 @@ from src.note_gen.models.presets import (
     DEFAULT_SCALE_TYPE
 )
 from src.note_gen.models.rhythm_pattern import RhythmPatternData
+from src.note_gen.models.roman_numeral import RomanNumeral, ChordQualityType
+
+# Import the actual presets
+
 
 async def clear_existing_data(db: motor_asyncio.AsyncIOMotorDatabase) -> None:
     await db.chord_progressions.delete_many({})
     await db.note_patterns.delete_many({})
     await db.rhythm_patterns.delete_many({})
 
-async def format_chord_progression(name: str, progression: list) -> dict:
-    """Format a chord progression according to the model requirements."""
-
-    # Validate input
+async def format_chord_progression(name: str, progression: List[str]) -> Dict[str, Any]:
     if not progression:
         raise ValueError("Progression list cannot be empty.")
 
-    valid_roman_numerals = {'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii'}
+    chord_progressions = []
     for chord in progression:
-        if not isinstance(chord, str) or chord not in valid_roman_numerals:
+        try:
+            roman_numeral = RomanNumeral(scale_degree=RomanNumeral.ROMAN_TO_INT[chord], quality=ChordQualityType.MAJOR)
+            chord_progressions.append(roman_numeral)
+        except KeyError:
             raise ValueError(f"Invalid Roman numeral: {chord}")
-
-    def convert_roman_to_note(roman: str, key: str = "C") -> dict:
-        # Strip any quality indicators from the roman numeral
-        base_roman = ''.join(c for c in roman if c.isalpha())
-        quality = ''.join(c for c in roman if not c.isalpha())
-
-        # Map roman numerals to scale degrees
-        roman_to_degree = {
-            'I': 0, 'II': 2, 'III': 4, 'IV': 5, 'V': 7, 'VI': 9, 'VII': 11,
-            'i': 0, 'ii': 2, 'iii': 4, 'iv': 5, 'v': 7, 'vi': 9, 'vii': 11
-        }
-
-        # Map scale degree to note name
-        MAJOR_scale = ['C', 'D', 'E', 'F', 'G', 'A', 'B']
-        degree = roman_to_degree.get(base_roman.upper(), 0)
-        note_name = MAJOR_scale[degree % 7]
-
-        # Determine quality based on roman numeral case and any modifiers
-        if quality:
-            chord_quality = quality
-        else:
-            chord_quality = 'MINOR' if base_roman.islower() else 'MAJOR'
-
-        if '°' in roman or 'dim' in roman:
-            chord_quality = 'DIMINISHED'
-        elif 'aug' in roman:
-            chord_quality = 'AUGMENTED'
-
-        return {
-            'root': {'note_name': note_name, 'octave': 4},
-            'quality': chord_quality
-        }
 
     return {
         'id': str(uuid.uuid4()),
         'name': name,
-        'scale_info': {
-            'root': {'note_name': DEFAULT_KEY, 'octave': 4},
-            'scale_type': DEFAULT_SCALE_TYPE
-        },
         'chords': [
-            convert_roman_to_note(chord) if any(c.isalpha() for c in chord) else 
-            {'root': {'note_name': chord[0], 'octave': 4}, 
-             'quality': chord[1:] if len(chord) > 1 else 'MAJOR'} 
-            for chord in progression
+            {
+                'root': {'note_name': roman_numeral.get_note_name(), 'octave': 4},
+                'quality': roman_numeral.quality
+            } for roman_numeral in chord_progressions
         ],
         'key': DEFAULT_KEY,
         'scale_type': DEFAULT_SCALE_TYPE,
-        'description': f'Progression: {name}',
         'tags': ['preset'],
         'complexity': 1.0,
-        'is_test': False
+        'is_test': False,
+        'index': 0
     }
 
-async def format_note_pattern(name: str, pattern: list) -> dict:
+async def format_note_pattern(name: str, pattern: dict) -> dict:
     """Format a note pattern according to the model requirements."""
     return {
         'id': str(uuid.uuid4()),
         'name': name,
-        'data': pattern,
-        'notes': [{'note_name': 'C', 'octave': 4, 'duration': 1.0, 'velocity': 100} for _ in pattern],
+        'data': pattern['pattern'],
+        'notes': [{'note_name': 'C', 'octave': 4, 'duration': 1.0, 'velocity': 100} for _ in pattern['pattern']],
         'description': f'Pattern: {name}',
         'tags': ['preset'],
-        'is_test': False
+        'is_test': False,
+        'index': pattern['index']
     }
 
 async def format_rhythm_pattern(name: str, pattern: 'RhythmPatternData') -> dict:
@@ -99,32 +67,12 @@ async def format_rhythm_pattern(name: str, pattern: 'RhythmPatternData') -> dict
     return {
         'id': str(uuid.uuid4()),
         'name': name,
-        'data': {
-            'notes': [{
-                'position': note.position,
-                'duration': note.duration,
-                'velocity': note.velocity,
-                'is_rest': note.is_rest,
-                'accent': note.accent,
-                'swing_ratio': note.swing_ratio
-            } for note in pattern.notes],
-            'time_signature': pattern.time_signature,
-            'swing_enabled': pattern.swing_enabled,
-            'humanize_amount': pattern.humanize_amount,
-            'swing_ratio': pattern.swing_ratio,
-            'default_duration': pattern.default_duration,
-            'total_duration': pattern.total_duration,
-            'accent_pattern': pattern.accent_pattern,
-            'groove_type': pattern.groove_type,
-            'variation_probability': pattern.variation_probability,
-            'duration': pattern.duration,
-            'style': pattern.style
-        },
-        'description': f'Rhythm: {name}',
+        'pattern': pattern['pattern'],  
+        'index': pattern['index'],  
+        'description': f'Pattern: {name}',
         'tags': ['preset'],
-        'complexity': 1.0,
-        'style': pattern.style,
-        'is_test': False
+        'is_test': False,
+        'index': pattern['index']
     }
 
 async def insert_data(db: motor_asyncio.AsyncIOMotorDatabase, data: list, collection_name: str) -> None:
@@ -136,7 +84,7 @@ async def run_imports():
     client = AsyncIOMotorClient("mongodb://localhost:27017/")
     db = client["note_gen"]
     
-    await clear_existing_data(db)
+    await clear_existing_data(db)  # Clear existing data
     
     # Format and prepare all progressions
     chord_progressions = [

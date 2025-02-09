@@ -132,6 +132,28 @@ async def init_database() -> None:
                 from src.note_gen.import_presets import import_presets_if_empty
                 await import_presets_if_empty(db)
 
+async def init_db():
+    """Initialize database connection."""
+    global _client, _db
+    try:
+        await get_client()
+        async with get_db() as db:
+            _db = db
+            await init_database()
+        logger.info("Database initialized successfully")
+    except Exception as e:
+        logger.error(f"Error initializing database: {e}")
+        raise
+
+async def close_db():
+    """Close database connection."""
+    global _client, _db
+    if _client:
+        await close_mongo_connection()
+        _client = None
+        _db = None
+        logger.info("Database connection closed")
+
 async def create_chord_progression(db: AsyncIOMotorDatabase, progression: ChordProgression) -> Dict[str, Any]:
     logger.debug("Attempting to create chord progression...")
     try:

@@ -74,32 +74,68 @@ CHORD_QUALITY_ALIASES = {
     '°': 'DIMINISHED',
 }
 
-class ChordQualityType(StrEnum):
+class ChordQualityType(str, Enum):
     """Enum for chord quality types."""
-    MAJOR = 'MAJOR'
-    MINOR = 'MINOR'
-    DIMINISHED = 'DIMINISHED'
-    AUGMENTED = 'AUGMENTED'
-    DOMINANT = 'DOMINANT'
-    DOMINANT7 = 'DOMINANT7'
-    MAJOR7 = 'MAJOR7'
-    MINOR7 = 'MINOR7'
-    DIMINISHED7 = 'DIMINISHED7'
-    HALF_DIMINISHED7 = 'HALF_DIMINISHED7'
-    MAJOR9 = 'MAJOR9'
-    MINOR9 = 'MINOR9'
-    DOMINANT9 = 'DOMINANT9'
-    AUGMENTED7 = 'AUGMENTED7'
-    MAJOR11 = 'MAJOR11'
-    MINOR11 = 'MINOR11'
-    DOMINANT11 = 'DOMINANT11'
-    SUS2 = 'SUS2'
-    SUS4 = 'SUS4'
-    SEVEN_SUS4 = 'SEVEN_SUS4'
-    FLAT5 = 'FLAT5'
-    FLAT7 = 'FLAT7'
-    SHARP5 = 'SHARP5'
-    SHARP7 = 'SHARP7'
+    MAJOR = "MAJOR"
+    MINOR = "MINOR"
+    DIMINISHED = "DIMINISHED"
+    AUGMENTED = "AUGMENTED"
+    DOMINANT = "DOMINANT"
+    DOMINANT7 = "DOMINANT7"
+    MAJOR7 = "MAJOR7"
+    MINOR7 = "MINOR7"
+    DIMINISHED7 = "DIMINISHED7"
+    HALF_DIMINISHED7 = "HALF_DIMINISHED7"
+    MAJOR9 = "MAJOR9"
+    MINOR9 = "MINOR9"
+    DOMINANT9 = "DOMINANT9"
+    AUGMENTED7 = "AUGMENTED7"
+    MAJOR11 = "MAJOR11"
+    MINOR11 = "MINOR11"
+    DOMINANT11 = "DOMINANT11"
+    SUS2 = "SUS2"
+    SUS4 = "SUS4"
+    SEVEN_SUS4 = "SEVEN_SUS4"
+    FLAT5 = "FLAT5"
+    FLAT7 = "FLAT7"
+    SHARP5 = "SHARP5"
+    SHARP7 = "SHARP7"
+
+    @classmethod
+    def _missing_(cls, value):
+        """Handle missing values by trying to match common aliases."""
+        if isinstance(value, str):
+            # First normalize the input
+            normalized = value.upper()
+            
+            # Direct mapping for exact matches
+            if normalized in [e.value for e in cls]:
+                return cls(normalized)
+            
+            # Handle aliases with case insensitivity
+            aliases = {
+                'MAJ7': cls.MAJOR7,
+                'MAJOR7': cls.MAJOR7,
+                'MAJ': cls.MAJOR,
+                'MAJOR': cls.MAJOR,
+                'MIN': cls.MINOR,
+                'MINOR': cls.MINOR,
+                'DIM': cls.DIMINISHED,
+                'DIMINISHED': cls.DIMINISHED,
+                'AUG': cls.AUGMENTED,
+                'AUGMENTED': cls.AUGMENTED,
+                'DOM7': cls.DOMINANT7,
+                'DOMINANT7': cls.DOMINANT7,
+                'M7': cls.MAJOR7,
+                'MIN7': cls.MINOR7,
+                'MINOR7': cls.MINOR7,
+                'DIM7': cls.DIMINISHED7,
+                'DIMINISHED7': cls.DIMINISHED7,
+            }
+            
+            if normalized in aliases:
+                return aliases[normalized]
+        return None
 
     @classmethod
     def from_string(cls, quality_str: str) -> 'ChordQualityType':
