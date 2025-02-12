@@ -9,312 +9,172 @@ class TestNotePattern(unittest.TestCase):
     def test_create_note_pattern(self) -> None:
         pattern = NotePattern(
             name="TestPattern",
-            data=NotePatternData(
-                notes=[{"note_name": "C", "octave": 4}, {"note_name": "D", "octave": 4}],
-                duration=1.0,
-                position=0.0,
-                velocity=100,
-                intervals=[],
-                index=0
-            ),
-            notes=[Note(note_name='C', octave=4, duration=1.0, velocity=100), Note(note_name='D', octave=4, duration=1.0, velocity=100)],
+            pattern=[0, 2, 4],
             description="Test pattern description",
             tags=['valid_tag'],
-            complexity=0.5,
-            pattern_type="simple",
-            is_test=True,
-            duration=1.0,
-            position=0.0,
-            velocity=100,
-            intervals=[],
-            index=0
+            complexity=0.5
         )
         # Verify basic properties
         self.assertEqual(pattern.name, "TestPattern")
-        self.assertEqual(pattern.data.notes, [{"note_name": "C", "octave": 4}, {"note_name": "D", "octave": 4}])
-        self.assertEqual(pattern.notes, [Note(note_name='C', octave=4, duration=1.0, velocity=100), Note(note_name='D', octave=4, duration=1.0, velocity=100)])
+        self.assertEqual(pattern.pattern, [0, 2, 4])
+        self.assertEqual(pattern.tags, ['valid_tag'])
 
-    def test_getters_return_expected_types(self) -> None:
-        pattern = NotePattern(
-            name="Pattern1",
-            data=NotePatternData(
-                notes=[{"note_name": "C", "octave": 4}, {"note_name": "D", "octave": 4}],
-                duration=1.0,
-                position=0.0,
-                velocity=100,
-                intervals=[],
-                index=0
-            ),
-            notes=[Note(note_name='C', octave=4, duration=1.0, velocity=100), Note(note_name='D', octave=4, duration=1.0, velocity=100)],
-            description="A simple pattern",
-            tags=['valid_tag'],
-            complexity=0.5,
-            pattern_type="simple",
-            is_test=True,
-            duration=1.0,
-            position=0.0,
-            velocity=100,
-            intervals=[],
-            index=0
+    def test_name_validation(self) -> None:
+        """Test name validation rules."""
+        # Test valid names
+        NotePattern(
+            name="Valid Pattern",
+            pattern=[0, 2, 4],
+            description="Valid pattern description",
+            tags=['valid_tag']
         )
-        # Ensure this method exists or replace it with the correct method
-        notes = pattern.notes
-        intervals = pattern.data.notes
-        duration = float(sum(note.duration for note in notes))
-        assert isinstance(notes, list)
-        assert all(isinstance(n, Note) for n in notes)
 
-    def test_invalid_data(self) -> None:
-        with pytest.raises(ValidationError):
+        # Test invalid names
+        with pytest.raises(ValidationError, match="Name must be at least 2 characters long"):
+            NotePattern(
+                name="A",
+                pattern=[0, 2, 4],
+                description="Invalid pattern description",
+                tags=['valid_tag']
+            )
+
+        with pytest.raises(ValidationError, match="Name must be at least 2 characters long"):
+            NotePattern(
+                name="   ",
+                pattern=[0, 2, 4],
+                description="Invalid pattern description",
+                tags=['valid_tag']
+            )
+
+    def test_pattern_validation(self) -> None:
+        """Test pattern validation rules."""
+        # Test valid pattern
+        NotePattern(
+            name="Valid Pattern",
+            pattern=[0, 2, 4],
+            description="Valid pattern description",
+            tags=['valid_tag']
+        )
+
+        # Test invalid patterns
+        with pytest.raises(ValidationError, match="Pattern must not be empty"):
             NotePattern(
                 name="Invalid Pattern",
-                data=NotePatternData(
-                    notes=[{'note_name': 'C', 'octave': 4}],  # Valid note structure
-                    duration=1.0,
-                    position=0.0,
-                    velocity=100,
-                    intervals=[],
-                    index=0
-                ),
-                notes=[Note(note_name='C', octave=4, duration=1.0, velocity=100)],
-                description="Invalid pattern",
-                tags=['valid_tag'],
-                complexity=0.5,
-                pattern_type="simple",
-                is_test=True,
-                duration=None,
-                position=0.0,
-                velocity=100,
-                intervals=[],
-                index=0
+                pattern=[],
+                description="Invalid pattern description",
+                tags=['valid_tag']
             )
 
-    def test_note_pattern_empty_data(self) -> None:
-        """Test that creating a NotePattern with empty data is handled."""
-        data = NotePatternData(notes=[], duration=1.0, position=0.0, velocity=100, intervals=[], index=0)
-        print(f"Testing with empty data: {data}")
-        try:
-            print(f"Creating NotePattern with data: {data}")
+        with pytest.raises(ValidationError, match="Interval .* is outside reasonable range"):
             NotePattern(
-                name="Empty Pattern",
-                data=data,
-                notes=[],
-                description="A pattern with no data",
-                tags=['valid_tag'],
-                complexity=0.5,
-                pattern_type="simple",
-                is_test=True,
-                duration=1.0,
-                position=0.0,
-                velocity=100,
-                intervals=[],
-                index=0
+                name="Invalid Pattern",
+                pattern=[0, 13, 4],
+                description="Invalid pattern description",
+                tags=['valid_tag']
             )
-        except ValueError as e:
-            print(f"Caught ValueError: {e}")
-        except ValidationError as e:
-            print(f"Caught ValidationError: {e}")
-        else:
-            print("No exception raised, data was accepted.")
 
-    def test_note_pattern_complex_data(self) -> None:
-        pattern = NotePattern(
-            name="Complex Pattern",
-            data=NotePatternData(
-                notes=[{"note_name": "C", "octave": 4}, {"note_name": "D", "octave": 4}],
-                duration=1.0,
-                position=0.0,
-                velocity=100,
-                intervals=[],
-                index=0
-            ),
-            notes=[Note(note_name='C', octave=4, duration=1.0, velocity=100), Note(note_name='D', octave=4, duration=1.0, velocity=100)],
-            description="Complex pattern description",
-            tags=['valid_tag'],
-            is_test=True,
-            complexity=0.5,
-            pattern_type="simple",
-            duration=1.0,
-            position=0.0,
-            velocity=100,
-            intervals=[],
-            index=0
-        )
-        assert pattern.data.notes == [{"note_name": "C", "octave": 4}, {"note_name": "D", "octave": 4}]
-
-    def test_note_pattern_valid_nested_data(self) -> None:
-        pattern = NotePattern(
+    def test_complexity_validation(self) -> None:
+        """Test complexity validation rules."""
+        # Test valid complexity
+        NotePattern(
             name="Valid Pattern",
-            data=NotePatternData(
-                notes=[{"note_name": "C", "octave": 4}, {"note_name": "D", "octave": 4}],
-                duration=1.0,
-                position=0.0,
-                velocity=100,
-                intervals=[],
-                index=0
-            ),
-            notes=[Note(note_name='C', octave=4, duration=1.0, velocity=100), Note(note_name='D', octave=4, duration=1.0, velocity=100)],
+            pattern=[0, 2, 4],
             description="Valid pattern description",
             tags=['valid_tag'],
-            is_test=True,
-            complexity=0.5,
-            pattern_type="simple",
-            duration=1.0,
-            position=0.0,
-            velocity=100,
-            intervals=[],
-            index=0
+            complexity=0.5
         )
-        assert pattern.data.notes == [{"note_name": "C", "octave": 4}, {"note_name": "D", "octave": 4}]
 
-    def test_note_pattern_invalid_data(self) -> None:
-        """Test a NotePattern with invalid data."""
-        data = NotePatternData(notes=[{'note_name': 'C', 'octave': 4}], duration=1.0, position=0.0, velocity=100, intervals=[1], index=0)
-        print(f"Testing with invalid data: {data}")
-        with pytest.raises(ValidationError):
+        # Test invalid complexity
+        with pytest.raises(ValidationError, match="Complexity must be between 0 and 1"):
             NotePattern(
                 name="Invalid Pattern",
-                data=data,
+                pattern=[0, 2, 4],
+                description="Invalid pattern description",
+                tags=['valid_tag'],
+                complexity=1.5
             )
 
-    def test_search_note_pattern_by_index(self) -> None:
-        """Test that searching for a NotePattern by index returns the correct pattern."""
-        note_pattern = NotePattern(
-            name='Test Pattern',
-            data=NotePatternData(
-                notes=[{"note_name": "C", "octave": 4}, {"note_name": "D", "octave": 4}],
-                duration=1.0,
-                position=0.0,
-                velocity=100,
-                intervals=[],
-                index=0
-            ),
-            notes=[Note(note_name='C', octave=4, duration=1.0, velocity=100), Note(note_name='D', octave=4, duration=1.0, velocity=100)],
-            description='A test pattern',
-            tags=['test'],
-            complexity=0.5,
-            pattern_type="simple",
-            is_test=True,
-            duration=1.0,
-            position=0.0,
-            velocity=100,
-            intervals=[],
-            index=0
+    def test_tags_validation(self) -> None:
+        """Test tags validation rules."""
+        # Test valid tags
+        NotePattern(
+            name="Valid Pattern",
+            pattern=[0, 2, 4],
+            description="Valid pattern description",
+            tags=['valid_tag', 'another_tag']
         )
-        note_pattern.index = 0  # Assume the index is set to 0
-        assert note_pattern.index == 0
-        # Here you would typically call a function to retrieve the NotePattern by index.
-        retrieved_pattern = note_pattern  # Replace with actual search function
-        assert retrieved_pattern == note_pattern
+
+        # Test invalid tags
+        with pytest.raises(ValidationError, match="Tags must contain non-whitespace strings"):
+            NotePattern(
+                name="Invalid Pattern",
+                pattern=[0, 2, 4],
+                description="Invalid pattern description",
+                tags=['', '   ']
+            )
+
+    def test_add_remove_tag(self) -> None:
+        """Test add_tag and remove_tag methods."""
+        pattern = NotePattern(
+            name="Test Pattern",
+            pattern=[0, 2, 4],
+            description="Test pattern description",
+            tags=['initial_tag']
+        )
+
+        pattern.add_tag('new_tag')
+        assert 'new_tag' in pattern.tags
+
+        pattern.remove_tag('initial_tag')
+        assert 'initial_tag' not in pattern.tags
 
 def test_invalid_data() -> None:
     """Test that creating a NotePattern with invalid data raises an error."""
     with pytest.raises(ValidationError):
         NotePattern(
             name="Invalid Pattern",
-            data=NotePatternData(
-                notes=[{'note_name': 'C', 'octave': 4}],  # Valid note structure
-                duration=1.0,
-                position=0.0,
-                velocity=100,
-                intervals=[],
-                index=0
-            ),
-            notes=[Note(note_name='C', octave=4, duration=1.0, velocity=100)],
-            description="Invalid pattern",
-            tags=['valid_tag'],
-            complexity=0.5,
-            pattern_type="simple",
-            is_test=True,
-            duration=None,
-            position=0.0,
-            velocity=100,
-            intervals=[],
-            index=0
+            pattern=[],  # Empty pattern should raise validation error
+            description="Test invalid pattern",
+            tags=["test"],
+            complexity=1.5  # Invalid complexity
         )
 
 def test_note_pattern_empty_data() -> None:
     """Test that creating a NotePattern with empty data is handled."""
-    data = NotePatternData(notes=[], duration=1.0, position=0.0, velocity=100, intervals=[], index=0)
-    print(f"Testing with empty data: {data}")
-    with pytest.raises(ValueError, match="Notes must not be empty or None."):
-        print(f"Creating NotePattern with data: {data}")
+    with pytest.raises(ValueError, match="Pattern must not be empty"):
         NotePattern(
             name="Empty Pattern",
-            data=data,
-            notes=[],
+            pattern=[],
             description="A pattern with no data",
-            tags=['valid_tag'],
-            complexity=0.5,
-            pattern_type="simple",
-            is_test=True,
-            duration=1.0,
-            position=0.0,
-            velocity=100,
-            intervals=[],
-            index=0
+            tags=['valid_tag']
         )
 
 def test_note_pattern_complex_data() -> None:
     """Test a NotePattern with valid complex data."""
     pattern = NotePattern(
         name="Complex Pattern",
-        data=NotePatternData(
-            notes=[{"note_name": "C", "octave": 4}, {"note_name": "D", "octave": 4}],
-            duration=1.0,
-            position=0.0,
-            velocity=100,
-            intervals=[],
-            index=0
-        ),
-        notes=[Note(note_name='C', octave=4, duration=1.0, velocity=100), Note(note_name='D', octave=4, duration=1.0, velocity=100)],
+        pattern=[0, 2, 4],
         description="Complex pattern description",
-        tags=['valid_tag'],
-        is_test=True,
-        complexity=0.5,
-        pattern_type="simple",
-        duration=1.0,
-        position=0.0,
-        velocity=100,
-        intervals=[],
-        index=0
+        tags=['valid_tag']
     )
-    assert pattern.data.notes == [{"note_name": "C", "octave": 4}, {"note_name": "D", "octave": 4}]
-    assert pattern.notes == [Note(note_name='C', octave=4, duration=1.0, velocity=100), Note(note_name='D', octave=4, duration=1.0, velocity=100)]
+    assert pattern.pattern == [0, 2, 4]
 
 def test_note_pattern_valid_nested_data() -> None:
     """Test a NotePattern with valid complex data."""
     pattern = NotePattern(
         name="Valid Pattern",
-        data=NotePatternData(
-            notes=[{"note_name": "C", "octave": 4}, {"note_name": "D", "octave": 4}],
-            duration=1.0,
-            position=0.0,
-            velocity=100,
-            intervals=[],
-            index=0
-        ),
-        notes=[Note(note_name='C', octave=4, duration=1.0, velocity=100), Note(note_name='D', octave=4, duration=1.0, velocity=100)],
+        pattern=[0, 2, 4],
         description="Valid pattern description",
-        tags=['valid_tag'],
-        is_test=True,
-        complexity=0.5,
-        pattern_type="simple",
-        duration=1.0,
-        position=0.0,
-        velocity=100,
-        intervals=[],
-        index=0
+        tags=['valid_tag']
     )
-    assert pattern.data.notes == [{"note_name": "C", "octave": 4}, {"note_name": "D", "octave": 4}]
-    assert pattern.notes == [Note(note_name='C', octave=4, duration=1.0, velocity=100), Note(note_name='D', octave=4, duration=1.0, velocity=100)]
+    assert pattern.pattern == [0, 2, 4]
 
 def test_note_pattern_invalid_data() -> None:
     """Test a NotePattern with invalid data."""
-    data = NotePatternData(notes=[{'note_name': 'C', 'octave': 4}], duration=1.0, position=0.0, velocity=100, intervals=[1], index=0)
-    print(f"Testing with invalid data: {data}")
     with pytest.raises(ValidationError):
         NotePattern(
             name="Invalid Pattern",
-            data=data,
+            pattern=[0, 13, 4],
+            description="Invalid pattern description",
+            tags=['valid_tag']
         )

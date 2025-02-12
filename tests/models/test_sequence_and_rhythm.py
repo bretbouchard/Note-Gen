@@ -11,9 +11,13 @@ from src.note_gen.models.pattern_interpreter import ScalePatternInterpreter
 from src.note_gen.models.rhythm_pattern import RhythmNote, RhythmPatternData, RhythmPattern
 from src.note_gen.models.chord import Chord
 from src.note_gen.models.note_event import NoteEvent
-from src.note_gen.models.scale import Scale, ScaleType
+from src.note_gen.models.scale import Scale
+from src.note_gen.models.enums import ScaleType
 from src.note_gen.models.scale_info import ScaleInfo
-from src.note_gen.models.note_pattern import NotePattern, NotePatternData  # Import NotePatternData
+from src.note_gen.models.note_pattern import NotePattern
+from src.note_gen.models.patterns import NotePatternData 
+from src.note_gen.models.roman_numeral import RomanNumeral
+
 import logging
 
 logger = logging.getLogger(__name__)
@@ -405,7 +409,16 @@ class TestIntegration(unittest.TestCase):
         # Setup a fake scale, chord progression, note pattern, and rhythm pattern
         scale = FakeScale()
         fake_chord = Chord(root=Note(note_name="C", octave=4), quality="MAJOR")
-        note_pattern_data = [Note(note_name='C', octave=4), Note(note_name='D', octave=4), Note(note_name='E', octave=4)]  # For simplicity
+        note_pattern_data = {
+            "name": "Test Note Pattern",
+            "pattern": [0, 2, 4],  # Representing intervals
+            "index": 1,
+            "direction": "up",
+            "use_chord_tones": False,
+            "use_scale_mode": False,
+            "arpeggio_mode": False,
+            "restart_on_chord": False,
+        }
         
         # Create rhythm pattern (if needed for integration; not used in current interpreter)
         rhythm_notes = [RhythmNote(position=0.0, duration=1.0), RhythmNote(position=1.0, duration=1.0)]

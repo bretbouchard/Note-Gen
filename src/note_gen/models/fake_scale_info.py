@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, field_validator, ConfigDict
+from pydantic import BaseModel, Field, field_validator, ConfigDict, validator
 from src.note_gen.models.note import Note
 from src.note_gen.models.enums import ScaleType, ChordQualityType
 from src.note_gen.models.scale import Scale
@@ -67,7 +67,7 @@ class FakeScaleInfo(BaseModel):
     def get_degree_of_note(self, note: Note) -> int:
         """Returns the degree of the given note in the scale."""
         scale = self._get_scale()
-        scale_notes = scale.get_notes()
+        scale_notes = scale.generate_notes()
         
         # Normalize note names for comparison
         target_note_name = note.note_name.upper()
@@ -100,3 +100,29 @@ class FakeScaleInfo(BaseModel):
         """Get the note for a given scale degree."""
         scale = self._get_scale()
         return scale.get_scale_degree(degree)
+
+    def get_chord_quality_for_degree(self, degree: int) -> ChordQualityType:
+        if self.scale_type == ScaleType.MAJOR:
+            return self.MAJOR_SCALE_QUALITIES.get(degree, ChordQualityType.DIMINISHED)
+        elif self.scale_type == ScaleType.MINOR:
+            return self.MINOR_SCALE_QUALITIES.get(degree, ChordQualityType.DIMINISHED)
+        raise ValueError(f"Invalid degree: {degree}")
+
+    def get_scale_note_at_degree(self, degree: int) -> Note:
+        """Return the note at a given scale degree."""
+        if not self._scale:
+            self._scale = Scale(root=self.root, scale_type=self.scale_type)
+        
+        # Adjust for 1-based indexing
+        index = degree - 1
+        
+        # Ensure the degree is within the scale's range
+        if index < 0 or index >= len(self._scale.notes):
+            raise ValueError(f"Invalid scale degree: {degree}")
+        
+        return self._scale.notes[index]
+
+    @classmethod
+    def validate_fake_scale(cls, fake_scale: 'FakeScaleInfo') -> None:
+        # Implementation
+        pass

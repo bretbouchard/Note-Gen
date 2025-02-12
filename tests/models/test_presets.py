@@ -1,6 +1,7 @@
 import pytest
 from unittest.mock import patch
 from src.note_gen.models.presets import Presets
+from src.note_gen.models.roman_numeral import RomanNumeral
 
 @patch('src.note_gen.models.presets.Presets.load')
 def test_preset_initialization(mock_load) -> None:

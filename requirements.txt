@@ -42,7 +42,7 @@ httpcore==1.0.7
 httpx==0.28.1
 idna==3.10
 iniconfig==2.0.0
-pymongo==4.11
+pymongo>=3.12.0
 motor==3.7.0
 isort==5.13.2
 joblib==1.4.2
@@ -64,8 +64,8 @@ pycparser==2.22
 pydantic>=2.10.6
 pydantic_core>=2.27.2
 pyparsing==3.2.0
-pytest==7.4.4
-pytest-asyncio==0.20.3
+# pytest==7.4.4
+# pytest-asyncio==0.20.3
 pytest-cov==4.1.0
 python-dateutil==2.9.0.post0
 python-dotenv==1.0.1
@@ -80,3 +80,4 @@ urllib3>=2.0.0
 uvicorn>=0.27.0
 webcolors==24.11.1
 websockets==12.0
+loguru

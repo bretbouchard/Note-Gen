@@ -102,22 +102,46 @@ class PatternInterpreter(BaseModel):
         """Interpret a pattern into a sequence of NoteEvents."""
         note_events = []
         for element in pattern:
+            # Handle dictionary inputs by skipping non-note keys
+            if isinstance(element, dict):
+                continue
+
+            # Handle string inputs that are not valid note names
+            if isinstance(element, str) and element.lower() in ['name', 'pattern', 'index', 'data', 'use_chord_tones', 'use_scale_mode', 'arpeggio_mode', 'restart_on_chord', 'direction']:
+                continue
+
+            # Handle Note instances
             if isinstance(element, Note):
                 note_events.append(NoteEvent(note=element, velocity=velocity))
+            
+            # Handle ScaleDegree
             elif isinstance(element, ScaleDegree):
                 if element.value is not None:
                     note = scale_info.get_scale_degree(int(element.value))
                     note_events.append(NoteEvent(note=note, velocity=velocity))
                 else:
                     raise ValueError("ScaleDegree value cannot be None")
+            
+            # Handle MIDI numbers
             elif isinstance(element, int):
-                note = Note.from_midi(element, velocity=velocity, duration=1)
-                note_events.append(NoteEvent(note=note, velocity=velocity))
+                # Validate MIDI number range
+                if 0 <= element <= 127:
+                    note = Note.from_midi(element, velocity=velocity, duration=1)
+                    note_events.append(NoteEvent(note=note, velocity=velocity))
+                else:
+                    logger.warning(f"Skipping invalid MIDI number: {element}")
+            
+            # Handle string note names
             elif isinstance(element, str):
-                note = Note.from_full_name(element)
-                note_events.append(NoteEvent(note=note, velocity=velocity))
+                try:
+                    note = Note.from_full_name(element)
+                    note_events.append(NoteEvent(note=note, velocity=velocity))
+                except ValueError:
+                    logger.warning(f"Skipping invalid note name: {element}")
+            
             else:
-                raise ValueError(f"Unsupported element type: {type(element)}")
+                logger.warning(f"Unsupported element type: {type(element)}")
+
         return note_events
 
     def reset(self) -> None:

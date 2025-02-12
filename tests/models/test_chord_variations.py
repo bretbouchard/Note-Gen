@@ -3,7 +3,7 @@ from pydantic import ValidationError
 from src.note_gen.models.note import Note
 from src.note_gen.models.chord import Chord
 from src.note_gen.models.musical_elements import ChordQualityType
-
+from src.note_gen.models.roman_numeral import RomanNumeral
 
 def test_chord_quality_variations() -> None:
     root_note = Note.from_name("C4", duration=1.0, velocity=64)

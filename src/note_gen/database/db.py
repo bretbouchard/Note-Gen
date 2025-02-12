@@ -27,22 +27,16 @@ _client: Optional[AsyncIOMotorClient] = None
 _db: Optional[AsyncIOMotorDatabase] = None
 
 async def init_db() -> AsyncIOMotorDatabase:
-    """Initialize database connection."""
     global _client, _db
+    logger.info("Initializing MongoDB connection...")
     if _client is None:
-        logger.info("Initializing MongoDB connection...")
         try:
             _client = AsyncIOMotorClient(MONGODB_URI)
-            _db = _client[DATABASE_NAME]
-            # Test the connection
             await _db.command('ping')
-            logger.info("Successfully connected to MongoDB")
-            return _db
+            logger.info("MongoDB connection initialized successfully.")
         except Exception as e:
-            logger.error(f"Failed to connect to MongoDB: {str(e)}")
+            logger.error(f"Failed to initialize MongoDB connection: {e}")
             raise
-
-    return _db
 
 async def get_db() -> AsyncGenerator[AsyncIOMotorDatabase, None]:
     """Get database connection."""
@@ -50,20 +44,31 @@ async def get_db() -> AsyncGenerator[AsyncIOMotorDatabase, None]:
     if _db is None:
         _db = await init_db()
     try:
+        logger.debug("Yielding database connection")
         yield _db
     finally:
         # Don't close connection here, it's handled by close_mongo_connection
-        pass
+        logger.debug("Database connection yielded")
+
+async def get_db_connection() -> AsyncIOMotorDatabase:
+    """Get database connection, ensuring it is initialized."""
+    global _db
+    if _db is None:
+        _db = await init_db()
+    logger.debug("Returning database connection")
+    return _db
 
 async def close_mongo_connection() -> None:
-    """Close database connection."""
     global _client, _db
+    logger.info("Closing MongoDB connection...")
     if _client is not None:
-        logger.info("Closing MongoDB connection...")
-        _client.close()
-        _client = None
-        _db = None
-        logger.info("MongoDB connection closed")
+        try:
+            _client.close()
+            _client = None
+            logger.info("MongoDB connection closed successfully.")
+        except Exception as e:
+            logger.error(f"Failed to close MongoDB connection: {e}")
+            raise
 
 # Export MONGODB_URI as MONGO_URL
 MONGO_URL = MONGODB_URI

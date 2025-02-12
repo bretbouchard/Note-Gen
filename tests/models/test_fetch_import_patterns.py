@@ -17,6 +17,7 @@ from src.note_gen.models.enums import ScaleType
 from src.note_gen.models.note import Note
 from src.note_gen.models.chord import Chord
 from src.note_gen.models.chord_quality import ChordQualityType
+import os
 
 from tests.conftest import MockDatabase
 
@@ -25,7 +26,7 @@ import httpx
 # In tests/models/test_fetch_import_patterns.py
 
 @pytest.fixture
-async def mock_db_with_data(mock_db: MockDatabase) -> MockDatabase:
+async def mock_db_with_data() -> MockDatabase:
     # Sample note patterns to insert into the mock database
     sample_patterns = [
         NotePattern(
@@ -35,23 +36,24 @@ async def mock_db_with_data(mock_db: MockDatabase) -> MockDatabase:
             tags=['test'],
             index='1',
             position='0',
-            velocity=100,
+            velocity=100.0,
             intervals=[],
             duration=3.0,
+            pattern=[0, 4, 7],  # Add a valid pattern
             notes=[
-                Note(note_name='C', octave=4, duration=1.0, velocity=100),
-                Note(note_name='E', octave=4, duration=1.0, velocity=100),
-                Note(note_name='G', octave=4, duration=1.0, velocity=100)
+                Note(note_name='C', octave=4, duration=1.0, velocity=100.0),
+                Note(note_name='E', octave=4, duration=1.0, velocity=100.0),
+                Note(note_name='G', octave=4, duration=1.0, velocity=100.0)
             ],
             data=NotePatternData(
                 notes=[
-                    {'note_name': 'C', 'octave': 4, 'duration': 1.0, 'velocity': 100},
-                    {'note_name': 'E', 'octave': 4, 'duration': 1.0, 'velocity': 100},
-                    {'note_name': 'G', 'octave': 4, 'duration': 1.0, 'velocity': 100}
+                    {'note_name': 'C', 'octave': 4, 'duration': 1.0, 'velocity': 100.0},
+                    {'note_name': 'E', 'octave': 4, 'duration': 1.0, 'velocity': 100.0},
+                    {'note_name': 'G', 'octave': 4, 'duration': 1.0, 'velocity': 100.0}
                 ],
                 duration=3.0,
                 position=0.0,
-                velocity=100,
+                velocity=100.0,
                 intervals=[],  # Ensure this is a list
                 index=0,
                 created_at=None,
@@ -66,14 +68,15 @@ async def mock_db_with_data(mock_db: MockDatabase) -> MockDatabase:
             duration=1.0,
             index='2',
             position='0',
-            velocity=100,
+            velocity=100.0,
             intervals=[],
-            notes=[Note(note_name='D', octave=4, duration=1.0, velocity=100)],
+            pattern=[0, 2],  # Add a valid pattern
+            notes=[Note(note_name='D', octave=4, duration=1.0, velocity=100.0)],
             data=NotePatternData(
-                notes=[{'note_name': 'D', 'octave': 4, 'duration': 1.0, 'velocity': 100}],
+                notes=[{'note_name': 'D', 'octave': 4, 'duration': 1.0, 'velocity': 100.0}],
                 duration=1.0,
                 position=0.0,
-                velocity=100,
+                velocity=100.0,
                 intervals=[],  # Ensure this is a list
                 index=0,
                 created_at=None,
@@ -81,9 +84,6 @@ async def mock_db_with_data(mock_db: MockDatabase) -> MockDatabase:
             )
         ),
     ]
-    # Insert sample_patterns into the mock database
-    for pattern in sample_patterns:
-        await mock_db.insert(pattern)
     # Sample rhythm patterns to insert into the mock database
     sample_rhythm_patterns = [
         RhythmPattern(
@@ -91,17 +91,17 @@ async def mock_db_with_data(mock_db: MockDatabase) -> MockDatabase:
             name='Basic Rhythm',
             description='Simple four-beat rhythm',
             tags=['test'],
-            pattern='x-x-x-x',
+            pattern='1 1 1 1',  # Space-separated pattern of note durations
             complexity=5,
-            data=RhythmPatternData(notes=[RhythmNote(position=0.0, duration=1.0, velocity=100), RhythmNote(position=1.0, duration=1.0, velocity=100)], duration=4.0)),
+            data=RhythmPatternData(notes=[RhythmNote(position=0.0, duration=1.0, velocity=100.0), RhythmNote(position=1.0, duration=1.0, velocity=100.0)], duration=4.0)),
         RhythmPattern(
             id='2',
             name='Swing Rhythm',
             description='Swing feel rhythm',
             tags=['test'],
-            pattern='x---x---',
+            pattern='1. 1/2 1. 1/2',  # Space-separated pattern with dotted notes and fractions
             complexity=5,
-            data=RhythmPatternData(notes=[RhythmNote(position=0.0, duration=1.0, velocity=100, swing_ratio=0.5), RhythmNote(position=1.0, duration=1.0, velocity=100)], duration=4.0)),
+            data=RhythmPatternData(notes=[RhythmNote(position=0.0, duration=1.0, velocity=100.0, swing_ratio=0.5), RhythmNote(position=1.0, duration=1.0, velocity=100.0)], duration=4.0)),
     ]
     # Sample chord progressions to insert into the mock database
     sample_chord_progressions = [
@@ -111,13 +111,13 @@ async def mock_db_with_data(mock_db: MockDatabase) -> MockDatabase:
             key='C',
             scale_type=ScaleType.MAJOR,
             scale_info=FakeScaleInfo(
-                root=Note(note_name='C', octave=4, duration=1.0, velocity=100),
+                root=Note(note_name='C', octave=4, duration=1.0, velocity=100.0),
                 scale_type=ScaleType.MAJOR
             ),
             chords=[
-                Chord(root=Note(note_name='C', octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),  
-                Chord(root=Note(note_name='F', octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
-                Chord(root=Note(note_name='G', octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR)
+                Chord(root=Note(note_name='C', octave=4, duration=1.0, velocity=100.0), quality=ChordQualityType.MAJOR),  
+                Chord(root=Note(note_name='F', octave=4, duration=1.0, velocity=100.0), quality=ChordQualityType.MAJOR),
+                Chord(root=Note(note_name='G', octave=4, duration=1.0, velocity=100.0), quality=ChordQualityType.MAJOR)
             ]
         ),
         ChordProgression(
@@ -126,34 +126,41 @@ async def mock_db_with_data(mock_db: MockDatabase) -> MockDatabase:
             key='A',
             scale_type=ScaleType.MINOR,
             scale_info=FakeScaleInfo(
-                root=Note(note_name='A', octave=4, duration=1.0, velocity=100),
+                root=Note(note_name='A', octave=4, duration=1.0, velocity=100.0),
                 scale_type=ScaleType.MINOR
             ),
             chords=[
-                Chord(root=Note(note_name='B', octave=4, duration=1.0, velocity=100), quality=ChordQualityType.DIMINISHED),
-                Chord(root=Note(note_name='E', octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
-                Chord(root=Note(note_name='A', octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MINOR)
+                Chord(root=Note(note_name='B', octave=4, duration=1.0, velocity=100.0), quality=ChordQualityType.DIMINISHED),
+                Chord(root=Note(note_name='E', octave=4, duration=1.0, velocity=100.0), quality=ChordQualityType.MAJOR),
+                Chord(root=Note(note_name='A', octave=4, duration=1.0, velocity=100.0), quality=ChordQualityType.MINOR)
             ]
         ),
     ]
-    # Insert sample data into the mock database
-    rhythm_patterns_data = [pattern.model_dump() for pattern in sample_rhythm_patterns]
-    chord_progressions_data = [progression.model_dump() for progression in sample_chord_progressions]
+    
+    # Create a new MockDatabase
+    mock_db = MockDatabase(os.environ["MONGODB_TEST_URI"])
+    
+    # Setup collections
+    await mock_db.setup_collections()
 
-    # Ensure each document has an _id field that matches its id
-    for data in rhythm_patterns_data + chord_progressions_data:
-        if 'id' in data:
-            data['_id'] = data['id']
-
-    await mock_db.insert_many('rhythm_patterns', rhythm_patterns_data)
-    await mock_db.insert_many('chord_progressions', chord_progressions_data)
+    # Insert sample_patterns into the mock database
+    for pattern in sample_patterns:
+        await mock_db.note_patterns.insert_one(pattern.model_dump())
+    
+    # Insert sample rhythm patterns into the mock database
+    for pattern in sample_rhythm_patterns:
+        await mock_db.rhythm_patterns.insert_one(pattern.model_dump())
+    
+    # Insert sample chord progressions into the mock database
+    for progression in sample_chord_progressions:
+        await mock_db.chord_progressions.insert_one(progression.model_dump())
     return mock_db
 
 @pytest.mark.asyncio
 async def test_fetch_note_patterns(mock_db_with_data: MockDatabase) -> None:
     patterns = await fetch_note_patterns(mock_db_with_data)
     assert len(patterns) > 0
-    assert patterns[0].data.notes == [{'note_name': 'C', 'octave': 4, 'duration': 1.0, 'velocity': 100}, {'note_name': 'E', 'octave': 4, 'duration': 1.0, 'velocity': 100}, {'note_name': 'G', 'octave': 4, 'duration': 1.0, 'velocity': 100}]
+    assert patterns[0].data.notes == [{'note_name': 'C', 'octave': 4, 'duration': 1.0, 'velocity': 100.0}, {'note_name': 'E', 'octave': 4, 'duration': 1.0, 'velocity': 100.0}, {'note_name': 'G', 'octave': 4, 'duration': 1.0, 'velocity': 100.0}]
     assert isinstance(patterns[0].data.duration, float)
     assert isinstance(patterns[0].data.position, float)
     assert isinstance(patterns[0].data.velocity, float)
@@ -162,7 +169,7 @@ async def test_fetch_note_patterns(mock_db_with_data: MockDatabase) -> None:
 async def test_fetch_rhythm_patterns(mock_db_with_data: MockDatabase) -> None:
     rhythms = await fetch_rhythm_patterns(mock_db_with_data)
     assert len(rhythms) > 0
-    assert rhythms[0].data.notes == [RhythmNote(position=0.0, duration=1.0, velocity=100), RhythmNote(position=1.0, duration=1.0, velocity=100)]
+    assert rhythms[0].data.notes == [RhythmNote(position=0.0, duration=1.0, velocity=100.0), RhythmNote(position=1.0, duration=1.0, velocity=100.0)]
 
 @pytest.mark.asyncio
 async def test_fetch_chord_progression_by_id_not_found(mock_db_with_data: MockDatabase) -> None:

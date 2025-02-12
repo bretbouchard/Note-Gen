@@ -6,9 +6,13 @@ from src.note_gen.database.db import init_db, close_mongo_connection
 from src.note_gen.models.chord_progression import ChordProgression
 from src.note_gen.models.note_pattern import NotePattern
 from src.note_gen.models.rhythm_pattern import RhythmPattern
+from src.note_gen.models.roman_numeral import RomanNumeral
+
+
 import logging
 import asyncio
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
+
 import uuid
 
 logger = logging.getLogger(__name__)

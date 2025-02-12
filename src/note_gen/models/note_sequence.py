@@ -13,11 +13,11 @@ class NoteSequence(BaseModel):
     notes: List[Union[Note, int]]
     events: List[NoteEvent] = []
     duration: float = Field(default=0.0)
+    default_duration: float = Field(default=1.0)
 
     @field_validator('notes')
     def validate_notes(cls, value):
-        if not value:
-            raise ValueError('Notes must not be empty')
+        # Allow empty list, but validate each note if present
         result = []
         for note in value:
             if isinstance(note, int):
@@ -39,8 +39,19 @@ class NoteSequence(BaseModel):
         return value
 
     model_config = ConfigDict(
-        arbitrary_types_allowed=True
+        arbitrary_types_allowed=True,
+        validate_assignment=True
     )
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        """Override setattr to update note durations when default_duration changes."""
+        if name == 'default_duration':
+            # Update all notes to the new default duration
+            if hasattr(self, 'notes'):
+                for note in self.notes:
+                    if isinstance(note, Note):
+                        note.duration = value
+        super().__setattr__(name, value)
 
     @property
     def total_duration(self) -> float:
@@ -63,9 +74,10 @@ class NoteSequence(BaseModel):
 
     def clear(self) -> None:
         """Clear all notes and events from the sequence."""
-        self.notes = []
-        self.events = []
-        self.duration = 0.0
+        # Allow setting notes to an empty list
+        super().__setattr__('notes', [])
+        super().__setattr__('events', [])
+        super().__setattr__('duration', 0.0)
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert the sequence to a dictionary."""

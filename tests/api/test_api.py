@@ -15,6 +15,9 @@ from src.note_gen.models.note import Note
 from src.note_gen.models.chord_progression import ChordProgression, ChordQualityType
 from src.note_gen.models.rhythm_pattern import RhythmPattern, RhythmPatternData, RhythmNote
 import asyncio
+import logging
+
+logger = logging.getLogger(__name__)
 
 pytestmark = pytest.mark.asyncio  # This marks all test functions in the file as async
 
@@ -46,10 +49,12 @@ class MockCollection:
 
     async def find(self, query: Optional[Dict[str, Any]] = None) -> AsyncIterator[Dict[str, Any]]:
         # Simulate asynchronous behavior
+        logger.info("Accessing MongoDB for test operations...")
         return MockCursor(self.items)
 
     async def find_one(self, query: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         # Simulate asynchronous behavior
+        logger.info("Accessing MongoDB for test operations...")
         for item in self.items:
             if item.get('_id') == query.get('_id'):
                 return item
@@ -57,6 +62,7 @@ class MockCollection:
 
     async def insert_one(self, document: Dict[str, Any]) -> None:
         # Simulate asynchronous behavior
+        logger.info("Accessing MongoDB for test operations...")
         self.items.append(document)
 
 
@@ -173,26 +179,33 @@ class MockDatabase:
         }])
 
 
+from main import app
+from httpx import AsyncClient, ASGITransport
+
 @pytest.fixture
 async def client() -> AsyncGenerator[AsyncClient, None]:
-    async with AsyncClient(base_url='http://localhost:8000') as client:
+    mock_db = MockDatabase()
+    app.dependency_overrides[get_db] = lambda: mock_db
+    async with AsyncClient(transport=ASGITransport(app=app), base_url='http://test') as client:
         yield client
+    app.dependency_overrides.clear()
 
 
 @pytest.fixture
 async def test_client() -> AsyncGenerator[AsyncClient, None]:
-    async with AsyncClient(base_url='http://localhost:8000') as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url='http://test') as client:
         yield client
-
 
 # Consolidated tests for API functionality
 
 @pytest.mark.asyncio
 async def test_api_functionality(client: AsyncClient) -> None:
     """Test basic API functionality."""
+    logger.info("Accessing MongoDB for test operations...")
     # Test creating a note pattern
     note_pattern_data = {
         "name": "Test Pattern",
+        "pattern": [0, 4, 7],  # Adding the required pattern field
         "notes": [
             {
                 "note_name": "C",
@@ -332,29 +345,37 @@ from src.note_gen.models.note import Note
 from src.note_gen.models.chord_progression import ChordProgression, ChordQualityType
 
 # Test invalid Note creation
-async def test_invalid_note_creation() -> None:
-    with pytest.raises(ValidationError) as excinfo:
-        Note(note_name='InvalidNote', octave=10, duration=1.0, velocity=64)
+async def test_invalid_note_name() -> None:
+    with pytest.raises(ValueError) as excinfo:  
+        Note(note_name='InvalidNote', octave=4, duration=1.0, velocity=64)  
+    assert 'Invalid note name format' in str(excinfo.value)
+
+# Test invalid octave separately
+async def test_invalid_note_octave() -> None:
+    with pytest.raises(ValueError) as excinfo:
+        Note(note_name='C', octave=10, duration=1.0, velocity=64)
     assert 'Invalid octave' in str(excinfo.value)
 
 # Test invalid ChordProgression creation
 async def test_invalid_chord_progression_creation() -> None:
-    with pytest.raises(ValidationError) as excinfo:
+    from src.note_gen.models.chord import Chord
+    from src.note_gen.models.scale_info import ScaleInfo
+
+    # Test with empty chords list - should raise ValueError
+    with pytest.raises(ValueError) as excinfo:
         ChordProgression(
             name='Invalid Progression',
-            chords=[
-                {'name': 'C', 'root': {'note_name': 'C', 'octave': 4}, 'quality': ChordQualityType.MAJOR, 'intervals': [0, 4, 7]},
-                {'name': 'G', 'root': {'note_name': 'G', 'octave': 4}, 'quality': ChordQualityType.MAJOR, 'intervals': [0, 4, 7]}
-            ],
+            chords=[],  # Empty list
             key='C',
             scale_type='MAJOR',
-            scale_info={'root': Note(note_name='C', octave=4), 'scale_type': 'MAJOR'}
+            scale_info=ScaleInfo(root=Note(note_name='C', octave=4), scale_type='MAJOR')
         )
-    assert 'List should have at least 3 item after validation' in str(excinfo.value)
+    assert "Chords list cannot be empty" in str(excinfo.value)
 
 # Test API endpoint with valid data
 async def test_create_chord_progression_valid_data(client: AsyncClient):
     """Test creating a chord progression with valid data."""
+    logger.info("Starting test for creating a chord progression with valid data...")
     data = {
         "name": "Test Progression",
         "chords": [
@@ -368,10 +389,10 @@ async def test_create_chord_progression_valid_data(client: AsyncClient):
         "key": "C",
         "scale_type": "MAJOR"
     }
-    
+    logger.info("Sending data to create chord progression: %s", data)
     response = await client.post("/api/v1/chord-progressions/", json=data)
+    logger.info("Received response with status code: %d", response.status_code)
     assert response.status_code == 201
-    
     response_data = response.json()
     assert response_data["name"] == "Test Progression"
     assert len(response_data["chords"]) == 1

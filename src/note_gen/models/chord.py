@@ -1,223 +1,245 @@
-from typing import List, Dict, Any, Optional, Union
+from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field, field_validator, model_validator, ConfigDict
 import logging
 
 from src.note_gen.models.note import Note
-from src.note_gen.models.enums import ChordQualityType
+from .chord_quality import ChordQualityType
+from src.note_gen.models.enums import ChordQualityType as ChordQualityEnum
 
 # Set up logging configuration
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class Chord(BaseModel):
+    """
+    Represents a musical chord with a root note, quality, and optional notes.
+    """
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,  # Allow custom types like Note
+        validate_assignment=True,      # Enable validation on attribute assignment
+        extra='forbid'                 # Prevent extra fields
+    )
+
     root: Note
-    quality: ChordQualityType = ChordQualityType.MAJOR
-    notes: List[Note] = []
-    inversion: int = 0
-    class Config:
-        arbitrary_types_allowed = True
+    quality: ChordQualityEnum
+    notes: Optional[List[Note]] = None
+    inversion: Optional[int] = Field(
+        default=None, 
+        ge=0, 
+        le=3,
+        validation_alias="inversion"
+    )
 
-    @field_validator('root')
+    @model_validator(mode='before')
     @classmethod
-    def validate_root(cls, root):
-        logger.debug(f"Validating root: {root}")
-        if not isinstance(root, Note):
-            raise ValueError('Root must be a Note instance.')
-        return root
-
-    @field_validator('quality')
-    @classmethod
-    def validate_quality(cls, v: Union[str, ChordQualityType]) -> ChordQualityType:
-        """Validate and convert the quality field."""
-        if isinstance(v, str):
+    def validate_input_types(cls, data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Validate input types before model creation.
+        Ensures all critical fields are of the correct type and not None.
+        """
+        # Check for None values in critical fields
+        if data.get('root') is None:
+            raise ValueError("Root note cannot be None")
+        if data.get('quality') is None:
+            raise ValueError("Chord quality cannot be None")
+        
+        # Ensure root is a Note instance
+        if not isinstance(data['root'], Note):
+            raise TypeError("root must be a Note instance")
+        
+        # Ensure quality is a valid ChordQualityEnum
+        if not isinstance(data['quality'], ChordQualityEnum):
             try:
-                # Try to convert string to ChordQualityType
-                return ChordQualityType(v.upper())
+                data['quality'] = ChordQualityEnum(data['quality'])
+            except (TypeError, ValueError):
+                raise ValueError(f"Invalid chord quality: {data['quality']}")
+        
+        # Optional notes handling
+        if data.get('notes') is None:
+            logger.info("No notes provided, will generate during initialization")
+        
+        # Inversion handling
+        if data.get('inversion') is not None:
+            try:
+                inversion = int(data['inversion'])
+                if inversion < 0 or inversion > 3:
+                    raise ValueError("Inversion must be between 0 and 3")
+                data['inversion'] = inversion
             except ValueError:
-                # Handle aliases
-                aliases = {
-                    'maj7': ChordQualityType.MAJOR7,
-                    'maj': ChordQualityType.MAJOR,
-                    'min': ChordQualityType.MINOR,
-                    'dim': ChordQualityType.DIMINISHED,
-                    'aug': ChordQualityType.AUGMENTED,
-                    'dom7': ChordQualityType.DOMINANT7,
-                    'm7': ChordQualityType.MINOR7,
-                    'dim7': ChordQualityType.DIMINISHED7,
-                }
-                normalized = v.lower()
-                if normalized in aliases:
-                    return aliases[normalized]
-                raise ValueError(f"Invalid chord quality: {v}")
-        return v
+                raise ValueError("Inversion must be a valid integer")
+        
+        return data
 
     @field_validator('inversion')
     @classmethod
-    def validate_inversion(cls, v: int) -> int:
-        """Validate the inversion value."""
-        if v < 0:
-            raise ValueError("Inversion cannot be negative")
-        return v
+    def validate_inversion(cls, value: Optional[int]) -> Optional[int]:
+        """
+        Validate chord inversion with a specific error message.
+        Ensures inversion is either None or between 0 and 3.
+        """
+        if value is not None:
+            if value < 0:
+                raise ValueError("Inversion cannot be negative")
+            if value > 3:
+                raise ValueError("Inversion must be between 0 and 3")
+        return value
 
     @model_validator(mode='after')
     def generate_notes(self) -> 'Chord':
-        """Generate the notes for this chord after validation."""
-        if not self.notes:  # Only generate if notes are empty
-            self.notes = self._generate_chord_notes()
-            
-        # Apply inversion if needed
-        if self.inversion > 0:
-            for _ in range(self.inversion):
-                first_note = self.notes.pop(0)
-                first_note = first_note.transpose(12)  # Move up an octave
-                self.notes.append(first_note)
-                
-        return self
-
-    def _generate_chord_notes(self) -> List[Note]:
-        """Generate the notes that make up this chord."""
-        if not self.root:  
+        """
+        Generate the notes for the chord after validation.
+        Ensures notes are generated automatically upon initialization.
+        """
+        if not self.root:
             raise ValueError("Root note cannot be None.")
-
         if self.quality is None:
             raise ValueError("Chord quality cannot be None.")
 
-        logger.info("Generating notes for chord...")
-        intervals = self._get_intervals_for_quality()
-        notes = []
-        
-        # Add root note
-        notes.append(self.root)
-        
-        # Add other notes based on intervals
-        for interval in intervals[1:]:  # Skip first interval (0) as it's the root
-            note_params = self._calculate_note_for_interval(interval)
-            note = Note(**note_params)
-            notes.append(note)
-            
-        logger.debug(f"Generated notes before returning: {[{'name': note.note_name, 'octave': note.octave, 'duration': note.duration, 'velocity': note.velocity, 'midi_number': note.midi_number} for note in notes]}")
+        # Only generate notes if they are not already provided
+        if not self.notes:
+            logger.info(f"Generating notes for {self.root} {self.quality} chord")
+            self.notes = self._generate_chord_notes()
+
+        return self
+
+    def _generate_chord_notes(self) -> List[Note]:
+        """
+        Generate the actual notes for the chord based on root and quality.
+        Uses instance attributes instead of a values dictionary.
+        """
+        if not self.root:
+            raise ValueError("Root note cannot be None.")
+        if self.quality is None:
+            raise ValueError("Chord quality cannot be None.")
+
+        # Determine intervals based on chord quality
+        intervals_dict = ChordQualityType.get_chord_intervals()
+        intervals = intervals_dict[self.quality.value]
+
+        # Generate chord notes
+        notes = [
+            self.root.transpose(interval) 
+            for interval in intervals
+        ]
+
+        # Apply inversion if specified
+        if self.inversion is not None and 0 <= self.inversion < len(notes):
+            notes = notes[self.inversion:] + notes[:self.inversion]
+
         return notes
 
-    def _get_intervals_for_quality(self) -> List[int]:
-        """Get the intervals for the chord quality."""
-        quality_intervals = {
-            ChordQualityType.MAJOR: [0, 4, 7],
-            ChordQualityType.MINOR: [0, 3, 7],
-            ChordQualityType.DIMINISHED: [0, 3, 6],
-            ChordQualityType.AUGMENTED: [0, 4, 8],
-            ChordQualityType.MAJOR7: [0, 4, 7, 11],  # Major 7th chord intervals
-            ChordQualityType.MINOR7: [0, 3, 7, 10],
-            ChordQualityType.DOMINANT7: [0, 4, 7, 10],
-            ChordQualityType.DIMINISHED7: [0, 3, 6, 9],
-            ChordQualityType.HALF_DIMINISHED7: [0, 3, 6, 10],
-            ChordQualityType.AUGMENTED7: [0, 4, 8, 10],
-            ChordQualityType.SUS2: [0, 2, 7],
-            ChordQualityType.SUS4: [0, 5, 7],
-            ChordQualityType.SEVEN_SUS4: [0, 5, 7, 10],
-        }
-        return quality_intervals.get(self.quality, [0, 4, 7])  # Default to major triad intervals
+    @classmethod
+    def from_quality(cls, root: Note, quality: ChordQualityEnum, inversion: Optional[int] = None) -> 'Chord':
+        """
+        Create a Chord instance with a specified root note and quality.
+        Ensures notes are generated during initialization.
+        """
+        if root is None:
+            raise ValueError("Root note cannot be None")
+        if quality is None:
+            raise ValueError("Chord quality cannot be None")
+        
+        return cls(root=root, quality=quality, inversion=inversion)
 
-    def _calculate_note_for_interval(self, interval: int) -> Dict[str, Any]:
-        """Calculate the note parameters for a given interval from the root."""
-        root_midi = self.root.midi_number
-        new_midi = root_midi + interval
-        
-        # Calculate octave and note name
-        octave = (new_midi // 12) - 1  # MIDI note 60 is middle C (C4)
-        note_number = new_midi % 12
-        
-        # Use the Note class's preferred note names for consistency
-        note_name = Note.SEMITONE_TO_NOTE[note_number]
-        
-        return {
-            'note_name': note_name,
-            'octave': octave,
-            'duration': self.root.duration,
-            'velocity': self.root.velocity
-        }
+    def __str__(self) -> str:
+        """String representation of the chord."""
+        return f"{self.root} {self.quality} Chord"
+
+    def __repr__(self) -> str:
+        """Detailed string representation of the chord."""
+        return f"Chord(root={self.root}, quality={self.quality}, notes={self.notes}, inversion={self.inversion})"
 
     def get_notes(self) -> List[Note]:
-        logger.info("Getting notes for chord...")  
-        return self.generate_notes()
+        """
+        Safely retrieve chord notes, generating if not already present.
+        """
+        if not self.notes:
+            logger.warning("Notes not generated, generating now")
+            self.notes = self._generate_chord_notes()
+        return self.notes
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert the Chord to a dictionary representation."""
+        return {
+            "root": self.root.to_dict() if self.root else None,
+            "quality": self.quality.value if self.quality else None,
+            "notes": [note.to_dict() for note in self.notes] if self.notes else [],
+            "inversion": self.inversion
+        }
+
+    def to_json(self) -> dict:
+        """Convert the Chord to a JSON-serializable dictionary."""
+        return {
+            'root': self.root.to_json() if self.root else None,
+            'quality': self.quality.value if self.quality else None,
+            'notes': [note.to_json() for note in self.notes] if self.notes else None,
+            'inversion': self.inversion
+        }
 
     @classmethod
-    def from_string(cls, chord_str: str) -> 'Chord':
-        """Create a Chord from a string representation (e.g., 'C', 'Dm', 'G7')."""
-        root_end = 1
-        if len(chord_str) > 1 and chord_str[1] in ['#', 'b']:
+    def parse_chord_str(cls, chord_str: str) -> 'Chord':
+        """
+        Parse a chord string and create a Chord instance.
+        Example: 'C', 'Dm', 'G7'
+        """
+        # Determine root note (1-2 characters)
+        root_end = 2
+        if len(chord_str) > 1 and chord_str[1] in ['b', '#']:
             root_end = 2
         root_str = chord_str[:root_end]
         
-        quality = ChordQualityType.MAJOR
+        quality = ChordQualityEnum.MAJOR
         
         if len(chord_str) > root_end:
             quality_str = chord_str[root_end:]
             try:
-                quality = ChordQualityType.from_string(quality_str)
+                quality = ChordQualityEnum.from_string(quality_str)
             except ValueError:
                 raise ValueError(f"Invalid quality string: {quality_str}")
         
-        root = Note(note_name=root_str, octave=4)
+        root = Note.parse_note_name(root_str)
         
         return cls(root=root, quality=quality)
-
-    @classmethod
-    def from_quality(cls, root: Note, quality: str) -> 'Chord':
-        """Create a chord from a root note and quality string."""
-        quality_type = ChordQualityType.from_string(quality)
-        chord = cls(root=root, quality=quality_type)
-        logger.debug(f"Calling generate_notes for chord: root={root.note_name}, quality={quality}")
-        chord.generate_notes()  
-        logger.debug(f"Chord created with root: {root.note_name}, quality: {quality}")
-        logger.debug(f"Chord notes after generation: {chord.notes}")
-        return chord
 
     def transpose(self, semitones: int) -> 'Chord':
         """Transpose the chord by the given number of semitones."""
         new_root = self.root.transpose(semitones)
         return Chord(root=new_root, quality=self.quality, inversion=self.inversion)
 
-    def to_dict(self) -> Dict[str, Any]:
-        return {
-            'root': self.root,
-            'quality': self.quality,
-            'notes': [note.to_dict() for note in self.notes] if self.notes is not None else None,
-            'inversion': self.inversion
+    def __len__(self) -> int:
+        """
+        Return the number of notes in the chord.
+        Ensures notes are generated if not already present.
+        """
+        # If notes are not generated, generate them without triggering __len__ again
+        if self.notes is None:
+            logger.info("Generating notes during len() call")
+            self.notes = self._generate_chord_notes()
+        return len(self.notes or [])
+
+    def set_scale_degrees(self, scale_degree: int):
+        """
+        Set the scale degree for all notes in the chord.
+        
+        Args:
+            scale_degree (int): The scale degree of the chord
+        """
+        for note in self.notes:
+            note.scale_degree = scale_degree
+
+    @staticmethod
+    def _enharmonic_note_name(note_name: str) -> str:
+        """Convert certain sharp/flat notes to their preferred enharmonic equivalent."""
+        enharmonic_map = {
+            'C#': 'Db', 'D#': 'Eb', 'F#': 'Gb', 
+            'G#': 'Ab', 'A#': 'Bb',
+            'Db': 'C#', 'Eb': 'D#', 'Gb': 'F#', 
+            'Ab': 'G#', 'Bb': 'A#'
         }
-
-    def to_json(self) -> dict:
-        return {
-            'root': self.root.to_json(),  
-            'quality': self.quality,
-            'notes': [note.to_json() for note in self.notes] if self.notes else [],
-            'inversion': self.inversion
-        }
-
-    def some_function(self) -> None:
-        pass
-
-    def another_function(self) -> None:
-        if self.notes is not None:
-            for note in self.notes:
-                print(note.to_dict())  
-        else:
-            print("No notes available")
-
-    def interpret_chord_symbol(self, chord_symbol: str, key: str, scale_type: str) -> Note:
-        note_map = {
-            'I': Note(note_name='C', octave=4),
-            'ii': Note(note_name='D', octave=4),
-            'iii': Note(note_name='E', octave=4),
-            'IV': Note(note_name='F', octave=4),
-            'V': Note(note_name='G', octave=4),
-            'vi': Note(note_name='A', octave=4),
-            'vii°': Note(note_name='B', octave=4),
-        }
-        return note_map.get(chord_symbol, Note(note_name='C', octave=4))  
+        return enharmonic_map.get(note_name, note_name)
 
 class MockDatabase:
-    def __init__(self):
+    def __init__(self) -> None:
         self.data = []
 
-    async def insert(self, pattern):
+    async def insert(self, pattern: Any) -> None:
         self.data.append(pattern)

@@ -1,7 +1,7 @@
 """Module for note event models."""
 
 import logging
-from pydantic import BaseModel, field_validator, Field, ConfigDict
+from pydantic import BaseModel, field_validator, Field, validator, ConfigDict
 from typing import Union, Any, Dict, Optional
 
 from src.note_gen.models.note import Note
@@ -15,11 +15,37 @@ logger = logging.getLogger(__name__)
 class NoteEvent(BaseModel):
     """A musical event with timing information."""
     note: Union[Note, ScaleDegree, Chord]
-    position: float = Field(default=0.0, ge=0)
-    duration: float = Field(default=1.0, gt=0)
-    velocity: int = Field(default=100, ge=0, le=127)
+    position: float = Field(
+        default=0.0, 
+        ge=0,
+        validation_alias="position"
+    )
+    duration: float = Field(
+        default=1.0, 
+        gt=0,
+        validation_alias="duration"
+    )
+    velocity: int = Field(
+        default=100, 
+        ge=0, 
+        le=127
+    )
     channel: int = Field(default=0, ge=0, le=15)
     is_rest: bool = Field(default=False)
+
+    @field_validator('position')
+    def validate_position(cls, value: float) -> float:
+        """Validate position with specific error message."""
+        if value < 0:
+            raise ValueError("Position cannot be negative.")
+        return value
+
+    @field_validator('duration')
+    def validate_duration(cls, value: float) -> float:
+        """Validate duration with specific error message."""
+        if value <= 0:
+            raise ValueError("Duration must be positive")
+        return value
 
     @field_validator('note')
     def validate_note(cls, value: Any) -> Union[Note, ScaleDegree, Chord]:

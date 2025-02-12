@@ -1,7 +1,7 @@
 import asyncio
 import logging
-from note_gen.database import get_db
-from note_gen.database.db import close_mongo_connection, init_db
+from src.note_gen.dependencies import get_db
+from src.note_gen.database import close_mongo_connection, init_db
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

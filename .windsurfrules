@@ -1,195 +1,51 @@
-## Application Overview
+# Instructions
 
-- **Purpose**: A FastAPI application for managing musical notes, chord progressions, and rhythm patterns.
-- **Main Features**: 
-  - CRUD operations for notes and chord progressions.
-  - Support for note patterns and rhythm patterns.
-  - API endpoints for user interactions, allowing users to create, read, update, and delete musical elements.
+During you interaction with the user, if you find anything reusable in this project (e.g. version of a library, model name), especially about a fix to a mistake you made or a correction you received, you should take note in the `Lessons` section in the `scratchpad.md` file so you will not make the same mistake again. 
 
-## Code Quality Guidelines
-- **Simplicity**: Aim for fewer lines of code while maintaining clarity and functionality.
-- **Professionalism**: Proceed with the mindset of a senior developer; strive for excellence in every task.
-- **Thoroughness**: Do not stop working until a feature is fully and completely implemented.
-- **Error Analysis**: Start by writing three paragraphs analyzing any errors encountered. Avoid jumping to conclusions.
-- **Comments**: Do not delete comments; they provide valuable context.
-- **Function Descriptions**: When adding a new function, include a clear description of its purpose and functionality.
-- **Refactoring**: If a refactored function no longer reflects its description, update the description accordingly.
-- **File Headers**: Start each file with a comment indicating the file name and path.
-- **Search Caution**: Be careful with searches; they can yield misleading results.
-- **Necessity**: Only include necessary steps in your code and documentation.
-- **Pydantic Validators**: Use Pydantic V2 style `@field_validator` for validation instead of the deprecated V1 style `@validator`.
-- **FastAPI Event Handling**: The method "on_event" in class "FastAPI" is deprecated; use lifespan event handlers instead.
+You should also use the `scratchpad.md` file as a scratchpad to organize your thoughts. Especially when you receive a new task, you should first review the content of the scratchpad, clear old different task if necessary, first explain the task, and plan the steps you need to take to complete the task. You can use todo markers to indicate the progress, e.g.
+[X] Task 1
+[ ] Task 2
+Also update the progress of the task in the Scratchpad when you finish a subtask.
+Especially when you finished a milestone, it will help to improve your depth of task accomplishment to use the scratchpad to reflect and plan.
+The goal is to help you maintain a big picture as well as the progress of the task. Always refer to the Scratchpad when you plan the next step.
 
-## Key Classes and Their Fields
-### 1. Note
-- **Fields**:
-  - `note_name: str` (required) - The name of the note (e.g., C, D, E).
-  - `octave: int` (required) - The octave of the note.
-  - `duration: Union[int, float]` (required) - Duration of the note in beats.
-  - `velocity: int` (required) - Velocity of the note (0-127).
-  - `NOTE_TO_SEMITONE: ClassVar[dict[str, int]]` - Maps note names to their semitone values.
-  - `SEMITONE_TO_NOTE: ClassVar[dict[int, str]]` - Maps semitone values to their note names.
+# Tools
 
-### 2. ChordProgression
-- **Fields**:
-  - `id: Optional[str]` - Unique identifier for the chord progression.
-  - `name: str` (required) - Name of the chord progression.
-  - `chords: List[Chord]` (required) - List of chords in the progression.
-  - `key: str` (required) - Key of the chord progression.
-  - `scale_type: str` (required) - Type of scale (e.g., MAJOR, MINOR).
-  - `complexity: Optional[float]` - Complexity rating between 0 and 1.
+Note all the tools are in python. So in the case you need to do batch processing, you can always consult the python files and write your own script.
 
-### 3. ChordQuality
-- **Fields**:
-  - `quality_type: ChordQualityType` (optional) - Type of chord quality (default is `ChordQualityType.MAJOR`).
+## LLM
 
-### 4. RomanNumeral
-- **Fields**:
-  - `scale_degree: int` (optional) - Scale degree.
-  - `quality: ChordQualityType` (optional) - Quality of the chord (default is `ChordQualityType.MAJOR`).
+You always have an LLM at your side to help you with the task. For simple tasks, you could invoke the LLM by running the following command:
+```
+venv/bin/python ./tools/llm_api.py --prompt "What is the capital of France?"
+```
 
-### 5. ScaleInfo
-- **Fields**:
-  - `root: Note` (required) - Root note of the scale.
-  - `scale_type: Optional[str]` (optional) - Type of scale (default is "MAJOR").
-  - `MAJOR_SCALE_QUALITIES: ClassVar[Dict[int, ChordQualityType]]` - Chord qualities for MAJOR scales.
-  - `MINOR_SCALE_QUALITIES: ClassVar[Dict[int, ChordQualityType]]` - Chord qualities for MINOR scales.
+But usually it's a better idea to check the content of the file and use the APIs in the `tools/llm_api.py` file to invoke the LLM if needed.
 
-### 6. ChordProgressionGenerator
-- **Fields**:
-  - `scale_info: ScaleInfo` (required) - Information about the scale.
-  - `INT_TO_ROMAN: ClassVar[Dict[int, str]]` - Mapping from integers to Roman numerals.
+## Web browser
 
-### 7. NoteSequence
-- **Fields**:
-  - `notes: List[Union[Note, int]]` (required) - List of notes.
-  - `events: List[NoteEvent]` (optional) - List of note events (default is an empty list).
-  - `duration: float` (optional) - Duration of the note sequence (default is 0.0).
+You could use the `tools/web_scraper.py` file to scrape the web.
+```
+venv/bin/python ./tools/web_scraper.py --max-concurrent 3 URL1 URL2 URL3
+```
+This will output the content of the web pages.
 
-### 8. ChordQualityType
-- **Fields**: (List of chord qualities)
+## Search engine
 
-### 9. Chord
-- **Fields**:
-  - `root: Note` (required) - The root note of the chord.
-  - `quality: ChordQualityType` (optional) - Quality of the chord (default is `ChordQualityType.MAJOR`).
-  - `notes: List[Note]` (optional) - List of notes in the chord (default is an empty list).
-  - `inversion: int` (optional) - Chord inversion (default is 0).
+You could use the `tools/search_engine.py` file to search the web.
+```
+venv/bin/python ./tools/search_engine.py "your search keywords"
+```
+This will output the search results in the following format:
+```
+URL: https://example.com
+Title: This is the title of the search result
+Snippet: This is a snippet of the search result
+```
 
-### 10. Scale
-- **Fields**:
-  - `root: Note` (required) - The root note of the scale.
-  - `scale_type: ScaleType` (required) - The type of scale (e.g., MAJOR, MINOR).
-  - `notes: List[Note]` (optional) - List of notes in the scale (default is an empty list).
+## User Specified Lessons
 
-### 11. ScaleDegree
-- **Fields**:
-  - `value: int` (required) - The degree value of the scale.
-
-### 12. ScaleType
-- **Fields**:
-  - `MAJOR = "MAJOR"`
-  - `MINOR = "MINOR"`
-
-### 13. NoteEvent
-- **Fields**:
-  - `note: Union[Note, ScaleDegree, Chord]` (required) - The note associated with the event.
-  - `position: float` (optional) - Position of the note event (default is 0.0).
-  - `duration: float` (optional) - Duration of the note event (default is 1.0).
-  - `velocity: int` (optional) - Velocity of the note event (default is 100).
-  - `channel: int` (optional) - MIDI channel (default is 0).
-  - `is_rest: bool` (optional) - Indicates if the event is a rest (default is False).
-
-### 14. PatternInterpreter
-- **Fields**:
-  - `scale: Scale` (required) - The scale to use for interpretation.
-  - `pattern: Sequence[Union[int, str, Note, ScaleDegree, Dict[str, Any]]` (required) - The pattern to interpret.
-  - `_current_index: int` (optional) - The current index in the pattern (default is 0).
-
-### 15. NotePattern
-- **Fields**:
-  - `id: Optional[str]` (optional) - ID of the note pattern.
-  - `name: str` (required) - Name of the note pattern.
-  - `notes: Optional[List[Note]]` (optional) - List of notes in the pattern.
-  - `pattern_type: Optional[str]` (optional) - Type of pattern.
-  - `description: str` (required) - Pattern description.
-  - `tags: List[str]` (required) - Pattern tags.
-  - `complexity: Optional[float]` (optional) - Pattern complexity.
-  - `data: Optional[List[int]]` (optional) - Additional pattern data.
-  - `is_test: Optional[bool]` (optional) - Test flag.
-
-### 16. NotePatternData
-- **Fields**:
-  - `notes: List[Dict[str, Any]]` (required) - List of notes in the pattern.
-  - `intervals: Optional[List[int]]` (optional) - List of intervals.
-  - `duration: Union[float, int]` (required) - Pattern duration.
-  - `position: Union[float, int]` (required) - Pattern position.
-  - `velocity: float` (default=100) - Pattern velocity.
-
-## API Routes
-- **Routes**: Refer to @[src/note_gen/routers/user_routes.py] for a complete list of API routes.
-- **Testing**: Ensure to cover the creation and retrieval of notes, chord progressions, and other core functionalities using pytest.
-
-## Additional Notes
-- **Dependencies**: FastAPI, Pydantic, Motor, etc.
-- **Environment Variables**: Ensure to configure MongoDB connection string as `AsyncIOMotorClient('mongodb://localhost:27017/')` for local development.
-
-## Error Handling and Logging
-- Implement structured error handling across the API to provide meaningful responses.
-- Use logging libraries (e.g., `logging`) to capture important events and errors in the application.
-
-## API Versioning
-- Manage API versions to ensure backward compatibility and smooth transitions between versions.
-
-## Authentication and Authorization
-- Use OAuth2 or JWT for user authentication and authorization to secure API endpoints.
-
-## Deployment Instructions
-- Provide clear steps for deploying the application, including environment configurations and database migrations.
-
-## Testing Strategy
-- Include unit tests, integration tests, and end-to-end tests to ensure comprehensive test coverage.
-- Specify how to run tests and any tools used for continuous integration.
-
-## Performance Considerations
-- Optimize performance with caching strategies and database indexing as needed.
-
-## User Documentation
-- Link to user documentation or API documentation (e.g., Swagger/OpenAPI) for developer reference.
-
-## Common Issues and Troubleshooting
-- Outline common issues developers might face and provide troubleshooting steps.
-
-## Project Information
-### Error Handling
-- Implement try-except blocks to catch and handle exceptions.
-- Log errors using a logging library.
-
-### API Versioning
-- Use a versioning system (e.g., semantic versioning) to manage API versions.
-- Include version numbers in API endpoints.
-
-### Authentication and Authorization
-- Implement OAuth2 or JWT authentication for user authentication.
-- Use role-based access control (RBAC) for authorization.
-
-### Deployment
-- Use a containerization tool (e.g., Docker) for deployment.
-- Configure environment variables for production environments.
-
-### Testing
-- Write unit tests for individual components.
-- Write integration tests for API endpoints.
-- Write end-to-end tests for user workflows.
-
-### Performance
-- Use caching strategies (e.g., Redis) to improve performance.
-- Optimize database queries for better performance.
-
-### User Documentation
-- Create API documentation using a tool (e.g., Swagger/OpenAPI).
-- Provide user documentation for developer reference.
-
-### Troubleshooting
-- Outline common issues and provide troubleshooting steps.
-- Use logging libraries to capture important events and errors.
+- You have a python venv in ./venv.
+- Include info useful for debugging in the program output.
+- Read the full file before you try to edit it.
+- Use LLM to perform flexible text understanding tasks. First test on a few files. After success, make it parallel.

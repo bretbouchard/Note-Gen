@@ -152,6 +152,16 @@ class RomanNumeral(BaseModel):
         except Exception as e:
             raise ValueError(f"An unexpected error occurred: {str(e)}")
 
+    @classmethod
+    def from_string(cls, numeral: str) -> 'RomanNumeral':
+        if numeral not in cls.ROMAN_TO_INT:
+            raise ValueError(f"Invalid Roman numeral: {numeral}")
+        scale_degree = cls.ROMAN_TO_INT[numeral]
+        quality = ChordQualityType.MAJOR  # Default quality
+        if numeral.islower():
+            quality = ChordQualityType.MINOR
+        return cls(scale_degree=scale_degree, quality=quality)
+
     def __str__(self) -> str:
         return f"RomanNumeral(scale_degree={self.scale_degree}, quality={self.quality})"
 

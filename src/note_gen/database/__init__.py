@@ -12,7 +12,8 @@ from .db import (
     MONGODB_URI,
     DATABASE_NAME as TEST_DB_NAME,
     close_mongo_connection,
-    init_db
+    init_db,
+    get_db_connection
 )
 
 async def get_chord_progression_by_name(db: AsyncIOMotorDatabase, name: str) -> Optional[Dict[str, Any]]:
@@ -35,5 +36,6 @@ __all__ = [
     'MONGODB_URI',
     'TEST_DB_NAME',
     'close_mongo_connection',
-    'init_db'
+    'init_db',
+    'get_db_connection'
 ]

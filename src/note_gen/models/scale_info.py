@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 class ScaleInfo(BaseModel):
     """Information about a musical scale."""
     root: Note
+    key: str = Field(default='C')
     scale_type: Optional[str] = 'MAJOR'
 
     MAJOR_SCALE_QUALITIES: ClassVar[Dict[int, ChordQualityType]] = {
@@ -59,4 +60,5 @@ class ScaleInfo(BaseModel):
 
     def compute_scale_degrees(self) -> List[int]:
         """Compute the scale degrees based on the root and scale type."""
-        pass
+        scale = Scale(root=self.root, scale_type=self.scale_type)
+        return scale.calculate_intervals()

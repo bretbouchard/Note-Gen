@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 
 from src.note_gen.models.presets import COMMON_PROGRESSIONS, NOTE_PATTERNS, RHYTHM_PATTERNS
 from src.note_gen.models.rhythm_pattern import RhythmPatternData
+from src.note_gen.models.chord_progression import ChordProgression, ScaleInfo, Note, ScaleType
 from typing import Any, Optional, Dict
 
 
@@ -60,17 +61,34 @@ async def import_presets_if_empty(db: AsyncIOMotorDatabase) -> None:
 async def ensure_indexes(db: AsyncIOMotorDatabase) -> None:
     """Ensure necessary indexes are created for the collections in the database."""
     try:
+        # Chord Progressions Indexes
         await db.chord_progressions.create_indexes([
             IndexModel([('name', 1)], unique=True),  # Unique index on name
+            IndexModel([('key', 1)]),  # Index on key for faster filtering
+            IndexModel([('scale_type', 1)]),  # Index on scale type
+            IndexModel([('complexity', 1)]),  # Index on complexity for range queries
+            IndexModel([('tags', 1)]),  # Index on tags for searching
+            IndexModel([('created_at', -1)]),  # Index for sorting by creation date
+            IndexModel([('difficulty', 1)]),  # Index on difficulty
         ])
+
+        # Note Patterns Indexes
         await db.note_patterns.create_indexes([
             IndexModel([('pattern.index', 1)], unique=True),  # Unique index on pattern.index
+            IndexModel([('pattern.tags', 1)]),  # Index on tags for easier searching
+            IndexModel([('pattern.complexity', 1)]),  # Index on complexity
         ])
+
+        # Rhythm Patterns Indexes
         await db.rhythm_patterns.create_indexes([
-            IndexModel([('complexity', 1)])  # Index on complexity for faster queries
+            IndexModel([('complexity', 1)]),  # Index on complexity for faster queries
+            IndexModel([('pattern.tags', 1)]),  # Index on tags for easier searching
         ])
+
+        logger.info("Indexes created successfully for all collections.")
     except Exception as e:
-        print(f"Error creating indexes: {e}")
+        logger.error(f"Error creating indexes: {e}")
+        raise
 
 
 # MongoDB connection setup
@@ -125,18 +143,31 @@ async def import_chord_progressions(database: AsyncIOMotorDatabase) -> None:
     for i, (name, progression) in enumerate(COMMON_PROGRESSIONS.items(), start=1):
         try:
             logger.info(f"Inserting chord progression: {name}...")
-            # Add all required fields here
-            result = await target_db.chord_progressions.insert_one({
-                "name": name,
-                "progression": progression,
-                "key": "C",  # Default key
-                "style": "default",  # Default style
+            
+            # Create a ChordProgression instance
+            chord_progression = ChordProgression(
+                name=name,
+                chords=[],  # You might want to generate chords based on progression
+                key="C",  # Default key
+                scale_type="MAJOR",
+                complexity=0.5,  # Default complexity
+                scale_info=ScaleInfo(root=Note('C'), scale_type=ScaleType.MAJOR)
+            )
+            
+            # Convert to dictionary for database storage
+            progression_data = chord_progression.to_dict()
+            
+            # Add additional metadata
+            progression_data.update({
+                "style": "default",
                 "description": f"Standard {name} progression",
                 "difficulty": "intermediate",
                 "tags": [name.lower().replace(" ", "-")],
                 "created_at": datetime.datetime.utcnow(),
                 "updated_at": datetime.datetime.utcnow()
             })
+            
+            result = await target_db.chord_progressions.insert_one(progression_data)
             logger.info(f"Imported chord progression: {name}. Inserted ID: {result.inserted_id}")
         except Exception as e:
             logger.warning(f"Error importing chord progression: {name} - {e}")

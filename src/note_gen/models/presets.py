@@ -7,6 +7,7 @@ from pydantic import BaseModel
 import uuid
 
 from src.note_gen.models.chord_progression import ChordProgression
+from src.note_gen.models.chord import Chord
 from src.note_gen.models.note import Note
 from src.note_gen.models.note_pattern import NotePattern
 from src.note_gen.models.rhythm_pattern import (RhythmPattern,RhythmPatternData,RhythmNote,)
@@ -17,7 +18,7 @@ from src.note_gen.models.roman_numeral import RomanNumeral
 
 # Default values for musical components
 DEFAULT_KEY = "C"
-DEFAULT_SCALE_TYPE = "MAJOR"
+DEFAULT_SCALE_TYPE = ScaleType.MAJOR
 DEFAULT_CHORD_PROGRESSION = "I-IV-V"
 DEFAULT_NOTE_PATTERN = "Simple Triad"
 DEFAULT_RHYTHM_PATTERN = "Basic Rhythm"
@@ -72,7 +73,7 @@ COMMON_PROGRESSIONS: Dict[str, List[str]] = {
 class Presets(BaseModel):
     common_progressions: Dict[str, List[str]] = COMMON_PROGRESSIONS
     default_key: str = DEFAULT_KEY
-    default_scale_type: str = DEFAULT_SCALE_TYPE
+    default_scale_type: ScaleType = DEFAULT_SCALE_TYPE
 
     @classmethod
     def load(cls) -> List['Presets']:
@@ -84,14 +85,31 @@ class Presets(BaseModel):
 
     def get_default_chord_progression(self, root_note: Note, scale: Scale) -> ChordProgression:
         """Get the default chord progression."""
-        return ChordProgression(name="Default Progression", root=root_note, scale=scale, progression=DEFAULT_CHORD_PROGRESSION)
+        chords: List[Chord] = []  # Initialize an empty list of Chord instances if needed
+        complexity: float = 0.5  # Define complexity here
+        
+        # Ensure all required fields are provided
+        scale_info: ScaleInfo = ScaleInfo(
+            scale_type=scale.scale_type,
+            root=scale.root  # Ensure this is included
+        )
+        
+        return ChordProgression(
+            name="Default Progression",
+            root=root_note,
+            scale=scale,
+            progression=DEFAULT_CHORD_PROGRESSION,
+            chords=chords,
+            complexity=complexity,
+            scale_info=scale_info
+        )
 
     def get_default_note_pattern(self) -> NotePattern:
         """Get the default note pattern."""
         return NotePattern(
             id=uuid.uuid4(),
             name="Default Pattern",
-            notes=[],
+            pattern=[],
             pattern_type="simple",
             description="A simple pattern",
             tags=["default"],
@@ -561,6 +579,18 @@ CHORD_PROGRESSIONS: Dict[str, Dict[str, Any]] = {
 }
 
 CHORD_PROGRESSIONS.update({
+    "progression_1": {
+        "index": 11,
+        "chords": [
+            {"root": {"note_name": "C", "octave": 4}, "quality": "MAJOR"},
+            {"root": {"note_name": "G", "octave": 4}, "quality": "MAJOR"},
+            {"root": {"note_name": "A", "octave": 4}, "quality": "MINOR"},
+            {"root": {"note_name": "F", "octave": 4}, "quality": "MAJOR"}
+        ]
+    }
+})
+
+CHORD_PROGRESSIONS.update({
     "Minor Blues": {
         "index": 33,
         "chords": [
@@ -689,8 +719,15 @@ def get_default_chord_progression(root_note: Note, scale: Scale) -> ChordProgres
         chord = generator.generate_chord(note, quality=ChordQualityType.MAJOR)  # Provide a quality argument
         chords.append(chord)
     
-    return ChordProgression(name="Default Progression", root=root_note, scale=scale, progression=DEFAULT_CHORD_PROGRESSION, chords=chords)
-
+    return ChordProgression(
+        name="Default Progression",
+        root=root_note,
+        scale=scale,
+        progression=DEFAULT_CHORD_PROGRESSION,
+        chords=chords,
+        complexity=0.5,
+        scale_info=scale_info
+    )
 
 def get_available_chord_progressions() -> List[str]:
     """Get a list of available chord progression names."""

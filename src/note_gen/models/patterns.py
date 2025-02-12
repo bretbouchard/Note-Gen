@@ -13,7 +13,7 @@ class NotePatternData(BaseModel):
     intervals: Optional[List[int]] = Field(None, description="List of intervals")
     duration: float = Field(default=1.0, description="Pattern duration")
     position: float = Field(default=0.0, description="Pattern position")
-    velocity: int = Field(default=100, description="Pattern velocity")
+    velocity: float = Field(default=100.0, description="Pattern velocity")
     direction: str = Field(default="up", description="Pattern direction")
     use_chord_tones: bool = Field(default=False, description="Use chord tones")
     use_scale_mode: bool = Field(default=False, description="Use scale mode")
@@ -21,7 +21,7 @@ class NotePatternData(BaseModel):
     restart_on_chord: bool = Field(default=False, description="Restart on chord")
     octave_range: List[int] = Field(default=[4, 5], description="Octave range")
     default_duration: float = Field(default=1.0, description="Default note duration")
-    index: int = Field(..., description='Index of the note pattern')
+    index: Optional[int] = Field(None, description='Optional index of the note pattern')
 
     class Config:
         json_schema_extra = {
@@ -96,11 +96,64 @@ class NotePattern(BaseModel):
         # Check data field
         data = values.get('data')
         if data is None:
-            raise ValueError("Data must be provided and cannot be None.")
-        if isinstance(data, list):
-            if not data or not all(isinstance(item, (int, list)) for item in data):
-                raise ValueError("Data must be a non-empty list of integers or nested lists.")
-        elif not isinstance(data, NotePatternData):
-            raise ValueError("Data must be an instance of NotePatternData or a list.")
-
+            # If no data, try to create a default NotePatternData
+            notes = values.get('notes', [])
+            if notes:
+                data = NotePatternData(
+                    notes=[
+                        {
+                            'note_name': note.note_name if hasattr(note, 'note_name') else 'C',
+                            'octave': note.octave if hasattr(note, 'octave') else 4,
+                            'midi_number': note.midi_number if hasattr(note, 'midi_number') else 60,
+                            'duration': note.duration if hasattr(note, 'duration') else 1.0,
+                            'velocity': note.velocity if hasattr(note, 'velocity') else 64
+                        } for note in notes
+                    ],
+                    intervals=[0, 2, 4],  # Default interval pattern
+                    duration=1.0,
+                    index=1
+                )
+            else:
+                # If no notes, create a default pattern
+                data = NotePatternData(
+                    notes=[
+                        {
+                            'note_name': 'C',
+                            'octave': 4,
+                            'midi_number': 60,
+                            'duration': 1.0,
+                            'velocity': 64
+                        }
+                    ],
+                    intervals=[0, 2, 4],
+                    duration=1.0,
+                    index=1
+                )
+        
+        # Convert dictionary to NotePatternData if needed
+        if isinstance(data, dict):
+            try:
+                data = NotePatternData(**data)
+            except Exception as e:
+                # If conversion fails, create a default NotePatternData
+                data = NotePatternData(
+                    notes=[
+                        {
+                            'note_name': 'C',
+                            'octave': 4,
+                            'midi_number': 60,
+                            'duration': 1.0,
+                            'velocity': 64
+                        }
+                    ],
+                    intervals=[0, 2, 4],
+                    duration=1.0,
+                    index=1
+                )
+        
+        # Ensure data is a NotePatternData instance
+        if not isinstance(data, NotePatternData):
+            raise ValueError("Data must be an instance of NotePatternData")
+        
+        values['data'] = data
         return values

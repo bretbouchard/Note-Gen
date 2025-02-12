@@ -23,23 +23,22 @@ app = FastAPI()
 # Import your route handlers
 from src.note_gen.routers.user_routes import router as user_router
 from src.note_gen.routers.chord_progression_routes import router as chord_progression_router
-from src.note_gen.routes.note_sequences import router as note_sequence_router
-from src.note_gen.routes.rhythm_patterns import router as rhythm_patterns_router
+from src.note_gen.routers.note_sequence_routes import router as note_sequence_router
+from src.note_gen.routers.rhythm_pattern_routes import router as rhythm_patterns_router
 from src.note_gen.routers.note_pattern_routes import router as note_pattern_router
 
 # Include the routers
-app.include_router(user_router, prefix="/users")
-app.include_router(chord_progression_router, prefix="/chord-progressions")
-app.include_router(note_sequence_router, prefix="/note-sequences")
-app.include_router(rhythm_patterns_router, prefix="/rhythm-patterns")
-app.include_router(note_pattern_router, prefix="/api")
+app.include_router(user_router, prefix="/api/v1/users")
+app.include_router(chord_progression_router, prefix="/api/v1/chord-progressions")
+app.include_router(note_sequence_router, prefix="/api/v1/note-sequences")
+app.include_router(rhythm_patterns_router, prefix="/api/v1/rhythm-patterns")
+app.include_router(note_pattern_router, prefix="/api/v1/note-patterns")
 
 # Set testing environment variable
 os.environ["TESTING"] = "1"
 os.environ["MONGODB_TEST_URI"] = "mongodb://localhost:27017/test_note_gen"
 
 # Configure logging
-logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 # MongoDB connection settings
@@ -128,15 +127,21 @@ class MockDatabase:
     """Mock database for testing."""
 
     def __init__(self, uri: str) -> None:
-        self.client = motor.motor_asyncio.AsyncIOMotorClient(uri)
-        self._collections: Dict[str, Any] = {
-            'chord_progressions': {},
+        try:
+            client = motor.motor_asyncio.AsyncIOMotorClient(os.environ["MONGODB_TEST_URI"])
+            logger.debug("MongoDB client initialized successfully.")
+        except Exception as e:
+            logger.error(f"Error connecting to MongoDB: {str(e)}")
+            raise RuntimeError("Failed to initialize MongoDB client.") from e
+        self.name = "test_db"  # Add name attribute for testing
+        
+        # Initialize collections with empty dictionaries
+        self._collections = {
             'note_patterns': {},
             'rhythm_patterns': {},
-            'presets': {}
+            'chord_progressions': {}
         }
-        self.name = "test_db"  # Add name attribute for testing
-
+        
     async def find(self, query: Optional[Dict[str, Any]] = None) -> AsyncGenerator[Dict[str, Any], None]:
         results: List[Dict[str, Any]] = []
         if query is None:
@@ -211,31 +216,142 @@ class MockDatabase:
                 yield result
 
     async def setup_collections(self) -> None:
-        for collection_name, data in self._collections.items():
-            setattr(self, collection_name, self.Collection(data))
+        """
+        Setup collections for the mock database.
+        This method ensures that all required collections are initialized.
+        """
+        # Create collection instances for each collection type
+        self.note_patterns = self.Collection(self._collections['note_patterns'])
+        self.rhythm_patterns = self.Collection(self._collections['rhythm_patterns'])
+        self.chord_progressions = self.Collection(self._collections['chord_progressions'])
 
-    async def insert_many(self, collection_name: str, documents: List[Dict[str, Any]]) -> Dict[str, Any]:
-        """Mock insert_many operation."""
-        collection = getattr(self, collection_name)
-        return await collection.insert_many(documents)
+    @property
+    def client(self):
+        """Simulate the client property for compatibility."""
+        return self
+
+    @property
+    def test_db(self):
+        """Simulate the test_db property for compatibility."""
+        return self
 
 @pytest.fixture(scope="session")
-async def mongo_client() -> AsyncGenerator[AsyncIOMotorClient, None]:
-    """Create a MongoDB client instance."""
+def event_loop():
+    """
+    Create an instance of the event loop for the entire test session.
+    This ensures that the event loop is properly managed across tests.
+    """
+    policy = asyncio.get_event_loop_policy()
+    loop = policy.new_event_loop()
+    policy.set_event_loop(loop)
+    yield loop
+    loop.close()
+
+@pytest.fixture(scope="function")
+async def client(event_loop):
+    """
+    Create an async test client for the FastAPI application.
+    Uses the session-scoped event loop.
+    """
+    from httpx import AsyncClient
+    async with AsyncClient(app=app, base_url="http://localhost:8000") as client:
+        yield client
+
+@pytest.fixture
+async def mock_db_with_data() -> MockDatabase:
+    # Sample note patterns to insert into the mock database
+    sample_note_patterns = [
+        {
+            "_id": "note_pattern_1",
+            "id": "note_pattern_1",
+            "name": "Basic triad arpeggio",
+            "description": "A simple triad arpeggio pattern",
+            "tags": ["basic", "arpeggio"],
+            "intervals": [0, 4, 7],
+            "duration": 1.0,
+            "position": 0.0,
+            "velocity": 100,
+            "data": {
+                "notes": [],
+                "intervals": [0, 4, 7],
+                "duration": 1.0,
+                "position": 0.0,
+                "velocity": 100,
+                "index": 0
+            }
+        }
+    ]
+
+    # Sample rhythm patterns to insert into the mock database
+    sample_rhythm_patterns = [
+        {
+            "_id": "rhythm_pattern_1",
+            "id": "rhythm_pattern_1",
+            "name": "Basic Rock Beat",
+            "description": "A simple rock rhythm pattern",
+            "tags": ["rock", "basic"],
+            "data": {
+                "notes": [
+                    {"position": 0.0, "duration": 0.5, "velocity": 100, "is_rest": False},
+                    {"position": 0.5, "duration": 0.5, "velocity": 80, "is_rest": False}
+                ],
+                "time_signature": "4/4",
+                "total_duration": 1.0
+            },
+            "complexity": 0.5,
+            "style": "Rock"
+        }
+    ]
+
+    # Sample chord progressions to insert into the mock database
+    sample_chord_progressions = [
+        {
+            "_id": "progression_1",
+            "id": "progression_1",
+            "name": "I-IV-V",
+            "chords": [
+                {"root": "C", "quality": "MAJOR"},
+                {"root": "F", "quality": "MAJOR"},
+                {"root": "G", "quality": "MAJOR"}
+            ],
+            "key": "C",
+            "scale_type": "MAJOR",
+            "complexity": 0.5
+        }
+    ]
+
+    # Create a new MockDatabase
+    mock_db = MockDatabase(os.environ["MONGODB_TEST_URI"])
+    
+    # Initialize the collections
+    await mock_db.setup_collections()
+    
+    # Insert sample data into collections
+    mock_db.note_patterns.data = {p['_id']: p for p in sample_note_patterns}
+    mock_db.rhythm_patterns.data = {p['_id']: p for p in sample_rhythm_patterns}
+    mock_db.chord_progressions.data = {p['_id']: p for p in sample_chord_progressions}
+    
+    return mock_db
+
+@pytest.fixture(scope="session")
+def test_client():
+    logger.info("Initializing TestClient...")
+    client = TestClient(app)
+    yield client
+    logger.info("TestClient teardown...")
+
+@pytest.fixture(scope="session")
+def mongo_client():
+    logger.info("Initializing MongoDB client...")
+    client = motor.motor_asyncio.AsyncIOMotorClient()
     try:
-        client = AsyncIOMotorClient(
-            "mongodb://localhost:27017",
-            serverSelectionTimeoutMS=5000
-        )
         yield client
     except Exception as e:
-        logger.error(f"Error connecting to MongoDB: {str(e)}")
+        logger.error(f"MongoDB client initialization failed: {e}")
         raise
     finally:
-        try:
-            client.close()
-        except Exception as e:
-            logger.error(f"Error closing MongoDB client: {str(e)}")
+        client.close()
+        logger.info("MongoDB client closed.")
 
 @pytest.fixture(scope="function")
 async def clean_test_db() -> AsyncGenerator[None, None]:
@@ -252,21 +368,23 @@ async def clean_test_db() -> AsyncGenerator[None, None]:
         logger.error(f"Error cleaning test database: {str(e)}")
         raise
 
-@pytest.fixture(scope="function")
-async def test_app(clean_test_db: None) -> AsyncGenerator[TestClient, None]:
-    """Create a new FastAPI TestClient instance for each test."""
-    async with TestClient(app) as client:
-        # Override the database dependency
-        app.dependency_overrides[get_db] = lambda: clean_test_db
+@pytest.fixture
+def client():
+    logger.debug("Creating FastAPI TestClient for app instance.")
+    with TestClient(app) as client:
+        logger.debug("FastAPI TestClient created successfully for app instance.")
         yield client
-        # Clear dependency overrides after test
-        app.dependency_overrides.clear()
 
 @pytest.fixture(scope="function")
 async def setup_test_db(clean_test_db: None) -> AsyncGenerator[AsyncIOMotorDatabase, None]:
     """Setup test database with proper event loop handling."""
     try:
-        client = AsyncIOMotorClient(os.getenv("MONGODB_TEST_URI", "mongodb://localhost:27017"))
+        try:
+            client = motor.motor_asyncio.AsyncIOMotorClient(os.environ["MONGODB_TEST_URI"])
+            logger.debug("MongoDB client initialized successfully.")
+        except Exception as e:
+            logger.error(f"Error connecting to MongoDB: {str(e)}")
+            raise RuntimeError("Failed to initialize MongoDB client.") from e
         db = client[os.getenv("DATABASE_NAME", "note_gen_test")]
         
         # Ensure database is clean

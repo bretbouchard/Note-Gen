@@ -2,7 +2,6 @@ from typing import List, Optional, Dict, Union
 from enum import Enum, StrEnum
 import logging
 
-logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 class AccidentalType(StrEnum):
@@ -39,6 +38,7 @@ CHORD_QUALITY_INTERVALS = {
     'FLAT7': [0, 4, 7, 9],
     'SHARP5': [0, 4, 8],
     'SHARP7': [0, 4, 7, 11],
+    'SUSPENDED': [0, 5, 7],  # Add this line
 }
 
 CHORD_QUALITY_ALIASES = {
@@ -72,6 +72,7 @@ CHORD_QUALITY_ALIASES = {
     '#7': 'SHARP7',
     '+': 'AUGMENTED',
     '°': 'DIMINISHED',
+    'sus': 'SUSPENDED',  # Add this line
 }
 
 class ChordQualityType(str, Enum):
@@ -100,6 +101,7 @@ class ChordQualityType(str, Enum):
     FLAT7 = "FLAT7"
     SHARP5 = "SHARP5"
     SHARP7 = "SHARP7"
+    SUSPENDED = "SUSPENDED"
 
     @classmethod
     def _missing_(cls, value):
@@ -131,6 +133,8 @@ class ChordQualityType(str, Enum):
                 'MINOR7': cls.MINOR7,
                 'DIM7': cls.DIMINISHED7,
                 'DIMINISHED7': cls.DIMINISHED7,
+                'SUSPENDED': cls.SUSPENDED,
+                'SUS': cls.SUSPENDED,
             }
             
             if normalized in aliases:

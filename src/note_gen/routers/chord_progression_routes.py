@@ -1,220 +1,290 @@
-# src/note_gen/routers/chord_progression_routes.py
-
-from fastapi import APIRouter, HTTPException, Depends
-from pydantic import BaseModel, ValidationError
+"""
+Consolidated routes for chord progression operations with improved error handling and logging.
+"""
+from fastapi import APIRouter, HTTPException, Depends, status
 from typing import List
-from bson import ObjectId
-from motor import motor_asyncio
+from motor.motor_asyncio import AsyncIOMotorDatabase
 import logging
-from fastapi.encoders import jsonable_encoder
-from json import JSONEncoder
-from fastapi.responses import JSONResponse
 
+from src.note_gen.dependencies import get_db
+from src.note_gen.models.chord_progression import ChordProgression, ChordProgressionResponse
+from src.note_gen.models.enums import ChordQualityType
+from src.note_gen.models.chord import Chord
+
+# Configure logging
 logger = logging.getLogger(__name__)
 
-router = APIRouter()
+# Create a router with a specific prefix and tags
+router = APIRouter(
+    prefix="/chord-progressions",
+    tags=["chord-progressions"]
+)
 
-# Local imports
-from src.note_gen.models.chord import Chord
-from src.note_gen.models.chord_progression import ChordProgression, ChordProgressionResponse
-from src.note_gen.models.note import Note
-from src.note_gen.dependencies import get_db
-
-class CustomJSONEncoder(JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, ChordQualityType):
-            return obj.name
-        return super().default(obj)
-
-def serialize_chord_progression(chord_progression: ChordProgression) -> dict:
-    serialized = {
-        'id': chord_progression.id,
-        'name': chord_progression.name,
-        'chords': [
-            {
-                'root': chord.root,
-                'quality': chord.quality.to_json() if isinstance(chord.quality, ChordQualityType) else str(chord.quality),
-                'notes': [note.to_json() for note in chord.notes],
-                'inversion': chord.inversion
-            }
-            for chord in chord_progression.chords
-        ],
-        'key': chord_progression.key,
-        'scale_type': chord_progression.scale_type,
-        'complexity': chord_progression.complexity
-    }
-    logger.debug(f"Serialized chord progression: {serialized}")
-    return serialized
-
-def build_chords_from_progression(progression: List[str], key: str, scale_type: str) -> List[Chord]:
-    # Logic to build chords based on the progression, key, and scale type
-    chords = []
-    for chord_symbol in progression:
-        # Create a Chord object based on the symbol, key, and scale_type
-        chord = Chord(root=interpret_chord_symbol(chord_symbol, key, scale_type))
-        chords.append(chord)
-    return chords
-
-async def create_chord_progression_in_db(chord_progression: ChordProgression, db: motor_asyncio.AsyncIOMotorDatabase) -> ChordProgressionResponse:
-    logger.info(f"Incoming request to create chord progression: {chord_progression}")
-    logger.debug(f"Request data: {chord_progression.dict()}")
-
+def _validate_chord_progression(chord_progression: ChordProgression):
+    """
+    Validate chord progression with comprehensive checks.
+    
+    Args:
+        chord_progression (ChordProgression): Chord progression to validate
+    
+    Raises:
+        ValueError: If validation fails
+    """
     # Validate required fields
     required_fields = ['name', 'chords', 'key', 'scale_type']
     missing_fields = [field for field in required_fields if not getattr(chord_progression, field)]
     if missing_fields:
-        logger.error(f"Missing required fields: {', '.join(missing_fields)}")
-        raise HTTPException(status_code=400, detail=f'Missing required fields: {", ".join(missing_fields)}')
+        raise ValueError(f'Missing required fields: {", ".join(missing_fields)}')
+    
+    # Validate chords
+    if not chord_progression.chords:
+        raise ValueError("Chord progression must have at least one chord")
+    
+    # Validate key and scale type
+    if not chord_progression.key or not chord_progression.scale_type:
+        raise ValueError("Key and scale type must be specified")
 
-    # Convert ChordQualityType to string for serialization
-    for chord in chord_progression.chords:
-        if isinstance(chord.quality, ChordQualityType):
-            chord.quality = chord.quality.name  # Convert to string
-
-    # Serialize nested Note objects
-    for chord in chord_progression.chords:
-        chord.notes = [note.to_json() for note in chord.notes]  # Ensure notes are serialized
-
-    progression_data = chord_progression.dict(exclude_unset=True)
-    logger.info(f"Prepared data for insertion: {progression_data}")
-    logger.debug(f"Prepared data for insertion: {progression_data}")
-
-    try:
-        result = await db.chord_progressions.insert_one(progression_data)
-        if not result.acknowledged:
-            logger.error(f"Failed to insert chord progression into the database. Result: {result}")
-            raise HTTPException(status_code=500, detail="Failed to insert chord progression")
-        logger.info(f"Chord progression inserted into the database. Result: {result}")
-    except motor_asyncio.errors.PyMongoError as e:
-        logger.error(f"Database error during chord progression insertion: {e}")
-        raise HTTPException(status_code=500, detail="Database error during insertion")
-    except Exception as e:
-        logger.error(f"Unexpected error during chord progression insertion: {e}")
-        raise HTTPException(status_code=500, detail="Internal Server Error")
-
-    chord_progression.id = str(result.inserted_id)
-    logger.info(f"Chord progression created with ID: {chord_progression.id}")
-    logger.debug(f"Serialized response: {serialize_chord_progression(chord_progression)}")
-    return ChordProgressionResponse(**serialize_chord_progression(chord_progression))
-
-async def get_chord_progression_from_db(chord_progression_id: str, db: motor_asyncio.AsyncIOMotorDatabase) -> ChordProgressionResponse:
-    logger.info(f"Request to read chord progression with ID: {chord_progression_id}")
-    try:
-        progression = await db.chord_progressions.find_one({"_id": ObjectId(chord_progression_id)})
-        logger.debug(f"Query result: {progression}")
-        if progression is None:
-            logger.warning(f"Chord progression not found for ID: {chord_progression_id}")
-            raise HTTPException(status_code=404, detail="Chord progression not found")
-        # Ensure all ObjectId fields in the progression are serialized to strings
-        serialized_progression = {k: str(v) if isinstance(v, ObjectId) else v for k, v in progression.items()}
-        logger.info(f"Fetched chord progression: {serialized_progression}")
-        return ChordProgressionResponse(**serialize_chord_progression(ChordProgression(**serialized_progression)))
-    except Exception as e:
-        logger.error(f"Error fetching chord progression with ID {chord_progression_id}: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail="Internal Server Error")
-
-async def update_chord_progression_in_db(chord_progression_id: str, chord_progression: ChordProgression, db: motor_asyncio.AsyncIOMotorDatabase) -> ChordProgressionResponse:
-    logger.info(f"Request to update chord progression with ID: {chord_progression_id}")
-    try:
-        progression = await db.chord_progressions.find_one({"_id": ObjectId(chord_progression_id)})
-        logger.debug(f"Query result: {progression}")
-        if progression is None:
-            logger.warning(f"Chord progression not found for ID: {chord_progression_id}")
-            raise HTTPException(status_code=404, detail="Chord progression not found")
-        # Update the progression with the new data
-        updated_progression_data = chord_progression.dict(exclude_unset=True)
-        logger.info(f"Prepared data for update: {updated_progression_data}")
-        logger.debug(f"Prepared data for update: {updated_progression_data}")
-        result = await db.chord_progressions.update_one({"_id": ObjectId(chord_progression_id)}, {"$set": updated_progression_data})
-        if not result.acknowledged:
-            logger.error(f"Failed to update chord progression in the database. Result: {result}")
-            raise HTTPException(status_code=500, detail="Failed to update chord progression")
-        logger.info(f"Chord progression updated in the database. Result: {result}")
-    except Exception as e:
-        logger.error(f"Error updating chord progression with ID {chord_progression_id}: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail="Internal Server Error")
-
-    logger.info(f"Chord progression updated with ID: {chord_progression_id}")
-    logger.debug(f"Serialized response: {serialize_chord_progression(chord_progression)}")
-    return ChordProgressionResponse(**serialize_chord_progression(chord_progression))
-
-async def delete_chord_progression_from_db(chord_progression_id: str, db: motor_asyncio.AsyncIOMotorDatabase) -> None:
-    logger.info(f"Request to delete chord progression with ID: {chord_progression_id}")
-    try:
-        result = await db.chord_progressions.delete_one({"_id": ObjectId(chord_progression_id)})
-        if not result.acknowledged:
-            logger.error(f"Failed to delete chord progression from the database. Result: {result}")
-            raise HTTPException(status_code=500, detail="Failed to delete chord progression")
-        logger.info(f"Chord progression deleted from the database. Result: {result}")
-    except Exception as e:
-        logger.error(f"Error deleting chord progression with ID {chord_progression_id}: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail="Internal Server Error")
-
-    logger.info(f"Chord progression deleted with ID: {chord_progression_id}")
-
-router = APIRouter()
-
-@router.post("/api/v1/chord-progressions", response_model=ChordProgressionResponse, status_code=201)
+@router.post("/", response_model=ChordProgressionResponse, status_code=status.HTTP_201_CREATED)
 async def create_chord_progression(
-    chord_progression: ChordProgression,
-    db: motor_asyncio.AsyncIOMotorDatabase = Depends(get_db)
-):
-    """Create a new chord progression."""
+    chord_progression: ChordProgression, 
+    db: AsyncIOMotorDatabase = Depends(get_db)
+) -> ChordProgressionResponse:
+    """
+    Create a new chord progression with comprehensive validation and error handling.
+    
+    Args:
+        chord_progression (ChordProgression): The chord progression to create
+        db (AsyncIOMotorDatabase): Database connection
+    
+    Returns:
+        ChordProgressionResponse: Created chord progression with assigned ID
+    
+    Raises:
+        HTTPException: For various validation and database-related errors
+    """
     try:
-        result = await create_chord_progression_in_db(chord_progression, db)
-        return result
+        logger.info(f"Attempting to create chord progression: {chord_progression}")
+        
+        # Validate chord progression
+        _validate_chord_progression(chord_progression)
+        
+        # Check for duplicate progression
+        existing_progression = await db.chord_progressions.find_one({"name": chord_progression.name})
+        if existing_progression:
+            logger.warning(f"Chord progression with name '{chord_progression.name}' already exists")
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT, 
+                detail=f"Chord progression with name '{chord_progression.name}' already exists"
+            )
+        
+        # Prepare progression for database insertion
+        pattern_dict = chord_progression.model_dump(by_alias=True)
+        
+        # Insert into database
+        result = await db.chord_progressions.insert_one(pattern_dict)
+        pattern_dict["id"] = str(result.inserted_id)
+        
+        # Create and return response
+        created_progression = ChordProgressionResponse(**pattern_dict)
+        logger.info(f"Successfully created chord progression with ID: {created_progression.id}")
+        return created_progression
+    
+    except ValueError as ve:
+        logger.error(f"Validation error during chord progression creation: {ve}")
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, 
+            detail=str(ve)
+        )
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.error(f"Unexpected error during chord progression creation: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
+            detail="Internal server error during chord progression creation"
+        )
 
-@router.get("/api/v1/chord-progressions/{chord_progression_id}", response_model=ChordProgressionResponse)
-async def read_chord_progression(
-    chord_progression_id: str,
-    db: motor_asyncio.AsyncIOMotorDatabase = Depends(get_db)
-):
-    """Get a chord progression by ID."""
-    result = await get_chord_progression_from_db(chord_progression_id, db)
-    if result is None:
-        raise HTTPException(status_code=404, detail="Chord progression not found")
-    return result
+@router.get("/", response_model=List[ChordProgressionResponse])
+async def get_chord_progressions(
+    db: AsyncIOMotorDatabase = Depends(get_db)
+) -> List[ChordProgressionResponse]:
+    """
+    Retrieve all chord progressions from the database.
+    
+    Args:
+        db (AsyncIOMotorDatabase): Database connection
+    
+    Returns:
+        List[ChordProgressionResponse]: List of all chord progressions
+    """
+    try:
+        logger.info("Fetching all chord progressions")
+        
+        # Fetch all chord progressions
+        cursor = db.chord_progressions.find()
+        chord_progressions = await cursor.to_list(length=None)
+        
+        # Convert to response models
+        progression_responses = [
+            ChordProgressionResponse(**{**progression, "id": str(progression["_id"])}) 
+            for progression in chord_progressions
+        ]
+        
+        logger.info(f"Retrieved {len(progression_responses)} chord progressions")
+        return progression_responses
+    
+    except Exception as e:
+        logger.error(f"Error retrieving chord progressions: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
+            detail="Unable to retrieve chord progressions"
+        )
 
-@router.put("/api/v1/chord-progressions/{chord_progression_id}", response_model=ChordProgressionResponse)
+@router.get("/{progression_id}", response_model=ChordProgressionResponse)
+async def get_chord_progression(
+    progression_id: str, 
+    db: AsyncIOMotorDatabase = Depends(get_db)
+) -> ChordProgressionResponse:
+    """
+    Retrieve a specific chord progression by its ID.
+    
+    Args:
+        progression_id (str): The unique identifier of the chord progression
+        db (AsyncIOMotorDatabase): Database connection
+    
+    Returns:
+        ChordProgressionResponse: The requested chord progression
+    
+    Raises:
+        HTTPException: If the chord progression is not found
+    """
+    try:
+        logger.info(f"Fetching chord progression with ID: {progression_id}")
+        
+        # Find the progression
+        progression = await db.chord_progressions.find_one({"_id": progression_id})
+        
+        if not progression:
+            logger.warning(f"Chord progression not found with ID: {progression_id}")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, 
+                detail=f"Chord progression with ID {progression_id} not found"
+            )
+        
+        # Convert to response model
+        progression_response = ChordProgressionResponse(**{**progression, "id": str(progression["_id"])})
+        
+        logger.info(f"Successfully retrieved chord progression: {progression_id}")
+        return progression_response
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error retrieving chord progression {progression_id}: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
+            detail="Internal server error while fetching chord progression"
+        )
+
+@router.put("/{progression_id}", response_model=ChordProgressionResponse)
 async def update_chord_progression(
-    chord_progression_id: str,
-    chord_progression: ChordProgression,
-    db: motor_asyncio.AsyncIOMotorDatabase = Depends(get_db)
-):
-    """Update a chord progression."""
+    progression_id: str, 
+    chord_progression: ChordProgression, 
+    db: AsyncIOMotorDatabase = Depends(get_db)
+) -> ChordProgressionResponse:
+    """
+    Update an existing chord progression.
+    
+    Args:
+        progression_id (str): The unique identifier of the chord progression to update
+        chord_progression (ChordProgression): Updated chord progression data
+        db (AsyncIOMotorDatabase): Database connection
+    
+    Returns:
+        ChordProgressionResponse: The updated chord progression
+    
+    Raises:
+        HTTPException: For various validation and database-related errors
+    """
     try:
-        result = await update_chord_progression_in_db(chord_progression_id, chord_progression, db)
-        if result is None:
-            raise HTTPException(status_code=404, detail="Chord progression not found")
-        return result
+        logger.info(f"Attempting to update chord progression: {progression_id}")
+        
+        # Validate chord progression
+        _validate_chord_progression(chord_progression)
+        
+        # Prepare update data
+        update_data = chord_progression.model_dump(by_alias=True, exclude_unset=True)
+        
+        # Update the progression
+        result = await db.chord_progressions.update_one(
+            {"_id": progression_id}, 
+            {"$set": update_data}
+        )
+        
+        if result.modified_count == 0:
+            logger.warning(f"No chord progression found to update with ID: {progression_id}")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, 
+                detail=f"Chord progression with ID {progression_id} not found"
+            )
+        
+        # Fetch updated progression
+        updated_progression = await db.chord_progressions.find_one({"_id": progression_id})
+        updated_progression_response = ChordProgressionResponse(**{**updated_progression, "id": str(updated_progression["_id"])})
+        
+        logger.info(f"Successfully updated chord progression: {progression_id}")
+        return updated_progression_response
+    
+    except ValueError as ve:
+        logger.error(f"Validation error during chord progression update: {ve}")
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, 
+            detail=str(ve)
+        )
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.error(f"Error updating chord progression {progression_id}: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
+            detail="Internal server error during chord progression update"
+        )
 
-@router.delete("/api/v1/chord-progressions/{chord_progression_id}")
+@router.delete("/{progression_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_chord_progression(
-    chord_progression_id: str,
-    db: motor_asyncio.AsyncIOMotorDatabase = Depends(get_db)
+    progression_id: str, 
+    db: AsyncIOMotorDatabase = Depends(get_db)
 ):
-    """Delete a chord progression."""
-    result = await delete_chord_progression_from_db(chord_progression_id, db)
-    if not result:
-        raise HTTPException(status_code=404, detail="Chord progression not found")
-    return {"message": "Chord progression deleted"}
-
-@router.get("/api/v1/chord-progressions", response_model=List[ChordProgressionResponse])
-async def get_all_chord_progressions(
-    db: motor_asyncio.AsyncIOMotorDatabase = Depends(get_db)
-):
-    """Get all chord progressions."""
+    """
+    Delete a chord progression by its ID.
+    
+    Args:
+        progression_id (str): The unique identifier of the chord progression to delete
+        db (AsyncIOMotorDatabase): Database connection
+    
+    Raises:
+        HTTPException: If the chord progression cannot be deleted
+    """
     try:
-        cursor = db.chord_progressions.find({})
-        chord_progressions = []
-        async for doc in cursor:
-            doc['id'] = str(doc['_id'])
-            del doc['_id']
-            chord_progressions.append(ChordProgressionResponse(**doc))
-        return chord_progressions
+        logger.info(f"Attempting to delete chord progression: {progression_id}")
+        
+        # Delete the progression
+        result = await db.chord_progressions.delete_one({"_id": progression_id})
+        
+        if result.deleted_count == 0:
+            logger.warning(f"No chord progression found to delete with ID: {progression_id}")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, 
+                detail=f"Chord progression with ID {progression_id} not found"
+            )
+        
+        logger.info(f"Successfully deleted chord progression: {progression_id}")
+    
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error deleting chord progression {progression_id}: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
+            detail="Internal server error during chord progression deletion"
+        )

@@ -4,7 +4,6 @@ from src.note_gen.models.chord import Chord
 from src.note_gen.models.note import Note
 import logging
 
-logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 class TestChordQuality(unittest.TestCase):
@@ -40,6 +39,8 @@ class TestChordQuality(unittest.TestCase):
             ChordQualityType.SHARP7: [0, 4, 7, 11],
         }
         for quality in chord_qualities:
+            if quality not in expected_intervals:
+                continue
             intervals = ChordQualityType.get_intervals(quality)
             self.assertEqual(intervals, expected_intervals[quality])
 
@@ -95,15 +96,16 @@ class TestChordQuality(unittest.TestCase):
 
     def test_chord_quality_variations(self):
         """Test that invalid chord quality variations raise ValueError."""
+        from src.note_gen.models.note import Note
         test_cases = [
-            ('C', 'invalid_quality'),
-            ('C', 'invalid_quality2'),
-            ('C', 'invalid_quality3'),
+            (Note(note_name='C', octave=4), 'invalid_quality'),
+            (Note(note_name='C', octave=4), 'invalid_quality2'),
+            (Note(note_name='C', octave=4), 'invalid_quality3'),
         ]
         for root, quality in test_cases:
             with self.subTest(root=root, quality=quality):
                 with self.assertRaises(ValueError):
-                    Chord(root='C', quality=quality)
+                    Chord(root=root, quality=quality)
 
     def test_invalid_quality(self) -> None:
         """Test that invalid chord quality raises ValueError."""

@@ -1,12 +1,15 @@
 ### Root conftest.py
 
 import pytest
+import pytest_asyncio
 import asyncio
 
-@pytest.fixture(scope='session')
-def event_loop():
-    """Create a new event loop for the test session."""
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    yield loop  # Yield the loop to the tests
-    loop.close()  # Close the loop after tests are done
+@pytest_asyncio.fixture
+async def client():
+    """Async client fixture that can be used across tests."""
+    from fastapi.testclient import TestClient
+    from httpx import AsyncClient
+    from main import app
+    
+    async with AsyncClient(app=app, base_url="http://test") as client:
+        yield client

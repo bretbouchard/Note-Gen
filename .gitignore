@@ -1,14 +1,75 @@
-refactor/
-/.vscode
-/__pycache__
-/venv
-/new_venv
-/__pycache__
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
 
-# Ignore coverage documentation
-documentation
-db/diagnostic.data/metrics.interim
-src/note_gen/__pycache__/database.cpython-311.pyc
-src/note_gen/models/__pycache__/
-src/note_gen/routers/__pycache__/
-tests/__pycache__/
+# Virtual Environment
+venv/
+env/
+.env/
+.venv/
+ENV/
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IDEs and editors
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+
+# Database files
+*.sqlite3
+*.db
+
+# Environment files
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+# Operating System files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Project-specific
+data/
+temp/
+*.backup
+*.bak
+
+# Machine Learning / Data Science
+*.pkl
+*.joblib
+*.model
+
+# Pytest
+.pytest_cache/
+
+# Coverage
+.coverage
+htmlcov/
+
+# Mypy
+.mypy_cache/
+
+# Specific to this project
+config.ini
+secrets.json
+local_settings.py

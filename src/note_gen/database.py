@@ -12,6 +12,7 @@ import atexit
 import os
 import threading
 import traceback
+from fastapi import HTTPException
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -25,121 +26,89 @@ TEST_DB_NAME = "test_note_gen"
 
 # MongoDB connection settings
 MONGO_SETTINGS = {
-    'maxPoolSize': 10,
-    'minPoolSize': 1,
-    'maxIdleTimeMS': 30000,  # 30 seconds
-    'waitQueueTimeoutMS': 5000,  # 5 seconds
-    'connectTimeoutMS': 5000,
-    'retryWrites': True,
-    'serverSelectionTimeoutMS': 5000
+    'maxPoolSize': 10,  # Ensure this is an integer
+    'minPoolSize': 1,   # Ensure this is an integer
+    'maxIdleTimeMS': 30000,  # Ensure this is an integer (30 seconds)
+    'waitQueueTimeoutMS': 5000,  # Ensure this is an integer (5 seconds)
+    'connectTimeoutMS': 5000,  # Ensure this is an integer (5 seconds)
+    'retryWrites': True,  # Ensure this is a boolean
+    'serverSelectionTimeoutMS': 5000  # Ensure this is an integer (5 seconds)
 }
 
 # Global variables
-_client_lock = threading.Lock()
-_client: AsyncIOMotorClient[Any] | None = None
-_db: AsyncIOMotorDatabase[Any] | None = None
+_client: Optional[AsyncIOMotorClient[Any]] = None
+_db: Optional[AsyncIOMotorDatabase[Any]] = None
 
 
 async def get_client() -> AsyncIOMotorClient[Any]:
     global _client
-    with _client_lock:
-        if _client is None:
-            logger.debug("Initializing MongoDB client...")
-            logger.debug(f"Connecting to MongoDB at {MONGO_URL}")
-            try:
-                _client = AsyncIOMotorClient(
-                    MONGO_URL,
-                    **MONGO_SETTINGS  
-                )
-                await _client.admin.command('ping')
-                logger.info("MongoDB connection established.")
-                logger.debug(f"Client initialized: {_client}")  
-            except Exception as e:
-                logger.error(f"Failed to connect to MongoDB: {e}", exc_info=True)
-                if _client:
-                    _client.close()
-                _client = None
-                raise
-    logger.debug(f"Returning client: {_client}")  
+    if _client is None:
+        try:
+            _client = AsyncIOMotorClient(
+                MONGO_URL,
+                **MONGO_SETTINGS  
+            )
+            await _client.admin.command('ping')
+            logger.info("MongoDB connection established.")
+        except Exception as e:
+            logger.error(f"Failed to connect to MongoDB: {e}", exc_info=True)
+            raise
     return _client
 
-@asynccontextmanager
-async def get_db() -> AsyncGenerator[AsyncIOMotorDatabase[Any], None]:
-    global _client, _db
+async def get_db() -> AsyncIOMotorDatabase[Any]:
+    global _db
     if _db is None:
-        logger.debug("Getting database instance...")
-        try:
-            client = await get_client()
-            db_name = TEST_DB_NAME if os.getenv("TESTING") else DB_NAME
-            logger.debug(f"Using database: {db_name}")
-            _db = client[db_name]
-            logger.info(f"Successfully connected to database: {db_name}")
-            logger.debug(f"Database instance: {_db}")
-            logger.debug(f"_db is initialized: {_db is not None}")
-        except Exception as e:
-            logger.error(f"Failed to retrieve database instance: {e}", exc_info=True)
-            raise
-    else:
-        logger.debug("Using existing database instance.")
-        logger.debug(f"_db is initialized: {_db is not None}")
-    try:
-        logger.debug("Yielding database instance...")
-        yield _db
-    except Exception as e:
-        logger.error(f"Error occurred while using database: {e}", exc_info=True)
-    finally:
-        logger.debug("Database connection yielded.")
+        client = await get_client()
+        db_name = TEST_DB_NAME if os.getenv("TESTING") else DB_NAME
+        _db = client[db_name]
+        logger.info(f"Successfully connected to database: {db_name}")
+    return _db
 
-# Modify close_mongo_connection
 async def close_mongo_connection() -> None:
     global _client, _db
-    with _client_lock:
-        if isinstance(_client, AsyncIOMotorClient):  
-            try:
-                logger.info("Closing MongoDB connection...")
-                _client.close()  
-                logger.info("MongoDB connection closed.")
-            except Exception as e:
-                logger.error(f"Failed to close MongoDB connection: {e}", exc_info=True)
-            finally:
-                _client = None
-                _db = None
-        else:
-            logger.warning("_client is not a valid AsyncIOMotorClient instance.")
+    if _client:
+        try:
+            _client.close()
+            logger.info("MongoDB connection closed.")
+        except Exception as e:
+            logger.error(f"Failed to close MongoDB connection: {e}", exc_info=True)
+        finally:
+            _client = None
+            _db = None
 
 async def init_database() -> None:
     """Initialize the database with collections if they don't exist."""
     if os.getenv("TESTING"):
         logger.debug("Skipping database initialization for testing.")
         return
-    async with get_db() as db:
-        logger.debug("Initializing database collections...")
-        try:
-            if "chord_progressions" not in await db.list_collection_names():
-                await db.create_collection("chord_progressions")
-                logger.info("Created chord_progressions collection")
-            if "note_patterns" not in await db.list_collection_names():
-                await db.create_collection("note_patterns")
-                logger.info("Created note_patterns collection")
-            if "rhythm_patterns" not in await db.list_collection_names():
-                await db.create_collection("rhythm_patterns")
-                logger.info("Created rhythm_patterns collection")
-        except Exception as e:
-            logger.error(f"Failed to initialize database collections: {e}", exc_info=True)
-        else:
-            # Import presets if collections are empty
-            if not os.getenv("TESTING"):
-                from src.note_gen.import_presets import import_presets_if_empty
-                await import_presets_if_empty(db)
+    db = await get_db()
+    logger.debug("Initializing database collections...")
+    try:
+        if "chord_progressions" not in await db.list_collection_names():
+            await db.create_collection("chord_progressions")
+            logger.info("Created chord_progressions collection")
+        if "note_patterns" not in await db.list_collection_names():
+            await db.create_collection("note_patterns")
+            logger.info("Created note_patterns collection")
+        if "rhythm_patterns" not in await db.list_collection_names():
+            await db.create_collection("rhythm_patterns")
+            logger.info("Created rhythm_patterns collection")
+    except Exception as e:
+        logger.error(f"Failed to initialize database collections: {e}", exc_info=True)
+    else:
+        # Import presets if collections are empty
+        if not os.getenv("TESTING"):
+            from src.note_gen.import_presets import import_presets_if_empty
+            await import_presets_if_empty(db)
 
 async def init_db():
     """Initialize database connection."""
     global _client, _db
     try:
         await get_client()
-        async with get_db() as db:
-            _db = db
-            await init_database()
+        db = await get_db()
+        _db = db
+        await init_database()
         logger.info("Database initialized successfully")
     except Exception as e:
         logger.error(f"Error initializing database: {e}")
@@ -157,21 +126,129 @@ async def close_db():
 async def create_chord_progression(db: AsyncIOMotorDatabase, progression: ChordProgression) -> Dict[str, Any]:
     logger.debug("Attempting to create chord progression...")
     try:
+        # Convert complex model to dictionary, handling nested models
         prog_dict = progression.model_dump()
+        
+        # Convert nested Note and Chord models to dictionaries
+        if 'chords' in prog_dict:
+            prog_dict['chords'] = [
+                {
+                    'root': {
+                        'note_name': chord.get('root', {}).get('note_name', ''),
+                        'octave': chord.get('root', {}).get('octave', 4)
+                    },
+                    'quality': chord.get('quality', '')
+                } for chord in prog_dict['chords']
+            ]
+        
+        # Convert scale_info if present
+        if 'scale_info' in prog_dict:
+            prog_dict['scale_info'] = {
+                'root': {
+                    'note_name': prog_dict['scale_info'].get('root', {}).get('note_name', ''),
+                    'octave': prog_dict['scale_info'].get('root', {}).get('octave', 4)
+                },
+                'scale_type': prog_dict['scale_info'].get('scale_type', '')
+            }
+        
         logger.debug(f"Chord progression data to insert: {prog_dict}")
         result = await db.chord_progressions.insert_one(prog_dict)
         logger.debug(f"Insert result: {result}")
+        
         if result.inserted_id:
             created_progression = await db.chord_progressions.find_one({"_id": result.inserted_id})
             if created_progression:
                 created_progression["id"] = str(created_progression.pop("_id"))
                 logger.info(f"Successfully created chord progression: {created_progression}")
                 return created_progression
+        
         raise HTTPException(status_code=500, detail="Failed to create chord progression")
     except Exception as e:
-        logger.error(f"Error creating chord progression: {e}")  # Log the exception message
-        logger.error(traceback.format_exc())  # Log the full traceback
-        logger.error(f"Progression data: {prog_dict}")  # Log the progression data
+        logger.error(f"Error creating chord progression: {e}")
+        logger.error(traceback.format_exc())
+        logger.error(f"Progression data: {prog_dict}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+async def create_note_pattern(db: AsyncIOMotorDatabase, note_pattern: NotePattern) -> Dict[str, Any]:
+    logger.debug("Attempting to create note pattern...")
+    try:
+        # Convert complex model to dictionary
+        pattern_dict = note_pattern.model_dump()
+        
+        # Simplify nested models if needed
+        if 'pattern' in pattern_dict:
+            pattern_dict['pattern'] = list(pattern_dict['pattern'])
+        
+        if 'notes' in pattern_dict:
+            pattern_dict['notes'] = [
+                {
+                    'note_name': note.get('note_name', ''),
+                    'octave': note.get('octave', 4),
+                    'duration': note.get('duration', 1),
+                    'velocity': note.get('velocity', 100)
+                } for note in pattern_dict['notes']
+            ]
+        
+        logger.debug(f"Note pattern data to insert: {pattern_dict}")
+        result = await db.note_patterns.insert_one(pattern_dict)
+        logger.debug(f"Insert result: {result}")
+        
+        if result.inserted_id:
+            created_pattern = await db.note_patterns.find_one({"_id": result.inserted_id})
+            if created_pattern:
+                created_pattern["id"] = str(created_pattern.pop("_id"))
+                logger.info(f"Successfully created note pattern: {created_pattern}")
+                return created_pattern
+        
+        raise HTTPException(status_code=500, detail="Failed to create note pattern")
+    except Exception as e:
+        logger.error(f"Error creating note pattern: {e}")
+        logger.error(traceback.format_exc())
+        logger.error(f"Note pattern data: {pattern_dict}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+async def create_rhythm_pattern(db: AsyncIOMotorDatabase, rhythm_pattern: RhythmPattern) -> Dict[str, Any]:
+    logger.debug("Attempting to create rhythm pattern...")
+    try:
+        # Convert complex model to dictionary
+        pattern_dict = rhythm_pattern.model_dump()
+        
+        # Simplify nested models if needed
+        if 'data' in pattern_dict:
+            pattern_dict['data'] = {
+                'notes': [
+                    {
+                        'position': note.get('position', 0.0),
+                        'duration': note.get('duration', 1.0),
+                        'velocity': note.get('velocity', 100),
+                        'is_rest': note.get('is_rest', False)
+                    } for note in pattern_dict['data'].get('notes', [])
+                ],
+                'time_signature': pattern_dict['data'].get('time_signature', '4/4'),
+                'swing_ratio': pattern_dict['data'].get('swing_ratio', 0.67),
+                'default_duration': pattern_dict['data'].get('default_duration', 1.0),
+                'total_duration': pattern_dict['data'].get('total_duration', 4.0),
+                'groove_type': pattern_dict['data'].get('groove_type', 'straight'),
+                'variation_probability': pattern_dict['data'].get('variation_probability', 0.0),
+                'duration': pattern_dict['data'].get('duration', 4.0)
+            }
+        
+        logger.debug(f"Rhythm pattern data to insert: {pattern_dict}")
+        result = await db.rhythm_patterns.insert_one(pattern_dict)
+        logger.debug(f"Insert result: {result}")
+        
+        if result.inserted_id:
+            created_pattern = await db.rhythm_patterns.find_one({"_id": result.inserted_id})
+            if created_pattern:
+                created_pattern["id"] = str(created_pattern.pop("_id"))
+                logger.info(f"Successfully created rhythm pattern: {created_pattern}")
+                return created_pattern
+        
+        raise HTTPException(status_code=500, detail="Failed to create rhythm pattern")
+    except Exception as e:
+        logger.error(f"Error creating rhythm pattern: {e}")
+        logger.error(traceback.format_exc())
+        logger.error(f"Rhythm pattern data: {pattern_dict}")
         raise HTTPException(status_code=500, detail=str(e))
 
 async def get_chord_progressions(db: AsyncIOMotorDatabase) -> List[Dict[str, Any]]:

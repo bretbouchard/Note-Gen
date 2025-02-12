@@ -11,7 +11,8 @@ from pathlib import Path
 from src.note_gen.routers.user_routes import router as user_router
 from src.note_gen.routers.chord_progression_routes import router as chord_progression_router
 from src.note_gen.routers.note_pattern_routes import router as note_pattern_router
-from src.note_gen.routers.rhythm_pattern_routes import router as rhythm_pattern_router
+from src.note_gen.routers.rhythm_pattern_routes import router as rhythm_pattern_router, simple_router as rhythm_pattern_simple_router
+from src.note_gen.routers.note_sequence_routes import router as note_sequence_router
 
 from src.note_gen.database import init_db, close_mongo_connection, get_db
 import logging
@@ -54,9 +55,10 @@ async def lifespan(app: FastAPI):
         logger.info("Database connection closed successfully")
 
 app = FastAPI(
-    title="Note Generation API",
-    description="API for generating musical notes and patterns",
-    version="1.0.0",
+    title="Note Generator API",
+    description="API for generating musical patterns and sequences",
+    version="0.1.0",
+    redirect_slashes=False,  # Disable trailing slash redirects
     lifespan=lifespan
 )
 
@@ -70,10 +72,12 @@ app.add_middleware(
 )
 
 # Include routers
-app.include_router(user_router)
-app.include_router(chord_progression_router)
-app.include_router(note_pattern_router)
-app.include_router(rhythm_pattern_router)
+app.include_router(user_router, prefix="/api/v1/users")
+app.include_router(chord_progression_router, prefix="/api/v1/chord-progressions")
+app.include_router(note_sequence_router, prefix="/api/v1/note-sequences")
+app.include_router(rhythm_pattern_router, prefix="/api/v1/rhythm-patterns")
+app.include_router(note_pattern_router, prefix="/api/v1/note-patterns")
+app.include_router(rhythm_pattern_simple_router, prefix="/api/v1/rhythm-patterns/simple")  # Update prefix
 
 @app.get("/")
 async def root():
@@ -88,7 +92,4 @@ async def root():
 async def global_exception_handler(request, exc):
     """Global exception handler for unhandled errors."""
     logger.error(f"Unhandled error: {str(exc)}", exc_info=True)
-    return {
-        "detail": "An internal server error occurred",
-        "status_code": 500
-    }
+    raise HTTPException(status_code=500, detail="An internal server error occurred")

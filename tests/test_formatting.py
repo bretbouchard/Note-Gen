@@ -1,6 +1,7 @@
 import pytest
 from src.note_gen.populate_db import format_chord_progression
 from src.note_gen.models.enums import ChordQualityType
+from src.note_gen.models.roman_numeral import RomanNumeral
 
 
 @pytest.mark.asyncio

@@ -2,59 +2,58 @@ from __future__ import annotations
 import logging
 import sys
 import re
-from typing import List, Optional, Any, Dict, Union
-from pydantic import BaseModel, field_validator, model_validator, ValidationError, Field, ConfigDict
+from typing import List, Optional, Any, Dict, Union, Type, Callable
+from pydantic import BaseModel, Field, validator, ValidationError, ConfigDict, field_validator, model_validator
 import uuid
 from src.note_gen.models.note import Note
 
 # Ensure logger is set up correctly
 logger = logging.getLogger(__name__)
 
-
 class RhythmNote(BaseModel):
     """Represents a single note in a rhythm pattern."""
     position: float = Field(..., description="Position in beats", ge=0.0)
     duration: float = Field(..., description="Duration in beats", gt=0.0)
-    velocity: int = Field(100, description="Note velocity (0-127)", ge=0, le=127)
-    is_rest: bool = Field(False, description="Whether this is a rest")
-    pitch: Optional[int] = Field(None, description="MIDI pitch number (0-127)", ge=0, le=127)
-    accent: Optional[float] = Field(None, description="Accent value (0.0-2.0)", ge=0.0, le=2.0)
+    velocity: float = Field(default=100.0, description="Velocity of the note", ge=0.0, le=127.0)
+    is_rest: bool = Field(default=False, description="Whether this is a rest")
+    pitch: Optional[int] = Field(default=None, description="MIDI pitch number (0-127)", ge=0, lt=128)
+    accent: Optional[float] = Field(default=None, description="Accent value (0.0-2.0)", ge=0.0, lt=2.1)
     swing_ratio: float = Field(default=0.67, ge=0.5, le=0.75, description="Swing ratio (0.5-0.75)")
 
-    @field_validator('position')
-    def validate_position(cls, value):
-        if value < 0:
-            raise ValueError("Position must be non-negative")
-        return value
-
-    @field_validator('duration')
-    def validate_duration(cls, value):
-        if value <= 0:
+    @field_validator('position', 'duration', 'velocity', 'pitch', 'accent', 'swing_ratio')
+    @classmethod
+    def validate_numeric_fields(cls, value: Union[float, int], info: Any) -> Union[float, int]:
+        field_name = info.field_name
+        if field_name == 'position' and value < 0:
+            raise ValueError("Input should be greater than or equal to 0")
+        elif field_name == 'duration' and value <= 0:
             raise ValueError("Duration must be positive")
+        elif field_name == 'velocity' and (value < 0 or value > 127):
+            raise ValueError("Velocity must be between 0 and 127")
+        elif field_name == 'pitch' and value is not None and not 0 <= value <= 127:
+            raise ValueError("Pitch must be between 0 and 127")
+        elif field_name == 'accent' and value is not None and not 0.0 <= value <= 2.0:
+            raise ValueError("Accent must be between 0.0 and 2.0")
+        elif field_name == 'swing_ratio' and not 0.5 <= value <= 0.75:
+            raise ValueError("Input should be less than or equal to 0.75")
         return value
 
     @field_validator('velocity')
-    def validate_velocity(cls, value):
-        if not 0 <= value <= 127:
-            raise ValueError("Velocity must be between 0 and 127")
-        return value
-
-    @field_validator('pitch')
-    def validate_pitch(cls, value):
-        if value is not None and not 0 <= value <= 127:
-            raise ValueError("Pitch must be between 0 and 127")
-        return value
-
-    @field_validator('accent')
-    def validate_accent(cls, value):
-        if value is not None and not 0.0 <= value <= 2.0:
-            raise ValueError("Accent must be between 0.0 and 2.0")
+    @classmethod
+    def validate_velocity(cls, value: float) -> float:
+        """Validate velocity with specific error message."""
+        if value < 0:
+            raise ValueError("Velocity must be greater than or equal to 0")
+        elif value > 127:
+            raise ValueError("Velocity must be less than or equal to 127")
         return value
 
     @field_validator('swing_ratio')
-    def validate_swing_ratio(cls, value):
-        if not 0.5 <= value <= 0.75:
-            raise ValueError("Swing ratio must be between 0.5 and 0.75")
+    @classmethod
+    def validate_swing_ratio(cls, value: float) -> float:
+        """Validate swing ratio with specific error message."""
+        if value > 0.75:
+            raise ValueError("Input should be less than or equal to 0.75")
         return value
 
     class Config:
@@ -66,125 +65,168 @@ class RhythmNote(BaseModel):
 class RhythmPatternData(BaseModel):
     """Represents the data for a rhythm pattern."""
     notes: List[RhythmNote] = Field(
-        ..., 
-        description="List of rhythm notes",
-        min_length=1,
-        error_messages={"min_length": "At least one note is required"}
+        ...,
+        description="List of rhythm notes"
     )
-    time_signature: str = Field(
-        default="4/4",
-        pattern=r"^\d+/\d+$",
-        description="Time signature (e.g., '4/4', '3/4')"
-    )
+    time_signature: str = Field(default="4/4", description="Time signature (e.g., '4/4', '3/4')")
     swing_enabled: bool = Field(default=False, description="Whether swing is enabled")
     humanize_amount: float = Field(default=0.0, ge=0.0, le=1.0, description="Amount of humanization to apply")
     swing_ratio: float = Field(default=0.67, ge=0.5, le=0.75, description="Swing ratio (0.5-0.75)")
-    default_duration: float = Field(
-        default=1.0, 
-        gt=0.0,
-        description="Default note duration",
-        error_messages={"gt": "Default duration must be positive"}
-    )
+    default_duration: float = Field(default=1.0, gt=0.0, description="Default note duration")
     total_duration: float = Field(default=4.0, gt=0.0, description="Total duration of the pattern")
-    accent_pattern: List[str] = Field(default_factory=list, description="Pattern of accents")
+    accent_pattern: List[Union[str, float]] = Field(default_factory=list, description="Pattern of accents")
     groove_type: str = Field(default="straight", description="Type of groove")
     variation_probability: float = Field(default=0.0, ge=0.0, le=1.0, description="Probability of variations")
     duration: float = Field(default=1.0, gt=0.0, description="Duration in beats")
     style: str = Field(default="basic", description="Musical style")
 
     @field_validator('time_signature')
-    def validate_time_signature(cls, value):
+    @classmethod
+    def validate_time_signature(cls, value: str) -> str:
+        """Validate time signature format and values."""
+        import re
+        
+        # Check time signature format using regex
+        if not re.match(r'^\d+/\d+$', value):
+            raise ValueError("String should match pattern 'X/Y'")
+        
         try:
             numerator, denominator = map(int, value.split('/'))
+            
+            # Check both numerator and denominator are positive
             if numerator <= 0 or denominator <= 0:
                 raise ValueError("Both numerator and denominator must be positive")
-            # Check if denominator is a power of 2
-            if denominator & (denominator - 1) != 0:
+            
+            if denominator & (denominator - 1) != 0:  # Check if denominator is not a power of 2
                 raise ValueError("Time signature denominator must be a positive power of 2")
+            
             return value
         except ValueError as e:
-            raise ValueError(f"Invalid time signature format: {str(e)}")
+            # If the original error is about format, re-raise it
+            if "String should match pattern" in str(e):
+                raise
+            # If it's about positive values, re-raise that specific message
+            if "numerator and denominator must be positive" in str(e):
+                raise
+            # Otherwise, raise the original error about denominator
+            raise
 
-    @field_validator('groove_type')
-    def validate_groove_type(cls, value):
-        valid_types = ["straight", "swing", "shuffle"]
-        if value not in valid_types:
-            raise ValueError(f"Invalid groove type. Must be one of: {', '.join(valid_types)}")
-        return value
+    @field_validator('total_duration')
+    @classmethod
+    def validate_total_duration(cls, value: float, info: Any) -> float:
+        """Validate total duration."""
+        if value <= 0:
+            raise ValueError("Total duration must be positive")
+        
+        # Get time signature from the values
+        time_signature = info.data.get('time_signature', '4/4')
+        try:
+            numerator, denominator = map(int, time_signature.split('/'))
+            
+            # Prevent division by zero
+            if denominator == 0:
+                raise ValueError("Invalid time signature: denominator cannot be zero")
+            
+            beat_duration = 4.0 / denominator
+            
+            # Ensure total duration is a multiple of the beat duration
+            remainder = abs(value % beat_duration)
+            if remainder > 0.0001:  # Use small epsilon for float comparison
+                raise ValueError(f"Total duration must be a multiple of the beat duration ({beat_duration})")
+                
+            return value
+        except (ValueError, ZeroDivisionError):
+            raise ValueError("Invalid time signature format. Must be in 'X/Y' format with non-zero denominator.")
 
     @field_validator('notes')
-    def validate_notes(cls, value):
-        if not value:
-            raise ValueError("At least one note is required")
+    @classmethod
+    def validate_notes(cls, value: List[RhythmNote], info: Any) -> List[RhythmNote]:
+        """Validate notes with more robust checks."""
+        allow_empty = info.data.get('allow_empty_notes', False)
         
-        # Sort notes by position for easier validation
+        if not value or len(value) == 0:
+            if not allow_empty:
+                raise ValueError("List should have at least 1 item after validation")
+        
+        # Validate each note
+        for note in value:
+            if note.duration <= 0:
+                raise ValueError("Note duration must be positive")
+            if note.velocity < 0 or note.velocity > 127:
+                raise ValueError("Note velocity must be between 0 and 127")
+        
+        # Check for overlapping notes
         sorted_notes = sorted(value, key=lambda x: x.position)
-        
-        # Check for overlapping notes
-        for i in range(len(sorted_notes) - 1):
-            current_note = sorted_notes[i]
-            next_note = sorted_notes[i + 1]
-            current_end = current_note.position + current_note.duration
-            
-            if current_end > next_note.position:
-                raise ValueError(f"Notes overlap at position {next_note.position}")
-        
-        return value
-
-    @field_validator('accent_pattern')
-    def validate_accent_pattern(cls, value):
-        for accent in value:
-            try:
-                accent_value = float(accent)
-                if not 0.0 <= accent_value <= 2.0:
-                    raise ValueError("Accent values must be between 0.0 and 2.0")
-            except ValueError:
-                raise ValueError("Invalid accent value. Must be a float between 0.0 and 2.0")
-        return value
-
-    @model_validator(mode='after')
-    def calculate_total_duration(cls, values):
-        values.total_duration = sum(note.duration for note in values.notes)  # Update to correctly sum durations
-        return values
-
-    @model_validator(mode='after')
-    def validate_total_duration(cls, values):
-        """Validate total duration."""
-        if not values.notes:
-            return values
-            
-        if values.total_duration < 0:
-            raise ValueError("Total duration cannot be negative")
-            
-        # Get time signature components
-        numerator, denominator = map(int, values.time_signature.split('/'))
-        beat_duration = 4.0 / denominator
-        
-        # Ensure total duration is a multiple of the beat duration
-        remainder = values.total_duration % beat_duration
-        if remainder > 0.0001:  # Use small epsilon for float comparison
-            raise ValueError(f"Total duration must be a multiple of the beat duration ({beat_duration})")
-            
-        return values
-
-    @model_validator(mode='after')
-    def validate_note_positions(cls, values):
-        """Validate note positions."""
-        if not values.notes:
-            return values
-            
-        # Sort notes by position
-        sorted_notes = sorted(values.notes, key=lambda x: x.position)
-        
-        # Check for overlapping notes
         for i in range(len(sorted_notes) - 1):
             current_note = sorted_notes[i]
             next_note = sorted_notes[i + 1]
             
             if current_note.position + current_note.duration > next_note.position:
                 raise ValueError("Notes cannot overlap")
-                
-        return values
+        
+        return value
+
+    @field_validator('groove_type')
+    @classmethod
+    def validate_groove_type(cls, value: str) -> str:
+        """Validate groove type."""
+        allowed_groove_types = ['straight', 'swing', 'shuffle']
+        if value.lower() not in allowed_groove_types:
+            raise ValueError(f"Invalid groove type. Must be one of: {', '.join(allowed_groove_types)}")
+        return value.lower()
+
+    @field_validator('accent_pattern')
+    @classmethod
+    def validate_accent_pattern(cls, value: List[Union[str, float]]) -> List[str]:
+        """Validate accent pattern."""
+        if not value:
+            return value
+        
+        try:
+            # Convert values to strings, keeping original input
+            converted_values = [str(v) for v in value]
+            
+            # Validate each value
+            for v in converted_values:
+                float_val = float(v)
+                if float_val < 0 or float_val > 2.0:
+                    raise ValueError("Invalid accent value. Must be a float between 0.0 and 2.0")
+            
+            return converted_values
+        except ValueError:
+            raise ValueError("Invalid accent value. Must be a float between 0.0 and 2.0")
+
+    def calculate_total_duration(self) -> float:
+        """Calculate total duration based on notes."""
+        if not self.notes:
+            return 0.0
+        
+        # Calculate total duration by finding the last note's end position
+        return max(note.position + note.duration for note in self.notes)
+
+    def get_pattern_duration(self) -> float:
+        """Calculate pattern duration based on pattern string."""
+        # If no notes, try to calculate duration from pattern
+        if not self.notes:
+            # This requires the method to be called from a RhythmPattern instance
+            # that has a pattern attribute
+            pattern = getattr(self, 'pattern', None)
+            if not pattern:
+                return 0.0
+            
+            # Split the pattern string into individual note durations
+            pattern_parts = pattern.split()
+            
+            # Calculate total duration
+            total_duration = sum(
+                1.0 / float(part.rstrip(".")) if part.rstrip(".").isdigit() else 0.0 
+                for part in pattern_parts
+            )
+            
+            return total_duration
+        
+        # If notes exist, calculate based on notes
+        return self.calculate_total_duration()
 
     class Config:
         model_config = ConfigDict(
@@ -195,113 +237,71 @@ class RhythmPatternData(BaseModel):
 class RhythmPattern(BaseModel):
     """Represents a pattern for generating rhythmic notes."""
     id: Optional[str] = Field(default_factory=lambda: str(uuid.uuid4()), description='Pattern ID')
-    name: str = Field(
-        ..., 
-        description='Pattern name',
-        min_length=1,
-        max_length=100,
-        error_messages={"min_length": "Name cannot be empty"}
-    )
-    data: RhythmPatternData = Field(..., description='Pattern data')
+    name: str = Field(..., description='Pattern name', min_length=1, max_length=100)
+    data: RhythmPatternData = Field(..., description='Pattern data', alias="data")
     description: str = Field(default='', description='Pattern description')
-    tags: List[str] = Field(
-        default_factory=list,
-        description='Tags for categorization',
-        min_length=1,
-        error_messages={"min_length": "Tags cannot be None or an empty list"}
-    )
-    complexity: float = Field(default=1.0, ge=0.0, le=10.0, description='Pattern complexity score (1-10)')
-    style: Optional[str] = Field(None, description='Musical style (e.g., jazz, rock)')
-    pattern: str = Field(default='4 4', description='String representation of the rhythm pattern')
-    is_test: bool = Field(default=False)
+    tags: List[str] = Field(default_factory=list, description='Tags for categorization', min_length=1)
+    complexity: float = Field(default=1.0, ge=0.0, lt=11.0, description='Pattern complexity score (1-10)')
+    style: Optional[str] = Field(default='basic', description='Musical style')
+    pattern: Optional[str] = Field(default=None, description='Pattern representation')
+    groove_type: str = Field(default='straight', description='Type of groove')
+    swing_ratio: Optional[float] = Field(default=0.67, ge=0.5, le=0.75, description='Swing ratio (0.5-0.75)')
+    duration: float = Field(default=1.0, gt=0.0, description='Duration in beats')
 
-    @model_validator(mode='after')
-    def validate_data(cls, values):
-        data = values.data  # Access directly from the instance
-        if not isinstance(data, RhythmPatternData):
-            raise ValueError('data must be a valid RhythmPatternData instance')
-        if not data.notes:
-            raise ValueError('data.notes is required and cannot be empty')
-        if not all(isinstance(note, RhythmNote) for note in data.notes):
-            raise ValueError('All notes in data.notes must be valid RhythmNote instances')
-        if not all(note.position >= 0 for note in data.notes):
-            raise ValueError('All note positions must be non-negative')
-        if not all(note.duration > 0 for note in data.notes):
-            raise ValueError('All note durations must be positive')
-        if not all(0 <= note.velocity <= 127 for note in data.notes):
-            raise ValueError('All note velocities must be between 0 and 127')
-        if not all(note.pitch is None or 0 <= note.pitch <= 127 for note in data.notes):
-            raise ValueError('All note pitches must be between 0 and 127')
-        if not all(note.accent is None or 0.0 <= note.accent <= 2.0 for note in data.notes):
-            raise ValueError('All note accents must be between 0.0 and 2.0')
-        if not all(0.5 <= note.swing_ratio <= 0.75 for note in data.notes):
-            raise ValueError('All note swing ratios must be between 0.5 and 0.75')
-        return values
-
-    @staticmethod
-    def _calculate_note_duration(note: str) -> float:
-        """Calculate the duration of a note in beats.
+    def __init__(self, **data):
+        # Custom validation for swing_ratio
+        if 'swing_ratio' in data and data['swing_ratio'] > 0.75:
+            raise ValueError("Input should be less than or equal to 0.75")
         
-        Args:
-            note: A string representing the note duration (e.g., '4', '8.', '16')
-            
-        Returns:
-            The duration of the note in beats
-            
-        Raises:
-            ValueError: If the note duration is invalid
-        """
-        base_duration = float(note.rstrip('.'))
-        if base_duration <= 0:
-            raise ValueError("Note duration must be positive")
-            
-        # Convert note value to beats (e.g., 4 = 1.0 beats, 8 = 0.5 beats)
-        duration = 4.0 / base_duration
-        if '.' in note:
-            # A dotted note is 1.5 times its normal duration
-            duration *= 1.5
-        return duration
+        # Call the parent class's __init__ method
+        super().__init__(**data)
 
-    @field_validator('pattern')
-    def validate_pattern(cls, value):
-        """Validate the rhythm pattern string."""
-        if not value:
-            raise ValueError("Pattern cannot be empty")
-            
-        # Pattern should be space-separated numbers, optionally with dots
-        pattern_regex = r'^(\d+\.?\s*)+$'
-        if not re.match(pattern_regex, value):
-            raise ValueError("Invalid pattern format. Pattern should be space-separated numbers (e.g., '4 4' or '8. 16')")
-            
-        # Convert pattern to durations to validate
-        try:
-            for note in value.strip().split():
-                cls._calculate_note_duration(note)
-        except ValueError as e:
-            raise ValueError(f"Invalid pattern: {str(e)}")
-            
+    @field_validator('data')
+    @classmethod
+    def validate_data(cls, value: Union[RhythmPatternData, Dict[str, Any]]) -> RhythmPatternData:
+        """Validate data is a RhythmPatternData instance."""
+        if isinstance(value, dict):
+            try:
+                value = RhythmPatternData(**value)
+            except Exception as e:
+                raise ValueError(f"Input should be a valid dictionary or instance of RhythmPatternData: {e}")
+        
+        if not isinstance(value, RhythmPatternData):
+            raise ValueError("Input should be a valid dictionary or instance of RhythmPatternData")
+        
         return value
 
-    @model_validator(mode='after')
-    def validate_pattern_with_time_signature(cls, values):
-        """Validate that the pattern matches the time signature, allowing for flexible durations."""
-        try:
-            # Get time signature components
-            numerator, denominator = map(int, values.data.time_signature.split('/'))
-            beat_duration = 4.0 / denominator  # Quarter note duration
-            measure_duration = numerator * beat_duration  # Duration of one measure
+    @field_validator('pattern')
+    @classmethod
+    def validate_pattern(cls, value: Optional[str]) -> Optional[str]:
+        """Validate pattern format."""
+        if value is not None:
+            # More flexible pattern validation
+            pattern_values = value.split()
             
-            # Calculate total duration from pattern
-            durations = [cls._calculate_note_duration(note) for note in values.pattern.strip().split()]
-            total_duration = sum(durations)
+            # Regular expression to match various note duration formats
+            import re
+            note_pattern = re.compile(r'^(\d+(?:\.\d*)?|\d+/\d+)\.?$')
             
-            # Allow patterns to be any duration
-            # Optionally, you could log the total duration for reference
-            print(f"Total duration of the pattern: {total_duration:.2f} beats")
-            
-            return values
-        except Exception as e:
-            raise ValueError(f"Error validating pattern with time signature: {str(e)}")
+            for note in pattern_values:
+                if not note_pattern.match(note):
+                    raise ValueError(f"Invalid pattern format for note: {note}. Must be a number, fraction, or dotted number.")
+        
+        return value
+
+    @field_validator('swing_ratio')
+    @classmethod
+    def validate_swing_ratio(cls, value: Optional[float]) -> Optional[float]:
+        if value < 0.5 or value > 0.75:
+            raise ValueError('Input should be less than or equal to 0.75')
+        return value
+
+    @field_validator('groove_type')
+    @classmethod
+    def validate_groove_type(cls, value: str) -> str:
+        if value not in ['straight', 'swing']:
+            raise ValueError('Groove type must be either "straight" or "swing"')
+        return value
 
     def get_events_in_range(
         self, start_position: float, end_position: float
@@ -317,27 +317,40 @@ class RhythmPattern(BaseModel):
             if start_position <= note.position < end_position
         ]
 
+    def _calculate_pattern_duration(self) -> float:
+        """Calculate pattern duration based on pattern string."""
+        if not self.pattern:
+            return 0.0
+        
+        # Split the pattern string into individual note durations
+        pattern_parts = self.pattern.split()
+        
+        # Calculate total duration
+        total_duration = sum(self._get_single_duration(part) for part in pattern_parts)
+        
+        return total_duration
+
     def get_pattern_duration(self) -> float:
         """Recalculate and return the total duration of the rhythm pattern."""
-        return self.data.total_duration
-
-    def get_durations(self) -> List[float]:
-        """Convert the pattern string to a list of note durations.
+        # If total_duration is already set, return it
+        if self.data.total_duration > 0:
+            return self.data.total_duration
         
-        Returns:
-            List[float]: List of note durations in beats
-        """
-        if not self.pattern:
-            return []
-
-        durations = []
-        pattern_parts = self.pattern.split()
-        for part in pattern_parts:
-            duration = self._calculate_note_duration(part)
-            if duration > 0:
-                durations.append(duration)
-
-        return durations
+        # If data has no notes, calculate from pattern
+        if not self.data.notes:
+            # Calculate duration from pattern
+            pattern_parts = self.pattern.split()
+            
+            # Sum the actual values in the pattern
+            total_duration = sum(float(part) for part in pattern_parts)
+            
+            # Update the total_duration in data
+            self.data.total_duration = total_duration
+            
+            return total_duration
+        
+        # Otherwise, use the data's method
+        return self.data.get_pattern_duration()
 
     def _get_single_duration(self, note: str) -> float:
         """Calculate the duration of a single note.
@@ -353,7 +366,8 @@ class RhythmPattern(BaseModel):
             if base_duration <= 0:
                 return 0.0
 
-            duration = 1.0 / base_duration
+            # Return the base duration instead of beat fraction
+            duration = base_duration
             if note.endswith("."):
                 duration *= 1.5
 
@@ -363,9 +377,43 @@ class RhythmPattern(BaseModel):
 
     def recalculate_pattern_duration(self, total_duration: float) -> None:
         """Recalculate the total duration of the rhythm pattern based on the notes."""
-        self.data.total_duration = sum(note.duration for note in self.data.notes)
+        self.data.total_duration = self.data.get_pattern_duration()
         if self.data.total_duration != total_duration:
             raise ValueError("Total duration must be a multiple of the beat duration")
+
+    @classmethod
+    def validate_pattern_with_time_signature(cls, rhythm_pattern: Union[RhythmPattern, RhythmPatternData]):
+        """
+        Validate the time signature for the rhythm pattern.
+        Uses the validate_time_signature method from RhythmPatternData.
+        
+        Args:
+            rhythm_pattern (Union[RhythmPattern, RhythmPatternData]): The rhythm pattern to validate.
+        
+        Raises:
+            ValueError: If the time signature is invalid.
+        """
+        # If a RhythmPattern is passed, extract its data
+        if isinstance(rhythm_pattern, RhythmPattern):
+            rhythm_pattern = rhythm_pattern.data
+        
+        # Validate time signature
+        RhythmPatternData.validate_time_signature(rhythm_pattern.time_signature)
+        
+        # Validate total duration
+        if rhythm_pattern.total_duration <= 0:
+            raise ValueError("Total duration must be positive")
+        
+        # Validate notes
+        if not rhythm_pattern.notes:
+            raise ValueError("Rhythm pattern must contain at least one note")
+        
+        # Validate notes fit within total duration
+        max_note_position = max(note.position + note.duration for note in rhythm_pattern.notes)
+        if max_note_position > rhythm_pattern.total_duration:
+            raise ValueError(f"Notes extend beyond total pattern duration. Max note position: {max_note_position}, Total duration: {rhythm_pattern.total_duration}")
+        
+        return True
 
     def __str__(self) -> str:
         """Get string representation of the rhythm pattern."""
@@ -379,21 +427,23 @@ class RhythmPattern(BaseModel):
 
 class RhythmNoteSimple(BaseModel):
     """Class representing a single note in a rhythm pattern."""
-    duration: float
+    duration: float = Field(..., description="Duration in beats", gt=0.0)
     is_rest: bool = False
-    velocity: float = 1.0
+    velocity: float = Field(default=1.0, description="Velocity (0-1)", ge=0.0, le=1.0)
     
     @field_validator('duration')
-    def validate_duration(cls, v):
-        if v <= 0:
+    @classmethod
+    def validate_duration(cls: Type['RhythmNoteSimple'], value: float) -> float:
+        if value <= 0:
             raise ValueError("Duration must be positive")
-        return v
+        return value
     
     @field_validator('velocity')
-    def validate_velocity(cls, v):
-        if not 0 <= v <= 1:
+    @classmethod
+    def validate_velocity(cls: Type['RhythmNoteSimple'], value: float) -> float:
+        if not 0 <= value <= 1:
             raise ValueError("Velocity must be between 0 and 1")
-        return v
+        return value
 
     class Config:
         model_config = ConfigDict(
@@ -404,20 +454,21 @@ class RhythmNoteSimple(BaseModel):
 class RhythmPatternSimple(BaseModel):
     """Class representing a rhythm pattern."""
     id: Optional[str] = Field(default_factory=lambda: str(uuid.uuid4()))
-    name: str
-    pattern: List[RhythmNoteSimple]
+    name: str = Field(..., description='Pattern name', min_length=1, max_length=100)
+    pattern: List[RhythmNoteSimple] = Field(..., description='Pattern', min_length=1)
     description: str = ""
-    tags: List[str] = Field(default_factory=list)
-    complexity: float = 1.0
+    tags: List[str] = Field(default_factory=list, description='Tags for categorization', min_length=1)
+    complexity: float = Field(default=1.0, ge=0.0, lt=11.0, description='Pattern complexity score (1-10)')
     is_test: bool = Field(default=False)
 
     @field_validator('pattern')
-    def validate_pattern(cls, v):
-        if not isinstance(v, list):
+    @classmethod
+    def validate_pattern(cls, value: List[RhythmNoteSimple]) -> List[RhythmNoteSimple]:
+        if not isinstance(value, list):
             raise ValueError("Pattern must be a list")
         
         validated_notes = []
-        for note in v:
+        for note in value:
             if isinstance(note, RhythmNoteSimple):
                 validated_notes.append(note)
             elif isinstance(note, dict):
@@ -481,12 +532,47 @@ class RhythmPatternSimple(BaseModel):
 class RhythmPatternResponse(BaseModel):
     id: Optional[str] = Field(None, description="ID of the rhythm pattern")
     name: str = Field(description="Name of the rhythm pattern")
-    pattern: List[Union[Note, int]] = Field(description="List of notes in the rhythm pattern")
-    description: str = Field(description="Description of the rhythm pattern")
-    tags: List[str] = Field(..., description="Tags for the rhythm pattern")
+    pattern: Optional[List[Union[Note, int]]] = Field(default=None, description="List of notes in the rhythm pattern")
+    description: str = Field(default="", description="Description of the rhythm pattern")
+    tags: List[str] = Field(default_factory=list, description="Tags for the rhythm pattern")
     complexity: Optional[float] = Field(None, description="Complexity rating of the rhythm pattern")
+    data: Optional[RhythmPatternData] = Field(None, description="Detailed rhythm pattern data")
+    is_test: bool = Field(default=False, description="Flag to indicate if this is a test pattern")
 
-    class Config:
-        model_config = ConfigDict(
-            arbitrary_types_allowed=True
-        )
+    @model_validator(mode='before')
+    @classmethod
+    def prepare_pattern_data(cls, values):
+        # If pattern is not provided, try to extract from data
+        if 'pattern' not in values and 'data' in values:
+            rhythm_data = values.get('data')
+            if isinstance(rhythm_data, dict):
+                # If data is a dictionary, convert notes to a simple representation
+                notes = rhythm_data.get('notes', [])
+                values['pattern'] = [
+                    {
+                        'duration': note.get('duration', 1.0),
+                        'is_rest': note.get('is_rest', False)
+                    } 
+                    for note in notes
+                ]
+            elif isinstance(rhythm_data, RhythmPatternData):
+                # If data is already a RhythmPatternData instance
+                values['pattern'] = [
+                    {
+                        'duration': note.duration,
+                        'is_rest': note.is_rest
+                    } 
+                    for note in rhythm_data.notes
+                ]
+        
+        return values
+
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        from_attributes=True
+    )
+
+
+def validate_rhythm_pattern(rhythm: RhythmPattern) -> None:
+    # Implementation
+    pass
