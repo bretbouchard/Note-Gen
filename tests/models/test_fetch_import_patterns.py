@@ -17,8 +17,7 @@ from src.note_gen.models.enums import ScaleType
 from src.note_gen.models.note import Note
 from src.note_gen.models.chord import Chord
 from src.note_gen.models.chord_quality import ChordQualityType
-from src.note_gen.database.db import MongoDBConnection
-from src.note_gen.dependencies import get_db_conn
+from src.note_gen.database.db import get_db_conn, MONGODB_URI
 import os
 
 import httpx

@@ -5,7 +5,7 @@ import uuid
 from src.note_gen.main import app
 from httpx import AsyncClient, ASGITransport
 from starlette.concurrency import iterate_in_threadpool
-from src.note_gen.database.db import MongoDBConnection, MONGODB_URI
+from src.note_gen.database.db import get_db_conn, MONGODB_URI
 from src.note_gen.dependencies import get_db_conn
 from bson import ObjectId
 import logging
@@ -16,35 +16,35 @@ logger = logging.getLogger(__name__)
 @pytest_asyncio.fixture(scope="function")
 async def setup_database():
     """Setup test database and cleanup after tests."""
-    async with get_db_conn() as conn:
-        try:
-            # Clear existing data
-            await conn.db.chord_progressions.delete_many({})
-            
-            # Setup test data
-            progression = {
-                "_id": ObjectId(),
-                "name": "Test Base Progression",
-                "chords": [
-                    {"root": {"note_name": "C", "octave": 4}, "quality": "MAJOR"},
-                    {"root": {"note_name": "G", "octave": 4}, "quality": "MAJOR"},
-                    {"root": {"note_name": "A", "octave": 4}, "quality": "MINOR"},
-                    {"root": {"note_name": "F", "octave": 4}, "quality": "MAJOR"}
-                ],
+    db = await get_db_conn()
+    try:
+        # Clear existing data
+        await db.chord_progressions.delete_many({})
+        
+        # Setup test data
+        progression = {
+            "_id": ObjectId(),
+            "name": "Test Base Progression",
+            "chords": [
+                {"root": {"note_name": "C", "octave": 4}, "quality": "MAJOR"},
+                {"root": {"note_name": "G", "octave": 4}, "quality": "MAJOR"},
+                {"root": {"note_name": "A", "octave": 4}, "quality": "MINOR"},
+                {"root": {"note_name": "F", "octave": 4}, "quality": "MAJOR"}
+            ],
+            'key': 'C',
+            'scale_type': 'MAJOR',
+            'complexity': 0.5,
+            'scale_info': {
                 'key': 'C',
                 'scale_type': 'MAJOR',
-                'complexity': 0.5,
-                'scale_info': {
-                    'key': 'C',
-                    'scale_type': 'MAJOR',
-                    'notes': ['C', 'D', 'E', 'F', 'G', 'A', 'B']
-                }
+                'notes': ['C', 'D', 'E', 'F', 'G', 'A', 'B']
             }
-            await conn.db.chord_progressions.insert_one(progression)
-            yield conn.db
-        finally:
-            # Cleanup after tests
-            await conn.db.chord_progressions.delete_many({})
+        }
+        await db.chord_progressions.insert_one(progression)
+        yield db
+    finally:
+        # Cleanup after tests
+        await db.chord_progressions.delete_many({})
 
 @pytest.mark.asyncio
 async def test_chord_progression_functionality(app_client, async_database):

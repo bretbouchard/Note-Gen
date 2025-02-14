@@ -4,7 +4,7 @@ Note sequence route handlers with improved error handling and logging.
 
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
-from src.note_gen.database import MongoDBConnection
+from motor.motor_asyncio import AsyncIOMotorDatabase
 from src.note_gen.dependencies import get_db_conn
 from src.note_gen.models.note_sequence import NoteSequence
 from src.note_gen.models.request_models import GenerateSequenceRequest
@@ -36,21 +36,21 @@ def _validate_note_sequence(sequence: NoteSequence):
 
 @router.get("/", response_model=List[NoteSequence])
 async def get_note_sequences(
-    conn: MongoDBConnection = Depends(get_db_conn),
+    db: AsyncIOMotorDatabase = Depends(get_db_conn),
     limit: int = 100
 ) -> List[NoteSequence]:
     """
     Retrieve all note sequences from the database.
     
     Args:
-        conn (MongoDBConnection): Database connection
+        db (AsyncIOMotorDatabase): Database connection
         limit (int, optional): Maximum number of sequences to retrieve. Defaults to 100.
     
     Returns:
         List[NoteSequence]: List of note sequences
     """
     try:
-        cursor = conn.db.note_sequences.find().limit(limit)
+        cursor = db.note_sequences.find().limit(limit)
         sequences = await cursor.to_list(length=limit)
         return [NoteSequence(**sequence) for sequence in sequences]
     except Exception as e:
@@ -63,14 +63,14 @@ async def get_note_sequences(
 @router.get("/{sequence_id}", response_model=NoteSequence)
 async def get_note_sequence(
     sequence_id: str, 
-    conn: MongoDBConnection = Depends(get_db_conn)
+    db: AsyncIOMotorDatabase = Depends(get_db_conn)
 ) -> NoteSequence:
     """
     Retrieve a specific note sequence by its ID.
     
     Args:
         sequence_id (str): The unique identifier of the note sequence
-        conn (MongoDBConnection): Database connection
+        db (AsyncIOMotorDatabase): Database connection
     
     Returns:
         NoteSequence: The requested note sequence
@@ -79,7 +79,7 @@ async def get_note_sequence(
         HTTPException: If the note sequence is not found
     """
     try:
-        sequence = await conn.db.note_sequences.find_one({"_id": sequence_id})
+        sequence = await db.note_sequences.find_one({"_id": sequence_id})
         if not sequence:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -98,28 +98,38 @@ async def get_note_sequence(
 @router.post("/", response_model=NoteSequence)
 async def create_note_sequence(
     sequence: NoteSequence, 
-    conn: MongoDBConnection = Depends(get_db_conn)
+    db: AsyncIOMotorDatabase = Depends(get_db_conn)
 ) -> NoteSequence:
     """
-    Create a new note sequence with comprehensive validation.
+    Create a new note sequence.
     
     Args:
         sequence (NoteSequence): The note sequence to create
-        conn (MongoDBConnection): Database connection
+        db (AsyncIOMotorDatabase): Database connection
     
     Returns:
-        NoteSequence: Created note sequence with assigned ID
+        NoteSequence: The created note sequence
     
     Raises:
-        HTTPException: For various validation and database-related errors
+        HTTPException: If there's an error during creation
     """
     try:
-        sequence_dict = sequence.dict()
-        result = await conn.db.note_sequences.insert_one(sequence_dict)
-        sequence_dict["_id"] = str(result.inserted_id)
-        return NoteSequence(**sequence_dict)
+        # Validate the sequence
+        _validate_note_sequence(sequence)
+        
+        # Insert the sequence
+        result = await db.note_sequences.insert_one(sequence.model_dump())
+        
+        # Retrieve the created sequence
+        created_sequence = await db.note_sequences.find_one({"_id": result.inserted_id})
+        if not created_sequence:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Created sequence not found"
+            )
+        
+        return NoteSequence(**created_sequence)
     except ValidationError as e:
-        logger.error(f"Validation error creating note sequence: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(e)
@@ -134,72 +144,74 @@ async def create_note_sequence(
 @router.post("/generate", response_model=NoteSequence)
 async def generate_sequence(
     sequence_data: GenerateSequenceRequest,
-    conn: MongoDBConnection = Depends(get_db_conn)
+    db: AsyncIOMotorDatabase = Depends(get_db_conn)
 ) -> NoteSequence:
     """
     Generate a note sequence using presets.
+    
+    Args:
+        sequence_data (GenerateSequenceRequest): Data for generating the sequence
+        db (AsyncIOMotorDatabase): Database connection
+    
+    Returns:
+        NoteSequence: The generated note sequence
+    
+    Raises:
+        HTTPException: If there's an error during generation
     """
     try:
-        # Get chord progression
-        chord_progression = await conn.db.chord_progressions.find_one(
-            {"name": sequence_data.progression_name}
-        )
+        # Get presets from database
+        chord_progression = await db.chord_progressions.find_one({"name": sequence_data.progression_name})
         if not chord_progression:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Chord progression {sequence_data.progression_name} not found"
+                detail=f"Chord progression '{sequence_data.progression_name}' not found"
             )
-
-        # Get note pattern
-        note_pattern = await conn.db.note_patterns.find_one(
-            {"name": sequence_data.note_pattern_name}
-        )
+        
+        note_pattern = await db.note_patterns.find_one({"name": sequence_data.note_pattern_name})
         if not note_pattern:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Note pattern {sequence_data.note_pattern_name} not found"
+                detail=f"Note pattern '{sequence_data.note_pattern_name}' not found"
             )
-
-        # Get rhythm pattern
-        rhythm_pattern = await conn.db.rhythm_patterns.find_one(
-            {"name": sequence_data.rhythm_pattern_name}
-        )
+        
+        rhythm_pattern = await db.rhythm_patterns.find_one({"name": sequence_data.rhythm_pattern_name})
         if not rhythm_pattern:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Rhythm pattern {sequence_data.rhythm_pattern_name} not found"
+                detail=f"Rhythm pattern '{sequence_data.rhythm_pattern_name}' not found"
             )
-
-        # Generate sequence
+        
+        # Generate sequence from presets
         sequence = await generate_sequence_from_presets(
-            progression_name=sequence_data.progression_name,
-            note_pattern_name=sequence_data.note_pattern_name,
-            rhythm_pattern_name=sequence_data.rhythm_pattern_name,
-            scale_info=sequence_data.scale_info,
-            chord_progression=ChordProgression(**chord_progression),
-            note_pattern=note_pattern,
-            rhythm_pattern=rhythm_pattern
+            sequence_data.progression_name,
+            sequence_data.note_pattern_name,
+            sequence_data.rhythm_pattern_name,
+            sequence_data.scale_info,
+            ChordProgression(**chord_progression),
+            note_pattern,
+            rhythm_pattern
         )
-
-        # Save sequence
-        sequence_dict = sequence.dict()
-        result = await conn.db.note_sequences.insert_one(sequence_dict)
-        sequence_dict["_id"] = str(result.inserted_id)
-        return NoteSequence(**sequence_dict)
-
+        
+        # Save sequence to database
+        result = await db.note_sequences.insert_one(sequence.model_dump())
+        
+        # Retrieve saved sequence
+        saved_sequence = await db.note_sequences.find_one({"_id": result.inserted_id})
+        if not saved_sequence:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Generated sequence not found"
+            )
+        
+        return NoteSequence(**saved_sequence)
     except HTTPException:
         raise
-    except ValidationError as e:
-        logger.error(f"Validation error generating sequence: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=str(e)
-        )
     except Exception as e:
-        logger.error(f"Error generating sequence: {str(e)}")
+        logger.error(f"Error generating note sequence: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to generate sequence"
+            detail="Failed to generate note sequence"
         )
 
 async def generate_sequence_from_presets(
@@ -271,29 +283,28 @@ async def generate_sequence_from_presets(
         logger.error(f"Error in sequence generation: {e}", exc_info=True)
         raise ValueError(f"Failed to generate sequence: {e}")
 
-@router.delete("/{sequence_id}")
+@router.delete("/{sequence_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_note_sequence(
     sequence_id: str,
-    conn: MongoDBConnection = Depends(get_db_conn)
-) -> dict:
+    db: AsyncIOMotorDatabase = Depends(get_db_conn)
+):
     """
     Delete a note sequence by its ID.
     
     Args:
         sequence_id (str): The unique identifier of the note sequence
-        conn (MongoDBConnection): Database connection
+        db (AsyncIOMotorDatabase): Database connection
     
     Raises:
         HTTPException: If the note sequence is not found or if there's an error during deletion
     """
     try:
-        result = await conn.db.note_sequences.delete_one({"_id": sequence_id})
+        result = await db.note_sequences.delete_one({"_id": sequence_id})
         if result.deleted_count == 0:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Note sequence {sequence_id} not found"
             )
-        return {"message": f"Note sequence {sequence_id} deleted successfully"}
     except HTTPException:
         raise
     except Exception as e:

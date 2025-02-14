@@ -25,7 +25,7 @@ from src.note_gen.models.note_pattern import NotePattern
 from src.note_gen.models.patterns import NotePatternData
 from src.note_gen.models.note import Note
 from src.note_gen.models.chord import Chord
-from src.note_gen.database.db import get_db_conn
+from src.note_gen.database.db import get_db_conn, MONGODB_URI
 import motor.motor_asyncio
 import uuid 
 from pydantic import BaseModel, ValidationError
@@ -78,8 +78,9 @@ def client() -> TestClient:
 
 @pytest.fixture
 async def test_db():
+    """Fixture to provide a test database connection."""
     logger.debug(f'Connecting to database with MONGODB_URI: {os.getenv("MONGODB_URI")}, db_name: test_note_gen')
-    async with get_db_conn(uri=os.getenv("MONGODB_URI"), db_name='test_note_gen') as db:
+    async with get_db_conn() as db:
         yield db
 
 @pytest.mark.asyncio

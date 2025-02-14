@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import logging
 import threading
-from src.note_gen.database.db import MongoDBConnection
+from src.note_gen.database.db import init_db, close_mongo_connection
 
 from src.note_gen.routers import (
     note_sequence_routes,
@@ -53,7 +53,8 @@ app = FastAPI(
     title="Note Generation API",
     description="API for generating musical note sequences",
     version="1.0.0",
-    trailing_slash=False
+    trailing_slash=False,
+    redirect_slashes=False
 )
 
 # Configure CORS
@@ -68,24 +69,18 @@ app.add_middleware(
 @app.on_event("startup")
 async def startup_event():
     """Initialize database connection on startup."""
-    if not hasattr(app.state, "db"):
-        db_gen = MongoDBConnection(
-            uri=os.getenv("MONGODB_URI", "mongodb://localhost:27017"),
-            db_name=os.getenv("DATABASE_NAME", "note_gen")
-        )
-        async for db in db_gen:
-            app.state.db = db
-            break
+    await init_db()
 
 @app.on_event("shutdown")
 async def shutdown_event():
     """Close database connection on shutdown."""
-    if hasattr(app.state, "db"):
-        await app.state.db.client.close()
+    await close_mongo_connection()
 
 # Include routers
+logger.debug("Registering routers...")
 app.include_router(note_sequence_routes.router, prefix="/api/v1/note-sequences", tags=["note_sequences"])
 app.include_router(note_pattern_routes.router, prefix="/api/v1/note-patterns", tags=["note_patterns"])
 app.include_router(rhythm_pattern_routes.router, prefix="/api/v1/rhythm-patterns", tags=["rhythm_patterns"])
 app.include_router(chord_progression_routes.router, prefix="/api/v1/chord-progressions", tags=["chord_progressions"])
 app.include_router(user_routes.router, prefix="/api/v1/users", tags=["users"])
+logger.debug("All routers registered")

@@ -8,7 +8,6 @@ from typing import Optional, Dict, Any
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from .db import (
-    MongoDBConnection,
     get_db_conn,
     init_db,
     close_mongo_connection,
@@ -29,7 +28,6 @@ async def get_rhythm_pattern_by_name(db: AsyncIOMotorDatabase, name: str) -> Opt
     return await db.rhythm_patterns.find_one({"name": name})
 
 __all__ = [
-    'MongoDBConnection',
     'get_db_conn',
     'init_db',
     'close_mongo_connection',

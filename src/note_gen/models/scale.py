@@ -97,6 +97,7 @@ class Scale(BaseModel):
 
         # Start with the root note
         notes.append(self.root)
+        logger.debug(f"Starting note generation with root: {self.root.note_name}{self.root.octave}")
 
         for interval in intervals[1:]:  # Skip the first interval (0) as it's the root
             try:
@@ -108,6 +109,7 @@ class Scale(BaseModel):
                     velocity=self.root.velocity
                 )
                 notes.append(note)
+                logger.debug(f"Generated note: {note.note_name}{note.octave} (MIDI: {new_midi})")
             except ValueError as e:
                 # Provide a more helpful error message
                 raise ValueError(
@@ -117,6 +119,7 @@ class Scale(BaseModel):
                     f"Try using a different octave for the root note."
                 ) from e
         
+        logger.debug(f"Generated notes before deduplication: {[note.note_name + str(note.octave) for note in notes]}")
         return notes
 
     def get_scale_degree(self, degree: int) -> Note:

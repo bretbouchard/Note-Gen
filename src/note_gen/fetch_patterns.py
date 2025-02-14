@@ -17,7 +17,7 @@ from src.note_gen.models.note import Note
 from src.note_gen.models.enums import ChordQualityType, ScaleType
 from src.note_gen.models.patterns import NotePattern, NotePatternData
 from src.note_gen.models.scale_info import ScaleInfo
-from src.note_gen.database.db import MongoDBConnection
+from src.note_gen.database.db import get_db_conn
 from src.note_gen.dependencies import get_db_conn
 
 logger = logging.getLogger(__name__)
@@ -75,8 +75,7 @@ async def fetch_chord_progressions(db: Optional[AsyncIOMotorDatabase] = None) ->
     """Fetch all chord progressions from the database."""
     try:
         if db is None:
-            async with get_db_conn() as conn:
-                db = conn
+            db = await get_db_conn()
         cursor = db.chord_progressions.find({})
         progressions = []
         async for doc in cursor:
@@ -99,15 +98,15 @@ async def fetch_chord_progressions(db: Optional[AsyncIOMotorDatabase] = None) ->
 async def fetch_chord_progression_by_id(chord_progression_id: str, db: Optional[AsyncIOMotorDatabase] = None) -> Optional[ChordProgression]:
     """Fetch a specific chord progression by its ID."""
     try:
-        async with get_db_conn() as conn:
-            db = conn.db
-            doc = await db.chord_progressions.find_one({"_id": chord_progression_id})
-            if doc:
-                # Process each chord in the progression
-                if "chords" in doc:
-                    doc["chords"] = [process_chord_data(chord) for chord in doc["chords"]]
-                return ChordProgression(**doc)
-            return None
+        if db is None:
+            db = await get_db_conn()
+        doc = await db.chord_progressions.find_one({"_id": chord_progression_id})
+        if doc:
+            # Process each chord in the progression
+            if "chords" in doc:
+                doc["chords"] = [process_chord_data(chord) for chord in doc["chords"]]
+            return ChordProgression(**doc)
+        return None
     except Exception as e:
         logger.error(f"Error fetching chord progression by ID: {e}")
         return None
@@ -135,9 +134,7 @@ async def fetch_rhythm_patterns(
     """
     try:
         if db is None:
-            async with get_db_conn() as conn:
-                db = conn
-
+            db = await get_db_conn()
         # Build query
         query = query or {}
         cursor = db.rhythm_patterns.find(query)
@@ -178,20 +175,20 @@ async def fetch_rhythm_pattern_by_id(
         A validated rhythm pattern or None if not found or invalid.
     """
     try:
-        async with get_db_conn() as conn:
-            db = conn.db
-            doc = await db.rhythm_patterns.find_one({"_id": pattern_id})
-            if not doc:
-                return None
-            
-            try:
-                return RhythmPattern(**doc)
-            except ValidationError as e:
-                logger.error(f"Failed to validate rhythm pattern {pattern_id}: {e}")
-                return None
-            except Exception as e:
-                logger.error(f"Unexpected error processing rhythm pattern {pattern_id}: {e}")
-                return None
+        if db is None:
+            db = await get_db_conn()
+        doc = await db.rhythm_patterns.find_one({"_id": pattern_id})
+        if not doc:
+            return None
+        
+        try:
+            return RhythmPattern(**doc)
+        except ValidationError as e:
+            logger.error(f"Failed to validate rhythm pattern {pattern_id}: {e}")
+            return None
+        except Exception as e:
+            logger.error(f"Unexpected error processing rhythm pattern {pattern_id}: {e}")
+            return None
     except Exception as e:
         logger.error(f"Error fetching rhythm pattern by ID: {e}")
         return None
@@ -212,8 +209,7 @@ async def fetch_note_patterns(
     """
     try:
         if db is None:
-            async with get_db_conn() as conn:
-                db = conn
+            db = await get_db_conn()
 
         # Build query
         query = query or {}
@@ -255,21 +251,21 @@ async def fetch_note_pattern_by_id(
         Validated NotePattern instance or None if not found
     """
     try:
-        async with get_db_conn() as conn:
-            db = conn.db
-            doc = await db.note_patterns.find_one({"_id": pattern_id})
-            if not doc:
-                return None
-            
-            try:
-                normalized_doc = _normalize_note_pattern_document(doc)
-                return NotePattern(**normalized_doc)
-            except ValidationError as e:
-                logger.error(f"Failed to validate note pattern {pattern_id}: {e}")
-                return None
-            except Exception as e:
-                logger.error(f"Unexpected error processing note pattern {pattern_id}: {e}")
-                return None
+        if db is None:
+            db = await get_db_conn()
+        doc = await db.note_patterns.find_one({"_id": pattern_id})
+        if not doc:
+            return None
+        
+        try:
+            normalized_doc = _normalize_note_pattern_document(doc)
+            return NotePattern(**normalized_doc)
+        except ValidationError as e:
+            logger.error(f"Failed to validate note pattern {pattern_id}: {e}")
+            return None
+        except Exception as e:
+            logger.error(f"Unexpected error processing note pattern {pattern_id}: {e}")
+            return None
     except Exception as e:
         logger.error(f"Error fetching note pattern by ID: {e}")
         return None

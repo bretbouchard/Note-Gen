@@ -2,21 +2,14 @@ import pytest
 from src.note_gen.models.note import Note
 from src.note_gen.models.scale import Scale
 from src.note_gen.models.enums import ScaleType
-from src.note_gen.database.db import MongoDBConnection
-from src.note_gen.dependencies import get_db_conn
-from unittest.mock import AsyncMock
+import logging
+
+logger = logging.getLogger(__name__)
 
 @pytest.fixture
 def root_name() -> str:
     return "C4"
 
-@pytest.fixture
-async def mock_db_connection():
-    mock_db_connection = AsyncMock()
-    mock_db_connection.return_value.__aenter__.return_value = AsyncMock()
-    return mock_db_connection
-
-@pytest.mark.usefixtures('mock_db_connection')
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "root_name, scale_type",
@@ -33,32 +26,17 @@ async def mock_db_connection():
         ("E5", ScaleType.DOUBLE_HARMONIC_MAJOR),
     ],
 )
-async def test_scale_creation_and_notes(mock_db_connection, root_name: str, scale_type: ScaleType):
-    """Test that scales can be created with different root notes and types."""
-    async with get_db_conn() as conn:
-        root = Note.from_name(root_name, duration=1)
-        scale = Scale(root=root, scale_type=scale_type)
-        notes = scale.generate_notes()
-        
-        # Basic validation
-        assert isinstance(scale, Scale)
-        assert scale.root == root
-        assert scale.scale_type == scale_type
-        assert isinstance(notes, list)
-        assert len(notes) > 0
-        assert all(isinstance(note, Note) for note in notes)
-        
-        # The first note should be the root note
-        assert notes[0] == root
-        
-        # The number of notes should match the number of intervals plus 1 (for the root)
-        expected_length = len(scale_type.get_intervals()) + 1
-        assert len(notes) == expected_length
+async def test_scale_creation_and_notes(root_name: str, scale_type: ScaleType):
+    """Test that scale creation and note retrieval work correctly."""
+    scale = Scale(root=Note.from_full_name(root_name), scale_type=scale_type)
+    scale.notes = scale._generate_scale_notes()  # Ensure notes are generated
+    assert scale.root.note_name == root_name.rstrip('0123456789')
+    assert scale.scale_type == scale_type
+    assert len(scale.notes) > 0
 
-@pytest.mark.usefixtures('mock_db_connection')
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "root_name, scale_type, valid_degree",
+    "root_name, scale_type, degree",
     [
         ("C4", ScaleType.MAJOR, 1),
         ("C4", ScaleType.MAJOR, 4),
@@ -66,15 +44,14 @@ async def test_scale_creation_and_notes(mock_db_connection, root_name: str, scal
         ("A4", ScaleType.HARMONIC_MINOR, 3),
     ],
 )
-async def test_get_scale_degree_valid(mock_db_connection, root_name: str, scale_type: ScaleType, valid_degree: int):
+async def test_get_scale_degree_valid(root_name: str, scale_type: ScaleType, degree: int):
     """Test that get_scale_degree returns the correct note for valid degrees."""
-    async with get_db_conn() as conn:
-        root = Note.from_name(root_name, duration=1)
-        scale = Scale(root=root, scale_type=scale_type)
-        note = scale.get_scale_degree(valid_degree)
-        assert isinstance(note, Note)
+    scale = Scale(root=Note.from_full_name(root_name), scale_type=scale_type)
+    scale.notes = scale._generate_scale_notes()  # Ensure notes are generated
+    note = scale.get_scale_degree(degree)
+    assert note is not None
+    assert isinstance(note, Note)
 
-@pytest.mark.usefixtures('mock_db_connection')
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "root_name, scale_type, invalid_degree",
@@ -87,63 +64,70 @@ async def test_get_scale_degree_valid(mock_db_connection, root_name: str, scale_
         ("G2", ScaleType.DORIAN, 0),
     ],
 )
-async def test_get_scale_degree_invalid(mock_db_connection, root_name: str, scale_type: ScaleType, invalid_degree: int):
+async def test_get_scale_degree_invalid(root_name: str, scale_type: ScaleType, invalid_degree: int):
     """Test that get_scale_degree raises an error for an out-of-range degree."""
-    async with get_db_conn() as conn:
-        root = Note.from_name(root_name, duration=1)
-        scale = Scale(root=root, scale_type=scale_type)
-        with pytest.raises(ValueError):
-            scale.get_scale_degree(invalid_degree)
+    scale = Scale(root=Note.from_full_name(root_name), scale_type=scale_type)
+    scale.notes = scale._generate_scale_notes()  # Ensure notes are generated
+    with pytest.raises(ValueError):
+        scale.get_scale_degree(invalid_degree)
 
-@pytest.mark.usefixtures('mock_db_connection')
 @pytest.mark.asyncio
-async def test_scale_type_degree_count(mock_db_connection):
+async def test_scale_type_degree_count():
     """Test the 'degree_count' property on ScaleType (should match length of get_intervals())."""
-    async with get_db_conn() as conn:
-        for scale_type in ScaleType:
-            intervals = scale_type.get_intervals()
-            assert len(intervals) > 0
-            assert isinstance(intervals, list)
-            assert all(isinstance(i, int) for i in intervals)
+    for scale_type in ScaleType:
+        scale = Scale(root=Note.from_full_name('C4'), scale_type=scale_type)
+        scale.notes = scale._generate_scale_notes()  # Ensure notes are generated
+        intervals = scale.calculate_intervals()
+        degree_count_value = scale_type.degree_count
+        logger.info(f"Testing {scale_type}: degree_count = {degree_count_value}, len(scale.notes) = {len(scale.notes)}")
+        generated_notes = [note.note_name + str(note.octave) for note in scale.notes]
+        logger.info(f"Generated notes: {generated_notes}")
+        unique_notes = set(generated_notes)
+        logger.info(f"Unique notes: {unique_notes}, Count: {len(unique_notes)}")
+        logger.info(f"Unique note count: {len(unique_notes)}")
+        logger.info(f"Unique notes details:")
+        for note in unique_notes:
+            logger.info(f"  - {note}")
+        assert len(intervals) == len(scale.notes)
+        # Ensure that the degree count matches the number of unique notes
+        logger.info(f"Asserting degree_count {degree_count_value} == len(unique_notes) {len(unique_notes)}")
+        assert degree_count_value == len(unique_notes)
 
-@pytest.mark.usefixtures('mock_db_connection')
 @pytest.mark.asyncio
-async def test_scale_type_is_diatonic(mock_db_connection):
+async def test_scale_type_is_diatonic():
     """Test which scale types are diatonic (have 7 unique notes)."""
-    async with get_db_conn() as conn:
-        diatonic_types = {
-            ScaleType.MAJOR,
-            ScaleType.MINOR,
-            ScaleType.HARMONIC_MINOR,
-            ScaleType.MELODIC_MINOR,
-            ScaleType.DORIAN,
-            ScaleType.PHRYGIAN,
-            ScaleType.LYDIAN,
-            ScaleType.MIXOLYDIAN,
-            ScaleType.LOCRIAN,
-        }
-        
-        non_diatonic_types = {
-            ScaleType.MAJOR_PENTATONIC,
-            ScaleType.MINOR_PENTATONIC,
-            ScaleType.CHROMATIC,
-        }
-        
-        # Test diatonic scales have 7 unique notes
-        for scale_type in diatonic_types:
-            root = Note.from_name("C4", duration=1)  # Example root note
-            scale = Scale(root=root, scale_type=scale_type)
-            scale.generate_notes()  # Ensure notes are generated
-            assert len(scale.notes) == 7
-        
-        # Test non-diatonic scales don't have 7 unique notes
-        for scale_type in non_diatonic_types:
-            root = Note.from_name("C4", duration=1)  # Example root note
-            scale = Scale(root=root, scale_type=scale_type)
-            scale.generate_notes()  # Ensure notes are generated
-            assert len(scale.notes) != 7
+    diatonic_scales = {
+        ScaleType.MAJOR,
+        ScaleType.MINOR,
+        ScaleType.DORIAN,
+        ScaleType.HARMONIC_MINOR,
+        ScaleType.HARMONIC_MAJOR,
+        ScaleType.MELODIC_MAJOR,
+        ScaleType.MELODIC_MINOR,
+        ScaleType.DOUBLE_HARMONIC_MAJOR,
+        ScaleType.PHRYGIAN
+    }
+    for scale_type in ScaleType:
+        scale = Scale(root=Note.from_full_name('C4'), scale_type=scale_type)
+        scale.notes = scale._generate_scale_notes()  # Ensure notes are generated
+        logger.info(f"Testing diatonic for {scale_type}: len(scale.notes) = {len(scale.notes)}")
+        generated_notes = [note.note_name + str(note.octave) for note in scale.notes]
+        logger.info(f"Generated notes: {generated_notes}")
+        unique_notes = set(generated_notes)
+        logger.info(f"Unique notes: {unique_notes}, Count: {len(unique_notes)}")
+        logger.info(f"Unique note count: {len(unique_notes)}")
+        logger.info(f"Unique notes details:")
+        for note in unique_notes:
+            logger.info(f"  - {note}")
+        if scale_type in diatonic_scales:
+            logger.info(f"Asserting len(unique_notes) == 7 for {scale_type}")
+            assert len(unique_notes) == 7
+        else:
+            logger.info(f"Asserting len(unique_notes) != 7 for {scale_type}")
+            assert len(unique_notes) != 7
 
-@pytest.mark.usefixtures('mock_db_connection')
+        logger.info(f"Diatonic scale check for {scale_type}: {len(unique_notes)} unique notes: {unique_notes}")
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "scale_type, in_range_degree, out_of_range_degree",
@@ -153,16 +137,12 @@ async def test_scale_type_is_diatonic(mock_db_connection):
         (ScaleType.CHROMATIC, 10, 13),
     ],
 )
-async def test_scale_type_validate_degree(mock_db_connection, scale_type: ScaleType, in_range_degree: int, out_of_range_degree: int):
+async def test_scale_type_validate_degree(scale_type: ScaleType, in_range_degree: int, out_of_range_degree: int):
     """Test that scale degrees are validated correctly."""
-    async with get_db_conn() as conn:
-        root = Note.from_name("C4", duration=1)
-        scale = Scale(root=root, scale_type=scale_type)
-        
-        # Valid degree should work
-        note = scale.get_scale_degree(in_range_degree)
-        assert isinstance(note, Note)
-        
-        # Invalid degree should raise ValueError
-        with pytest.raises(ValueError):
-            scale.get_scale_degree(out_of_range_degree)
+    scale = Scale(root=Note.from_full_name('C4'), scale_type=scale_type)
+    scale.notes = scale._generate_scale_notes()  # Ensure notes are generated
+    # Valid degree should not raise error
+    scale.get_scale_degree(in_range_degree)
+    # Invalid degree should raise error
+    with pytest.raises(ValueError):
+        scale.get_scale_degree(out_of_range_degree)

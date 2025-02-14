@@ -5,14 +5,17 @@ import pytest
 from fastapi.testclient import TestClient
 from main import app
 from src.note_gen.models.rhythm_pattern import RhythmPattern, RhythmPatternData, RhythmNote
-from src.note_gen.database.db import MongoDBConnection, get_db_conn
+from src.note_gen.database.db import get_db_conn, init_db, close_mongo_connection
 from motor.motor_asyncio import AsyncIOMotorClient
 from bson import ObjectId
 import uuid
 import httpx
+import logging
 
 # Set test environment
 os.environ["TESTING"] = "1"
+
+logger = logging.getLogger(__name__)
 
 @pytest.fixture
 def rhythm_data():
@@ -39,24 +42,19 @@ def rhythm_data():
         "groove_type": "swing"
     }
 
-@pytest.fixture(autouse=True)
+@pytest.fixture
 async def test_db():
-    """Fixture to provide a test database."""
-    db_gen = get_db_conn()
-    async for db in db_gen:
-        # Clear all collections before each test
-        collections = await db.list_collection_names()
-        for collection in collections:
-            await db[collection].delete_many({})
+    """Fixture to provide a test database connection."""
+    logger.debug(f'Connecting to database with MONGODB_URI: {os.getenv("MONGODB_URI")}, db_name: test_note_gen')
+    async with get_db_conn() as db:
         yield db
 
 @pytest.fixture
 async def test_client():
     """Fixture to provide an async test client."""
-    app.dependency_overrides = {}  # Clear any existing overrides
-    async with httpx.AsyncClient(app=app, base_url="http://test") as client:
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
         yield client
-    app.dependency_overrides = {}
 
 # Consolidated tests for user routes functionality
 

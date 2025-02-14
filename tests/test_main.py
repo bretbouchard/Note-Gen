@@ -99,57 +99,48 @@ def event_loop():
 
 @pytest.fixture(autouse=True)
 async def setup_test_db():
-    """Setup test database with proper event loop handling."""
-    db_gen = get_db_conn()
-    async for db in db_gen:
-        # Clear test database
-        await db.chord_progressions.delete_many({})
-        await db.note_patterns.delete_many({})
-        await db.rhythm_patterns.delete_many({})
-        
-        yield db
-        
-        # Cleanup
-        await db.chord_progressions.delete_many({})
-        await db.note_patterns.delete_many({})
-        await db.rhythm_patterns.delete_many({})
+    """Set up test database."""
+    await init_db()
+    db = await get_db_conn()
+    
+    # Clear all collections
+    collections = await db.list_collection_names()
+    for collection in collections:
+        await db.get_collection(collection).delete_many({})
+    
+    # Create indexes
+    await ensure_indexes(db)
+    
+    yield db
 
 @pytest.mark.asyncio
-async def test_startup_imports_presets_when_empty():
+async def test_startup_imports_presets_when_empty(setup_test_db):
     """Test that presets are imported when collections are empty."""
-    async with get_db_conn() as db:
-        # Clear collections
-        await db.chord_progressions.delete_many({})
-        await db.note_patterns.delete_many({})
-        await db.rhythm_patterns.delete_many({})
-        
-        # Import presets
-        await import_presets_if_empty(db)
-        
-        # Check that collections are populated
-        assert await db.chord_progressions.count_documents({}) > 0
-        assert await db.note_patterns.count_documents({}) > 0
-        assert await db.rhythm_patterns.count_documents({}) > 0
+    db = await setup_test_db()
+    
+    # Import presets
+    await import_presets_if_empty(db)
+    
+    # Verify that collections are not empty
+    assert await db.chord_progressions.count_documents({}) > 0
+    assert await db.note_patterns.count_documents({}) > 0
+    assert await db.rhythm_patterns.count_documents({}) > 0
 
 @pytest.mark.asyncio
-async def test_startup_skips_import_when_not_empty():
+async def test_startup_skips_import_when_not_empty(setup_test_db):
     """Test that presets are not imported when collections are not empty."""
-    async with get_db_conn() as db:
-        # Clear collections
-        await db.chord_progressions.delete_many({})
-        await db.note_patterns.delete_many({})
-        await db.rhythm_patterns.delete_many({})
-        
-        # Add a test document to each collection
-        test_doc = {"name": "test", "data": []}
-        await db.chord_progressions.insert_one(test_doc.copy())
-        await db.note_patterns.insert_one(test_doc.copy())
-        await db.rhythm_patterns.insert_one(test_doc.copy())
-        
-        # Import presets
-        await import_presets_if_empty(db)
-        
-        # Check that collections still have only one document each
-        assert await db.chord_progressions.count_documents({}) == 1
-        assert await db.note_patterns.count_documents({}) == 1
-        assert await db.rhythm_patterns.count_documents({}) == 1
+    db = await setup_test_db()
+    
+    # Add a test document to each collection
+    test_doc = {"name": "test", "data": "test"}
+    await db.chord_progressions.insert_one(test_doc.copy())
+    await db.note_patterns.insert_one(test_doc.copy())
+    await db.rhythm_patterns.insert_one(test_doc.copy())
+    
+    # Import presets
+    await import_presets_if_empty(db)
+    
+    # Verify that only our test documents are present
+    assert await db.chord_progressions.count_documents({}) == 1
+    assert await db.note_patterns.count_documents({}) == 1
+    assert await db.rhythm_patterns.count_documents({}) == 1

@@ -535,11 +535,13 @@ class Note(BaseModel):
         
         return note_names[note_index]
 
-    def __eq__(self, other: object) -> bool:
-        """Check equality of notes based on MIDI number."""
+    def __eq__(self, other):
         if not isinstance(other, Note):
             return NotImplemented
-        return self.midi_number == other.midi_number
+        return (self.note_name == other.note_name and self.octave == other.octave)
+
+    def __hash__(self):
+        return hash((self.note_name, self.octave))
 
     def model_dump(self, **kwargs) -> dict:
         """

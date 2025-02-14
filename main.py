@@ -45,10 +45,8 @@ async def lifespan(app: FastAPI):
     try:
         # Initialize the database connection
         await init_db()
-        logger.info("MongoDB connection initialization started")
-        async with get_db_conn() as db:
-            logger.info("MongoDB connection initialized successfully")
-            yield
+        logger.info("MongoDB connection initialization successful")
+        yield
     except Exception as e:
         logger.error(f"Error during startup: {e}")
         raise

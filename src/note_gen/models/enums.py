@@ -303,6 +303,31 @@ class ScaleType(StrEnum):
         logger.debug(f"Getting intervals for scale type: {self}")
         return relative_intervals
 
+    @classmethod
+    def degree_count(cls):
+        """Returns the number of degrees for each scale type."""
+        return {
+            cls.MAJOR: 7,
+            cls.MINOR: 7,
+            cls.HARMONIC_MINOR: 7,
+            cls.MELODIC_MINOR: 7,
+            cls.DORIAN: 7,
+            cls.PHRYGIAN: 7,
+            cls.LYDIAN: 7,
+            cls.MIXOLYDIAN: 7,
+            cls.LOCRIAN: 7,
+            cls.PENTATONIC_MAJOR: 5,
+            cls.PENTATONIC_MINOR: 5,
+            cls.BLUES: 6,
+            cls.CHROMATIC: 12,
+            cls.WHOLE_TONE: 6,
+            cls.MINOR_PENTATONIC: 5,
+            cls.MAJOR_PENTATONIC: 5,
+            cls.HARMONIC_MAJOR: 7,
+            cls.MELODIC_MAJOR: 7,
+            cls.DOUBLE_HARMONIC_MAJOR: 7,
+        }[cls]
+
 class CustomValidationError(Exception):
     """Custom exception for validation errors."""
     pass
