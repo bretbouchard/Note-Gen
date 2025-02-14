@@ -9,61 +9,93 @@ from src.note_gen.models.rhythm_pattern import (
     RhythmPatternData,
     RhythmNote
 )
-from src.note_gen.database import get_db, TEST_DB_NAME, MONGODB_URI
+from src.note_gen.database.db import get_db_conn
 from bson import ObjectId
 import asyncio
-from src.note_gen.database.db import init_db, close_mongo_connection
+import os
 
 # Setup test database
 @pytest.fixture(autouse=True)
 async def test_db():
-    client = AsyncIOMotorClient(MONGODB_URI, serverSelectionTimeoutMS=5000)
-    db = client[TEST_DB_NAME]
-    
-    # Override the get_db dependency
-    async def override_get_db():
+    """Fixture to provide a test database."""
+    db_gen = get_db_conn()
+    async for db in db_gen:
+        # Clear all collections before each test
+        collections = await db.list_collection_names()
+        for collection in collections:
+            await db[collection].delete_many({})
         yield db
-    
-    app.dependency_overrides[get_db] = override_get_db
-    
-    # Clean up before test
-    await db.note_patterns.delete_many({})
-    await db.rhythm_patterns.delete_many({})
-    
-    yield db
-    
-    # Clean up after test
-    await db.note_patterns.delete_many({})
-    await db.rhythm_patterns.delete_many({})
-    app.dependency_overrides.clear()
-    await close_mongo_connection()
 
 @pytest.fixture
 async def client():
-    async with httpx.AsyncClient(base_url="http://test") as c:
-        yield c
+    """Fixture to provide an async test client."""
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        yield client
 
 # Consolidated tests for note pattern functionality
 @pytest.mark.asyncio
 async def test_note_pattern_functionality(client):
     # Test create note pattern
-    note_pattern = NotePattern(
-        name='Test Create Pattern',
-        description='Test pattern',
-        tags=['basic'],
-        data=[0, 4, 7],  # C MAJOR triad intervals
-        notes=[
-            Note(note_name='C', octave=4),
-            Note(note_name='E', octave=4),
-            Note(note_name='G', octave=4)
-        ],
-        is_test=True
-    )
-    response = await client.post('/note-patterns', json=note_pattern.model_dump())
+    note_pattern_data = {
+        "name": "Test Create Pattern",
+        "description": "Test pattern",
+        "tags": ["basic"],
+        "data": {
+            "notes": [
+                {"note_name": "C", "octave": 4, "duration": 1.0, "velocity": 100},
+                {"note_name": "E", "octave": 4, "duration": 1.0, "velocity": 100},
+                {"note_name": "G", "octave": 4, "duration": 1.0, "velocity": 100}
+            ],
+            "duration": 4.0,
+            "position": 0.0,
+            "velocity": 100,
+            "intervals": [0, 4, 7]
+        }
+    }
+    
+    response = await client.post("/api/v1/note-patterns", json=note_pattern_data)
     assert response.status_code == 201
     created_pattern = response.json()
-    assert created_pattern['name'] == note_pattern.name
-    assert len(created_pattern['data']) == len(note_pattern.data)
+    assert created_pattern["name"] == note_pattern_data["name"]
+    pattern_id = created_pattern["id"]
+
+    # Test get note pattern
+    response = await client.get(f"/api/v1/note-patterns/{pattern_id}")
+    assert response.status_code == 200
+    retrieved_pattern = response.json()
+    assert retrieved_pattern["name"] == note_pattern_data["name"]
+
+    # Test update note pattern
+    update_data = {
+        "name": "Updated Pattern",
+        "description": "Updated test pattern",
+        "tags": ["basic", "updated"],
+        "data": {
+            "notes": [
+                {"note_name": "D", "octave": 4, "duration": 1.0, "velocity": 100},
+                {"note_name": "F", "octave": 4, "duration": 1.0, "velocity": 100},
+                {"note_name": "A", "octave": 4, "duration": 1.0, "velocity": 100}
+            ],
+            "duration": 4.0,
+            "position": 0.0,
+            "velocity": 100,
+            "intervals": [0, 3, 7]
+        }
+    }
+    
+    response = await client.put(f"/api/v1/note-patterns/{pattern_id}", json=update_data)
+    assert response.status_code == 200
+    updated_pattern = response.json()
+    assert updated_pattern["name"] == update_data["name"]
+
+    # Test delete note pattern
+    response = await client.delete(f"/api/v1/note-patterns/{pattern_id}")
+    assert response.status_code == 200
+
+    # Verify pattern is deleted
+    response = await client.get(f"/api/v1/note-patterns/{pattern_id}")
+    assert response.status_code == 404
 
     # Test invalid note pattern
     invalid_pattern = NotePattern(
@@ -74,7 +106,7 @@ async def test_note_pattern_functionality(client):
         notes=[Note(note_name='C', octave=4)],
         is_test=True
     )
-    response = await client.post('/note-patterns', json=invalid_pattern.model_dump())
+    response = await client.post('/api/v1/note-patterns', json=invalid_pattern.model_dump())
     assert response.status_code == 422  # Validation error
 
     # Test create duplicate note pattern
@@ -86,11 +118,11 @@ async def test_note_pattern_functionality(client):
         notes=[Note(note_name='C', octave=4)],
         is_test=True
     )
-    response = await client.post('/note-patterns', json=note_pattern.model_dump())
+    response = await client.post('/api/v1/note-patterns', json=note_pattern.model_dump())
     assert response.status_code == 201
     
     # Try to create duplicate with same name
-    response = await client.post('/note-patterns', json=note_pattern.model_dump())
+    response = await client.post('/api/v1/note-patterns', json=note_pattern.model_dump())
     assert response.status_code == 409
 
     # Test create and delete note pattern
@@ -137,17 +169,17 @@ async def test_note_pattern_functionality(client):
     )
     
     # Create pattern
-    response = await client.post('/note-patterns', json=test_pattern.model_dump())
+    response = await client.post('/api/v1/note-patterns', json=test_pattern.model_dump())
     assert response.status_code == 201
     created_pattern = response.json()
     pattern_id = created_pattern['id']
     
     # Delete pattern
-    response = await client.delete(f'/note-patterns/{pattern_id}')
+    response = await client.delete(f'/api/v1/note-patterns/{pattern_id}')
     assert response.status_code == 204
     
     # Verify pattern is deleted
-    response = await client.get(f'/note-patterns/{pattern_id}')
+    response = await client.get(f'/api/v1/note-patterns/{pattern_id}')
     assert response.status_code == 404
 
     # Test create and delete rhythm pattern
@@ -180,17 +212,17 @@ async def test_note_pattern_functionality(client):
 
     # Create the pattern
     response = await client.post(
-        '/rhythm-patterns',
+        '/api/v1/rhythm-patterns',
         json=rhythm_pattern.model_dump(exclude_none=True)
     )
     assert response.status_code == 201
     
     # Verify pattern was created
-    response = await client.get(f'/rhythm-patterns/{pattern_id}')
+    response = await client.get(f'/api/v1/rhythm-patterns/{pattern_id}')
     assert response.status_code == 200
     
     # Delete the pattern
-    response = await client.delete(f'/rhythm-patterns/{pattern_id}')
+    response = await client.delete(f'/api/v1/rhythm-patterns/{pattern_id}')
     assert response.status_code == 204
 
     # Test get rhythm pattern
@@ -225,11 +257,11 @@ async def test_note_pattern_functionality(client):
     await test_db.rhythm_patterns.insert_one(rhythm_pattern.model_dump(exclude_none=True))
     
     # Get the pattern
-    response = await client.get(f'/rhythm-patterns/{pattern_id}')
+    response = await client.get(f'/api/v1/rhythm-patterns/{pattern_id}')
     assert response.status_code == 200
 
     # Test get note patterns
-    response = await client.get('/note-patterns')
+    response = await client.get('/api/v1/note-patterns')
     assert response.status_code == 200
     assert isinstance(response.json(), list)
     data = response.json()
@@ -237,7 +269,7 @@ async def test_note_pattern_functionality(client):
     assert data[0]['name'] is not None  # Check if the name is not None
 
     # Test invalid rhythm pattern id
-    response = await client.get('/rhythm-patterns/invalid_id')
+    response = await client.get('/api/v1/rhythm-patterns/invalid_id')
     assert response.status_code == 404
 
     # Test create duplicate rhythm pattern
@@ -269,14 +301,14 @@ async def test_note_pattern_functionality(client):
 
     # Create first pattern
     response = await client.post(
-        '/rhythm-patterns',
+        '/api/v1/rhythm-patterns',
         json=pattern.model_dump(exclude_none=True)
     )
     assert response.status_code == 201
 
     # Try to create duplicate
     response = await client.post(
-        '/rhythm-patterns',
+        '/api/v1/rhythm-patterns',
         json=pattern.model_dump(exclude_none=True)
     )
     assert response.status_code == 409  # Conflict

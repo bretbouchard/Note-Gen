@@ -11,6 +11,7 @@ from src.note_gen.models.note_event import NoteEvent
 from src.note_gen.models.chord import Chord
 from src.note_gen.models.scale_info import ScaleInfo
 from src.note_gen.models.enums import ScaleType
+from src.note_gen.models.scale import Scale
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +46,7 @@ async def generate_sequence_from_presets(
         
         # Create a sequence with these notes
         sequence = NoteSequence(notes=[root, second, third])
-        logger.info(f"Generated sequence: {sequence.model_dump_json()}")
+        logger.debug(f"Generated sequence: {sequence.model_dump_json()}")
         
         return sequence
     except Exception as e:
@@ -65,7 +66,6 @@ class NoteSequenceGenerator(BaseModel):
     def generate(self) -> NoteSequence:
         """Generate a sequence of notes based on the chord progression and rhythm pattern."""
         try:
-            logger.info("Generating sequence")
             sequence = []
             for chord in self.chord_progression.chords:
                 # Use chord.notes instead of chord.generate_notes()
@@ -79,13 +79,12 @@ class NoteSequenceGenerator(BaseModel):
     def _generate_basic_sequence(self) -> List[Note]:
         """Generate a basic sequence without rhythm pattern."""
         try:
-            logger.info("Generating basic sequence")
             sequence = []
             for chord in self.chord_progression.chords:
                 # Generate all notes in the chord (not just the root)
                 chord_notes = chord.generate_notes()
                 sequence.extend(chord_notes)
-            logger.info(f"Generated basic sequence: {sequence}")
+            logger.debug(f"Generated basic sequence: {sequence}")
             return sequence
         except Exception as e:
             logger.error(f"Error generating basic sequence: {str(e)}", exc_info=True)
@@ -94,7 +93,6 @@ class NoteSequenceGenerator(BaseModel):
     def _generate_rhythmic_sequence(self) -> List[Note]:
         """Generate a sequence using the rhythm pattern."""
         try:
-            logger.info("Generating rhythmic sequence")
             if not self.rhythm_pattern:
                 raise ValueError("Rhythm pattern is required for rhythmic sequence generation")
             
@@ -116,7 +114,7 @@ class NoteSequenceGenerator(BaseModel):
                 sequence.append(note)
                 chord_idx += 1
                 
-            logger.info(f"Generated rhythmic sequence: {sequence}")
+            logger.debug(f"Generated rhythmic sequence: {sequence}")
             return sequence
         except Exception as e:
             logger.error(f"Error generating rhythmic sequence: {str(e)}", exc_info=True)
@@ -125,7 +123,6 @@ class NoteSequenceGenerator(BaseModel):
     def generate_sequence(self) -> NoteSequence:
         """Generate a note sequence from the chord progression and rhythm pattern."""
         try:
-            logger.info("Generating sequence")
             if not self.rhythm_pattern:
                 raise ValueError("Rhythm pattern is required for sequence generation")
             
@@ -160,10 +157,9 @@ class NoteSequenceGenerator(BaseModel):
     def get_root_note_from_chord(self, chord: Chord) -> Optional[Note]:
         """Get the root note from a chord."""
         try:
-            logger.info(f"Getting root note from chord: {chord.model_dump_json()}")
             if hasattr(chord, 'root') and isinstance(chord.root, Note):
                 return chord.root
-            logger.info("No root note found")
+            logger.debug("No root note found")
             return None
         except Exception as e:
             logger.error(f"Error getting root note from chord: {str(e)}", exc_info=True)
@@ -202,15 +198,30 @@ class NoteSequenceGenerator(BaseModel):
         """
         try:
             logger.info(f"Generating sequence with scale_info: {scale_info.model_dump_json()}")
-            # For now, generate a simple sequence using the chord progression's first chord
+            
             if not chord_progression.chords:
                 raise ValueError("Chord progression has no chords")
             
-            first_chord = chord_progression.chords[0]
-            sequence = NoteSequence(notes=first_chord.notes)
-            logger.info(f"Generated sequence: {sequence.model_dump_json()}")
+            sequence = NoteSequence(notes=[])
+            root_note = scale_info.root
+            scale = Scale.from_root_and_type(root_note, scale_info.scale_type)
             
+            # Apply note pattern to each chord in the progression
+            for chord in chord_progression.chords:
+                # Get the scale degree for this chord
+                scale_degree = chord.root_note
+                # Get the root note for this chord
+                chord_root = scale.get_note_at_scale_degree(scale_degree)
+                
+                # Apply the note pattern relative to the chord root
+                for interval in note_pattern["pattern"]:
+                    # Create a new note based on the chord root plus the interval
+                    note_midi = chord_root.midi_number + interval
+                    note = Note.from_midi(note_midi, velocity=root_note.velocity, duration=root_note.duration)
+                    sequence.notes.append(note)
+            
+            logger.info(f"Generated sequence: {sequence.model_dump_json()}")
             return sequence
         except Exception as e:
-            logger.error(f"Error generating sequence: {str(e)}", exc_info=True)
+            logger.error(f"Error generating sequence from presets: {str(e)}", exc_info=True)
             raise

@@ -542,8 +542,11 @@ class RhythmPatternResponse(BaseModel):
     @model_validator(mode='before')
     @classmethod
     def prepare_pattern_data(cls, values):
+        # If pattern is a string, convert it to a list of integers
+        if 'pattern' in values and isinstance(values['pattern'], str):
+            values['pattern'] = [int(x) for x in values['pattern'].split()]
         # If pattern is not provided, try to extract from data
-        if 'pattern' not in values and 'data' in values:
+        elif 'pattern' not in values and 'data' in values:
             rhythm_data = values.get('data')
             if isinstance(rhythm_data, dict):
                 # If data is a dictionary, convert notes to a simple representation

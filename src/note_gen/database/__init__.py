@@ -8,12 +8,12 @@ from typing import Optional, Dict, Any
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from .db import (
-    get_db, 
-    MONGODB_URI,
-    DATABASE_NAME as TEST_DB_NAME,
-    close_mongo_connection,
+    MongoDBConnection,
+    get_db_conn,
     init_db,
-    get_db_connection
+    close_mongo_connection,
+    MONGODB_URI,
+    DATABASE_NAME,
 )
 
 async def get_chord_progression_by_name(db: AsyncIOMotorDatabase, name: str) -> Optional[Dict[str, Any]]:
@@ -29,13 +29,13 @@ async def get_rhythm_pattern_by_name(db: AsyncIOMotorDatabase, name: str) -> Opt
     return await db.rhythm_patterns.find_one({"name": name})
 
 __all__ = [
-    'get_db',
+    'MongoDBConnection',
+    'get_db_conn',
+    'init_db',
+    'close_mongo_connection',
+    'MONGODB_URI',
+    'DATABASE_NAME',
     'get_chord_progression_by_name',
     'get_note_pattern_by_name',
     'get_rhythm_pattern_by_name',
-    'MONGODB_URI',
-    'TEST_DB_NAME',
-    'close_mongo_connection',
-    'init_db',
-    'get_db_connection'
 ]

@@ -22,37 +22,17 @@ async def import_presets_if_empty(db: AsyncIOMotorDatabase) -> None:
         # Check if chord_progressions collection is empty
         if not await db.chord_progressions.count_documents({}):
             # Insert default chord progressions
-            default_progressions = [
-                {"name": "Default Progression 1", "chords": [], "key": "C", "scale_type": "MAJOR"},
-                {"name": "Default Progression 2", "chords": [], "key": "G", "scale_type": "MAJOR"},
-            ]
-            await db.chord_progressions.insert_many(default_progressions)
+            await import_chord_progressions(db)
 
         # Check if note_patterns collection is empty
         if not await db.note_patterns.count_documents({}):
             # Insert default note patterns
-            default_patterns = [
-                {"name": "Simple Triad", "pattern": {"index": 1, "pattern": [0, 2, 4], "tags": ["triad", "basic"], "complexity": 0.5, "description": "A simple triad pattern."}, "complexity": 1, "pattern_type": "default_type"},
-                {"name": "Ascending Scale", "pattern": {"index": 2, "pattern": [0, 1, 2, 3, 4, 5, 6, 7], "tags": ["scale", "ascending"], "complexity": 0.3, "description": "An ascending scale pattern."}, "complexity": 1, "pattern_type": "default_type"},
-                {"name": "Descending Scale", "pattern": {"index": 3, "pattern": [7, 6, 5, 4, 3, 2, 1, 0], "tags": ["scale", "descending"], "complexity": 0.3, "description": "A descending scale pattern."}, "complexity": 1, "pattern_type": "default_type"},
-                {"name": "Arpeggio", "pattern": {"index": 4, "pattern": [0, 2, 4, 7], "tags": ["arpeggio", "broken chord"], "complexity": 0.4, "description": "An arpeggio pattern."}, "complexity": 1, "pattern_type": "default_type"},
-                {"name": "Pentatonic", "pattern": {"index": 5, "pattern": [0, 2, 4, 7, 9], "tags": ["pentatonic", "scale"], "complexity": 0.4, "description": "A pentatonic scale pattern."}, "complexity": 1, "pattern_type": "default_type"},
-            ]
-            for pattern in default_patterns:
-                existing_pattern = await db.note_patterns.find_one({"pattern.index": pattern["pattern"]["index"]})
-                if existing_pattern:
-                    logger.warning(f"Pattern with index '{pattern['pattern']['index']}' already exists. Skipping insertion.")
-                else:
-                    await db.note_patterns.insert_one(pattern)
+            await import_note_patterns(db)
 
         # Check if rhythm_patterns collection is empty
         if not await db.rhythm_patterns.count_documents({}):
             # Insert default rhythm patterns
-            default_rhythms = [
-                {"complexity": 0.5, "pattern": []},
-                {"complexity": 0.75, "pattern": []},
-            ]
-            await db.rhythm_patterns.insert_many(default_rhythms)
+            await import_rhythm_patterns(db)
 
     except Exception as e:
         logger.error(f"Error importing presets: {e}")
@@ -96,11 +76,6 @@ async def initialize_client():
     try:
         client: AsyncIOMotorClient = AsyncIOMotorClient("mongodb://localhost:27017/")
         logger.info("MongoDB client initialized.")
-        logger.info(f"MongoDB client connected to {client.address}")
-        logger.info(f"MongoDB client server info: {client.server_info()}")
-        async def get_database_names():
-            return await client.list_database_names()
-        logger.info(f"MongoDB client database names: {await get_database_names()}")
         return client
     except ConnectionFailure:
         logger.error("Failed to connect to MongoDB")
@@ -137,40 +112,26 @@ async def clear_existing_data(database: AsyncIOMotorDatabase) -> None:
         logger.warning(f"Error clearing existing data from rhythm_patterns: {e}")
 
 # Function to import chord progressions
-async def import_chord_progressions(database: AsyncIOMotorDatabase) -> None:
-    logger.info("Importing chord progressions into the database.")
-    target_db: AsyncIOMotorDatabase = database
-    for i, (name, progression) in enumerate(COMMON_PROGRESSIONS.items(), start=1):
+async def import_chord_progressions(db: AsyncIOMotorDatabase) -> None:
+    """Import chord progressions from COMMON_PROGRESSIONS into the database."""
+    logger.info("Importing chord progressions...")
+    for name, chords in COMMON_PROGRESSIONS.items():
         try:
-            logger.info(f"Inserting chord progression: {name}...")
-            
-            # Create a ChordProgression instance
-            chord_progression = ChordProgression(
-                name=name,
-                chords=[],  # You might want to generate chords based on progression
-                key="C",  # Default key
-                scale_type="MAJOR",
-                complexity=0.5,  # Default complexity
-                scale_info=ScaleInfo(root=Note('C'), scale_type=ScaleType.MAJOR)
-            )
-            
-            # Convert to dictionary for database storage
-            progression_data = chord_progression.to_dict()
-            
-            # Add additional metadata
-            progression_data.update({
-                "style": "default",
-                "description": f"Standard {name} progression",
-                "difficulty": "intermediate",
-                "tags": [name.lower().replace(" ", "-")],
-                "created_at": datetime.datetime.utcnow(),
-                "updated_at": datetime.datetime.utcnow()
-            })
-            
-            result = await target_db.chord_progressions.insert_one(progression_data)
-            logger.info(f"Imported chord progression: {name}. Inserted ID: {result.inserted_id}")
+            # Insert each chord progression into the database
+            data = {
+                'name': name,
+                'chords': chords,
+                'key': 'C',  # Default key, can be adjusted
+                'scale_type': 'MAJOR',  # Default scale type, can be adjusted
+                'tags': [],  # Add tags if needed
+                'complexity': 0.5,  # Default complexity
+                'description': f"{name} progression"
+            }
+            await db.chord_progressions.insert_one(data)
+            logger.info(f"Inserted chord progression: {name}")
         except Exception as e:
             logger.warning(f"Error importing chord progression: {name} - {e}")
+    logger.info("Finished importing chord progressions.")
 
 # Function to import note patterns
 async def import_note_patterns(database: AsyncIOMotorDatabase) -> None:
@@ -178,7 +139,6 @@ async def import_note_patterns(database: AsyncIOMotorDatabase) -> None:
     target_db: AsyncIOMotorDatabase = database
     for i, (name, pattern) in enumerate(NOTE_PATTERNS.items(), start=1):
         try:
-            logger.info(f"Inserting note pattern: {name}...")
             result = await target_db.note_patterns.insert_one({
                 "name": name,
                 "pattern": pattern,
@@ -186,14 +146,13 @@ async def import_note_patterns(database: AsyncIOMotorDatabase) -> None:
             logger.info(f"Imported note pattern: {name}. Inserted ID: {result.inserted_id}")
         except Exception as e:
             logger.warning(f"Error importing note pattern: {name} - {e}")
+    logger.info("Finished importing note patterns.")
 
 # Function to import rhythm patterns
 async def import_rhythm_patterns(database: AsyncIOMotorDatabase) -> None:
     logger.info("Importing rhythm patterns into the database.")
     target_db: AsyncIOMotorDatabase = database
     for i, (name, pattern_dict) in enumerate(RHYTHM_PATTERNS.items(), start=1):
-        logger.info(f"Processing pattern: {name}, Data: {pattern_dict}")  # Log the pattern data
-        
         # Ensure that the notes field is included in the pattern_dict
         notes = pattern_dict.get("notes", [])
         
@@ -209,7 +168,6 @@ async def import_rhythm_patterns(database: AsyncIOMotorDatabase) -> None:
         
         serialized_pattern = serialize_rhythm_pattern(pattern)
         try:
-            logger.info(f"Inserting rhythm pattern: {name}...")
             result = await target_db.rhythm_patterns.insert_one({
                 "name": name,
                 "pattern": serialized_pattern,
@@ -217,6 +175,7 @@ async def import_rhythm_patterns(database: AsyncIOMotorDatabase) -> None:
             logger.info(f"Imported rhythm pattern: {name}. Inserted ID: {result.inserted_id}")
         except Exception as e:
             logger.error(f"Error inserting rhythm pattern {name}: {e}")
+    logger.info("Finished importing rhythm patterns.")
 
 def serialize_rhythm_pattern(pattern: RhythmPatternData) -> Dict[str, Any]:
     if not isinstance(pattern, RhythmPatternData):

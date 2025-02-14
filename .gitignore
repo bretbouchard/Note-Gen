@@ -73,3 +73,5 @@ htmlcov/
 config.ini
 secrets.json
 local_settings.py
+scratchpad.md
+.windsurfrules

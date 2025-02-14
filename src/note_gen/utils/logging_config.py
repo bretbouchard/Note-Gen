@@ -14,15 +14,8 @@ def setup_logging() -> Logger:
         for handler in root.handlers:
             root.removeHandler(handler)
 
-    # Configure logging
-    logging.basicConfig(
-        level=logging.DEBUG,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        handlers=[
-            logging.StreamHandler(),
-            logging.FileHandler(log_file, mode='a', encoding='utf-8', delay=False)
-        ]
-    )
+    # Ensure this file does not set basicConfig again if already set in main.py
+    logging.basicConfig(level=logging.WARNING, format='%(asctime)s - %(levelname)s - %(message)s')
     logger = logging.getLogger(__name__)
 
     # Debugging statements

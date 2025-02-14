@@ -5,6 +5,7 @@ from uuid import uuid4, UUID
 from typing import List, Optional, Union, Literal, Dict, Any
 from pydantic import BaseModel, Field, field_validator, ConfigDict
 from datetime import datetime
+from enum import Enum
 
 from src.note_gen.models.chord import Chord
 from src.note_gen.models.scale_degree import ScaleDegree
@@ -25,27 +26,39 @@ class NotePattern(BaseModel):
     rather than actual note values. This class does not include
     specific notes, as it focuses on the structure of the pattern.
     """
-    id: Optional[str] = Field(None, description='ID of the note pattern')
+    id: Optional[str] = Field(None, description="The unique identifier of the note pattern")
     index: Optional[int] = Field(None, description='Index of the note pattern')
-    name: str = Field(..., description='Name of the note pattern')
-    pattern: List[int] = Field(..., description='Pattern representing intervals')
-    direction: str = Field(default='up', description='Direction of the pattern')
-    use_chord_tones: bool = Field(default=False, description='Use chord tones')
-    use_scale_mode: bool = Field(default=False, description='Use scale mode')
-    arpeggio_mode: bool = Field(default=False, description='Arpeggio mode')
-    restart_on_chord: bool = Field(default=False, description='Restart on chord')
-    description: str = Field(..., description='Pattern description')
-    tags: List[str] = Field(..., description='Pattern tags')
-    complexity: Optional[float] = Field(None, description='Pattern complexity')
-    is_test: Optional[bool] = Field(default=False, description='Test flag')
-    duration: Optional[float] = Field(None, description='Pattern duration')
-    position: Optional[float] = Field(None, description='Pattern position')
-    velocity: Optional[int] = Field(None, description='Pattern velocity')
-    data: Optional[Any] = Field(None, description='Original pattern data')
+    name: str = Field(..., description="The name of the note pattern")
+    pattern: List[int] = Field(..., description="The sequence of intervals that define the pattern")
+    direction: str = Field("up", description="The direction of the pattern (up, down, or random)")
+    use_chord_tones: bool = Field(False, description="Whether to use chord tones")
+    use_scale_mode: bool = Field(False, description="Whether to use scale mode")
+    arpeggio_mode: bool = Field(False, description="Whether to use arpeggio mode")
+    restart_on_chord: bool = Field(False, description="Whether to restart on chord change")
+    description: Optional[str] = Field(None, description="A description of the pattern")
+    tags: List[str] = Field(default_factory=list, description="Tags associated with the pattern")
+    complexity: Optional[float] = Field(None, description="The complexity rating of the pattern")
+    is_test: bool = Field(False, description="Whether this is a test pattern")
+    duration: float = Field(1.0, description="The duration of each note in the pattern")
+    position: float = Field(0.0, description="The position of the pattern in time")
+    velocity: int = Field(64, description="The velocity (loudness) of the notes")
+    data: Optional[Union[dict, NotePatternData]] = Field(None, description="Additional data associated with the pattern")
 
     model_config = ConfigDict(
-        validate_assignment=True,  # Enable validation on attribute updates
-        extra='allow'  # Allow extra fields for testing
+        validate_assignment=True,
+        populate_by_name=True,
+        extra='allow',  # Allow extra fields for testing
+        json_schema_extra={
+            "example": {
+                "name": "Simple Triad",
+                "pattern": [0, 4, 7],
+                "direction": "up",
+                "description": "A simple major triad pattern",
+                "tags": ["triad", "basic"],
+                "duration": 1.0,
+                "velocity": 64
+            }
+        }
     )
 
     def __init__(self, **data):
@@ -79,7 +92,7 @@ class NotePattern(BaseModel):
             intervals = []
             for i in range(1, len(data['notes'])):
                 intervals.append(data['notes'][i].midi_number - base_note.midi_number)
-            pattern = intervals
+            pattern = [0] + intervals  # Include the base note interval
         
         # If still no pattern, use a default
         if pattern is None:
@@ -120,61 +133,58 @@ class NotePattern(BaseModel):
         # For other attributes, use the default Pydantic behavior
         raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
 
-    @field_validator('name')
-    @classmethod
-    def validate_name(cls, v: str) -> str:
-        """Validate that name is not empty and meets minimum length."""
+    @field_validator("pattern")
+    def validate_pattern(cls, v):
+        """Validate the pattern intervals."""
+        if not v:
+            raise ValueError("Pattern must not be empty")
+        if not all(isinstance(i, int) for i in v):
+            raise ValueError("All pattern values must be integers")
+        if any(abs(i) > 12 for i in v):
+            raise ValueError("Interval {} is outside reasonable range".format(max(abs(i) for i in v)))
+        return v
+
+    @field_validator("name")
+    def validate_name(cls, v):
+        """Validate the pattern name."""
         if not v or len(v.strip()) < 2:
-            raise ValueError('Name must be at least 2 characters long and not just whitespace')
+            raise ValueError("Name must be at least 2 characters long")
         return v.strip()
 
-    @field_validator('pattern')
-    @classmethod
-    def validate_pattern(cls, v: List[int]) -> List[int]:
-        """
-        Validate pattern with more comprehensive checks:
-        - Non-empty list
-        - All elements are integers
-        - Reasonable interval range (e.g., -12 to 12 semitones)
-        """
-        if not v:
-            raise ValueError('Pattern must not be empty')
-        
-        if not all(isinstance(interval, int) for interval in v):
-            raise ValueError('All pattern elements must be integers representing intervals')
-        
-        for interval in v:
-            if abs(interval) > 12:
-                raise ValueError(f'Interval {interval} is outside reasonable range (-12 to 12 semitones)')
-        
+    @field_validator("velocity")
+    def validate_velocity(cls, v):
+        """Validate the velocity value."""
+        if not 0 <= v <= 127:
+            raise ValueError("Velocity must be between 0 and 127")
         return v
 
-    @field_validator('complexity')
-    @classmethod
-    def validate_complexity(cls, v: Optional[float]) -> Optional[float]:
-        """Validate complexity is between 0 and 1 if provided."""
-        if v is not None and (v < 0 or v > 1):
-            raise ValueError('Complexity must be between 0 and 1')
+    @field_validator("duration")
+    def validate_duration(cls, v):
+        """Validate the duration value."""
+        if v <= 0:
+            raise ValueError("Duration must be greater than 0")
         return v
 
-    @field_validator('tags')
-    @classmethod
-    def validate_tags(cls, v: List[str]) -> List[str]:
-        """
-        Validate tags:
-        - Non-empty list
-        - Each tag is a non-empty string
-        - Trim whitespace
-        """
-        if not v:
-            raise ValueError('Tags list cannot be empty')
-        
-        cleaned_tags = [tag.strip() for tag in v if tag.strip()]
-        
-        if not cleaned_tags:
-            raise ValueError('Tags must contain non-whitespace strings')
-        
-        return cleaned_tags
+    @field_validator("position")
+    def validate_position(cls, v):
+        """Validate the position value."""
+        if v < 0:
+            raise ValueError("Position cannot be negative")
+        return v
+
+    @field_validator("complexity")
+    def validate_complexity(cls, v):
+        """Validate the complexity value."""
+        if v is not None and not (0 <= v <= 1):
+            raise ValueError("Complexity must be between 0 and 1")
+        return v
+
+    @field_validator("tags")
+    def validate_tags(cls, v):
+        """Validate the tags."""
+        if any(not tag.strip() for tag in v):
+            raise ValueError("Tags must contain non-whitespace strings")
+        return v
 
     def add_tag(self, tag: str) -> None:
         """Add a new tag to the pattern."""
@@ -189,8 +199,17 @@ class NotePattern(BaseModel):
 class NotePatternResponse(BaseModel):
     id: Optional[str] = Field(None, description="ID of the note pattern")
     name: str = Field(..., json_schema_extra={"error_messages": {"required": {"message": "Name is required"}}}, description="Name of the note pattern")
-    pattern_type: Optional[str] = Field(None, description="Type of pattern")
+    pattern: List[int] = Field(..., description="The sequence of intervals that define the pattern")
+    direction: str = Field("up", description="The direction of the pattern (up, down, or random)")
+    use_chord_tones: bool = Field(False, description="Whether to use chord tones")
+    use_scale_mode: bool = Field(False, description="Whether to use scale mode")
+    arpeggio_mode: bool = Field(False, description="Whether to use arpeggio mode")
+    restart_on_chord: bool = Field(False, description="Whether to restart on chord change")
     description: str = Field(..., json_schema_extra={"error_messages": {"required": {"message": "Description is required"}}}, description="Pattern description")
     tags: List[str] = Field(..., json_schema_extra={"error_messages": {"required": {"message": "Tags are required"}}}, description="Pattern tags")
     complexity: Optional[float] = Field(None, description="Pattern complexity")
     is_test: Optional[bool] = Field(default=None, description="Test flag")
+    duration: float = Field(1.0, description="The duration of each note in the pattern")
+    position: float = Field(0.0, description="The position of the pattern in time")
+    velocity: int = Field(64, description="The velocity (loudness) of the notes")
+    data: Optional[dict] = Field(None, description="Additional data associated with the pattern")

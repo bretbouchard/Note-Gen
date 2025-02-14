@@ -1,14 +1,14 @@
 from typing import List, Dict, Any, Optional, AsyncGenerator
 from collections.abc import AsyncGenerator as AsyncGeneratorABC
-
 from unittest.mock import AsyncMock, MagicMock
 from bson import ObjectId
 import pytest
-from httpx import AsyncClient, ASGITransport
+import httpx
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from src.note_gen.models.patterns import NotePattern
-from src.note_gen.database import get_db
+from src.note_gen.database.db import MongoDBConnection, init_db, close_mongo_connection
+from src.note_gen.dependencies import get_db_conn
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import ValidationError
 from src.note_gen.models.note import Note
@@ -16,6 +16,44 @@ from src.note_gen.models.chord_progression import ChordProgression, ChordQuality
 from src.note_gen.models.rhythm_pattern import RhythmPattern, RhythmPatternData, RhythmNote
 import asyncio
 import logging
+import uuid
+import os
+from main import app
+
+# Set testing environment variable
+os.environ['TESTING'] = '1'
+os.environ['MONGODB_TEST_URI'] = 'mongodb://localhost:27017/test_note_gen'
+os.environ['DATABASE_NAME'] = 'test_note_gen'
+
+@pytest.fixture(scope="function")
+async def test_db():
+    """Fixture to provide a test database."""
+    try:
+        await init_db()
+        async with get_db_conn() as db:
+            # Clear all collections before each test
+            collections = await db.list_collection_names()
+            for collection in collections:
+                await db[collection].delete_many({})
+            yield db
+    finally:
+        await close_mongo_connection()
+
+@pytest.fixture(scope="function")
+async def test_client(test_db):
+    """Fixture to provide an async test client."""
+    async with httpx.AsyncClient(
+        app=app,
+        base_url="http://test",
+        follow_redirects=True
+    ) as client:
+        yield client
+
+@pytest.fixture(scope="function")
+def sync_client(test_db):
+    """Fixture to provide a sync test client."""
+    with TestClient(app) as client:
+        yield client
 
 logger = logging.getLogger(__name__)
 
@@ -48,22 +86,23 @@ class MockCollection:
         self.items = items
 
     async def find(self, query: Optional[Dict[str, Any]] = None) -> AsyncIterator[Dict[str, Any]]:
-        # Simulate asynchronous behavior
-        logger.info("Accessing MongoDB for test operations...")
         return MockCursor(self.items)
 
     async def find_one(self, query: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        # Simulate asynchronous behavior
-        logger.info("Accessing MongoDB for test operations...")
         for item in self.items:
             if item.get('_id') == query.get('_id'):
                 return item
         return None
 
     async def insert_one(self, document: Dict[str, Any]) -> None:
-        # Simulate asynchronous behavior
-        logger.info("Accessing MongoDB for test operations...")
         self.items.append(document)
+
+    async def delete_one(self, query: Dict[str, Any]) -> type('DeleteResult', (), {'deleted_count': int}):
+        for i, item in enumerate(self.items):
+            if item.get('_id') == query.get('_id'):
+                del self.items[i]
+                return type('DeleteResult', (), {'deleted_count': 1})()
+        return type('DeleteResult', (), {'deleted_count': 0})()
 
 
 class MockDatabase:
@@ -74,32 +113,24 @@ class MockDatabase:
             "name": "Test Progression",
             "chords": [
                 {
-                    "name": "C",
-                    "root": {"note_name": "C", "octave": 4},  # Root as dictionary
+                    "root": {"note_name": "C", "octave": 4},  
                     "quality": ChordQualityType.MAJOR,
-                    "intervals": [0, 4, 7]
                 },
                 {
-                    "name": "G",
-                    "root": {"note_name": "G", "octave": 4},  # Root as dictionary
+                    "root": {"note_name": "G", "octave": 4},  
                     "quality": ChordQualityType.MAJOR,
-                    "intervals": [0, 4, 7]
                 },
                 {
-                    "name": "Am",
-                    "root": {"note_name": "A", "octave": 4},  # Root as dictionary
+                    "root": {"note_name": "A", "octave": 4},  
                     "quality": ChordQualityType.MINOR,
-                    "intervals": [0, 3, 7]
                 },
                 {
-                    "name": "F",
-                    "root": {"note_name": "F", "octave": 4},  # Root as dictionary
+                    "root": {"note_name": "F", "octave": 4},  
                     "quality": ChordQualityType.MAJOR,
-                    "intervals": [0, 4, 7]
                 }
             ],
             "scale_info": {
-                "root": Note(note_name='C', octave=4),
+                "root": {"note_name": "C", "octave": 4},
                 "scale_type": "MAJOR",
                 "intervals": [0, 2, 4, 5, 7, 9, 11]
             },
@@ -179,110 +210,159 @@ class MockDatabase:
         }])
 
 
-from main import app
-from httpx import AsyncClient, ASGITransport
+@pytest.fixture(autouse=True)
+async def setup_teardown(test_db):
+    """Setup and teardown for each test."""
+    # Setup
+    try:
+        yield
+    finally:
+        # Teardown
+        try:
+            pass
+        except Exception as e:
+            logger.error(f"Error during teardown: {str(e)}")
 
-@pytest.fixture
-async def client() -> AsyncGenerator[AsyncClient, None]:
-    mock_db = MockDatabase()
-    app.dependency_overrides[get_db] = lambda: mock_db
-    async with AsyncClient(transport=ASGITransport(app=app), base_url='http://test') as client:
-        yield client
-    app.dependency_overrides.clear()
-
-
-@pytest.fixture
-async def test_client() -> AsyncGenerator[AsyncClient, None]:
-    async with AsyncClient(transport=ASGITransport(app=app), base_url='http://test') as client:
-        yield client
 
 # Consolidated tests for API functionality
 
 @pytest.mark.asyncio
-async def test_api_functionality(client: AsyncClient) -> None:
+async def test_api_functionality(test_client: httpx.AsyncClient) -> None:
     """Test basic API functionality."""
-    logger.info("Accessing MongoDB for test operations...")
     # Test creating a note pattern
     note_pattern_data = {
-        "name": "Test Pattern",
+        "name": "Test Pattern " + str(uuid.uuid4()),  # Add unique identifier
         "pattern": [0, 4, 7],  # Adding the required pattern field
-        "notes": [
-            {
-                "note_name": "C",
-                "duration": 1.0,
-                "velocity": 64,
-                "octave": 4
-            }
-        ],
+        "direction": "up",
         "description": "Test pattern",
         "tags": ["test"],
-        "pattern_type": "basic"
+        "is_test": True,
+        "duration": 1.0,
+        "velocity": 64
     }
     
-    response = await client.post("/api/v1/note-patterns/", json=note_pattern_data)
+    response = await test_client.post("/api/v1/note-patterns/", json=note_pattern_data)
     assert response.status_code == 201, f"Failed to create note pattern: {response.text}"
+    created_pattern = response.json()
+    note_pattern_id = created_pattern["id"]  # Using 'id' instead of '_id'
+
+    # Test get note pattern by id
+    response = await test_client.get(f"/api/v1/note-patterns/{note_pattern_id}")
+    assert response.status_code == 200
+    retrieved_pattern = response.json()
+    assert retrieved_pattern["name"] == note_pattern_data["name"]
+
+    # Test update note pattern
+    update_data = {
+        "name": "Updated Pattern " + str(uuid.uuid4()),
+        "pattern": [0, 4, 7],
+        "direction": "up",
+        "description": "Updated pattern",
+        "tags": ["test", "updated"],
+        "is_test": True,
+        "duration": 1.0,
+        "velocity": 64
+    }
+    response = await test_client.put(f"/api/v1/note-patterns/{note_pattern_id}", json=update_data)
+    assert response.status_code == 200
+    updated_pattern = response.json()
+    assert updated_pattern["name"] == update_data["name"]
+
+    # Test delete note pattern
+    response = await test_client.delete(f"/api/v1/note-patterns/{note_pattern_id}")
+    assert response.status_code == 204
+    assert response.content == b''  # No content for 204 response
 
     # Test creating a rhythm pattern
     rhythm_pattern_data = {
-        "name": "Test Rhythm",
-        "pattern": "4 4",
-        "description": "Test rhythm",
-        "tags": ["test"],
+        "name": "Test Rhythm " + str(uuid.uuid4()),  # Add unique identifier
         "data": {
             "notes": [
                 {
                     "position": 0.0,
                     "duration": 1.0,
                     "velocity": 100,
-                    "is_rest": False
+                    "is_rest": False,
+                    "swing_ratio": 0.67
                 }
             ],
-            "time_signature": "4/4"
-        }
+            "time_signature": "4/4",
+            "swing_enabled": False,
+            "humanize_amount": 0.0,
+            "swing_ratio": 0.67,
+            "default_duration": 1.0,
+            "total_duration": 4.0,
+            "accent_pattern": [],
+            "groove_type": "straight",
+            "variation_probability": 0.0,
+            "duration": 1.0,
+            "style": "basic"
+        },
+        "description": "Test rhythm",
+        "tags": ["test"],
+        "complexity": 1.0,
+        "style": "basic",
+        "pattern": "4 4",  # Changed from [4, 4] to "4 4"
+        "groove_type": "straight",
+        "swing_ratio": 0.67,
+        "duration": 1.0
     }
     
-    response = await client.post("/api/v1/rhythm-patterns/", json=rhythm_pattern_data)
+    response = await test_client.post("/api/v1/rhythm-patterns/", json=rhythm_pattern_data)
     assert response.status_code == 201, f"Failed to create rhythm pattern: {response.text}"
 
     # Test creating a chord progression
     chord_progression_data = {
-        "name": "Test Progression",
+        "name": "Test Progression " + str(uuid.uuid4()),  # Add unique identifier
         "chords": [
             {
                 "root": {"note_name": "C", "octave": 4},
                 "quality": "MAJOR"
+            },
+            {
+                "root": {"note_name": "G", "octave": 4},
+                "quality": "MAJOR"
+            },
+            {
+                "root": {"note_name": "A", "octave": 4},
+                "quality": "MINOR"
             }
         ],
         "key": "C",
-        "scale_type": "MAJOR"
+        "scale_type": "MAJOR",
+        "scale_info": {
+            "root": {"note_name": "C", "octave": 4},
+            "scale_type": "MAJOR",
+            "intervals": [0, 2, 4, 5, 7, 9, 11]  # Major scale intervals
+        }
     }
     
-    response = await client.post("/api/v1/chord-progressions/", json=chord_progression_data)
+    response = await test_client.post("/api/v1/chord-progressions/", json=chord_progression_data)
     assert response.status_code == 201, f"Failed to create chord progression: {response.text}"
 
     # Test get note patterns
-    response = await client.get("/api/v1/note-patterns/")
+    response = await test_client.get("/api/v1/note-patterns/")
     assert response.status_code == 200
     assert len(response.json()) > 0
 
     # Test get rhythm patterns
-    response = await client.get("/api/v1/rhythm-patterns/")
+    response = await test_client.get("/api/v1/rhythm-patterns/")
     assert response.status_code == 200
     assert len(response.json()) > 0
 
     # Test get chord progressions
-    response = await client.get("/api/v1/chord-progressions/")
+    response = await test_client.get("/api/v1/chord-progressions/")
     assert response.status_code == 200
     assert len(response.json()) > 0
 
     # Test get note pattern by id
-    response = await client.get("/api/v1/note-patterns/1")
+    response = await test_client.get("/api/v1/note-patterns/1")
     assert response.status_code == 200
     assert response.json()["name"] == "Test Pattern"
 
     # Test update note pattern
     update_data = {
-        "name": "Updated Pattern",
+        "name": "Updated Pattern " + str(uuid.uuid4()),  # Add unique identifier
         "notes": [
             {
                 "note_name": "C",
@@ -306,37 +386,37 @@ async def test_api_functionality(client: AsyncClient) -> None:
         "description": "Updated pattern",
         "tags": ["test", "updated"]
     }
-    response = await client.put("/api/v1/note-patterns/1", json=update_data)
+    response = await test_client.put("/api/v1/note-patterns/1", json=update_data)
     assert response.status_code == 200
     response_data = response.json()
-    assert response_data["name"] == "Updated Pattern"
+    assert response_data["name"] == update_data["name"]
 
     # Test delete note pattern
-    response = await client.delete("/api/v1/note-patterns/1")
-    assert response.status_code == 200
-    assert response.json()["message"] == "Note pattern deleted successfully"
+    response = await test_client.delete("/api/v1/note-patterns/1")
+    assert response.status_code == 204
+    assert response.content == b''  # No content for 204 response
 
     # Test get rhythm pattern by id
-    response = await client.get("/api/v1/rhythm-patterns/1")
+    response = await test_client.get("/api/v1/rhythm-patterns/1")
     assert response.status_code == 200
     assert response.json()["name"] == "Test Rhythm"
 
     # Test update rhythm pattern
     update_data = {
-        "name": "Updated Rhythm",
+        "name": "Updated Rhythm " + str(uuid.uuid4()),  # Add unique identifier
         "pattern": "1 1",
         "description": "Updated rhythm",
         "tags": ["test", "updated"]
     }
-    response = await client.put("/api/v1/rhythm-patterns/1", json=update_data)
+    response = await test_client.put("/api/v1/rhythm-patterns/1", json=update_data)
     assert response.status_code == 200
     response_data = response.json()
-    assert response_data["name"] == "Updated Rhythm"
+    assert response_data["name"] == update_data["name"]
 
     # Test delete rhythm pattern
-    response = await client.delete("/api/v1/rhythm-patterns/1")
-    assert response.status_code == 200
-    assert response.json()["message"] == "Rhythm pattern deleted successfully"
+    response = await test_client.delete("/api/v1/rhythm-patterns/1")
+    assert response.status_code == 204
+    assert response.content == b''  # No content for 204 response
 
 
 import pytest
@@ -373,41 +453,103 @@ async def test_invalid_chord_progression_creation() -> None:
     assert "Chords list cannot be empty" in str(excinfo.value)
 
 # Test API endpoint with valid data
-async def test_create_chord_progression_valid_data(client: AsyncClient):
+async def test_create_chord_progression_valid_data(test_client: httpx.AsyncClient):
     """Test creating a chord progression with valid data."""
-    logger.info("Starting test for creating a chord progression with valid data...")
+    # Create a unique name for the test
+    test_name = f"Test Progression {uuid.uuid4()}"
+    
+    # Prepare test data with proper enum values
     data = {
-        "name": "Test Progression",
+        "name": test_name,
         "chords": [
             {
-                "root": {"note_name": "C", "octave": 4, "duration": 1.0, "velocity": 100},
-                "quality": "MAJOR",
-                "notes": [],
-                "inversion": 0
+                "root": {"note_name": "C", "octave": 4},
+                "quality": ChordQualityType.MAJOR.value,  # Use enum value
+                "notes": [
+                    {"note_name": "C", "octave": 4},
+                    {"note_name": "E", "octave": 4},
+                    {"note_name": "G", "octave": 4}
+                ]
+            }
+        ],
+        "key": "C",
+        "scale_type": "MAJOR",
+        "scale_info": {
+            "root": {"note_name": "C", "octave": 4},
+            "scale_type": "MAJOR",
+            "intervals": [0, 2, 4, 5, 7, 9, 11]
+        }
+    }
+    
+    try:
+        logger.info("Starting test for creating a chord progression with valid data...")
+        response = await test_client.post("/api/v1/chord-progressions/", json=data)
+        assert response.status_code == 201
+        response_data = response.json()
+        assert response_data["name"] == test_name
+        assert len(response_data["chords"]) == 1
+        assert response_data["key"] == "C"
+        assert response_data["scale_type"] == "MAJOR"
+        
+    except Exception as e:
+        raise
+
+# Test API endpoint with invalid data
+@pytest.mark.asyncio
+async def test_create_chord_progression_invalid_data(test_client: httpx.AsyncClient):
+    """Test creating a chord progression with invalid data."""
+    # Test missing required fields
+    invalid_data = {
+        "name": "Invalid Progression",
+        "chords": [
+            {
+                "root": {"note_name": "C", "octave": 4},
+                "quality": "MAJOR"
             }
         ],
         "key": "C",
         "scale_type": "MAJOR"
+        # Missing required scale_info field
     }
-    logger.info("Sending data to create chord progression: %s", data)
-    response = await client.post("/api/v1/chord-progressions/", json=data)
-    logger.info("Received response with status code: %d", response.status_code)
-    assert response.status_code == 201
-    response_data = response.json()
-    assert response_data["name"] == "Test Progression"
-    assert len(response_data["chords"]) == 1
-    assert response_data["key"] == "C"
-    assert response_data["scale_type"] == "MAJOR"
+    response = await test_client.post("/api/v1/chord-progressions/", json=invalid_data)
+    assert response.status_code == 422, f"Expected validation error, got: {response.text}"
 
-# Test API endpoint with invalid data
-async def test_create_chord_progression_invalid_data(client: AsyncClient):
-    """Test creating a chord progression with invalid data."""
-    data = {
-        "name": "Invalid Progression",
-        "chords": [],  # Invalid: empty chords list
+    # Test invalid chord quality
+    invalid_quality_data = {
+        "name": "Invalid Quality",
+        "chords": [
+            {
+                "root": {"note_name": "C", "octave": 4},
+                "quality": "INVALID_QUALITY"  # Invalid quality value
+            }
+        ],
         "key": "C",
-        "scale_type": "MAJOR"
+        "scale_type": "MAJOR",
+        "scale_info": {
+            "root": {"note_name": "C", "octave": 4},
+            "scale_type": "MAJOR",
+            "intervals": [0, 2, 4, 5, 7, 9, 11]
+        }
     }
-    
-    response = await client.post("/api/v1/chord-progressions/", json=data)
-    assert response.status_code == 422
+    response = await test_client.post("/api/v1/chord-progressions/", json=invalid_quality_data)
+    assert response.status_code == 422, f"Expected validation error for invalid quality, got: {response.text}"
+
+    # Test invalid root note
+    invalid_root_data = {
+        "name": "Invalid Root",
+        "chords": [
+            {
+                "root": {"note_name": "H", "octave": 4},  # H is not a valid note name
+                "quality": "MAJOR"
+            }
+        ],
+        "key": "C",
+        "scale_type": "MAJOR",
+        "scale_info": {
+            "root": {"note_name": "C", "octave": 4},
+            "scale_type": "MAJOR",
+            "intervals": [0, 2, 4, 5, 7, 9, 11]
+        }
+    }
+    response = await test_client.post("/api/v1/chord-progressions/", json=invalid_root_data)
+    assert response.status_code == 422, f"Expected validation error for invalid root note, got: {response.text}"

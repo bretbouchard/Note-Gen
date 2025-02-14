@@ -8,4 +8,8 @@ logging.basicConfig(level=logging.DEBUG,
 
 app = FastAPI()
 
-app.include_router(chord_progression_router)
+app.include_router(
+    chord_progression_router,
+    prefix="/api/v1/chord-progressions",
+    tags=["chord-progressions"]
+)

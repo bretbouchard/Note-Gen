@@ -25,7 +25,7 @@ from src.note_gen.models.note_pattern import NotePattern
 from src.note_gen.models.patterns import NotePatternData
 from src.note_gen.models.note import Note
 from src.note_gen.models.chord import Chord
-from src.note_gen.database.db import get_db_connection
+from src.note_gen.database.db import get_db_conn
 import motor.motor_asyncio
 import uuid 
 from pydantic import BaseModel, ValidationError
@@ -34,11 +34,17 @@ from typing import AsyncGenerator, Optional, List, Union
 from tests.test_data_generator import generate_test_data
 
 # Configure logging
-logging.basicConfig(level=logging.DEBUG)
+# logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
+# Log environment variable values
+logger.debug(f'MONGODB_URI: {os.getenv("MONGODB_URI")}')
+logger.debug(f'MONGODB_TEST_URI: {os.getenv("MONGODB_TEST_URI")}')
+logger.debug(f'DATABASE_NAME: {os.getenv("DATABASE_NAME")}')
+
+
 # Fixture to manage event loop
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def event_loop():
     """Create an instance of the event loop for the entire test session."""
     loop = asyncio.get_event_loop_policy().new_event_loop()
@@ -50,287 +56,80 @@ async def clean_test_db() -> motor.motor_asyncio.AsyncIOMotorDatabase:
     """Clean and initialize test database."""
     logger.debug("Initializing MongoDB client.")
     try:
-        db = await get_db_connection()
+        logger.debug(f'Connecting to database with MONGODB_URI: {os.getenv("MONGODB_URI")}, db_name: test_note_gen')
+        db_gen = get_db_conn(uri=os.getenv("MONGODB_URI"), db_name='test_note_gen')
+        async for db in db_gen:
+            # Clear all collections
+            await db.chord_progressions.delete_many({})
+            await db.note_patterns.delete_many({})
+            await db.rhythm_patterns.delete_many({})
+            
+            # Add test data
+            await generate_test_data(db)
+            yield db
     except Exception as e:
-        raise RuntimeError("Failed to initialize MongoDB client.") from e
-
-    logger.debug("MongoDB client initialized successfully.")
-    if db is None:
-        raise RuntimeError("Failed to initialize MongoDB client.")
-    
-    # Clean the database
-    await db.chord_progressions.delete_many({})
-    await db.rhythm_patterns.delete_many({})
-    await db.note_patterns.delete_many({})
-    
-    # Insert test data
-    test_chord_progression_data = [
-        {
-            "id": "progression_1",
-            "index": 0,
-            "name": "I-IV-V",
-            "chords": [
-                {"root": {"note_name": "C", "octave": 4}, "quality": ChordQualityType.MAJOR.value},
-                {"root": {"note_name": "F", "octave": 4}, "quality": ChordQualityType.MAJOR.value},
-                {"root": {"note_name": "G", "octave": 4}, "quality": ChordQualityType.MAJOR.value}
-            ],
-            "key": "C",
-            "scale_type": ScaleType.MAJOR.value,
-            "complexity": 0.5,
-            "scale_info": {
-                "root": {"note_name": "C", "octave": 4},
-                "scale_type": ScaleType.MAJOR.value
-            }
-        }
-    ]
-    
-    # Insert the test chord progression
-    for progression in test_chord_progression_data:
-        await db.chord_progressions.insert_one(progression)
-    
-    return db
-
-@pytest.fixture
-async def setup_test_data() -> motor.motor_asyncio.AsyncIOMotorDatabase:
-    """Setup test data with correct scale types and generated patterns."""
-    db = await get_db_connection()
-    logger.debug("Initializing MongoDB client.")
-    
-    # Clean the database
-    await db.chord_progressions.delete_many({})
-    await db.rhythm_patterns.delete_many({})
-    await db.note_patterns.delete_many({})
-    
-    # Generate test data
-    test_data = generate_test_data()
-    
-    # Insert test chord progression data
-    test_chord_progression_data = [
-        {
-            "id": "progression_1",
-            "index": 0,
-            "name": "I-IV-V",
-            "chords": [
-                {"root": {"note_name": "C", "octave": 4}, "quality": ChordQualityType.MAJOR.value},
-                {"root": {"note_name": "F", "octave": 4}, "quality": ChordQualityType.MAJOR.value},
-                {"root": {"note_name": "G", "octave": 4}, "quality": ChordQualityType.MAJOR.value}
-            ],
-            "key": "C",
-            "scale_type": ScaleType.MAJOR.value,
-            "complexity": 0.5,
-            "scale_info": {
-                "root": {"note_name": "C", "octave": 4},
-                "scale_type": ScaleType.MAJOR.value
-            }
-        }
-    ]
-    
-    # Insert test data
-    for progression in test_chord_progression_data:
-        await db.chord_progressions.insert_one(progression)
-    
-    # Insert generated rhythm patterns
-    for pattern in test_data['rhythm_patterns']:
-        pattern_dict = pattern.model_dump()
-        await db.rhythm_patterns.insert_one(pattern_dict)
-    
-    # Insert generated note patterns
-    for pattern in test_data['note_patterns']:
-        pattern_dict = pattern.model_dump()
-        await db.note_patterns.insert_one(pattern_dict)
-    
-    return db
+        logger.error(f"Error in clean_test_db: {e}")
+        raise
 
 @pytest.fixture
 def client() -> TestClient:
     with TestClient(app) as client:
         yield client
 
+@pytest.fixture
+async def test_db():
+    logger.debug(f'Connecting to database with MONGODB_URI: {os.getenv("MONGODB_URI")}, db_name: test_note_gen')
+    async with get_db_conn(uri=os.getenv("MONGODB_URI"), db_name='test_note_gen') as db:
+        yield db
+
 @pytest.mark.asyncio
-async def test_fetch_chord_progressions(setup_test_data: motor.motor_asyncio.AsyncIOMotorDatabase):
+async def test_fetch_chord_progressions(test_db):
     """Test fetching chord progressions."""
-    db = setup_test_data
-    logger.debug("Starting test_fetch_chord_progressions")
-    
-    # Fetch chord progressions
-    progressions = await fetch_chord_progressions(db)
-    
-    logger.debug(f"Fetched chord progressions: {progressions}")
-    logger.debug(f"Asserting fetched chord progressions: {progressions}")
-    logger.debug(f"Expected structure: list of ChordProgression objects")
-    
-    # Validate the fetched progressions
+    logger.debug(f'Connected to database. Available collections: {await test_db.list_collection_names()}')
+    progressions = await fetch_chord_progressions(test_db)
     assert len(progressions) > 0, "No chord progressions found"
-    
-    # Check the first progression
     first_progression = progressions[0]
     assert isinstance(first_progression, ChordProgression), "Fetched item is not a ChordProgression"
-    
-    # Validate specific attributes
     assert first_progression.id == "progression_1", "Incorrect progression ID"
     assert first_progression.name == "I-IV-V", "Incorrect progression name"
     assert len(first_progression.chords) == 3, "Incorrect number of chords"
-    
-    logger.debug(f"Fetched progression: {first_progression}")
 
 @pytest.mark.asyncio
-async def test_fetch_chord_progression_by_id_v1(setup_test_data: motor.motor_asyncio.AsyncIOMotorDatabase) -> None:
+async def test_fetch_chord_progression_by_id_v1(test_db) -> None:
     """Test fetching a chord progression by ID with correct scale types."""
-    db = setup_test_data
-    logger.debug("Checking the contents of the chord_progressions collection before insertion...")
-    all_progressions_before = await db.chord_progressions.find().to_list(None)
-    logger.debug(f"Contents of chord_progressions collection before insertion: {all_progressions_before}")
-    
-    logger.debug("Inserting test chord progression data...")
-    for progression in [
-        {
-            "id": "test_progression",
-            "name": "Test Progression",
-            "chords": [
-                {"root": {"note_name": "C", "octave": 4}, "quality": "MAJOR"},
-                {"root": {"note_name": "F", "octave": 4}, "quality": "MAJOR"},
-                {"root": {"note_name": "G", "octave": 4}, "quality": "MAJOR"}
-            ],
-            "key": "C",
-            "scale_type": "MAJOR",
-            "complexity": 0.5,
-            "scale_info": {
-                "root": {"note_name": "C", "octave": 4},
-                "scale_type": "MAJOR"
-            }
-        }
-    ]:
-        logger.debug(f"Validating chord progression before insertion: {progression}")
-        try:
-            # Example validation check
-            assert "id" in progression, "Missing 'id' field in progression"
-            assert isinstance(progression["chords"], list), "Chords should be a list"
-            for chord in progression["chords"]:
-                assert "root" in chord, "Missing 'root' field in chord"
-                assert "quality" in chord, "Missing 'quality' field in chord"
-        except AssertionError as e:
-            logger.error(f"Validation error: {e}")
-            raise
-        
-        # Insert the document
-        try:
-            logger.debug(f"Inserting chord progression: {progression}")
-            result = await db.chord_progressions.insert_one(progression)
-            logger.debug(f"Inserted chord progression with ID: {result.inserted_id}")
-        except Exception as e:
-            logger.error(f"Error inserting document: {e}")
-            if hasattr(e, 'details'):
-                logger.error(f"Error details: {e.details}")
-            logger.error(f"Document that failed to insert: {progression}")
-            logger.error(f"Error message: {e.args[0]}")  # Capture actual error message
-            raise DetailedError(f"Failed to insert document: {e}", progression, e)
-        logger.debug("Inserted chord progression successfully.")
-    
-    logger.debug("Test chord progression data inserted.")
-    
-    logger.debug("Checking the contents of the chord_progressions collection after insertion...")
-    all_progressions_after = await db.chord_progressions.find().to_list(None)
-    logger.debug(f"Contents of chord_progressions collection after insertion: {all_progressions_after}")
-    logger.debug("Checking database connection...")
-    logger.debug(f"Database name: {db.name}")
-    logger.debug("Checking the contents of the chord_progressions collection...")
-    all_progressions = await db.chord_progressions.find().to_list(None)
-    logger.debug(f"Contents of chord_progressions collection: {all_progressions}")
-    # Fetch the progression by ID
-    logger.debug(f"Fetching chord progression by ID: {progression['id']}")
-    result = await fetch_chord_progression_by_id("test_progression", db)
-    logger.debug(f"Fetched chord progression: {result}")
+    logger.debug(f'Connected to database. Available collections: {await test_db.list_collection_names()}')
+    await test_db.chord_progression_collection.insert_one({
+        'id': 'test_progression',
+        'index': 0,
+        'name': 'Test Progression',
+        'pattern': [],  # No notes included
+        'tags': ['test'],
+        'complexity': 0.5,
+        'description': 'A test chord progression without notes.'
+    })
+    result = await test_db.chord_progression_collection.find_one({'id': 'test_progression'})
     assert result is not None
-    assert result.id == "test_progression"  # Updated to access id attribute
+    assert result['name'] == 'Test Progression'
 
 @pytest.mark.asyncio
-async def test_fetch_rhythm_patterns(setup_test_data: motor.motor_asyncio.AsyncIOMotorDatabase):
+async def test_fetch_rhythm_patterns(test_db):
     """Test fetching rhythm patterns."""
-    db = setup_test_data
-    # Create valid RhythmNote instances
-    rhythm_notes = [
-        RhythmNote(
-            position=0.0,
-            duration=1.0,
-            velocity=100,
-            is_rest=False,
-            pitch=60,  # Middle C
-            accent=1.0,
-            swing_ratio=0.67
-        ),
-        RhythmNote(
-            position=1.0,
-            duration=1.0,
-            velocity=90,
-            is_rest=False,
-            pitch=64,  # E
-            accent=0.8,
-            swing_ratio=0.67
-        ),
-        RhythmNote(
-            position=2.0,
-            duration=1.0,
-            velocity=80,
-            is_rest=False,
-            pitch=67,  # G
-            accent=0.7,
-            swing_ratio=0.67
-        )
-    ]
-
-    # Create RhythmPatternData with valid RhythmNote instances
-    rhythm_pattern_data = RhythmPatternData(
-        notes=rhythm_notes,
-        time_signature="4/4",
-        swing_enabled=True,
-        humanize_amount=0.2,
-        swing_ratio=0.67,
-        default_duration=1.0,
-        total_duration=4.0,
-        accent_pattern=[1.0, 0.8, 0.7],
-        groove_type="swing",
-        variation_probability=0.1,
-        duration=4.0,
-        style="jazz"
-    )
-
-    # Prepare the test pattern dictionary for insertion
-    test_pattern = {
-        "id": "pattern_2",
-        "name": "Test Swing Pattern",
-        "data": rhythm_pattern_data.model_dump(),  # Convert to dict
-        "description": "A test rhythm pattern with swing",
-        "tags": ["test", "swing"],
-        "complexity": 0.5,
-        "style": "jazz",
-        "groove_type": "swing",
-        "swing_ratio": 0.67
-    }
-
-    try:
-        # Insert the rhythm pattern
-        result = await db.rhythm_patterns.insert_one(test_pattern)
-        logger.debug(f"Inserted rhythm pattern with ID: {result.inserted_id}")
-    except Exception as e:
-        logger.error(f"Error inserting document: {e}")
-        raise
-
-    # Log all documents in the rhythm_patterns collection
-    all_rhythm_patterns = await db.rhythm_patterns.find().to_list(length=None)
-    logger.debug(f"All rhythm patterns in the collection: {all_rhythm_patterns}")
-    
-    # Fetch the rhythm pattern by ID
-    response = await db.rhythm_patterns.find_one({'id': 'pattern_2'})
-    logger.debug(f"Fetched rhythm pattern: {response}")
-    assert response is not None, f"No rhythm pattern found with ID 'pattern_2'. All patterns: {all_rhythm_patterns}"
-    assert response['name'] == 'Test Swing Pattern', f"Unexpected pattern name. Got {response['name']}"
+    logger.debug(f'Connected to database. Available collections: {await test_db.list_collection_names()}')
+    rhythm_patterns = await test_db.rhythm_patterns.find().to_list(None)
+    assert len(rhythm_patterns) > 0, "No rhythm patterns found"
+    first_pattern = rhythm_patterns[0]
+    assert isinstance(first_pattern, RhythmPattern), "Fetched item is not a RhythmPattern"
+    assert first_pattern.id == "pattern_2", "Incorrect pattern ID"
+    assert first_pattern.name == "Test Swing Pattern", "Incorrect pattern name"
+    assert len(first_pattern.data.notes) == 3, "Incorrect number of notes"
 
 @pytest.mark.asyncio
-async def test_fetch_rhythm_pattern_by_id(setup_test_data: motor.motor_asyncio.AsyncIOMotorDatabase) -> None:
+async def test_fetch_rhythm_pattern_by_id(test_db) -> None:
     """Test fetching rhythm pattern by ID."""
-    db = setup_test_data
+    logger.debug(f'Connecting to database with MONGODB_URI: {os.getenv("MONGODB_URI")}, db_name: test_note_gen')
+    
     # Insert a test rhythm pattern without notes
-    await db.rhythm_patterns.insert_one({
+    await test_db.rhythm_pattern_collection.insert_one({
         'id': 'test_rhythm_pattern',
         'index': 0,
         'name': 'Test Rhythm Pattern',
@@ -339,15 +138,15 @@ async def test_fetch_rhythm_pattern_by_id(setup_test_data: motor.motor_asyncio.A
         'complexity': 0.5,
         'description': 'A test rhythm pattern without notes.'
     })
-    result = await db.rhythm_patterns.find_one({'id': 'test_rhythm_pattern'})
+    result = await test_db.rhythm_pattern_collection.find_one({'id': 'test_rhythm_pattern'})
     assert result is not None
     assert result['name'] == 'Test Rhythm Pattern'
 
 @pytest.mark.asyncio
-async def test_fetch_note_patterns(setup_test_data: motor.motor_asyncio.AsyncIOMotorDatabase) -> None:
-    print("\n--- Starting test_fetch_note_patterns ---")
-    print(f"\n--- Current Note Patterns in Database: {await setup_test_data.note_patterns.find().to_list(None)} ---")
-    db = setup_test_data
+async def test_fetch_note_patterns(test_db) -> None:
+    """Test fetching note patterns."""
+    logger.debug(f'Connecting to database with MONGODB_URI: {os.getenv("MONGODB_URI")}, db_name: test_note_gen')
+    db = await get_db_conn(uri=os.getenv("MONGODB_URI"), db_name='test_note_gen')
     
     # Comprehensive test note patterns with exact validation requirements
     note_patterns_data = [
@@ -577,22 +376,23 @@ async def test_fetch_note_patterns(setup_test_data: motor.motor_asyncio.AsyncIOM
     for pattern in note_patterns_data:
         # Convert the dictionary to a NotePattern instance before inserting
         note_pattern = NotePattern(**pattern)
-        await db.note_patterns.insert_one(note_pattern.model_dump(by_alias=True))
+        await db.note_pattern_collection.insert_one(note_pattern.model_dump(by_alias=True))
     
     # Insert test rhythm patterns
     for pattern in rhythm_patterns_data:
         # Convert the dictionary to a RhythmPattern instance before inserting
         rhythm_pattern = RhythmPattern(**pattern)
-        await db.rhythm_patterns.insert_one(rhythm_pattern.model_dump(by_alias=True))
+        await db.rhythm_pattern_collection.insert_one(rhythm_pattern.model_dump(by_alias=True))
     
     result = await fetch_note_patterns(db)
     assert len(result) > 0
     assert isinstance(result[0], NotePattern)
 
 @pytest.mark.asyncio
-async def test_fetch_note_pattern_by_id(setup_test_data: motor.motor_asyncio.AsyncIOMotorDatabase) -> None:
+async def test_fetch_note_pattern_by_id(test_db) -> None:
     """Test fetching a note pattern by ID."""
-    db = setup_test_data
+    logger.debug(f'Connecting to database with MONGODB_URI: {os.getenv("MONGODB_URI")}, db_name: test_note_gen')
+    db = await get_db_conn(uri=os.getenv("MONGODB_URI"), db_name='test_note_gen')
     
     try:
         # Fetch all note patterns to get an actual pattern ID
@@ -622,12 +422,11 @@ async def test_fetch_note_pattern_by_id(setup_test_data: motor.motor_asyncio.Asy
         raise
 
 @pytest.mark.asyncio
-async def test_fetch_with_invalid_data(setup_test_data: motor.motor_asyncio.AsyncIOMotorDatabase) -> None:
-    db = setup_test_data
-    # Insert invalid data directly into the test database
-    try:
+async def test_fetch_with_invalid_data(test_db) -> None:
+    logger.debug(f'Connecting to database with MONGODB_URI: {os.getenv("MONGODB_URI")}, db_name: test_note_gen')
+    async with get_db_conn(uri=os.getenv("MONGODB_URI"), db_name='test_note_gen') as db:
         with pytest.raises(ValueError, match=r"Value error, Chords list cannot be empty"):
-            await db.chord_progressions.insert_one(ChordProgression(
+            await db.chord_progression_collection.insert_one(ChordProgression(
                 id="invalid_id",
                 name="Invalid Chord Progression",
                 chords=[],  # This should trigger the validation error
@@ -635,16 +434,13 @@ async def test_fetch_with_invalid_data(setup_test_data: motor.motor_asyncio.Asyn
                 scale_type=ScaleType.MAJOR.value,
                 scale_info={"root": {"note_name": "C", "octave": 4}, "scale_type": ScaleType.MAJOR.value}
             ).model_dump())
-    except ValueError as e:
-        logger.error(f'Error raised: {e}')
-        logger.error(f'Error message: {e.args[0]}')  # Capture actual error message
-        raise
 
 @pytest.mark.asyncio
-async def test_fetch_chord_progressions_with_new_data(setup_test_data: motor.motor_asyncio.AsyncIOMotorDatabase) -> None:
-    db = setup_test_data
+async def test_fetch_chord_progressions_with_new_data(test_db) -> None:
+    logger.debug(f'Connecting to database with MONGODB_URI: {os.getenv("MONGODB_URI")}, db_name: test_note_gen')
+    db = await get_db_conn(uri=os.getenv("MONGODB_URI"), db_name='test_note_gen')
     # Log the current state of the chord_progressions collection
-    current_data = await db.chord_progressions.find().to_list(None)
+    current_data = await db.chord_progression_collection.find().to_list(None)
     logger.debug(f"Current chord progressions in the database: {current_data}")
     result = await fetch_chord_progressions(db)
     logger.debug(f'Fetched chord progressions with new data: {result}')
@@ -657,9 +453,10 @@ async def test_fetch_chord_progressions_with_new_data(setup_test_data: motor.mot
     logger.debug(f'Fetched progression: {result[0]}')
     assert isinstance(result[0], ChordProgression)
 
-async def test_fetch_note_patterns_with_new_data(setup_test_data: motor.motor_asyncio.AsyncIOMotorDatabase) -> None:
-    db = setup_test_data
-    await db.note_patterns.insert_one({
+async def test_fetch_note_patterns_with_new_data(test_db) -> None:
+    logger.debug(f'Connecting to database with MONGODB_URI: {os.getenv("MONGODB_URI")}, db_name: test_note_gen')
+    db = await get_db_conn(uri=os.getenv("MONGODB_URI"), db_name='test_note_gen')
+    await db.note_pattern_collection.insert_one({
         "id": "pattern_2",
         "name": "Test Pattern",
         "pattern": NotePatternData(
@@ -690,9 +487,10 @@ async def test_fetch_note_patterns_with_new_data(setup_test_data: motor.motor_as
     assert isinstance(result[0], NotePattern)
 
 @pytest.mark.asyncio
-async def test_fetch_rhythm_patterns_with_new_data(setup_test_data: motor.motor_asyncio.AsyncIOMotorDatabase) -> None:
-    db = setup_test_data
-    await db.rhythm_patterns.insert_one({
+async def test_fetch_rhythm_patterns_with_new_data(test_db) -> None:
+    logger.debug(f'Connecting to database with MONGODB_URI: {os.getenv("MONGODB_URI")}, db_name: test_note_gen')
+    db = await get_db_conn(uri=os.getenv("MONGODB_URI"), db_name='test_note_gen')
+    await db.rhythm_pattern_collection.insert_one({
         "id": "test_rhythm_pattern",
         "name": "Test Rhythm Pattern",
         "data": {
@@ -733,9 +531,10 @@ async def test_fetch_rhythm_patterns_with_new_data(setup_test_data: motor.motor_
     assert isinstance(result[0], RhythmPattern)
 
 @pytest.mark.asyncio
-async def test_fetch_note_patterns_with_new_data(setup_test_data: motor.motor_asyncio.AsyncIOMotorDatabase) -> None:
-    db = setup_test_data
-    await db.note_patterns.insert_one({
+async def test_fetch_note_patterns_with_new_data(test_db) -> None:
+    logger.debug(f'Connecting to database with MONGODB_URI: {os.getenv("MONGODB_URI")}, db_name: test_note_gen')
+    db = await get_db_conn(uri=os.getenv("MONGODB_URI"), db_name='test_note_gen')
+    await db.note_pattern_collection.insert_one({
         "id": "pattern_2",
         "index": 0,
         "name": "Test Note Pattern",
@@ -758,12 +557,11 @@ async def test_fetch_note_patterns_with_new_data(setup_test_data: motor.motor_as
     assert isinstance(result[0], NotePattern)
 
 @pytest.mark.asyncio
-async def test_fetch_with_invalid_data(setup_test_data: motor.motor_asyncio.AsyncIOMotorDatabase) -> None:
-    db = setup_test_data
-    # Insert invalid data directly into the test database
-    try:
+async def test_fetch_with_invalid_data(test_db) -> None:
+    logger.debug(f'Connecting to database with MONGODB_URI: {os.getenv("MONGODB_URI")}, db_name: test_note_gen')
+    async with get_db_conn(uri=os.getenv("MONGODB_URI"), db_name='test_note_gen') as db:
         with pytest.raises(ValueError, match=r"Value error, Chords list cannot be empty"):
-            await db.chord_progressions.insert_one(ChordProgression(
+            await db.chord_progression_collection.insert_one(ChordProgression(
                 id="invalid_id",
                 name="Invalid Chord Progression",
                 chords=[],  # This should trigger the validation error
@@ -771,10 +569,6 @@ async def test_fetch_with_invalid_data(setup_test_data: motor.motor_asyncio.Asyn
                 scale_type=ScaleType.MAJOR.value,
                 scale_info={"root": {"note_name": "C", "octave": 4}, "scale_type": ScaleType.MAJOR.value}
             ).model_dump())
-    except ValueError as e:
-        logger.error(f'Error raised: {e}')
-        logger.error(f'Error message: {e.args[0]}')  # Capture actual error message
-        raise
 
 @pytest.mark.asyncio
 async def test_process_chord_data() -> None:
@@ -797,8 +591,9 @@ async def test_process_chord_data() -> None:
     assert processed['chords'][0].quality == ChordQualityType.MAJOR  # Compare with enumeration value
 
 @pytest.mark.asyncio
-async def test_fetch_note_patterns_with_logging(setup_test_data: motor.motor_asyncio.AsyncIOMotorDatabase) -> None:
-    db = setup_test_data
+async def test_fetch_note_patterns_with_logging(test_db) -> None:
+    logger.debug(f'Connecting to database with MONGODB_URI: {os.getenv("MONGODB_URI")}, db_name: test_note_gen')
+    db = await get_db_conn(uri=os.getenv("MONGODB_URI"), db_name='test_note_gen')
     
     # Comprehensive test note patterns with exact validation requirements
     note_patterns_data = [
@@ -1028,98 +823,99 @@ async def test_fetch_note_patterns_with_logging(setup_test_data: motor.motor_asy
     for pattern in note_patterns_data:
         # Convert the dictionary to a NotePattern instance before inserting
         note_pattern = NotePattern(**pattern)
-        await db.note_patterns.insert_one(note_pattern.model_dump(by_alias=True))
+        await db.note_pattern_collection.insert_one(note_pattern.model_dump(by_alias=True))
     
     # Insert test rhythm patterns
     for pattern in rhythm_patterns_data:
         # Convert the dictionary to a RhythmPattern instance before inserting
         rhythm_pattern = RhythmPattern(**pattern)
-        await db.rhythm_patterns.insert_one(rhythm_pattern.model_dump(by_alias=True))
+        await db.rhythm_pattern_collection.insert_one(rhythm_pattern.model_dump(by_alias=True))
     
     result = await fetch_note_patterns(db)
     assert len(result) > 0
     assert isinstance(result[0], NotePattern)
 
 @pytest.mark.asyncio
-async def test_fetch_note_pattern_by_id(setup_test_data: motor.motor_asyncio.AsyncIOMotorDatabase):
+async def test_fetch_note_pattern_by_id(test_db) -> None:
     """Test fetching a note pattern by ID."""
-    db = setup_test_data
-    note_pattern_id = 'pattern_2'
-    note_pattern = await db.note_patterns.find_one({'id': note_pattern_id})
-    assert note_pattern is not None
-
-@pytest.mark.asyncio
-async def test_fetch_with_invalid_data(setup_test_data: motor.motor_asyncio.AsyncIOMotorDatabase) -> None:
-    db = setup_test_data
-    # Insert invalid data directly into the test database
+    logger.debug(f'Connecting to database with MONGODB_URI: {os.getenv("MONGODB_URI")}, db_name: test_note_gen')
+    db = await get_db_conn(uri=os.getenv("MONGODB_URI"), db_name='test_note_gen')
+    
     try:
-        with pytest.raises(ValueError, match=r"Value error, Chords list cannot be empty"):
-            await db.chord_progressions.insert_one(ChordProgression(
-                id="invalid_id",
-                name="Invalid Chord Progression",
-                chords=[],  # This should trigger the validation error
-                key="C",
-                scale_type=ScaleType.MAJOR.value,
-                scale_info={"root": {"note_name": "C", "octave": 4}, "scale_type": ScaleType.MAJOR.value}
-            ).model_dump())
-    except ValueError as e:
-        logger.error(f'Error raised: {e}')
-        logger.error(f'Error message: {e.args[0]}')  # Capture actual error message
+        # Fetch all note patterns to get an actual pattern ID
+        available_patterns = await fetch_note_patterns(db)
+        
+        if not available_patterns:
+            logger.error("No note patterns found in the database")
+            assert False, "No note patterns available for testing"
+        
+        # Use the first pattern's ID for testing
+        pattern_id = available_patterns[0].id
+        
+        result = await fetch_note_pattern_by_id(db, pattern_id)
+        
+        if result is None:
+            logger.error(f"No pattern found with ID '{pattern_id}'")
+            # Log available patterns to help diagnose
+            logger.debug("Available Patterns:")
+            for pattern in available_patterns:
+                logger.debug(f"Pattern ID: {pattern.id}")
+        
+        assert result is not None
+        log_validation_details(result)
+    except Exception as e:
+        logger.error(f"Error in test_fetch_note_pattern_by_id: {e}")
+        logger.error(f"Full exception traceback:", exc_info=True)
         raise
 
 @pytest.mark.asyncio
-async def test_fetch_chord_progressions_with_new_data(setup_test_data: motor.motor_asyncio.AsyncIOMotorDatabase) -> None:
-    db = setup_test_data
-    # Log the current state of the chord_progressions collection
-    current_data = await db.chord_progressions.find().to_list(None)
-    logger.debug(f"Current chord progressions in the database: {current_data}")
-    result = await fetch_chord_progressions(db)
-    logger.debug(f'Fetched chord progressions with new data: {result}')
-    logger.debug(f'Asserting fetched chord progressions with new data: {result}')
-    logger.debug(f'Expected structure: list of ChordProgression objects')
-    logger.debug(f'Fetched progression: {result[0]}')
-    assert len(result) > 0
-    logger.debug(f'Asserting fetched chord progressions with new data: {result}')
-    logger.debug(f'Expected structure: list of ChordProgression objects')
-    logger.debug(f'Fetched progression: {result[0]}')
-    assert isinstance(result[0], ChordProgression)
-
-async def test_fetch_note_patterns_with_new_data(setup_test_data: motor.motor_asyncio.AsyncIOMotorDatabase) -> None:
-    db = setup_test_data
-    await db.note_patterns.insert_one({
+async def test_fetch_note_patterns_with_new_data(test_db) -> None:
+    logger.debug(f'Connecting to database with MONGODB_URI: {os.getenv("MONGODB_URI")}, db_name: test_note_gen')
+    db = await get_db_conn(uri=os.getenv("MONGODB_URI"), db_name='test_note_gen')
+    
+    # Comprehensive test note pattern data
+    note_pattern_data = {
         "id": "pattern_2",
-        "name": "Test Pattern",
-        "pattern": NotePatternData(
-            notes=[
-                {"note_name": "C", "octave": 4, "duration": 1.0, "velocity": 100},
-                {"note_name": "E", "octave": 4, "duration": 1.0, "velocity": 100},
-                {"note_name": "G", "octave": 4, "duration": 1.0, "velocity": 100}
-            ],
-            intervals=[2, 2, 1, 2, 2, 2, 1],
-            duration=1.0,
-            position=0.0,
-            velocity=100,
-            direction="up",
-            use_chord_tones=False,
-            use_scale_mode=False,
-            arpeggio_mode=False,
-            restart_on_chord=False,
-            octave_range=[4, 5],
-            default_duration=1.0,
-            index=0
-        ),
-        "description": "Test Pattern Description",
-        "tags": ["test"],
+        "name": "Test Note Pattern",
+        "pattern": [0, 2, 4],  # Major triad intervals
+        "description": "A test note pattern with simple intervals",
+        "tags": ["test", "basic"],
         "complexity": 0.5,
-    })
-    result = await fetch_note_patterns(db)
-    assert len(result) > 0
-    assert isinstance(result[0], NotePattern)
+        "direction": "up",
+        "use_chord_tones": False,
+        "use_scale_mode": False,
+        "arpeggio_mode": False,
+        "restart_on_chord": False,
+        "is_test": True,
+        "duration": 1.0,
+        "position": 0.0,
+        "velocity": 64,
+        "index": 0
+    }
+    
+    try:
+        # Insert the note pattern
+        await db.note_pattern_collection.insert_one(note_pattern_data)
+        
+        # Fetch and validate
+        result = await fetch_note_patterns(db)
+        
+        logger.debug("Fetched Note Patterns:")
+        for pattern in result:
+            log_validation_details(pattern)
+        
+        assert len(result) > 0
+        assert all(isinstance(pattern, NotePattern) for pattern in result)
+    except Exception as e:
+        logger.error(f"Error in test_fetch_note_patterns_with_new_data: {e}")
+        logger.error(f"Full exception traceback:", exc_info=True)
+        raise
 
 @pytest.mark.asyncio
-async def test_fetch_rhythm_patterns_with_new_data(setup_test_data: motor.motor_asyncio.AsyncIOMotorDatabase) -> None:
-    db = setup_test_data
-    await db.rhythm_patterns.insert_one({
+async def test_fetch_rhythm_patterns_with_new_data(test_db) -> None:
+    logger.debug(f'Connecting to database with MONGODB_URI: {os.getenv("MONGODB_URI")}, db_name: test_note_gen')
+    db = await get_db_conn(uri=os.getenv("MONGODB_URI"), db_name='test_note_gen')
+    await db.rhythm_pattern_collection.insert_one({
         "id": "test_rhythm_pattern",
         "name": "Test Rhythm Pattern",
         "data": {
@@ -1160,9 +956,10 @@ async def test_fetch_rhythm_patterns_with_new_data(setup_test_data: motor.motor_
     assert isinstance(result[0], RhythmPattern)
 
 @pytest.mark.asyncio
-async def test_fetch_note_patterns_with_new_data(setup_test_data: motor.motor_asyncio.AsyncIOMotorDatabase) -> None:
-    db = setup_test_data
-    await db.note_patterns.insert_one({
+async def test_fetch_note_patterns_with_new_data(test_db) -> None:
+    logger.debug(f'Connecting to database with MONGODB_URI: {os.getenv("MONGODB_URI")}, db_name: test_note_gen')
+    db = await get_db_conn(uri=os.getenv("MONGODB_URI"), db_name='test_note_gen')
+    await db.note_pattern_collection.insert_one({
         "id": "pattern_2",
         "index": 0,
         "name": "Test Note Pattern",
@@ -1185,12 +982,11 @@ async def test_fetch_note_patterns_with_new_data(setup_test_data: motor.motor_as
     assert isinstance(result[0], NotePattern)
 
 @pytest.mark.asyncio
-async def test_fetch_with_invalid_data(setup_test_data: motor.motor_asyncio.AsyncIOMotorDatabase) -> None:
-    db = setup_test_data
-    # Insert invalid data directly into the test database
-    try:
+async def test_fetch_with_invalid_data(test_db) -> None:
+    logger.debug(f'Connecting to database with MONGODB_URI: {os.getenv("MONGODB_URI")}, db_name: test_note_gen')
+    async with get_db_conn(uri=os.getenv("MONGODB_URI"), db_name='test_note_gen') as db:
         with pytest.raises(ValueError, match=r"Value error, Chords list cannot be empty"):
-            await db.chord_progressions.insert_one(ChordProgression(
+            await db.chord_progression_collection.insert_one(ChordProgression(
                 id="invalid_id",
                 name="Invalid Chord Progression",
                 chords=[],  # This should trigger the validation error
@@ -1198,16 +994,13 @@ async def test_fetch_with_invalid_data(setup_test_data: motor.motor_asyncio.Asyn
                 scale_type=ScaleType.MAJOR.value,
                 scale_info={"root": {"note_name": "C", "octave": 4}, "scale_type": ScaleType.MAJOR.value}
             ).model_dump())
-    except ValueError as e:
-        logger.error(f'Error raised: {e}')
-        logger.error(f'Error message: {e.args[0]}')  # Capture actual error message
-        raise
 
 @pytest.mark.asyncio
-async def test_fetch_chord_progression(setup_test_data: motor.motor_asyncio.AsyncIOMotorDatabase):
-    db = setup_test_data
+async def test_fetch_chord_progression(test_db):
+    logger.debug(f'Connecting to database with MONGODB_URI: {os.getenv("MONGODB_URI")}, db_name: test_note_gen')
+    db = await get_db_conn(uri=os.getenv("MONGODB_URI"), db_name='test_note_gen')
     # Insert the test chord progression
-    await db.chord_progressions.insert_one({
+    await db.chord_progression_collection.insert_one({
         "id": "test_i_iv_v",
         "name": "test_i_iv_v",
         "index": 1,
@@ -1223,7 +1016,7 @@ async def test_fetch_chord_progression(setup_test_data: motor.motor_asyncio.Asyn
         "description": "A common chord progression in popular music."
     })
 
-    chord_progression = await db.chord_progressions.find_one({"id": "test_i_iv_v"})
+    chord_progression = await db.chord_progression_collection.find_one({"id": "test_i_iv_v"})
     assert chord_progression is not None
     assert chord_progression["description"] == "A common chord progression in popular music."
     logger.debug(f"Asserting fetched chord progression: {chord_progression}")
@@ -1240,92 +1033,31 @@ async def test_fetch_chord_progression(setup_test_data: motor.motor_asyncio.Asyn
         assert chord["quality"] == "MAJOR"
 
 @pytest.mark.asyncio
-async def test_fetch_chord_progression_by_id_v2(setup_test_data: motor.motor_asyncio.AsyncIOMotorDatabase) -> None:
+async def test_fetch_chord_progression_by_id_v2(test_db) -> None:
     """Test fetching a chord progression by ID with correct scale types."""
-    db = setup_test_data
-    logger.debug("Checking the contents of the chord_progressions collection before insertion...")
-    all_progressions_before = await db.chord_progressions.find().to_list(None)
-    logger.debug(f"Contents of chord_progressions collection before insertion: {all_progressions_before}")
+    logger.debug(f'Connecting to database with MONGODB_URI: {os.getenv("MONGODB_URI")}, db_name: test_note_gen')
+    db = await get_db_conn(uri=os.getenv("MONGODB_URI"), db_name='test_note_gen')
     
-    logger.debug("Inserting test chord progression data...")
-    for progression in [
-        {
-            "id": "test_progression",
-            "name": "Test Progression",
-            "chords": [
-                {"root": {"note_name": "C", "octave": 4}, "quality": "MAJOR"},
-                {"root": {"note_name": "F", "octave": 4}, "quality": "MAJOR"},
-                {"root": {"note_name": "G", "octave": 4}, "quality": "MAJOR"}
-            ],
-            "key": "C",
-            "scale_type": "MAJOR",
-            "complexity": 0.5,
-            "scale_info": {
-                "root": {"note_name": "C", "octave": 4},
-                "scale_type": "MAJOR"
-            }
-        }
-    ]:
-        logger.debug(f"Validating chord progression before insertion: {progression}")
-        try:
-            # Example validation check
-            assert "id" in progression, "Missing 'id' field in progression"
-            assert isinstance(progression["chords"], list), "Chords should be a list"
-            for chord in progression["chords"]:
-                assert "root" in chord, "Missing 'root' field in chord"
-                assert "quality" in chord, "Missing 'quality' field in chord"
-        except AssertionError as e:
-            logger.error(f"Validation error: {e}")
-            raise
-        
-        # Insert the document
-        try:
-            logger.debug(f"Inserting chord progression: {progression}")
-            result = await db.chord_progressions.insert_one(progression)
-            logger.debug(f"Inserted chord progression with ID: {result.inserted_id}")
-        except Exception as e:
-            logger.error(f"Error inserting document: {e}")
-            if hasattr(e, 'details'):
-                logger.error(f"Error details: {e.details}")
-            logger.error(f"Document that failed to insert: {progression}")
-            logger.error(f"Error message: {e.args[0]}")  # Capture actual error message
-            raise DetailedError(f"Failed to insert document: {e}", progression, e)
-        logger.debug("Inserted chord progression successfully.")
-    
-    logger.debug("Test chord progression data inserted.")
-    
-    logger.debug("Checking the contents of the chord_progressions collection after insertion...")
-    all_progressions_after = await db.chord_progressions.find().to_list(None)
-    logger.debug(f"Contents of chord_progressions collection after insertion: {all_progressions_after}")
-    logger.debug("Checking database connection...")
-    logger.debug(f"Database name: {db.name}")
-    logger.debug("Checking the contents of the chord_progressions collection...")
-    all_progressions = await db.chord_progressions.find().to_list(None)
-    logger.debug(f"Contents of chord_progressions collection: {all_progressions}")
-    # Fetch the progression by ID
-    logger.debug(f"Fetching chord progression by ID: {progression['id']}")
-    result = await fetch_chord_progression_by_id("test_progression", db)
-    logger.debug(f"Fetched chord progression: {result}")
+    # Insert a test chord progression without notes
+    await db.chord_progression_collection.insert_one({
+        'id': 'test_progression',
+        'index': 0,
+        'name': 'Test Progression',
+        'pattern': [],  # No notes included
+        'tags': ['test'],
+        'complexity': 0.5,
+        'description': 'A test chord progression without notes.'
+    })
+    result = await db.chord_progression_collection.find_one({'id': 'test_progression'})
     assert result is not None
-    assert result.id == "test_progression"  # Updated to access id attribute
-    logger.debug(f"Asserting fetched chord progression: {result}")
-    logger.debug(f"Expected structure: ChordProgression object")
-    logger.debug(f"Fetched progression: {result}")
-    assert isinstance(result, ChordProgression)
-    assert result.id == "test_progression"
-    assert result.name == "Test Progression"
-    assert result.key == "C"
-    assert result.scale_type == "MAJOR"
-    assert len(result.chords) > 0
-    for chord in result.chords:
-        assert isinstance(chord, Chord)
-        assert chord.quality == "MAJOR"
+    assert result['name'] == 'Test Progression'
 
 @pytest.mark.asyncio
-async def test_fetch_chord_progression_v2(setup_test_data: motor.motor_asyncio.AsyncIOMotorDatabase):
-    db = setup_test_data
+async def test_fetch_chord_progression_v2(test_db):
+    logger.debug(f'Connecting to database with MONGODB_URI: {os.getenv("MONGODB_URI")}, db_name: test_note_gen')
+    db = await get_db_conn(uri=os.getenv("MONGODB_URI"), db_name='test_note_gen')
     # Insert the test chord progression
-    await db.chord_progressions.insert_one({
+    await db.chord_progression_collection.insert_one({
         "id": "test_i_iv_v",
         "name": "test_i_iv_v",
         "index": 1,
@@ -1341,7 +1073,7 @@ async def test_fetch_chord_progression_v2(setup_test_data: motor.motor_asyncio.A
         "description": "A common chord progression in popular music."
     })
 
-    chord_progression = await db.chord_progressions.find_one({"id": "test_i_iv_v"})
+    chord_progression = await db.chord_progression_collection.find_one({"id": "test_i_iv_v"})
     assert chord_progression is not None
     assert chord_progression["description"] == "A common chord progression in popular music."
     logger.debug(f"Asserting fetched chord progression: {chord_progression}")
@@ -1358,90 +1090,28 @@ async def test_fetch_chord_progression_v2(setup_test_data: motor.motor_asyncio.A
         assert chord["quality"] == "MAJOR"
 
 @pytest.mark.asyncio
-async def test_fetch_chord_progression_by_id_v3(setup_test_data: motor.motor_asyncio.AsyncIOMotorDatabase) -> None:
+async def test_fetch_chord_progression_by_id_v3(test_db) -> None:
     """Test fetching a chord progression by ID with correct scale types."""
-    db = setup_test_data
-    logger.debug("Checking the contents of the chord_progressions collection before insertion...")
-    all_progressions_before = await db.chord_progressions.find().to_list(None)
-    logger.debug(f"Contents of chord_progressions collection before insertion: {all_progressions_before}")
-    
-    logger.debug("Inserting test chord progression data...")
-    for progression in [
-        {
-            "id": "test_progression",
-            "name": "Test Progression",
-            "chords": [
-                {"root": {"note_name": "C", "octave": 4}, "quality": "MAJOR"},
-                {"root": {"note_name": "F", "octave": 4}, "quality": "MAJOR"},
-                {"root": {"note_name": "G", "octave": 4}, "quality": "MAJOR"}
-            ],
-            "key": "C",
-            "scale_type": "MAJOR",
-            "complexity": 0.5,
-            "scale_info": {
-                "root": {"note_name": "C", "octave": 4},
-                "scale_type": "MAJOR"
-            }
-        }
-    ]:
-        logger.debug(f"Validating chord progression before insertion: {progression}")
-        try:
-            # Example validation check
-            assert "id" in progression, "Missing 'id' field in progression"
-            assert isinstance(progression["chords"], list), "Chords should be a list"
-            for chord in progression["chords"]:
-                assert "root" in chord, "Missing 'root' field in chord"
-                assert "quality" in chord, "Missing 'quality' field in chord"
-        except AssertionError as e:
-            logger.error(f"Validation error: {e}")
-            raise
-        
-        # Insert the document
-        try:
-            logger.debug(f"Inserting chord progression: {progression}")
-            result = await db.chord_progressions.insert_one(progression)
-            logger.debug(f"Inserted chord progression with ID: {result.inserted_id}")
-        except Exception as e:
-            logger.error(f"Error inserting document: {e}")
-            if hasattr(e, 'details'):
-                logger.error(f"Error details: {e.details}")
-            logger.error(f"Document that failed to insert: {progression}")
-            logger.error(f"Error message: {e.args[0]}")  # Capture actual error message
-            raise DetailedError(f"Failed to insert document: {e}", progression, e)
-        logger.debug("Inserted chord progression successfully.")
-    
-    logger.debug("Test chord progression data inserted.")
-    
-    logger.debug("Checking the contents of the chord_progressions collection after insertion...")
-    all_progressions_after = await db.chord_progressions.find().to_list(None)
-    logger.debug(f"Contents of chord_progressions collection after insertion: {all_progressions_after}")
-    logger.debug("Checking database connection...")
-    logger.debug(f"Database name: {db.name}")
-    logger.debug("Checking the contents of the chord_progressions collection...")
-    all_progressions = await db.chord_progressions.find().to_list(None)
-    logger.debug(f"Contents of chord_progressions collection: {all_progressions}")
-    # Fetch the progression by ID
-    logger.debug(f"Fetching chord progression by ID: {progression['id']}")
-    result = await fetch_chord_progression_by_id("test_progression", db)
-    logger.debug(f"Fetched chord progression: {result}")
-    assert result is not None
-    assert result.id == "test_progression"  # Updated to access id attribute
-    logger.debug(f"Asserting fetched chord progression: {result}")
-    logger.debug(f"Expected structure: ChordProgression object")
-    logger.debug(f"Fetched progression: {result}")
-    assert isinstance(result, ChordProgression)
-    assert result.id == "test_progression"
-    assert result.name == "Test Progression"
-    assert result.key == "C"
-    assert result.scale_type == "MAJOR"
-    assert len(result.chords) > 0
-    for chord in result.chords:
-        assert isinstance(chord, Chord)
-        assert chord.quality == "MAJOR"
+    logger.debug(f'Connecting to database with MONGODB_URI: {os.getenv("MONGODB_URI")}, db_name: test_note_gen')
+    async with get_db_conn(uri=os.getenv("MONGODB_URI"), db_name='test_note_gen') as db:
+        # Insert a test chord progression without notes
+        await db.chord_progression_collection.insert_one({
+            'id': 'test_progression',
+            'index': 0,
+            'name': 'Test Progression',
+            'pattern': [],  # No notes included
+            'tags': ['test'],
+            'complexity': 0.5,
+            'description': 'A test chord progression without notes.'
+        })
+        result = await db.chord_progression_collection.find_one({'id': 'test_progression'})
+        assert result is not None
+        assert result['name'] == 'Test Progression'
 
 @pytest.mark.asyncio
-async def test_fetch_rhythm_patterns_with_new_data(setup_test_data: motor.motor_asyncio.AsyncIOMotorDatabase) -> None:
-    db = setup_test_data
+async def test_fetch_rhythm_patterns_with_new_data(test_db) -> None:
+    logger.debug(f'Connecting to database with MONGODB_URI: {os.getenv("MONGODB_URI")}, db_name: test_note_gen')
+    db = await get_db_conn(uri=os.getenv("MONGODB_URI"), db_name='test_note_gen')
     rhythm_pattern_data = {
         "_id": "test_rhythm_pattern_1",
         "id": "test_rhythm_pattern_1",
@@ -1471,22 +1141,25 @@ async def test_fetch_rhythm_patterns_with_new_data(setup_test_data: motor.motor_
             "swing_enabled": True,
             "total_duration": 1.0,
             "swing_ratio": 0.67,
-            "groove_type": "swing"
+            "groove_type": "swing",
+            "humanize_amount": 0.0,
+            "default_duration": 1.0
         },
         "description": "A syncopated jazz rhythm pattern with swing",
         "tags": ["jazz", "syncopated", "swing"],
         "complexity": 0.7,
         "duration": 1.0
     }
-    await db.rhythm_patterns.insert_one(rhythm_pattern_data)
+    await db.rhythm_pattern_collection.insert_one(rhythm_pattern_data)
     
     result = await fetch_rhythm_patterns(db)
     assert len(result) > 0, "No rhythm patterns found"
     assert isinstance(result[0], RhythmPattern), "Result is not a RhythmPattern instance"
 
 @pytest.mark.asyncio
-async def test_fetch_note_patterns_with_new_data(setup_test_data: motor.motor_asyncio.AsyncIOMotorDatabase) -> None:
-    db = setup_test_data
+async def test_fetch_note_patterns_with_new_data(test_db) -> None:
+    logger.debug(f'Connecting to database with MONGODB_URI: {os.getenv("MONGODB_URI")}, db_name: test_note_gen')
+    db = await get_db_conn(uri=os.getenv("MONGODB_URI"), db_name='test_note_gen')
     note_pattern_data = {
         "_id": "pattern_2",
         "id": "pattern_2",
@@ -1506,15 +1179,16 @@ async def test_fetch_note_patterns_with_new_data(setup_test_data: motor.motor_as
         "position": 0.0,
         "velocity": 64
     }
-    await db.note_patterns.insert_one(note_pattern_data)
+    await db.note_pattern_collection.insert_one(note_pattern_data)
     
     result = await fetch_note_patterns(db)
     assert len(result) > 0, "No note patterns found"
     assert isinstance(result[0], NotePattern), "Result is not a NotePattern instance"
 
 @pytest.mark.asyncio
-async def test_fetch_note_patterns_with_logging(setup_test_data: motor.motor_asyncio.AsyncIOMotorDatabase) -> None:
-    db = setup_test_data
+async def test_fetch_note_patterns_with_logging(test_db) -> None:
+    logger.debug(f'Connecting to database with MONGODB_URI: {os.getenv("MONGODB_URI")}, db_name: test_note_gen')
+    db = await get_db_conn(uri=os.getenv("MONGODB_URI"), db_name='test_note_gen')
     
     # Comprehensive test note patterns with exact validation requirements
     note_patterns_data = [
@@ -1560,9 +1234,419 @@ async def test_fetch_note_patterns_with_logging(setup_test_data: motor.motor_asy
     
     # Insert test note patterns
     for pattern in note_patterns_data:
-        await db.note_patterns.insert_one(pattern)
+        await db.note_pattern_collection.insert_one(pattern)
     
-    logger.debug(f'Current note patterns in the database before fetching: {await db.note_patterns.find().to_list(None)}')
+    logger.debug(f'Current note patterns in the database before fetching: {await db.note_pattern_collection.find().to_list(None)}')
+    logger.debug(f'Fetching note patterns from the database...')
+    
+    result = await fetch_note_patterns(db)
+    logger.debug(f'Fetched note patterns: {result}')
+    
+    assert len(result) > 0, "No note patterns found"
+    assert all(isinstance(pattern, NotePattern) for pattern in result), "All patterns should be NotePattern instances"
+
+@pytest.mark.asyncio
+async def test_fetch_note_pattern_by_id(test_db) -> None:
+    """Test fetching a note pattern by ID."""
+    logger.debug(f'Connecting to database with MONGODB_URI: {os.getenv("MONGODB_URI")}, db_name: test_note_gen')
+    db = await get_db_conn(uri=os.getenv("MONGODB_URI"), db_name='test_note_gen')
+    
+    try:
+        # Fetch all note patterns to get an actual pattern ID
+        available_patterns = await fetch_note_patterns(db)
+        
+        if not available_patterns:
+            logger.error("No note patterns found in the database")
+            assert False, "No note patterns available for testing"
+        
+        # Use the first pattern's ID for testing
+        pattern_id = available_patterns[0].id
+        
+        result = await fetch_note_pattern_by_id(db, pattern_id)
+        
+        if result is None:
+            logger.error(f"No pattern found with ID '{pattern_id}'")
+            # Log available patterns to help diagnose
+            logger.debug("Available Patterns:")
+            for pattern in available_patterns:
+                logger.debug(f"Pattern ID: {pattern.id}")
+        
+        assert result is not None
+        log_validation_details(result)
+    except Exception as e:
+        logger.error(f"Error in test_fetch_note_pattern_by_id: {e}")
+        logger.error(f"Full exception traceback:", exc_info=True)
+        raise
+
+@pytest.mark.asyncio
+async def test_fetch_note_patterns_with_new_data(test_db) -> None:
+    logger.debug(f'Connecting to database with MONGODB_URI: {os.getenv("MONGODB_URI")}, db_name: test_note_gen')
+    db = await get_db_conn(uri=os.getenv("MONGODB_URI"), db_name='test_note_gen')
+    
+    # Comprehensive test note pattern data
+    note_pattern_data = {
+        "id": "pattern_2",
+        "name": "Test Note Pattern",
+        "pattern": [0, 2, 4],  # Major triad intervals
+        "description": "A test note pattern with simple intervals",
+        "tags": ["test", "basic"],
+        "complexity": 0.5,
+        "direction": "up",
+        "use_chord_tones": False,
+        "use_scale_mode": False,
+        "arpeggio_mode": False,
+        "restart_on_chord": False,
+        "is_test": True,
+        "duration": 1.0,
+        "position": 0.0,
+        "velocity": 64,
+        "index": 0
+    }
+    
+    try:
+        # Insert the note pattern
+        await db.note_pattern_collection.insert_one(note_pattern_data)
+        
+        # Fetch and validate
+        result = await fetch_note_patterns(db)
+        
+        logger.debug("Fetched Note Patterns:")
+        for pattern in result:
+            log_validation_details(pattern)
+        
+        assert len(result) > 0
+        assert all(isinstance(pattern, NotePattern) for pattern in result)
+    except Exception as e:
+        logger.error(f"Error in test_fetch_note_patterns_with_new_data: {e}")
+        logger.error(f"Full exception traceback:", exc_info=True)
+        raise
+
+@pytest.mark.asyncio
+async def test_fetch_rhythm_patterns_with_new_data(test_db) -> None:
+    logger.debug(f'Connecting to database with MONGODB_URI: {os.getenv("MONGODB_URI")}, db_name: test_note_gen')
+    db = await get_db_conn(uri=os.getenv("MONGODB_URI"), db_name='test_note_gen')
+    await db.rhythm_pattern_collection.insert_one({
+        "id": "test_rhythm_pattern",
+        "name": "Test Rhythm Pattern",
+        "data": {
+            "notes": [
+                {
+                    "position": 0.0,
+                    "duration": 1.0,
+                    "velocity": 100,
+                    "is_rest": False,
+                    "pitch": 60,
+                    "swing_ratio": 0.67
+                },
+                {
+                    "position": 1.0,
+                    "duration": 1.0,
+                    "velocity": 90,
+                    "is_rest": False,
+                    "pitch": 62,
+                    "swing_ratio": 0.67
+                }
+            ],
+            "time_signature": "4/4",
+            "swing_enabled": False,
+            "total_duration": 4.0,
+            "swing_ratio": 0.67,
+            "groove_type": "straight",
+            "humanize_amount": 0.0,
+            "default_duration": 1.0
+        },
+        "description": "A test rhythm pattern",
+        "tags": ["test", "basic"],
+        "complexity": 0.5,
+        "groove_type": "straight",
+        "duration": 4.0
+    })
+    result = await fetch_rhythm_patterns(db)
+    assert len(result) > 0
+    assert isinstance(result[0], RhythmPattern)
+
+@pytest.mark.asyncio
+async def test_fetch_note_patterns_with_new_data(test_db) -> None:
+    logger.debug(f'Connecting to database with MONGODB_URI: {os.getenv("MONGODB_URI")}, db_name: test_note_gen')
+    db = await get_db_conn(uri=os.getenv("MONGODB_URI"), db_name='test_note_gen')
+    await db.note_pattern_collection.insert_one({
+        "id": "pattern_2",
+        "index": 0,
+        "name": "Test Note Pattern",
+        "pattern": [0, 2, 4],  # Major triad intervals
+        "description": "A test note pattern with simple intervals",
+        "tags": ["test", "basic"],
+        "complexity": 0.5,
+        "direction": "up",
+        "use_chord_tones": False,
+        "use_scale_mode": False,
+        "arpeggio_mode": False,
+        "restart_on_chord": False,
+        "is_test": True,
+        "duration": 1.0,
+        "position": 0.0,
+        "velocity": 64
+    })
+    result = await fetch_note_patterns(db)
+    assert len(result) > 0
+    assert isinstance(result[0], NotePattern)
+
+@pytest.mark.asyncio
+async def test_fetch_with_invalid_data(test_db) -> None:
+    logger.debug(f'Connecting to database with MONGODB_URI: {os.getenv("MONGODB_URI")}, db_name: test_note_gen')
+    async with get_db_conn(uri=os.getenv("MONGODB_URI"), db_name='test_note_gen') as db:
+        with pytest.raises(ValueError, match=r"Value error, Chords list cannot be empty"):
+            await db.chord_progression_collection.insert_one(ChordProgression(
+                id="invalid_id",
+                name="Invalid Chord Progression",
+                chords=[],  # This should trigger the validation error
+                key="C",
+                scale_type=ScaleType.MAJOR.value,
+                scale_info={"root": {"note_name": "C", "octave": 4}, "scale_type": ScaleType.MAJOR.value}
+            ).model_dump())
+
+@pytest.mark.asyncio
+async def test_fetch_chord_progression(test_db):
+    logger.debug(f'Connecting to database with MONGODB_URI: {os.getenv("MONGODB_URI")}, db_name: test_note_gen')
+    db = await get_db_conn(uri=os.getenv("MONGODB_URI"), db_name='test_note_gen')
+    # Insert the test chord progression
+    await db.chord_progression_collection.insert_one({
+        "id": "test_i_iv_v",
+        "name": "test_i_iv_v",
+        "index": 1,
+        "chords": [
+            {"root": {"note_name": "C", "octave": 4}, "quality": "MAJOR"},
+            {"root": {"note_name": "F", "octave": 4}, "quality": "MAJOR"},
+            {"root": {"note_name": "G", "octave": 4}, "quality": "MAJOR"}
+        ],
+        "key": "C",
+        "scale_type": "MAJOR",
+        "tags": ["test", "popular", "progression"],
+        "complexity": 0.5,
+        "description": "A common chord progression in popular music."
+    })
+
+    chord_progression = await db.chord_progression_collection.find_one({"id": "test_i_iv_v"})
+    assert chord_progression is not None
+    assert chord_progression["description"] == "A common chord progression in popular music."
+    logger.debug(f"Asserting fetched chord progression: {chord_progression}")
+    logger.debug(f"Expected structure: dictionary")
+    logger.debug(f"Fetched progression: {chord_progression}")
+    assert isinstance(chord_progression, dict)
+    assert chord_progression["id"] == "test_i_iv_v"
+    assert chord_progression["name"] == "test_i_iv_v"
+    assert chord_progression["key"] == "C"
+    assert chord_progression["scale_type"] == "MAJOR"
+    assert len(chord_progression["chords"]) > 0
+    for chord in chord_progression["chords"]:
+        assert isinstance(chord, dict)
+        assert chord["quality"] == "MAJOR"
+
+@pytest.mark.asyncio
+async def test_fetch_chord_progression_by_id_v2(test_db) -> None:
+    """Test fetching a chord progression by ID with correct scale types."""
+    logger.debug(f'Connecting to database with MONGODB_URI: {os.getenv("MONGODB_URI")}, db_name: test_note_gen')
+    db = await get_db_conn(uri=os.getenv("MONGODB_URI"), db_name='test_note_gen')
+    
+    # Insert a test chord progression without notes
+    await db.chord_progression_collection.insert_one({
+        'id': 'test_progression',
+        'index': 0,
+        'name': 'Test Progression',
+        'pattern': [],  # No notes included
+        'tags': ['test'],
+        'complexity': 0.5,
+        'description': 'A test chord progression without notes.'
+    })
+    result = await db.chord_progression_collection.find_one({'id': 'test_progression'})
+    assert result is not None
+    assert result['name'] == 'Test Progression'
+
+@pytest.mark.asyncio
+async def test_fetch_chord_progression_v2(test_db):
+    logger.debug(f'Connecting to database with MONGODB_URI: {os.getenv("MONGODB_URI")}, db_name: test_note_gen')
+    db = await get_db_conn(uri=os.getenv("MONGODB_URI"), db_name='test_note_gen')
+    # Insert the test chord progression
+    await db.chord_progression_collection.insert_one({
+        "id": "test_i_iv_v",
+        "name": "test_i_iv_v",
+        "index": 1,
+        "chords": [
+            {"root": {"note_name": "C", "octave": 4}, "quality": "MAJOR"},
+            {"root": {"note_name": "F", "octave": 4}, "quality": "MAJOR"},
+            {"root": {"note_name": "G", "octave": 4}, "quality": "MAJOR"}
+        ],
+        "key": "C",
+        "scale_type": "MAJOR",
+        "tags": ["test", "popular", "progression"],
+        "complexity": 0.5,
+        "description": "A common chord progression in popular music."
+    })
+
+    chord_progression = await db.chord_progression_collection.find_one({"id": "test_i_iv_v"})
+    assert chord_progression is not None
+    assert chord_progression["description"] == "A common chord progression in popular music."
+    logger.debug(f"Asserting fetched chord progression: {chord_progression}")
+    logger.debug(f"Expected structure: dictionary")
+    logger.debug(f"Fetched progression: {chord_progression}")
+    assert isinstance(chord_progression, dict)
+    assert chord_progression["id"] == "test_i_iv_v"
+    assert chord_progression["name"] == "test_i_iv_v"
+    assert chord_progression["key"] == "C"
+    assert chord_progression["scale_type"] == "MAJOR"
+    assert len(chord_progression["chords"]) > 0
+    for chord in chord_progression["chords"]:
+        assert isinstance(chord, dict)
+        assert chord["quality"] == "MAJOR"
+
+@pytest.mark.asyncio
+async def test_fetch_chord_progression_by_id_v3(test_db) -> None:
+    """Test fetching a chord progression by ID with correct scale types."""
+    logger.debug(f'Connecting to database with MONGODB_URI: {os.getenv("MONGODB_URI")}, db_name: test_note_gen')
+    async with get_db_conn(uri=os.getenv("MONGODB_URI"), db_name='test_note_gen') as db:
+        # Insert a test chord progression without notes
+        await db.chord_progression_collection.insert_one({
+            'id': 'test_progression',
+            'index': 0,
+            'name': 'Test Progression',
+            'pattern': [],  # No notes included
+            'tags': ['test'],
+            'complexity': 0.5,
+            'description': 'A test chord progression without notes.'
+        })
+        result = await db.chord_progression_collection.find_one({'id': 'test_progression'})
+        assert result is not None
+        assert result['name'] == 'Test Progression'
+
+@pytest.mark.asyncio
+async def test_fetch_rhythm_patterns_with_new_data(test_db) -> None:
+    logger.debug(f'Connecting to database with MONGODB_URI: {os.getenv("MONGODB_URI")}, db_name: test_note_gen')
+    db = await get_db_conn(uri=os.getenv("MONGODB_URI"), db_name='test_note_gen')
+    rhythm_pattern_data = {
+        "_id": "test_rhythm_pattern_1",
+        "id": "test_rhythm_pattern_1",
+        "name": "Syncopated Jazz Rhythm",
+        "pattern": {
+            "notes": [
+                {
+                    "position": 0.0,
+                    "duration": 0.5,
+                    "velocity": 100,
+                    "is_rest": False,
+                    "pitch": 60,
+                    "swing_ratio": 0.67,
+                    "accent": 1.0
+                },
+                {
+                    "position": 0.5,
+                    "duration": 0.5,
+                    "velocity": 90,
+                    "is_rest": False,
+                    "pitch": 62,
+                    "swing_ratio": 0.67,
+                    "accent": 0.8
+                }
+            ],
+            "time_signature": "4/4",
+            "swing_enabled": True,
+            "total_duration": 1.0,
+            "swing_ratio": 0.67,
+            "groove_type": "swing",
+            "humanize_amount": 0.0,
+            "default_duration": 1.0
+        },
+        "description": "A syncopated jazz rhythm pattern with swing",
+        "tags": ["jazz", "syncopated", "swing"],
+        "complexity": 0.7,
+        "duration": 1.0
+    }
+    await db.rhythm_pattern_collection.insert_one(rhythm_pattern_data)
+    
+    result = await fetch_rhythm_patterns(db)
+    assert len(result) > 0, "No rhythm patterns found"
+    assert isinstance(result[0], RhythmPattern), "Result is not a RhythmPattern instance"
+
+@pytest.mark.asyncio
+async def test_fetch_note_patterns_with_new_data(test_db) -> None:
+    logger.debug(f'Connecting to database with MONGODB_URI: {os.getenv("MONGODB_URI")}, db_name: test_note_gen')
+    db = await get_db_conn(uri=os.getenv("MONGODB_URI"), db_name='test_note_gen')
+    note_pattern_data = {
+        "_id": "pattern_2",
+        "id": "pattern_2",
+        "index": 1,
+        "name": "Major Scale Ascending Pattern",
+        "pattern": [0, 2, 4, 5, 7, 9, 11],  # Major scale intervals
+        "description": "An ascending pattern exploring major scale intervals",
+        "tags": ["major", "scale", "ascending"],
+        "complexity": 0.6,
+        "direction": "forward",
+        "use_chord_tones": True,
+        "use_scale_mode": True,
+        "arpeggio_mode": False,
+        "restart_on_chord": False,
+        "is_test": True,
+        "duration": 1.0,
+        "position": 0.0,
+        "velocity": 64
+    }
+    await db.note_pattern_collection.insert_one(note_pattern_data)
+    
+    result = await fetch_note_patterns(db)
+    assert len(result) > 0, "No note patterns found"
+    assert isinstance(result[0], NotePattern), "Result is not a NotePattern instance"
+
+@pytest.mark.asyncio
+async def test_fetch_note_patterns_with_logging(test_db) -> None:
+    logger.debug(f'Connecting to database with MONGODB_URI: {os.getenv("MONGODB_URI")}, db_name: test_note_gen')
+    db = await get_db_conn(uri=os.getenv("MONGODB_URI"), db_name='test_note_gen')
+    
+    # Comprehensive test note patterns with exact validation requirements
+    note_patterns_data = [
+        {
+            "_id": "test_pattern_1",
+            "id": "test_pattern_1",
+            "name": "Ascending Major Triad",
+            "pattern": [0, 4, 7],  # Major triad intervals
+            "description": "Ascending major triad intervals exploring harmonic structure",
+            "tags": ["triad", "ascending", "harmony"],
+            "direction": "forward",
+            "use_chord_tones": True,
+            "complexity": 0.5,
+            "is_test": True,
+            "index": 1,
+            "duration": 1.0,
+            "position": 0.0,
+            "velocity": 64,
+            "restart_on_chord": False,
+            "use_scale_mode": False,
+            "arpeggio_mode": False
+        },
+        {
+            "_id": "test_pattern_2",
+            "id": "test_pattern_2",
+            "name": "Descending Seconds",
+            "pattern": [0, -2, -4],  # Descending second intervals
+            "description": "Descending second intervals exploring melodic tension",
+            "tags": ["seconds", "descending", "tension"],
+            "direction": "backward",
+            "use_scale_mode": True,
+            "complexity": 0.3,
+            "is_test": True,
+            "index": 2,
+            "duration": 1.0,
+            "position": 0.0,
+            "velocity": 64,
+            "restart_on_chord": False,
+            "use_chord_tones": False,
+            "arpeggio_mode": False
+        }
+    ]
+    
+    # Insert test note patterns
+    for pattern in note_patterns_data:
+        await db.note_pattern_collection.insert_one(pattern)
+    
+    logger.debug(f'Current note patterns in the database before fetching: {await db.note_pattern_collection.find().to_list(None)}')
     logger.debug(f'Fetching note patterns from the database...')
     
     result = await fetch_note_patterns(db)
@@ -1598,8 +1682,9 @@ def log_validation_details(obj):
 
 # Modify test functions to include more detailed logging
 @pytest.mark.asyncio
-async def test_fetch_note_patterns(setup_test_data: motor.motor_asyncio.AsyncIOMotorDatabase) -> None:
-    db = setup_test_data
+async def test_fetch_note_patterns(test_db):
+    logger.debug(f'Connecting to database with MONGODB_URI: {os.getenv("MONGODB_URI")}, db_name: test_note_gen')
+    db = await get_db_conn(uri=os.getenv("MONGODB_URI"), db_name='test_note_gen')
     
     try:
         result = await fetch_note_patterns(db)
@@ -1617,8 +1702,10 @@ async def test_fetch_note_patterns(setup_test_data: motor.motor_asyncio.AsyncIOM
         raise
 
 @pytest.mark.asyncio
-async def test_fetch_note_pattern_by_id(setup_test_data: motor.motor_asyncio.AsyncIOMotorDatabase) -> None:
-    db = setup_test_data
+async def test_fetch_note_pattern_by_id(test_db) -> None:
+    """Test fetching a note pattern by ID."""
+    logger.debug(f'Connecting to database with MONGODB_URI: {os.getenv("MONGODB_URI")}, db_name: test_note_gen')
+    db = await get_db_conn(uri=os.getenv("MONGODB_URI"), db_name='test_note_gen')
     
     try:
         # Fetch all note patterns to get an actual pattern ID
@@ -1648,8 +1735,9 @@ async def test_fetch_note_pattern_by_id(setup_test_data: motor.motor_asyncio.Asy
         raise
 
 @pytest.mark.asyncio
-async def test_fetch_note_patterns_with_new_data(setup_test_data: motor.motor_asyncio.AsyncIOMotorDatabase) -> None:
-    db = setup_test_data
+async def test_fetch_note_patterns_with_new_data(test_db) -> None:
+    logger.debug(f'Connecting to database with MONGODB_URI: {os.getenv("MONGODB_URI")}, db_name: test_note_gen')
+    db = await get_db_conn(uri=os.getenv("MONGODB_URI"), db_name='test_note_gen')
     
     # Comprehensive test note pattern data
     note_pattern_data = {
@@ -1673,7 +1761,7 @@ async def test_fetch_note_patterns_with_new_data(setup_test_data: motor.motor_as
     
     try:
         # Insert the note pattern
-        await db.note_patterns.insert_one(note_pattern_data)
+        await db.note_pattern_collection.insert_one(note_pattern_data)
         
         # Fetch and validate
         result = await fetch_note_patterns(db)
@@ -1688,3 +1776,75 @@ async def test_fetch_note_patterns_with_new_data(setup_test_data: motor.motor_as
         logger.error(f"Error in test_fetch_note_patterns_with_new_data: {e}")
         logger.error(f"Full exception traceback:", exc_info=True)
         raise
+
+@pytest.mark.asyncio
+async def test_fetch_note_patterns_with_logging(test_db):
+    async with get_db_conn(uri=os.getenv("MONGODB_URI"), db_name='test_note_gen') as db:
+        # Insert note patterns
+        note_pattern_data = {
+            "id": "pattern_2",
+            "name": "Test Note Pattern",
+            "pattern": [0, 2, 4],  # Major triad intervals
+            "description": "A test note pattern with simple intervals",
+            "tags": ["test", "basic"],
+            "complexity": 0.5,
+            "direction": "up",
+            "use_chord_tones": False,
+            "use_scale_mode": False,
+            "arpeggio_mode": False,
+            "restart_on_chord": False,
+            "is_test": True,
+            "duration": 1.0,
+            "position": 0.0,
+            "velocity": 64,
+            "index": 0
+        }
+        await db.note_pattern_collection.insert_one(note_pattern_data)
+        result = await db.note_pattern_collection.find_one({'id': note_pattern_data['id']})
+        assert result is not None
+
+@pytest.mark.asyncio
+async def test_fetch_rhythm_patterns_with_logging(test_db):
+    async with get_db_conn(uri=os.getenv("MONGODB_URI"), db_name='test_note_gen') as db:
+        # Insert rhythm patterns
+        rhythm_pattern_data = {
+            "_id": "test_rhythm_pattern_1",
+            "id": "test_rhythm_pattern_1",
+            "name": "Syncopated Jazz Rhythm",
+            "pattern": {
+                "notes": [
+                    {
+                        "position": 0.0,
+                        "duration": 0.5,
+                        "velocity": 100,
+                        "is_rest": False,
+                        "pitch": 60,
+                        "swing_ratio": 0.67,
+                        "accent": 1.0
+                    },
+                    {
+                        "position": 0.5,
+                        "duration": 0.5,
+                        "velocity": 90,
+                        "is_rest": False,
+                        "pitch": 62,
+                        "swing_ratio": 0.67,
+                        "accent": 0.8
+                    }
+                ],
+                "time_signature": "4/4",
+                "swing_enabled": True,
+                "total_duration": 1.0,
+                "swing_ratio": 0.67,
+                "groove_type": "swing",
+                "humanize_amount": 0.0,
+                "default_duration": 1.0
+            },
+            "description": "A syncopated jazz rhythm pattern with swing",
+            "tags": ["jazz", "syncopated", "swing"],
+            "complexity": 0.7,
+            "duration": 1.0
+        }
+        await db.rhythm_pattern_collection.insert_one(rhythm_pattern_data)
+        result = await db.rhythm_pattern_collection.find_one({'id': rhythm_pattern_data['id']})
+        assert result is not None

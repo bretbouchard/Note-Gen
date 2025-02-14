@@ -10,10 +10,16 @@ from src.note_gen.models.note_event import NoteEvent
 
 class NoteSequence(BaseModel):
     """A sequence of musical notes or events."""
-    notes: List[Union[Note, int]]
+    id: Optional[str] = None
+    notes: List[Union[Note, int, dict]]
     events: List[NoteEvent] = []
     duration: float = Field(default=0.0)
     default_duration: float = Field(default=1.0)
+    progression_name: Optional[str] = None
+    note_pattern_name: Optional[str] = None
+    rhythm_pattern_name: Optional[str] = None
+    name: Optional[str] = None
+    is_test: bool = False
 
     @field_validator('notes')
     def validate_notes(cls, value):
@@ -27,6 +33,9 @@ class NoteSequence(BaseModel):
                 result.append(Note.from_midi(note))
             elif isinstance(note, Note):
                 result.append(note)
+            elif isinstance(note, dict):
+                # Convert dict to Note
+                result.append(Note(**note))
             else:
                 raise ValueError(f"Invalid note type: {type(note)}")
         return result

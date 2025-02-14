@@ -65,7 +65,7 @@ class TestNotePattern(unittest.TestCase):
                 tags=['valid_tag']
             )
 
-        with pytest.raises(ValidationError, match="Interval .* is outside reasonable range"):
+        with pytest.raises(ValidationError, match="Interval 13 is outside reasonable range"):
             NotePattern(
                 name="Invalid Pattern",
                 pattern=[0, 13, 4],

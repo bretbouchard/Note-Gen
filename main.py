@@ -7,14 +7,19 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 from src.note_gen.routers.user_routes import router as user_router
 from src.note_gen.routers.chord_progression_routes import router as chord_progression_router
 from src.note_gen.routers.note_pattern_routes import router as note_pattern_router
-from src.note_gen.routers.rhythm_pattern_routes import router as rhythm_pattern_router, simple_router as rhythm_pattern_simple_router
+from src.note_gen.routers.rhythm_pattern_routes import router as rhythm_pattern_router
 from src.note_gen.routers.note_sequence_routes import router as note_sequence_router
 
-from src.note_gen.database import init_db, close_mongo_connection, get_db
+from src.note_gen.database.db import init_db, close_mongo_connection
+from src.note_gen.dependencies import get_db_conn
 import logging
 import logging.config
 import json
@@ -41,34 +46,31 @@ async def lifespan(app: FastAPI):
         # Initialize the database connection
         await init_db()
         logger.info("MongoDB connection initialization started")
-        db = await get_db().__anext__()
-        logger.info("MongoDB connection initialized successfully")
-        yield
+        async with get_db_conn() as db:
+            logger.info("MongoDB connection initialized successfully")
+            yield
     except Exception as e:
         logger.error(f"Error during startup: {e}")
-        raise HTTPException(status_code=500, detail="Database connection failed")
+        raise
     finally:
-        logger.info("Closing MongoDB connection...")
-        await close_mongo_connection()
-        logger.info("MongoDB connection closed successfully")
+        # Shutdown
         logger.info("Shutting down FastAPI application...")
-        logger.info("Database connection closed successfully")
+        await close_mongo_connection()
 
 app = FastAPI(
     title="Note Generator API",
     description="API for generating musical patterns and sequences",
     version="0.1.0",
-    redirect_slashes=False,  # Disable trailing slash redirects
     lifespan=lifespan
 )
 
-# Middleware for CORS
+# Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Adjust this as necessary for your application
+    allow_origins=["*"],  # Allows all origins
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["*"],  # Allows all methods
+    allow_headers=["*"],  # Allows all headers
 )
 
 # Include routers
@@ -77,7 +79,6 @@ app.include_router(chord_progression_router, prefix="/api/v1/chord-progressions"
 app.include_router(note_sequence_router, prefix="/api/v1/note-sequences")
 app.include_router(rhythm_pattern_router, prefix="/api/v1/rhythm-patterns")
 app.include_router(note_pattern_router, prefix="/api/v1/note-patterns")
-app.include_router(rhythm_pattern_simple_router, prefix="/api/v1/rhythm-patterns/simple")  # Update prefix
 
 @app.get("/")
 async def root():

@@ -1,6 +1,7 @@
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field, field_validator, model_validator, ConfigDict
 import logging
+import json
 
 from src.note_gen.models.note import Note
 from .chord_quality import ChordQualityType
@@ -16,7 +17,11 @@ class Chord(BaseModel):
     model_config = ConfigDict(
         arbitrary_types_allowed=True,  # Allow custom types like Note
         validate_assignment=True,      # Enable validation on attribute assignment
-        extra='forbid'                 # Prevent extra fields
+        extra='forbid',               # Prevent extra fields
+        json_encoders={
+            Note: lambda v: v.model_dump(),
+            ChordQualityEnum: lambda v: v.value
+        }
     )
 
     root: Note
@@ -42,8 +47,14 @@ class Chord(BaseModel):
         if data.get('quality') is None:
             raise ValueError("Chord quality cannot be None")
         
+        # Convert root to Note instance if it's a dictionary
+        if isinstance(data['root'], dict):
+            try:
+                data['root'] = Note(**data['root'])
+            except (TypeError, ValueError) as e:
+                raise ValueError(f"Invalid root note: {e}")
         # Ensure root is a Note instance
-        if not isinstance(data['root'], Note):
+        elif not isinstance(data['root'], Note):
             raise TypeError("root must be a Note instance")
         
         # Ensure quality is a valid ChordQualityEnum
@@ -54,7 +65,21 @@ class Chord(BaseModel):
                 raise ValueError(f"Invalid chord quality: {data['quality']}")
         
         # Optional notes handling
-        if data.get('notes') is None:
+        if data.get('notes') is not None:
+            # Convert notes to Note instances if they're dictionaries
+            notes = []
+            for note in data['notes']:
+                if isinstance(note, dict):
+                    try:
+                        notes.append(Note(**note))
+                    except (TypeError, ValueError) as e:
+                        raise ValueError(f"Invalid note in notes list: {e}")
+                elif isinstance(note, Note):
+                    notes.append(note)
+                else:
+                    raise TypeError("notes must be a list of Note instances or dictionaries")
+            data['notes'] = notes
+        else:
             logger.info("No notes provided, will generate during initialization")
         
         # Inversion handling
@@ -153,27 +178,30 @@ class Chord(BaseModel):
         Safely retrieve chord notes, generating if not already present.
         """
         if not self.notes:
-            logger.warning("Notes not generated, generating now")
             self.notes = self._generate_chord_notes()
         return self.notes
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert the Chord to a dictionary representation."""
         return {
-            "root": self.root.to_dict() if self.root else None,
+            "root": self.root.model_dump() if self.root else None,
             "quality": self.quality.value if self.quality else None,
-            "notes": [note.to_dict() for note in self.notes] if self.notes else [],
+            "notes": [note.model_dump() for note in self.notes] if self.notes else [],
             "inversion": self.inversion
         }
 
-    def to_json(self) -> dict:
-        """Convert the Chord to a JSON-serializable dictionary."""
+    def model_dump(self, **kwargs) -> dict:
+        """Convert the model to a dictionary."""
         return {
-            'root': self.root.to_json() if self.root else None,
-            'quality': self.quality.value if self.quality else None,
-            'notes': [note.to_json() for note in self.notes] if self.notes else None,
-            'inversion': self.inversion
+            "root": self.root.model_dump() if self.root else None,
+            "quality": self.quality.value if self.quality else None,
+            "notes": [note.model_dump() for note in self.notes] if self.notes else [],
+            "inversion": self.inversion
         }
+
+    def json(self, *args: Any, **kwargs: Any) -> str:
+        """Convert model to JSON string."""
+        return json.dumps(self.model_dump())
 
     @classmethod
     def parse_chord_str(cls, chord_str: str) -> 'Chord':
@@ -212,7 +240,6 @@ class Chord(BaseModel):
         """
         # If notes are not generated, generate them without triggering __len__ again
         if self.notes is None:
-            logger.info("Generating notes during len() call")
             self.notes = self._generate_chord_notes()
         return len(self.notes or [])
 

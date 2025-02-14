@@ -87,12 +87,18 @@ async def init_database() -> None:
         if "chord_progressions" not in await db.list_collection_names():
             await db.create_collection("chord_progressions")
             logger.info("Created chord_progressions collection")
+        else:
+            logger.info("chord_progressions collection already exists")
         if "note_patterns" not in await db.list_collection_names():
             await db.create_collection("note_patterns")
             logger.info("Created note_patterns collection")
+        else:
+            logger.info("note_patterns collection already exists")
         if "rhythm_patterns" not in await db.list_collection_names():
             await db.create_collection("rhythm_patterns")
             logger.info("Created rhythm_patterns collection")
+        else:
+            logger.info("rhythm_patterns collection already exists")
     except Exception as e:
         logger.error(f"Failed to initialize database collections: {e}", exc_info=True)
     else:

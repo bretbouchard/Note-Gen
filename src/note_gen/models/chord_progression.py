@@ -24,14 +24,17 @@ class ChordProgression(BaseModel):
     scale_type: str = Field(default=ScaleType.MAJOR)
     complexity: Optional[float] = Field(default=0.5)
     scale_info: Union[ScaleInfo, FakeScaleInfo]
-    quality: Optional[ChordQualityType] = ChordQualityType.MAJOR
 
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
         json_encoders={
-            ChordQualityType: lambda v: v.name,
+            ChordQualityType: lambda v: v.value if isinstance(v, ChordQualityType) else str(v),
             Note: lambda v: jsonable_encoder(v),
-        }
+            ScaleInfo: lambda v: jsonable_encoder(v),
+            FakeScaleInfo: lambda v: jsonable_encoder(v),
+            ObjectId: lambda v: str(v)
+        },
+        from_attributes=True
     )
 
     @property
@@ -185,102 +188,69 @@ class ChordProgression(BaseModel):
         
         return value
 
-    def model_dump(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:
-        """Convert model to dictionary, preserving raw objects for testing."""
-        logger.debug('Dumping model to dictionary')
-        logger.info('Model dump successful')
-        exclude_none = kwargs.pop('exclude_none', False)
-        by_alias = kwargs.pop('by_alias', False)
-        mode = kwargs.pop('mode', 'json')  # 'json' or 'python'
+    def model_dump(self, **kwargs: Any) -> Dict[str, Any]:
+        """Custom serialization method."""
+        exclude_none = kwargs.pop('exclude_none', True)
+        by_alias = kwargs.pop('by_alias', True)
+        
+        # Get the base dictionary
+        data = super().model_dump(exclude_none=exclude_none, by_alias=by_alias, **kwargs)
+        
+        # Ensure proper serialization of nested objects
+        if 'chords' in data:
+            data['chords'] = [jsonable_encoder(chord) for chord in self.chords]
+        if 'scale_info' in data:
+            data['scale_info'] = jsonable_encoder(self.scale_info)
+            
+        return data
 
-        if mode == 'json':
-            # For JSON serialization, convert everything to dictionaries
-            result = {
-                'id': self.id,
-                'name': self.name,
-                'chords': [chord.model_dump() for chord in self.chords],
-                'key': self.key,
-                'scale_type': self.scale_type,
-                'scale_info': self.scale_info.model_dump() if self.scale_info else None,
-                'quality': self.quality,
-                'complexity': self.complexity
-            }
-        else:
-            # For Python mode (used in tests), preserve raw objects
-            result = {
-                'id': self.id,
-                'name': self.name,
-                'chords': self.chords,
-                'key': self.key,
-                'scale_type': self.scale_type,
-                'scale_info': self.scale_info,
-                'quality': self.quality,
-                'complexity': self.complexity
-            }
-
-        if exclude_none:
-            return {k: v for k, v in result.items() if v is not None}
-        return result
+    def json(self, *args: Any, **kwargs: Any) -> str:
+        """Convert model to JSON string."""
+        return json.dumps(jsonable_encoder(self))
 
     def dict(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:
         """Convert the model to a dictionary, preserving raw objects for testing."""
         logger.debug('Converting model to dictionary')
-        logger.info('Model dict successful')
         return self.model_dump(*args, mode='python', **kwargs)
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert model to dictionary, preserving raw objects for testing."""
         logger.debug('Converting model to dictionary')
-        logger.info('Model to dict successful')
         return self.dict()
-
-    def json(self, *args: Any, **kwargs: Any) -> str:
-        """Convert model to JSON string."""
-        logger.debug('Converting model to JSON string')
-        logger.info('Model JSON successful')
-        return json.dumps(self.model_dump(mode='json'))
 
     def add_chord(self, chord: Chord) -> None:
         logger.debug('Adding chord: %s', chord)
         logger.info('Chord added successfully: %s', chord)
         self.chords.append(chord)
-        logger.info('Chord progression updated successfully')
 
     def get_chord_at(self, index: int) -> Chord:
         logger.debug('Getting chord at index: %s', index)
-        logger.info('Chord retrieved successfully at index: %s', index)
         return self.chords[index]
 
     def get_all_chords(self) -> List[Chord]:
         logger.debug('Getting all chords')
-        logger.info('All chords retrieved successfully')
         return self.chords
 
     def get_chord_names(self) -> List[str]:
         logger.debug('Getting chord names')
-        logger.info('Chord names retrieved successfully')
         return [chord.root.note_name for chord in self.chords]
 
     def transpose(self, interval: int) -> None:
         logger.debug('Transposing chord progression by interval: %s', interval)
-        logger.info('Chord progression transposed successfully by interval: %s', interval)
         pass
 
     def __str__(self) -> str:
         logger.debug('Converting model to string')
-        logger.info('Model string successful')
         return f"{self.name}: {' '.join(str(chord) for chord in self.chords)}"
 
     def __repr__(self) -> str:
         logger.debug('Converting model to representation')
-        logger.info('Model representation successful')
         return (f"ChordProgression(key: {self.key!r}, "
                 f"scale_type: {self.scale_type!r}, "
                 f"chords: List[Chord]={self.chords!r})")
 
     def generate_chord_notes(self, root: Note, quality: ChordQualityType, inversion: int = 0) -> List[Note]:
         logger.debug('Generating chord notes for root: %s, quality: %s, inversion: %s', root, quality, inversion)
-        logger.info('Chord notes generated successfully for root: %s, quality: %s, inversion: %s', root, quality, inversion)
         intervals = ChordQualityType.get_intervals(quality)  
         notes = []
         base_octave = root.octave
@@ -305,14 +275,12 @@ class ChordProgression(BaseModel):
 
     def get_root_note_from_chord(self, chord: Chord) -> Optional[Note]:
         logger.debug('Getting root note from chord: %s', chord)
-        logger.info('Root note retrieved successfully from chord: %s', chord)
         if chord is None or chord.root is None:
             return None
         return Note(note_name=chord.root.note_name, octave=chord.root.octave, duration=1, velocity=100)
 
     def to_roman_numerals(self) -> List['RomanNumeral']:
         logger.debug('Converting chord progression to roman numerals')
-        logger.info('Chord progression converted successfully to roman numerals')
         from src.note_gen.models.roman_numeral import RomanNumeral
         scale = Scale(root=Note(note_name=self.key, octave=4, duration=1, velocity=100), scale_type=ScaleType(self.scale_type))
         # Removed unreachable code
@@ -325,9 +293,9 @@ class ChordProgression(BaseModel):
     def validate_chord_progression(cls, chord_progression: Dict[str, Any]) -> None:
         """Validate that chord_progression is a dictionary with required keys."""
         logger.debug('Validating chord_progression: %s', chord_progression)
-        required_keys = {'id', 'name', 'chords', 'key', 'scale_type', 'scale_info', 'quality', 'complexity'}
+        required_keys = {'id', 'name', 'chords', 'key', 'scale_type', 'scale_info', 'complexity'}
         if not isinstance(chord_progression, dict) or not all(key in chord_progression for key in required_keys):
-            raise ValueError("Chord progression must be a dictionary with 'id', 'name', 'chords', 'key', 'scale_type', 'scale_info', 'quality', and 'complexity' keys")
+            raise ValueError("Chord progression must be a dictionary with 'id', 'name', 'chords', 'key', 'scale_type', 'scale_info', and 'complexity' keys")
         return chord_progression
 
     def generate_progression_from_pattern(
@@ -465,7 +433,7 @@ class ChordProgression(BaseModel):
                 'key': self.key,
                 'scale_type': self.scale_type,
                 'complexity': self.complexity,
-                'scale_info': str(self.scale_info)  # Convert scale_info to string representation
+                'scale_info': self.scale_info.model_dump() if self.scale_info else None
             }
             return serialized
         except Exception as e:
@@ -483,35 +451,33 @@ class ChordProgressionResponse(BaseModel):
     key: str
     scale_type: str
     complexity: Optional[float] = None
+    scale_info: Union[ScaleInfo, FakeScaleInfo]
 
-    class Config:
-        from_attributes = True
-        json_encoders = {
-            Note: lambda v: v.model_dump(),
-            ChordQualityType: lambda v: v.value
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_encoders={
+            Note: lambda v: jsonable_encoder(v),
+            ChordQualityType: lambda v: v.value,
+            ScaleInfo: lambda v: jsonable_encoder(v),
+            FakeScaleInfo: lambda v: jsonable_encoder(v),
+            ObjectId: lambda v: str(v)
         }
+    )
 
     @field_validator('chords')
-    @classmethod
     def validate_chords(cls, v: List[Chord]) -> List[Chord]:
-        logger.debug('Validating chords: %s', v)
+        """Validate chords list."""
         if not v:
             raise ValueError("Chords list cannot be empty")
         return v
 
     def model_dump(self, **kwargs: Any) -> Dict[str, Any]:
         """Custom serialization method."""
-        logger.debug('Dumping model to dictionary')
-        logger.info('Model dump successful')
-        data = super().model_dump(**kwargs)
-        if data.get('chords'):
-            data['chords'] = [
-                {
-                    'root': chord.root.model_dump() if hasattr(chord.root, 'model_dump') else chord.root,
-                    'quality': chord.quality.value if hasattr(chord.quality, 'value') else str(chord.quality),
-                    'notes': [note.model_dump() if hasattr(note, 'model_dump') else note for note in chord.notes],
-                    'inversion': chord.inversion
-                }
-                for chord in data['chords']
-            ]
-        return data
+        result = super().model_dump(**kwargs)
+        result['chords'] = [jsonable_encoder(chord) for chord in self.chords]
+        result['scale_info'] = jsonable_encoder(self.scale_info)
+        return result
+
+    def json(self, *args: Any, **kwargs: Any) -> str:
+        """Convert model to JSON string."""
+        return json.dumps(jsonable_encoder(self))

@@ -540,3 +540,19 @@ class Note(BaseModel):
         if not isinstance(other, Note):
             return NotImplemented
         return self.midi_number == other.midi_number
+
+    def model_dump(self, **kwargs) -> dict:
+        """
+        Serialize the Note object to a dictionary.
+        
+        Returns:
+            A dictionary containing all the note's properties.
+        """
+        return {
+            'note_name': self.note_name,
+            'octave': self.octave,
+            'duration': self.duration,
+            'velocity': self.velocity,
+            'stored_midi_number': self.stored_midi_number,
+            'scale_degree': self.scale_degree
+        }

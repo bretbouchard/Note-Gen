@@ -17,17 +17,23 @@ from src.note_gen.models.enums import ScaleType
 from src.note_gen.models.note import Note
 from src.note_gen.models.chord import Chord
 from src.note_gen.models.chord_quality import ChordQualityType
+from src.note_gen.database.db import MongoDBConnection
+from src.note_gen.dependencies import get_db_conn
 import os
-
-from tests.conftest import MockDatabase
 
 import httpx
 
 # In tests/models/test_fetch_import_patterns.py
 
 @pytest.fixture
-async def mock_db_with_data() -> MockDatabase:
-    # Sample note patterns to insert into the mock database
+async def test_db_with_data(test_db):
+    """Fixture to setup test database with sample data."""
+    # Clear existing data
+    await test_db.chord_progressions.delete_many({})
+    await test_db.note_patterns.delete_many({})
+    await test_db.rhythm_patterns.delete_many({})
+
+    # Sample note patterns to insert into the test database
     sample_patterns = [
         NotePattern(
             id='1',
@@ -84,7 +90,7 @@ async def mock_db_with_data() -> MockDatabase:
             )
         ),
     ]
-    # Sample rhythm patterns to insert into the mock database
+    # Sample rhythm patterns to insert into the test database
     sample_rhythm_patterns = [
         RhythmPattern(
             id='1',
@@ -103,7 +109,7 @@ async def mock_db_with_data() -> MockDatabase:
             complexity=5,
             data=RhythmPatternData(notes=[RhythmNote(position=0.0, duration=1.0, velocity=100.0, swing_ratio=0.5), RhythmNote(position=1.0, duration=1.0, velocity=100.0)], duration=4.0)),
     ]
-    # Sample chord progressions to insert into the mock database
+    # Sample chord progressions to insert into the test database
     sample_chord_progressions = [
         ChordProgression(
             id='1',
@@ -137,51 +143,60 @@ async def mock_db_with_data() -> MockDatabase:
         ),
     ]
     
-    # Create a new MockDatabase
-    mock_db = MockDatabase(os.environ["MONGODB_TEST_URI"])
-    
-    # Setup collections
-    await mock_db.setup_collections()
-
-    # Insert sample_patterns into the mock database
+    # Insert sample_patterns into the test database
     for pattern in sample_patterns:
-        await mock_db.note_patterns.insert_one(pattern.model_dump())
+        await test_db.note_patterns.insert_one(pattern.model_dump())
     
-    # Insert sample rhythm patterns into the mock database
+    # Insert sample rhythm patterns into the test database
     for pattern in sample_rhythm_patterns:
-        await mock_db.rhythm_patterns.insert_one(pattern.model_dump())
+        await test_db.rhythm_patterns.insert_one(pattern.model_dump())
     
-    # Insert sample chord progressions into the mock database
+    # Insert sample chord progressions into the test database
     for progression in sample_chord_progressions:
-        await mock_db.chord_progressions.insert_one(progression.model_dump())
-    return mock_db
+        await test_db.chord_progressions.insert_one(progression.model_dump())
+    yield test_db
+
+    # Cleanup
+    await test_db.chord_progressions.delete_many({})
+    await test_db.note_patterns.delete_many({})
+    await test_db.rhythm_patterns.delete_many({})
 
 @pytest.mark.asyncio
-async def test_fetch_note_patterns(mock_db_with_data: MockDatabase) -> None:
-    patterns = await fetch_note_patterns(mock_db_with_data)
-    assert len(patterns) > 0
-    assert patterns[0].data.notes == [{'note_name': 'C', 'octave': 4, 'duration': 1.0, 'velocity': 100.0}, {'note_name': 'E', 'octave': 4, 'duration': 1.0, 'velocity': 100.0}, {'note_name': 'G', 'octave': 4, 'duration': 1.0, 'velocity': 100.0}]
-    assert isinstance(patterns[0].data.duration, float)
-    assert isinstance(patterns[0].data.position, float)
-    assert isinstance(patterns[0].data.velocity, float)
+async def test_fetch_note_patterns(test_db):
+    """Test fetching note patterns."""
+    async with get_db_conn() as conn:
+        patterns = await fetch_note_patterns(conn.db)
+        assert len(patterns) > 0
+        assert patterns[0].data.notes == [{'note_name': 'C', 'octave': 4, 'duration': 1.0, 'velocity': 100.0}, {'note_name': 'E', 'octave': 4, 'duration': 1.0, 'velocity': 100.0}, {'note_name': 'G', 'octave': 4, 'duration': 1.0, 'velocity': 100.0}]
+        assert isinstance(patterns[0].data.duration, float)
+        assert isinstance(patterns[0].data.position, float)
+        assert isinstance(patterns[0].data.velocity, float)
 
 @pytest.mark.asyncio
-async def test_fetch_rhythm_patterns(mock_db_with_data: MockDatabase) -> None:
-    rhythms = await fetch_rhythm_patterns(mock_db_with_data)
-    assert len(rhythms) > 0
-    assert rhythms[0].data.notes == [RhythmNote(position=0.0, duration=1.0, velocity=100.0), RhythmNote(position=1.0, duration=1.0, velocity=100.0)]
+async def test_fetch_rhythm_patterns(test_db):
+    """Test fetching rhythm patterns."""
+    async with get_db_conn() as conn:
+        patterns = await fetch_rhythm_patterns(conn.db)
+        assert len(patterns) > 0
+        assert patterns[0].data.notes == [RhythmNote(position=0.0, duration=1.0, velocity=100.0), RhythmNote(position=1.0, duration=1.0, velocity=100.0)]
 
 @pytest.mark.asyncio
-async def test_fetch_chord_progression_by_id_not_found(mock_db_with_data: MockDatabase) -> None:
-    result = await fetch_chord_progression_by_id("nonexistent-id", mock_db_with_data)
-    assert result is None
+async def test_fetch_chord_progression_by_id_not_found(test_db):
+    """Test fetching non-existent chord progression."""
+    async with get_db_conn() as conn:
+        result = await fetch_chord_progression_by_id("nonexistent-id", conn.db)
+        assert result is None
 
 @pytest.mark.asyncio
-async def test_fetch_note_pattern_by_id_not_found(mock_db_with_data: MockDatabase) -> None:
-    result = await fetch_note_pattern_by_id("nonexistent-id", mock_db_with_data)
-    assert result is None
+async def test_fetch_note_pattern_by_id_not_found(test_db):
+    """Test fetching non-existent note pattern."""
+    async with get_db_conn() as conn:
+        result = await fetch_note_pattern_by_id("nonexistent-id", conn.db)
+        assert result is None
 
 @pytest.mark.asyncio
-async def test_fetch_rhythm_pattern_by_id_not_found(mock_db_with_data: MockDatabase) -> None:
-    result = await fetch_rhythm_pattern_by_id("nonexistent-id", mock_db_with_data)
-    assert result is None
+async def test_fetch_rhythm_pattern_by_id_not_found(test_db):
+    """Test fetching non-existent rhythm pattern."""
+    async with get_db_conn() as conn:
+        result = await fetch_rhythm_pattern_by_id("nonexistent-id", conn.db)
+        assert result is None

@@ -225,8 +225,8 @@ RHYTHM_PATTERNS: Dict[str, Dict[str, Any]] = {
         "notes": [
             {"position": 0, "duration": 1.0, "velocity": 100, "is_rest": False},
             {"position": 1, "duration": 1.0, "velocity": 100, "is_rest": False},
-            {"position": 2, "duration": 0.5, "velocity": 100, "is_rest": False},
-            {"position": 2.5, "duration": 0.5, "velocity": 100, "is_rest": False}
+            {"position": 2, "duration": 1.0, "velocity": 100, "is_rest": False},
+            {"position": 3, "duration": 1.0, "velocity": 100, "is_rest": False}
         ]
     },
     "Bossa Nova": {
@@ -237,9 +237,9 @@ RHYTHM_PATTERNS: Dict[str, Dict[str, Any]] = {
         "description": "A bossa nova rhythm pattern.",
         "notes": [
             {"position": 0.0, "duration": 1.0, "velocity": 100, "is_rest": False},
-            {"position": 0.5, "duration": 0.5, "velocity": 100, "is_rest": False},
             {"position": 1.0, "duration": 0.5, "velocity": 100, "is_rest": False},
-            {"position": 1.5, "duration": 0.5, "velocity": 100, "is_rest": False}
+            {"position": 1.5, "duration": 0.5, "velocity": 100, "is_rest": False},
+            {"position": 2.0, "duration": 0.5, "velocity": 100, "is_rest": False}
         ]
     },
     "Latin Rhythm": {
@@ -250,9 +250,9 @@ RHYTHM_PATTERNS: Dict[str, Dict[str, Any]] = {
         "description": "A Latin-inspired rhythm pattern.",
         "notes": [
             {"position": 0, "duration": 1, "velocity": 100, "is_rest": False},
-            {"position": 0.25, "duration": 0.25, "velocity": 100, "is_rest": False},
-            {"position": 0.5, "duration": 1, "velocity": 100, "is_rest": False},
-            {"position": 1.5, "duration": 0.25, "velocity": 100, "is_rest": False}
+            {"position": 1, "duration": 0.25, "velocity": 100, "is_rest": False},
+            {"position": 1.5, "duration": 0.5, "velocity": 100, "is_rest": False},
+            {"position": 2.0, "duration": 0.5, "velocity": 100, "is_rest": False}
         ]
     },
     "Funk Rhythm": {
@@ -262,10 +262,10 @@ RHYTHM_PATTERNS: Dict[str, Dict[str, Any]] = {
         "complexity": 0.3,
         "description": "A funk-inspired rhythm pattern.",
         "notes": [
-            {"position": 0, "duration": 1, "velocity": 100, "is_rest": False},
-            {"position": 0.25, "duration": 0.25, "velocity": 100, "is_rest": False},
-            {"position": 0.5, "duration": 1, "velocity": 100, "is_rest": False},
-            {"position": 1.5, "duration": 0.25, "velocity": 100, "is_rest": False}
+            {"position": 0, "duration": 0.5, "velocity": 100, "is_rest": False},
+            {"position": 0.5, "duration": 0.5, "velocity": 100, "is_rest": False},
+            {"position": 1.5, "duration": 0.5, "velocity": 100, "is_rest": False},
+            {"position": 2.0, "duration": 0.5, "velocity": 100, "is_rest": False}
         ]
     },
     "Jazz Rhythm": {
@@ -275,9 +275,9 @@ RHYTHM_PATTERNS: Dict[str, Dict[str, Any]] = {
         "complexity": 0.3,
         "description": "A jazz-inspired rhythm pattern.",
         "notes": [
-            {"position": 0, "duration": 1, "velocity": 100, "is_rest": False},
+            {"position": 0, "duration": 0.5, "velocity": 100, "is_rest": False},
             {"position": 0.5, "duration": 0.5, "velocity": 100, "is_rest": False},
-            {"position": 1, "duration": 1, "velocity": 100, "is_rest": False},
+            {"position": 1.0, "duration": 0.5, "velocity": 100, "is_rest": False},
             {"position": 1.5, "duration": 0.5, "velocity": 100, "is_rest": False}
         ]
     }

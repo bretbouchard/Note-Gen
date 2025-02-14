@@ -5,7 +5,7 @@ import asyncio
 import logging
 
 # Configure logging
-logging.basicConfig(level=logging.DEBUG)
+# logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 async def seed_test_db():
@@ -34,7 +34,7 @@ async def seed_test_db():
                 'scale_type': 'MINOR'
             }
         ])
-        logger.info(f'Successfully inserted {len(result.inserted_ids)} chord progressions.')
+        # logger.debug(f'Successfully inserted {len(result.inserted_ids)} chord progressions.')
     except Exception as e:
         logger.error(f'Error inserting chord progressions: {e}')
 
@@ -46,7 +46,7 @@ async def seed_test_db():
                 'data': {'notes': [{'duration': 1.0, 'velocity': 100}], 'time_signature': '4/4'}
             }
         ])
-        logger.info(f'Successfully inserted {len(result.inserted_ids)} rhythm patterns.')
+        # logger.debug(f'Successfully inserted {len(result.inserted_ids)} rhythm patterns.')
     except Exception as e:
         logger.error(f'Error inserting rhythm patterns: {e}')
 

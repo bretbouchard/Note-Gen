@@ -197,7 +197,6 @@ class ChordProgressionGenerator(ProgressionGenerator):
         """Generate a chord progression from a pattern of scale degrees and qualities."""
         chords = []
         for degree, quality in pattern:
-            self.logger.debug(f"Generating chord for degree: {degree}, quality: {quality}")
             root = self.scale_info.get_note_for_degree(degree)
             if root is None:
                 raise ValueError(f"Invalid degree: {degree}")
@@ -211,7 +210,7 @@ class ChordProgressionGenerator(ProgressionGenerator):
             chords.append(chord)
             
         # Log the values being passed to ChordProgression
-        self.logger.debug(f"Creating ChordProgression with name: 'Generated Progression', chords: {chords}, key: {self.scale_info.root.note_name}, scale_type: {self.scale_info.scale_type}")
+        logger.debug(f"Creating ChordProgression with name: 'Generated Progression', chords: {chords}, key: {self.scale_info.root.note_name}, scale_type: {self.scale_info.scale_type}")
         if not isinstance(self.scale_info, (ScaleInfo, FakeScaleInfo)):
             raise ValueError("scale_info must be an instance of ScaleInfo or FakeScaleInfo")
         if not isinstance(self.scale_info.scale_type, ScaleType):
@@ -238,8 +237,6 @@ class ChordProgressionGenerator(ProgressionGenerator):
         Returns:
             Chord: Generated chord
         """
-        logger.debug(f"Generating chord for root: {root}, quality: {quality}")
-        
         # Convert quality to ChordQualityType if it's a string
         if not isinstance(quality, ChordQualityType):
             quality = ChordQualityType.from_string(quality)  # Convert to ChordQualityType if necessary
@@ -255,15 +252,12 @@ class ChordProgressionGenerator(ProgressionGenerator):
         
     def generate_chord_numeral(self, numeral: str) -> Chord:
         """Generate a chord based on the numeral provided."""
-        self.logger.debug(f'Generating chord for numeral: {numeral}')  # Log the numeral being processed
         if numeral not in self.INT_TO_ROMAN.values():
             raise ValueError(f"Invalid numeral: {numeral}. Must be one of {list(self.INT_TO_ROMAN.values())}")
         roman = RomanNumeral.from_string(numeral)
-        self.logger.debug(f'Converted numeral to Roman numeral: {roman}')  # Log the converted Roman numeral
         root = getattr(self.scale_info, 'root')  # Get root note
         quality = getattr(self.scale_info, 'get_chord_quality_for_degree')(roman.scale_degree)  # Get quality from scale
         quality = ChordQualityType.from_string(quality)  # Ensure quality is converted correctly
-        self.logger.debug(f'Root note: {root}, Quality: {quality}')  # Log root note and quality
         return Chord(root=root, quality=quality)
 
     def generate_chord_notes(self, root: Note, quality: Union[str, ChordQualityType], inversion: int = 0) -> List[Note]:
@@ -278,7 +272,6 @@ class ChordProgressionGenerator(ProgressionGenerator):
             self.logger.error(f"Error creating Chord instance: {e}")
             raise ValueError(f"Invalid root or quality for chord: {root}, {quality}") from e
         chord_notes = chord.generate_notes()  # Generate notes for the chord
-        self.logger.debug(f"Generated chord notes: {chord_notes}")
         return chord_notes
 
     def expand_pattern(self, pattern: List[str]) -> List[Tuple[int, ChordQualityType]]:
@@ -499,12 +492,6 @@ class ChordProgressionGenerator(ProgressionGenerator):
         # Normalize and constrain complexity
         complexity = max(0.1, min(0.9, total_complexity))
         
-        # Debug logging
-        logging.debug(f"Pattern: {pattern}")
-        logging.debug(f"Interval Complexity: {interval_complexity}")
-        logging.debug(f"Quality Complexity: {quality_complexity}")
-        logging.debug(f"Total Complexity: {complexity}")
-        
         return complexity
 
     def generate_genre_specific_pattern(
@@ -614,7 +601,6 @@ class ChordProgressionGenerator(ProgressionGenerator):
             ChordProgression: Generated chord progression
         """
         # Add debug logging
-        logging.basicConfig(level=logging.DEBUG)
         logger = logging.getLogger(__name__)
         logger.debug(f"Generating advanced progression with complexity target: {complexity_target}")
         

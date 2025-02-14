@@ -1,38 +1,48 @@
+"""
+Tests for rhythm pattern functionality.
+"""
+
+import os
+import sys
 import pytest
 from httpx import AsyncClient
-from main import app
+from src.note_gen.main import app
 from src.note_gen.models.rhythm_pattern import RhythmPattern, RhythmPatternData, RhythmNote
 from bson import ObjectId
 import uuid
 import asyncio
-from src.note_gen.dependencies import get_db
+from src.note_gen.database.db import get_db_conn
+import httpx
+import logging
 
-@pytest.fixture(scope="function")
-async def client():
-    """
-    Create an async client for testing with proper lifecycle management.
-    """
-    async with AsyncClient(base_url="http://localhost:8000", verify=False) as c:
-        yield c
+# Configure logging
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
-async def cleanup_pattern(pattern_id):
-    """
-    Cleanup helper function to remove a pattern after test.
-    Uses the new get_db method with proper error handling.
-    """
-    try:
-        db = await get_db()
-        await db.rhythm_patterns.delete_one({"_id": pattern_id})
-    except Exception as e:
-        print(f"Error during cleanup: {e}")
+@pytest.fixture(autouse=True)
+async def test_db():
+    """Fixture to provide a test database."""
+    db_gen = get_db_conn()
+    async for db in db_gen:
+        # Clear all collections before each test
+        collections = await db.list_collection_names()
+        for collection in collections:
+            await db[collection].delete_many({})
+        yield db
 
-@pytest.fixture(scope="function")
-async def test_rhythm_pattern(client):
+@pytest.fixture
+async def async_test_client():
+    """Fixture to provide an async test client."""
+    transport = httpx.ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        yield client
+
+@pytest.fixture
+async def test_rhythm_pattern(async_test_client):
     """
     Fixture to create a test rhythm pattern with a unique name.
     Ensures cleanup after the test.
     """
-    # Create a unique test rhythm pattern
     rhythm_note = RhythmNote(position=0.0, duration=1.0, velocity=100, is_rest=False)
     rhythm_data = RhythmPatternData(
         notes=[rhythm_note],
@@ -48,39 +58,49 @@ async def test_rhythm_pattern(client):
         duration=1.0,
         style="basic"
     )
-
-    # Generate a unique name
-    unique_name = f'Test Rhythm Pattern {uuid.uuid4()}'
+    
+    unique_name = f"Test Rhythm Pattern {uuid.uuid4()}"
     rhythm_pattern = RhythmPattern(
-        name=unique_name, 
-        description='Basic quarter note pattern', 
-        tags=['basic'], 
-        complexity=1.0, 
+        name=unique_name,
+        description="A test rhythm pattern",
         data=rhythm_data, 
         is_test=True
     )
-
+    
     # Create the pattern
-    response = await client.post('/rhythm-patterns', json=rhythm_pattern.model_dump())
+    request_data = rhythm_pattern.model_dump()
+    logger.debug(f"POST Request URL: /api/v1/rhythm-patterns")
+    logger.debug(f"POST Request Data: {request_data}")
+    response = await async_test_client.post('/api/v1/rhythm-patterns', json=request_data)
+    logger.debug(f"POST Response Status: {response.status_code}")
+    logger.debug(f"POST Response Headers: {response.headers}")
+    logger.debug(f"POST Response Content: {response.text}")
+    
     assert response.status_code == 201
     created_pattern = response.json()
 
+    # Cleanup the pattern after the test
     try:
         yield created_pattern
     finally:
-        # Cleanup the pattern after the test
         try:
-            await cleanup_pattern(created_pattern['id'])
-        except Exception:
-            # Log or handle cleanup errors if needed
-            pass
-
-# Consolidated tests for rhythm pattern functionality
+            delete_url = f'/api/v1/rhythm-patterns/{created_pattern["id"]}'
+            logger.debug(f"DELETE Request URL: {delete_url}")
+            response = await async_test_client.delete(delete_url)
+            logger.debug(f"DELETE Response Status: {response.status_code}")
+            logger.debug(f"DELETE Response Content: {response.text}")
+        except Exception as e:
+            logger.error(f"Error during cleanup: {str(e)}")
 
 @pytest.mark.asyncio
-async def test_rhythm_pattern_functionality(client, test_rhythm_pattern):
+async def test_rhythm_pattern_functionality(async_test_client, test_rhythm_pattern):
     # Test get rhythm pattern
-    response = await client.get(f'/rhythm-patterns/{test_rhythm_pattern["id"]}')
+    get_url = f'/api/v1/rhythm-patterns/{test_rhythm_pattern["id"]}'
+    logger.debug(f"GET Request URL: {get_url}")
+    response = await async_test_client.get(get_url)
+    logger.debug(f"GET Response Status: {response.status_code}")
+    logger.debug(f"GET Response Headers: {response.headers}")
+    logger.debug(f"GET Response Content: {response.text}")
     
     assert response.status_code == 200
     data = response.json()
@@ -88,11 +108,15 @@ async def test_rhythm_pattern_functionality(client, test_rhythm_pattern):
     assert len(data['data']['notes']) == 1
 
     # Test invalid rhythm pattern id
-    response = await client.get('/rhythm-patterns/invalid_id')
+    invalid_url = '/api/v1/rhythm-patterns/invalid_id'
+    logger.debug(f"GET Invalid Request URL: {invalid_url}")
+    response = await async_test_client.get(invalid_url)
+    logger.debug(f"GET Invalid Response Status: {response.status_code}")
+    logger.debug(f"GET Invalid Response Content: {response.text}")
     assert response.status_code == 404
 
 @pytest.mark.asyncio
-async def test_create_rhythm_pattern(client):
+async def test_create_rhythm_pattern(async_test_client):
     rhythm_note = RhythmNote(position=0.0, duration=1.0, velocity=100, is_rest=False)
     rhythm_data = RhythmPatternData(
         notes=[rhythm_note],
@@ -109,17 +133,21 @@ async def test_create_rhythm_pattern(client):
         style="basic"
     )
     
-    unique_name = f'Test Create Pattern {uuid.uuid4()}'
+    unique_name = f"Test Rhythm Pattern {uuid.uuid4()}"
     rhythm_pattern = RhythmPattern(
-        name=unique_name, 
-        description='Basic quarter note pattern', 
-        tags=['basic'], 
-        complexity=1.0, 
+        name=unique_name,
+        description="A test rhythm pattern",
         data=rhythm_data, 
         is_test=True
     )
     
-    response = await client.post('/rhythm-patterns', json=rhythm_pattern.model_dump())
+    request_data = rhythm_pattern.model_dump()
+    logger.debug(f"POST Request URL: /api/v1/rhythm-patterns")
+    logger.debug(f"POST Request Data: {request_data}")
+    response = await async_test_client.post('/api/v1/rhythm-patterns', json=request_data)
+    logger.debug(f"POST Response Status: {response.status_code}")
+    logger.debug(f"POST Response Headers: {response.headers}")
+    logger.debug(f"POST Response Content: {response.text}")
     
     assert response.status_code == 201
     created_pattern = response.json()
@@ -127,10 +155,14 @@ async def test_create_rhythm_pattern(client):
     assert len(created_pattern['data']['notes']) == 1
 
     # Cleanup
-    await cleanup_pattern(created_pattern['id'])
+    delete_url = f'/api/v1/rhythm-patterns/{created_pattern["id"]}'
+    logger.debug(f"DELETE Request URL: {delete_url}")
+    response = await async_test_client.delete(delete_url)
+    logger.debug(f"DELETE Response Status: {response.status_code}")
+    logger.debug(f"DELETE Response Content: {response.text}")
 
 @pytest.mark.asyncio
-async def test_create_duplicate_rhythm_pattern(client):
+async def test_create_duplicate_rhythm_pattern(async_test_client):
     rhythm_note = RhythmNote(position=0.0, duration=1.0, velocity=100, is_rest=False)
     rhythm_data = RhythmPatternData(
         notes=[rhythm_note],
@@ -147,36 +179,84 @@ async def test_create_duplicate_rhythm_pattern(client):
         style="basic"
     )
     
-    unique_name = f'Test Duplicate Pattern {uuid.uuid4()}'
+    unique_name = f"Test Rhythm Pattern {uuid.uuid4()}"
     rhythm_pattern = RhythmPattern(
-        id=str(ObjectId()), 
-        name=unique_name, 
-        description='Basic quarter note pattern', 
-        tags=['basic'], 
-        complexity=1.0, 
+        name=unique_name,
+        description="A test rhythm pattern",
         data=rhythm_data, 
         is_test=True
     )
     
     # Create first pattern
-    response = await client.post('/rhythm-patterns', json=rhythm_pattern.model_dump())
+    request_data = rhythm_pattern.model_dump()
+    logger.debug(f"POST Request URL: /api/v1/rhythm-patterns")
+    logger.debug(f"POST Request Data: {request_data}")
+    response = await async_test_client.post('/api/v1/rhythm-patterns', json=request_data)
+    logger.debug(f"POST Response Status: {response.status_code}")
+    logger.debug(f"POST Response Headers: {response.headers}")
+    logger.debug(f"POST Response Content: {response.text}")
+    
     assert response.status_code == 201
     first_pattern = response.json()
 
-    # Try to create duplicate
-    response = await client.post('/rhythm-patterns', json=rhythm_pattern.model_dump())
-    print(f"Response Status Code: {response.status_code}")
-    print(f"Response Headers: {response.headers}")
-    print(f"Response Content: {response.text}")
+    # Try to create duplicate pattern
+    logger.debug(f"POST Duplicate Request URL: /api/v1/rhythm-patterns")
+    logger.debug(f"POST Duplicate Request Data: {request_data}")
+    response = await async_test_client.post('/api/v1/rhythm-patterns', json=request_data)
+    logger.debug(f"POST Duplicate Response Status: {response.status_code}")
+    logger.debug(f"POST Duplicate Response Headers: {response.headers}")
+    logger.debug(f"POST Duplicate Response Content: {response.text}")
     
     assert response.status_code == 409
     assert response.json()['detail'] == f"Rhythm pattern with name '{unique_name}' already exists"
 
     # Cleanup
-    await cleanup_pattern(first_pattern['id'])
+    delete_url = f'/api/v1/rhythm-patterns/{first_pattern["id"]}'
+    logger.debug(f"DELETE Request URL: {delete_url}")
+    response = await async_test_client.delete(delete_url)
+    logger.debug(f"DELETE Response Status: {response.status_code}")
+    logger.debug(f"DELETE Response Content: {response.text}")
 
 @pytest.mark.asyncio
-async def test_create_invalid_rhythm_pattern(client):
+async def test_create_invalid_rhythm_pattern(async_test_client):
+    # Create a rhythm pattern with invalid data
+    rhythm_note = RhythmNote(position=0.0, duration=1.0, velocity=100, is_rest=False)
+    rhythm_data = RhythmPatternData(
+        notes=[rhythm_note],
+        time_signature="invalid",  # Invalid time signature
+        swing_enabled=False,
+        humanize_amount=0.0,
+        swing_ratio=0.67,
+        default_duration=1.0,
+        total_duration=4.0,
+        accent_pattern=[],
+        groove_type="straight",
+        variation_probability=0.0,
+        duration=1.0,
+        style="basic"
+    )
+    
+    unique_name = f"Test Invalid Rhythm Pattern {uuid.uuid4()}"
+    invalid_pattern = RhythmPattern(
+        name=unique_name,
+        description="An invalid test rhythm pattern",
+        data=rhythm_data, 
+        is_test=True
+    )
+    
+    request_data = invalid_pattern.model_dump()
+    logger.debug(f"POST Invalid Request URL: /api/v1/rhythm-patterns")
+    logger.debug(f"POST Invalid Request Data: {request_data}")
+    response = await async_test_client.post('/api/v1/rhythm-patterns', json=request_data)
+    logger.debug(f"POST Invalid Response Status: {response.status_code}")
+    logger.debug(f"POST Invalid Response Headers: {response.headers}")
+    logger.debug(f"POST Invalid Response Content: {response.text}")
+    
+    assert response.status_code == 422
+
+@pytest.mark.asyncio
+async def test_create_delete_rhythm_pattern(async_test_client):
+    # Create a rhythm pattern
     rhythm_note = RhythmNote(position=0.0, duration=1.0, velocity=100, is_rest=False)
     rhythm_data = RhythmPatternData(
         notes=[rhythm_note],
@@ -193,69 +273,40 @@ async def test_create_invalid_rhythm_pattern(client):
         style="basic"
     )
     
-    unique_name = f'Invalid Pattern {uuid.uuid4()}'
-    invalid_pattern = RhythmPattern(
-        name=unique_name, 
-        description='Invalid pattern', 
-        tags=['basic'], 
-        complexity=1.0, 
-        data=rhythm_data, 
-        is_test=True
-    )
-    response = await client.post('/rhythm-patterns', json=invalid_pattern.model_dump())
-    print(f"Response Status Code: {response.status_code}")
-    print(f"Response Headers: {response.headers}")
-    print(f"Response Content: {response.text}")
-
-    # Add more specific validation checks here based on your requirements
-    assert response.status_code == 201  # Assuming the pattern is valid
-
-@pytest.mark.asyncio
-async def test_create_delete_rhythm_pattern(client: AsyncClient):
-    """Test creating and then deleting a rhythm pattern."""
-    notes = [
-        RhythmNote(position=0.0, duration=1.0, velocity=100.0),
-        RhythmNote(position=1.0, duration=1.0, velocity=0.0),
-        RhythmNote(position=2.0, duration=1.0, velocity=0.0),
-        RhythmNote(position=3.0, duration=1.0, velocity=0.0)
-    ]
-    
-    rhythm_data = RhythmPatternData(
-        beats_per_measure=4,
-        beat_unit=4,
-        subdivisions=4,
-        pattern=[1, 0, 0, 0],
-        style="basic",
-        notes=notes
-    )
-
-    unique_name = f'Test Create Delete Pattern {uuid.uuid4()}'
+    unique_name = f"Test Rhythm Pattern {uuid.uuid4()}"
     rhythm_pattern = RhythmPattern(
         name=unique_name,
-        description='Basic quarter note pattern',
-        tags=['basic'],
-        complexity=1.0,
-        data=rhythm_data,
+        description="A test rhythm pattern",
+        data=rhythm_data, 
         is_test=True
     )
 
     # Create the pattern
-    response = await client.post('/rhythm-patterns', json=rhythm_pattern.model_dump())
+    request_data = rhythm_pattern.model_dump()
+    logger.debug(f"POST Request URL: /api/v1/rhythm-patterns")
+    logger.debug(f"POST Request Data: {request_data}")
+    response = await async_test_client.post('/api/v1/rhythm-patterns', json=request_data)
+    logger.debug(f"POST Response Status: {response.status_code}")
+    logger.debug(f"POST Response Headers: {response.headers}")
+    logger.debug(f"POST Response Content: {response.text}")
+    
     assert response.status_code == 201
     created_pattern = response.json()
     assert created_pattern['name'] == unique_name
-
-    # Print the pattern details for debugging
-    print(f"Created pattern: {created_pattern}")
+    assert len(created_pattern['data']['notes']) == 1
     
     # Delete the pattern
-    response = await client.delete(f'/rhythm-patterns/{created_pattern["id"]}')
-    print(f"Delete response: {response.status_code} - {response.text}")
+    delete_url = f'/api/v1/rhythm-patterns/{created_pattern["id"]}'
+    logger.debug(f"DELETE Request URL: {delete_url}")
+    response = await async_test_client.delete(delete_url)
+    logger.debug(f"DELETE Response Status: {response.status_code}")
+    logger.debug(f"DELETE Response Content: {response.text}")
     assert response.status_code == 204
 
     # Verify pattern is deleted
-    response = await client.get(f'/rhythm-patterns/{created_pattern["id"]}')
+    get_url = f'/api/v1/rhythm-patterns/{created_pattern["id"]}'
+    logger.debug(f"GET Request URL: {get_url}")
+    response = await async_test_client.get(get_url)
+    logger.debug(f"GET Response Status: {response.status_code}")
+    logger.debug(f"GET Response Content: {response.text}")
     assert response.status_code == 404
-
-    # Add relevant tests from other files here
-    pass

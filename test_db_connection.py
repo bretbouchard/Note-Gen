@@ -1,30 +1,30 @@
 import asyncio
 import logging
-from src.note_gen.dependencies import get_db
-from src.note_gen.database import close_mongo_connection, init_db
+from src.note_gen.dependencies import get_db_conn
+from src.note_gen.database.db import close_mongo_connection, init_db
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 
 async def test_connection():
-    # Initialize database
-    db = await init_db()
-    if db is None:
-        logging.error('Failed to initialize MongoDB connection.')
-        return
+    try:
+        # Initialize database
+        await init_db()
+        logging.info("Database initialized")
 
-    logging.info("Database instance obtained")
+        async with get_db_conn() as db:
+            collections = await db.list_collection_names()
+            print('Connected to database. Collections:', collections)
 
-    collections = await db.list_collection_names()
-    print('Connected to database. Collections:', collections)
+            for collection_name in collections:
+                count = await db[collection_name].count_documents({})
+                print(f'Collection {collection_name} has {count} documents')
 
-    for collection_name in collections:
-        collection = db[collection_name]
-        documents = await collection.find().to_list(length=10)  # Fetch up to 10 documents
-        print(f'Contents of {collection_name}:', documents)
-
-    await close_mongo_connection()  # Use the proper cleanup function
-    logging.info("MongoDB connection closed")
+    except Exception as e:
+        logging.error(f'Error connecting to database: {e}')
+        raise
+    finally:
+        await close_mongo_connection()
 
 if __name__ == "__main__":
     asyncio.run(test_connection())
