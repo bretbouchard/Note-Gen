@@ -304,9 +304,9 @@ class ScaleType(StrEnum):
         return relative_intervals
 
     @classmethod
-    def degree_count(cls):
+    def degree_count(cls, scale_type=None):
         """Returns the number of degrees for each scale type."""
-        return {
+        scale_degrees = {
             cls.MAJOR: 7,
             cls.MINOR: 7,
             cls.HARMONIC_MINOR: 7,
@@ -326,7 +326,8 @@ class ScaleType(StrEnum):
             cls.HARMONIC_MAJOR: 7,
             cls.MELODIC_MAJOR: 7,
             cls.DOUBLE_HARMONIC_MAJOR: 7,
-        }[cls]
+        }
+        return scale_degrees[scale_type if scale_type else cls]
 
 class CustomValidationError(Exception):
     """Custom exception for validation errors."""

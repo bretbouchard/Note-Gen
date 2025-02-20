@@ -119,7 +119,7 @@ class Scale(BaseModel):
                     f"Try using a different octave for the root note."
                 ) from e
         
-        logger.debug(f"Generated notes before deduplication: {[note.note_name + str(note.octave) for note in notes]}")
+        logger.debug(f"Generated Scale notes before deduplication: {[note.note_name + str(note.octave) for note in notes]}")
         return notes
 
     def get_scale_degree(self, degree: int) -> Note:

@@ -1,75 +1,153 @@
-# Python
+# Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
 
-# Virtual Environment
-venv/
-env/
-.env/
-.venv/
-ENV/
+# C extensions
+*.so
 
 # Distribution / packaging
-dist/
+.Python
 build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
 *.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
+
+# Translations
+*.mo
+*.pot
+
+# Django stuff:
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Flask stuff:
+instance/
+.webassets-cache
+
+# Scrapy stuff:
+.scrapy
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+.pybuilder/
+target/
 
 # Jupyter Notebook
 .ipynb_checkpoints
 
-# IDEs and editors
-.idea/
-.vscode/
-*.swp
-*.swo
-*~
+# IPython
+profile_default/
+ipython_config.py
 
-# Logs
-*.log
+# pyenv
+# .python-version
 
-# Database files
-*.sqlite3
-*.db
+# pipenv
+# Pipfile.lock
 
-# Environment files
+# UV
+# uv.lock
+
+# poetry
+# poetry.lock
+
+# pdm
+.pdm.toml
+.pdm-python
+.pdm-build/
+
+# PEP 582
+__pypackages__/
+
+# Celery stuff
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath parsed files
+*.sage.py
+
+# Environments
 .env
-.env.local
-.env.development
-.env.test
-.env.production
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
 
-# Operating System files
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
+# Spyder project settings
+.spyderproject
+.spyproject
 
-# Project-specific
-data/
-temp/
-*.backup
-*.bak
+# Rope project settings
+.ropeproject
 
-# Machine Learning / Data Science
-*.pkl
-*.joblib
-*.model
+# mkdocs documentation
+/site
 
-# Pytest
-.pytest_cache/
-
-# Coverage
-.coverage
-htmlcov/
-
-# Mypy
+# mypy
 .mypy_cache/
+.dmypy.json
+dmypy.json
 
-# Specific to this project
-config.ini
-secrets.json
-local_settings.py
+# Pyre type checker
+.pyre/
+
+# pytype static type analyzer
+.pytype/
+
+# Cython debug symbols
+cython_debug/
+
+# PyCharm
+#.idea/
+
+# Ruff stuff:
+.ruff_cache/
+
+# PyPI configuration file
+.pypirc
+
+# MongoDB files
+data/db/

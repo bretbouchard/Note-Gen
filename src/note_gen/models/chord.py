@@ -33,6 +33,11 @@ class Chord(BaseModel):
         le=3,
         validation_alias="inversion"
     )
+    duration: float = Field(default=4.0, description="Duration of each chord in beats")
+
+    def __init__(self, root: Note, quality: ChordQualityEnum, **kwargs):
+        super().__init__(root=root, quality=quality, **kwargs)
+        self.notes = self._generate_chord_notes()  # Generate notes upon initialization
 
     @model_validator(mode='before')
     @classmethod
@@ -92,6 +97,16 @@ class Chord(BaseModel):
             except ValueError:
                 raise ValueError("Inversion must be a valid integer")
         
+        # Duration handling
+        if data.get('duration') is not None:
+            try:
+                duration = float(data['duration'])
+                if duration <= 0:
+                    raise ValueError("Duration must be a positive number")
+                data['duration'] = duration
+            except ValueError:
+                raise ValueError("Duration must be a valid number")
+        
         return data
 
     @field_validator('inversion')
@@ -107,24 +122,6 @@ class Chord(BaseModel):
             if value > 3:
                 raise ValueError("Inversion must be between 0 and 3")
         return value
-
-    @model_validator(mode='after')
-    def generate_notes(self) -> 'Chord':
-        """
-        Generate the notes for the chord after validation.
-        Ensures notes are generated automatically upon initialization.
-        """
-        if not self.root:
-            raise ValueError("Root note cannot be None.")
-        if self.quality is None:
-            raise ValueError("Chord quality cannot be None.")
-
-        # Only generate notes if they are not already provided
-        if not self.notes:
-            logger.info(f"Generating notes for {self.root} {self.quality} chord")
-            self.notes = self._generate_chord_notes()
-
-        return self
 
     def _generate_chord_notes(self) -> List[Note]:
         """
@@ -153,7 +150,7 @@ class Chord(BaseModel):
         return notes
 
     @classmethod
-    def from_quality(cls, root: Note, quality: ChordQualityEnum, inversion: Optional[int] = None) -> 'Chord':
+    def from_quality(cls, root: Note, quality: ChordQualityEnum, inversion: Optional[int] = None, duration: Optional[float] = None) -> 'Chord':
         """
         Create a Chord instance with a specified root note and quality.
         Ensures notes are generated during initialization.
@@ -163,7 +160,7 @@ class Chord(BaseModel):
         if quality is None:
             raise ValueError("Chord quality cannot be None")
         
-        return cls(root=root, quality=quality, inversion=inversion)
+        return cls(root=root, quality=quality, inversion=inversion, duration=duration)
 
     def __str__(self) -> str:
         """String representation of the chord."""
@@ -171,7 +168,7 @@ class Chord(BaseModel):
 
     def __repr__(self) -> str:
         """Detailed string representation of the chord."""
-        return f"Chord(root={self.root}, quality={self.quality}, notes={self.notes}, inversion={self.inversion})"
+        return f"Chord(root={self.root}, quality={self.quality}, notes={self.notes}, inversion={self.inversion}, duration={self.duration})"
 
     def get_notes(self) -> List[Note]:
         """
@@ -187,7 +184,8 @@ class Chord(BaseModel):
             "root": self.root.model_dump() if self.root else None,
             "quality": self.quality.value if self.quality else None,
             "notes": [note.model_dump() for note in self.notes] if self.notes else [],
-            "inversion": self.inversion
+            "inversion": self.inversion,
+            "duration": self.duration
         }
 
     def model_dump(self, **kwargs) -> dict:
@@ -196,7 +194,8 @@ class Chord(BaseModel):
             "root": self.root.model_dump() if self.root else None,
             "quality": self.quality.value if self.quality else None,
             "notes": [note.model_dump() for note in self.notes] if self.notes else [],
-            "inversion": self.inversion
+            "inversion": self.inversion,
+            "duration": self.duration
         }
 
     def json(self, *args: Any, **kwargs: Any) -> str:
@@ -231,7 +230,7 @@ class Chord(BaseModel):
     def transpose(self, semitones: int) -> 'Chord':
         """Transpose the chord by the given number of semitones."""
         new_root = self.root.transpose(semitones)
-        return Chord(root=new_root, quality=self.quality, inversion=self.inversion)
+        return Chord(root=new_root, quality=self.quality, inversion=self.inversion, duration=self.duration)
 
     def __len__(self) -> int:
         """

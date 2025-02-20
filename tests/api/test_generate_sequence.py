@@ -28,7 +28,7 @@ async def test_generate_sequence_from_presets(client) -> None:
             "scale_type": "MAJOR"  # Optional: include scale type if needed
         }
     }
-    response = await client.post("/generate-sequence", json=request_data)
+    response = await client.post("/api/v1/generate-sequence", json=request_data)
     
     # Log the response for debugging
     print(f"Response Status Code: {response.status_code}")
@@ -52,7 +52,7 @@ async def test_generate_sequence_invalid_progression(client) -> None:
         }
     }
     logger.debug("Testing invalid progression with data: %s", data)
-    response = await client.post("/generate-sequence", json=data)
+    response = await client.post("/api/v1/generate-sequence", json=data)
     logger.debug("Response status code: %d", response.status_code)
     assert response.status_code == 422
     assert "Invalid progression name" in response.json()["detail"]
@@ -73,7 +73,7 @@ async def test_generate_sequence_invalid_note_pattern(client) -> None:
         }
     }
     logger.debug("Testing invalid note pattern with data: %s", data)
-    response = await client.post("/generate-sequence", json=data)
+    response = await client.post("/api/v1/generate-sequence", json=data)
     logger.debug("Response status code: %d", response.status_code)
     assert response.status_code == 422
     assert "Invalid note pattern name" in response.json()["detail"]
@@ -94,7 +94,7 @@ async def test_generate_sequence_invalid_rhythm_pattern(client) -> None:
         }
     }
     logger.debug("Testing invalid rhythm pattern with data: %s", data)
-    response = await client.post("/generate-sequence", json=data)
+    response = await client.post("/api/v1/generate-sequence", json=data)
     logger.debug("Response status code: %d", response.status_code)
     assert response.status_code == 422
     assert "Invalid rhythm pattern name" in response.json()["detail"]
@@ -109,7 +109,7 @@ async def test_note_sequence(client):
     }
     logger.debug("Request Data: %s", request_data)  # Log the request data
 
-    response = await client.post("/generate-sequence", json=request_data)
+    response = await client.post("/api/v1/generate-sequence", json=request_data)
     logger.debug("Response Status Code: %d", response.status_code)  # Log the response status
     if response.status_code != 200:
         logger.error("Response Body: %s", response.text)  # Log the response body for debugging
@@ -138,7 +138,7 @@ async def test_generate_sequence_functionality(client):
         }
     }
     logger.debug("Request Data: %s", request_data)  # Log the request data
-    response = await client.post("/generate-sequence", json=request_data)
+    response = await client.post("/api/v1/generate-sequence", json=request_data)
     logger.debug("Response Status Code: %d", response.status_code)  # Log the response status
     if response.status_code != 200:
         logger.error("Response Body: %s", response.text)  # Log the response body for debugging
@@ -167,7 +167,7 @@ async def test_generate_sequence_functionality(client):
         }
     }
     logger.debug("Request Data: %s", request_data)  # Log the request data
-    response = await client.post("/generate-sequence", json=request_data)
+    response = await client.post("/api/v1/generate-sequence", json=request_data)
     logger.debug("Response Status Code: %d", response.status_code)  # Log the response status
     if response.status_code != 422:
         logger.error("Response Body: %s", response.text)  # Log the response body for debugging
@@ -189,7 +189,7 @@ async def test_generate_sequence_functionality(client):
         }
     }
     logger.debug("Request Data: %s", request_data)  # Log the request data
-    response = await client.post("/generate-sequence", json=request_data)
+    response = await client.post("/api/v1/generate-sequence", json=request_data)
     logger.debug("Response Status Code: %d", response.status_code)  # Log the response status
     if response.status_code != 422:
         logger.error("Response Body: %s", response.text)  # Log the response body for debugging
@@ -211,7 +211,7 @@ async def test_generate_sequence_functionality(client):
         }
     }
     logger.debug("Request Data: %s", request_data)  # Log the request data
-    response = await client.post("/generate-sequence", json=request_data)
+    response = await client.post("/api/v1/generate-sequence", json=request_data)
     logger.debug("Response Status Code: %d", response.status_code)  # Log the response status
     if response.status_code != 422:
         logger.error("Response Body: %s", response.text)  # Log the response body for debugging
@@ -228,7 +228,7 @@ async def test_generate_sequence_functionality(client):
     }
     logger.debug("Request Data: %s", request_data)  # Log the request data
 
-    response = await client.post("/generate-sequence", json=request_data)
+    response = await client.post("/api/v1/generate-sequence", json=request_data)
     logger.debug("Response Status Code: %d", response.status_code)  # Log the response status
     if response.status_code != 200:
         logger.error("Response Body: %s", response.text)  # Log the response body for debugging
@@ -253,7 +253,7 @@ async def test_generate_sequence_functionality(client):
         }
     }
     logger.debug("Request Data: %s", request_data)  # Log the request data
-    response = await client.post("/generate-sequence", json=request_data)
+    response = await client.post("/api/v1/generate-sequence", json=request_data)
     logger.debug("Response Status Code: %d", response.status_code)  # Log the response status
     if response.status_code != 200:
         logger.error("Response Body: %s", response.text)  # Log the response body for debugging

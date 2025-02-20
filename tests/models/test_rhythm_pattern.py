@@ -7,6 +7,11 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+@pytest.fixture
+async def mock_db_connection():
+    mock_connection = AsyncMock()
+    yield mock_connection
+
 @pytest.mark.usefixtures('mock_db_connection')
 class TestRhythmPattern:
     async def test_validate_time_signature_valid(self, mock_db_connection) -> None:

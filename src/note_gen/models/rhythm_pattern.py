@@ -6,6 +6,7 @@ from typing import List, Optional, Any, Dict, Union, Type, Callable
 from pydantic import BaseModel, Field, validator, ValidationError, ConfigDict, field_validator, model_validator
 import uuid
 from src.note_gen.models.note import Note
+import json
 
 # Ensure logger is set up correctly
 logger = logging.getLogger(__name__)
@@ -198,11 +199,8 @@ class RhythmPatternData(BaseModel):
 
     def calculate_total_duration(self) -> float:
         """Calculate total duration based on notes."""
-        if not self.notes:
-            return 0.0
-        
-        # Calculate total duration by finding the last note's end position
-        return max(note.position + note.duration for note in self.notes)
+        self.total_duration = sum(note.duration for note in self.notes)
+        return self.total_duration
 
     def get_pattern_duration(self) -> float:
         """Calculate pattern duration based on pattern string."""
@@ -227,6 +225,10 @@ class RhythmPatternData(BaseModel):
         
         # If notes exist, calculate based on notes
         return self.calculate_total_duration()
+
+    def get_durations(self) -> List[float]:
+        """Return a list of durations for each note in the rhythm pattern."""
+        return [note.duration for note in self.notes] if self.notes else []
 
     class Config:
         model_config = ConfigDict(
@@ -418,6 +420,41 @@ class RhythmPattern(BaseModel):
     def __str__(self) -> str:
         """Get string representation of the rhythm pattern."""
         return f"RhythmPattern(name={self.name}, total_duration={self.data.total_duration})"
+
+    def get_durations(self) -> List[float]:
+        """Return a list of durations for each note in the rhythm pattern."""
+        return self.data.get_durations()
+
+    @classmethod
+    def from_str(cls, pattern_str: str) -> RhythmPattern:
+        print(f"Input to from_str: {pattern_str}")
+        # Parse the JSON string instead of expecting a semicolon-separated format
+        pattern_data = json.loads(pattern_str)
+
+        name = pattern_data['name']
+        time_signature = pattern_data['data']['time_signature']
+        notes_data = pattern_data['data']['notes']
+
+        notes = []
+        for note in notes_data:
+            position = note['position']
+            duration = note['duration']
+            velocity = note['velocity']
+            is_rest = note['is_rest']
+            notes.append(RhythmNote(
+                position=position,
+                duration=duration,
+                velocity=velocity,
+                is_rest=is_rest
+            ))
+
+        return cls(
+            name=name,
+            data=RhythmPatternData(
+                notes=notes,
+                time_signature=time_signature
+            )
+        )
 
     class Config:
         model_config = ConfigDict(

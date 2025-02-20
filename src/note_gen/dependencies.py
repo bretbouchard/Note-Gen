@@ -11,11 +11,9 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 MONGODB_URL = os.getenv("MONGODB_URI", "mongodb://localhost:27017")
 DATABASE_NAME = os.getenv("DATABASE_NAME", "note_gen")
 
-async def get_db_conn() -> AsyncIOMotorDatabase:
+async def get_db_conn():
     """Get database connection."""
-    db = _get_db_conn()
-    async with db as conn:
-        return conn
+    return await _get_db_conn()
 
 # Export for use in other modules
 __all__ = ['get_db_conn', 'MONGODB_URL']

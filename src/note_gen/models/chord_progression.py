@@ -24,6 +24,7 @@ class ChordProgression(BaseModel):
     scale_type: str = Field(default=ScaleType.MAJOR)
     complexity: Optional[float] = Field(default=0.5)
     scale_info: Union[ScaleInfo, FakeScaleInfo]
+    duration: float = Field(default=1.0, description="Duration of each chord in bars")
 
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
@@ -433,7 +434,8 @@ class ChordProgression(BaseModel):
                 'key': self.key,
                 'scale_type': self.scale_type,
                 'complexity': self.complexity,
-                'scale_info': self.scale_info.model_dump() if self.scale_info else None
+                'scale_info': self.scale_info.model_dump() if self.scale_info else None,
+                'duration': self.duration
             }
             return serialized
         except Exception as e:
