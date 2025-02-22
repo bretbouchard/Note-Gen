@@ -80,6 +80,17 @@ async def create_rhythm_pattern(
         logger.error(f"Error creating rhythm pattern: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
+@router.post("/generate-rhythm-pattern", response_model=RhythmPatternResponse)
+async def generate_rhythm_pattern(
+    rhythm_pattern: RhythmPattern,
+    db: AsyncIOMotorDatabase = Depends(get_db_conn)
+) -> RhythmPatternResponse:
+    """
+    Generate a rhythm pattern based on provided parameters.
+    """
+    # Logic to generate rhythm pattern
+    return rhythm_pattern
+
 @router.put("/{pattern_id}", response_model=RhythmPatternResponse)
 async def update_rhythm_pattern(
     pattern_id: str,

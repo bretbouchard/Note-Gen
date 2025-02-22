@@ -61,7 +61,7 @@ class NotePattern(BaseModel):
         }
     )
 
-    def __init__(self, **data):
+    def __init__(self, **data: Dict[str, Any]) -> None:
         """
         Custom initialization to handle extra fields for testing.
         Removes extra fields before Pydantic validation.
@@ -122,7 +122,7 @@ class NotePattern(BaseModel):
 
         super().__init__(**filtered_data)
 
-    def __getattr__(self, item):
+    def __getattr__(self, item: str) -> Any:
         """
         Custom attribute getter to handle dynamic attributes.
         """
@@ -134,57 +134,57 @@ class NotePattern(BaseModel):
         raise AttributeError(f'{type(self).__name__!r} object has no attribute {item!r}')
 
     @field_validator("pattern")
-    def validate_pattern(cls, v):
+    def validate_pattern(cls, value: List[int]) -> List[int]:
         """Validate the pattern intervals."""
-        if not v:
+        if not value:
             raise ValueError("Pattern must not be empty")
-        if not all(isinstance(i, int) for i in v):
+        if not all(isinstance(i, int) for i in value):
             raise ValueError("All pattern values must be integers")
-        if any(abs(i) > 12 for i in v):
-            raise ValueError("Interval {} is outside reasonable range".format(max(abs(i) for i in v)))
-        return v
+        if any(abs(i) > 12 for i in value):
+            raise ValueError("Interval {} is outside reasonable range".format(max(abs(i) for i in value)))
+        return value
 
     @field_validator("name")
-    def validate_name(cls, v):
+    def validate_name(cls, value: str) -> str:
         """Validate the pattern name."""
-        if not v or len(v.strip()) < 2:
+        if not value or len(value.strip()) < 2:
             raise ValueError("Name must be at least 2 characters long")
-        return v.strip()
+        return value.strip()
 
     @field_validator("velocity")
-    def validate_velocity(cls, v):
+    def validate_velocity(cls, value: int) -> int:
         """Validate the velocity value."""
-        if not 0 <= v <= 127:
+        if not 0 <= value <= 127:
             raise ValueError("Velocity must be between 0 and 127")
-        return v
+        return value
 
     @field_validator("duration")
-    def validate_duration(cls, v):
+    def validate_duration(cls, value: float) -> float:
         """Validate the duration value."""
-        if v <= 0:
+        if value <= 0:
             raise ValueError("Duration must be greater than 0")
-        return v
+        return value
 
     @field_validator("position")
-    def validate_position(cls, v):
+    def validate_position(cls, value: float) -> float:
         """Validate the position value."""
-        if v < 0:
+        if value < 0:
             raise ValueError("Position cannot be negative")
-        return v
+        return value
 
     @field_validator("complexity")
-    def validate_complexity(cls, v):
+    def validate_complexity(cls, value: Optional[float]) -> Optional[float]:
         """Validate the complexity value."""
-        if v is not None and not (0 <= v <= 1):
+        if value is not None and not (0 <= value <= 1):
             raise ValueError("Complexity must be between 0 and 1")
-        return v
+        return value
 
     @field_validator("tags")
-    def validate_tags(cls, v):
+    def validate_tags(cls, value: List[str]) -> List[str]:
         """Validate the tags."""
-        if any(not tag.strip() for tag in v):
+        if any(not tag.strip() for tag in value):
             raise ValueError("Tags must contain non-whitespace strings")
-        return v
+        return value
 
     def add_tag(self, tag: str) -> None:
         """Add a new tag to the pattern."""
@@ -194,6 +194,10 @@ class NotePattern(BaseModel):
     def remove_tag(self, tag: str) -> None:
         """Remove a specific tag from the pattern."""
         self.tags = [t for t in self.tags if t != tag.strip()]
+
+    def get_pattern_duration(self) -> float:
+        """Calculate the total duration of the pattern."""
+        return self.duration * len(self.pattern)
 
 
 class NotePatternResponse(BaseModel):

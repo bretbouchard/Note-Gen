@@ -84,7 +84,8 @@ async def test_invalid_rhythm_pattern_id(test_client):
     response = await test_client.get('/api/v1/rhythm-patterns/invalid_id')
     assert response.status_code == 404
 
-def test_create_rhythm_pattern(test_client, rhythm_data):
+@pytest.mark.asyncio
+async def test_create_rhythm_pattern(test_client, rhythm_data):
     """Test creating a rhythm pattern."""
     pattern = {
         "name": "Test Create Pattern",
@@ -94,13 +95,14 @@ def test_create_rhythm_pattern(test_client, rhythm_data):
         "tags": ["test"]
     }
 
-    response = test_client.post('/api/v1/rhythm-patterns', json=pattern)
+    response = await test_client.post('/api/v1/rhythm-patterns', json=pattern)
     assert response.status_code == 201, f"Failed to create pattern: {response.json()}"
     created_pattern = response.json()
     assert created_pattern["name"] == "Test Create Pattern"
     assert created_pattern["data"]["time_signature"] == "4/4"
 
-def test_create_duplicate_rhythm_pattern(test_client, rhythm_data):
+@pytest.mark.asyncio
+async def test_create_duplicate_rhythm_pattern(test_client, rhythm_data):
     """Test creating a duplicate rhythm pattern."""
     pattern = {
         "name": "Test Duplicate Pattern",
@@ -111,15 +113,16 @@ def test_create_duplicate_rhythm_pattern(test_client, rhythm_data):
     }
 
     # Create first pattern
-    response = test_client.post('/api/v1/rhythm-patterns', json=pattern)
+    response = await test_client.post('/api/v1/rhythm-patterns', json=pattern)
     assert response.status_code == 201, f"Failed to create first pattern: {response.json()}"
 
     # Try to create duplicate pattern
-    response = test_client.post('/api/v1/rhythm-patterns', json=pattern)
+    response = await test_client.post('/api/v1/rhythm-patterns', json=pattern)
     assert response.status_code == 409
     assert "already exists" in response.json()["detail"]
 
-def test_invalid_rhythm_pattern(test_client):
+@pytest.mark.asyncio
+async def test_invalid_rhythm_pattern(test_client):
     """Test creating an invalid rhythm pattern."""
     invalid_pattern = {
         "name": "Invalid Pattern",
@@ -128,10 +131,11 @@ def test_invalid_rhythm_pattern(test_client):
         "tags": ["test"]
     }
 
-    response = test_client.post('/api/v1/rhythm-patterns', json=invalid_pattern)
+    response = await test_client.post('/api/v1/rhythm-patterns', json=invalid_pattern)
     assert response.status_code == 422
 
-def test_create_and_delete_rhythm_pattern(test_client, rhythm_data):
+@pytest.mark.asyncio
+async def test_create_and_delete_rhythm_pattern(test_client, rhythm_data):
     """Test creating and deleting a rhythm pattern."""
     pattern = {
         "name": "Test Delete Pattern",
@@ -142,15 +146,15 @@ def test_create_and_delete_rhythm_pattern(test_client, rhythm_data):
     }
 
     # Create pattern
-    response = test_client.post('/api/v1/rhythm-patterns', json=pattern)
+    response = await test_client.post('/api/v1/rhythm-patterns', json=pattern)
     assert response.status_code == 201, f"Failed to create pattern: {response.json()}"
     created_pattern = response.json()
     pattern_id = created_pattern["id"]
 
     # Delete the pattern
-    response = test_client.delete(f'/api/v1/rhythm-patterns/{pattern_id}')
+    response = await test_client.delete(f'/api/v1/rhythm-patterns/{pattern_id}')
     assert response.status_code == 204
 
     # Verify pattern is deleted
-    response = test_client.get(f'/api/v1/rhythm-patterns/{pattern_id}')
+    response = await test_client.get(f'/api/v1/rhythm-patterns/{pattern_id}')
     assert response.status_code == 404

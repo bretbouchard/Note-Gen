@@ -243,20 +243,12 @@ class RhythmPattern(BaseModel):
     data: RhythmPatternData = Field(..., description='Pattern data', alias="data")
     description: str = Field(default='', description='Pattern description')
     tags: List[str] = Field(default_factory=list, description='Tags for categorization', min_length=1)
-    complexity: float = Field(default=1.0, ge=0.0, lt=11.0, description='Pattern complexity score (1-10)')
-    style: Optional[str] = Field(default='basic', description='Musical style')
-    pattern: Optional[str] = Field(default=None, description='Pattern representation')
+    complexity: float = Field(default=1.0, ge=0.0, le=10.0, description='Pattern complexity score (1-10)')
+    style: Optional[str] = Field(default='basic', description='Musical style')   
+    pattern: Union[str, List[float]] = Field(..., description='Pattern representation, can include decimals and negatives')
     groove_type: str = Field(default='straight', description='Type of groove')
     swing_ratio: Optional[float] = Field(default=0.67, ge=0.5, le=0.75, description='Swing ratio (0.5-0.75)')
     duration: float = Field(default=1.0, gt=0.0, description='Duration in beats')
-
-    def __init__(self, **data):
-        # Custom validation for swing_ratio
-        if 'swing_ratio' in data and data['swing_ratio'] > 0.75:
-            raise ValueError("Input should be less than or equal to 0.75")
-        
-        # Call the parent class's __init__ method
-        super().__init__(**data)
 
     @field_validator('data')
     @classmethod
@@ -275,20 +267,25 @@ class RhythmPattern(BaseModel):
 
     @field_validator('pattern')
     @classmethod
-    def validate_pattern(cls, value: Optional[str]) -> Optional[str]:
-        """Validate pattern format."""
-        if value is not None:
-            # More flexible pattern validation
+    def validate_pattern(cls, value: Union[str, List[float]]) -> Union[str, List[float]]:
+        if value is None:
+            logger.error("Pattern cannot be None")
+            raise ValueError("Pattern cannot be None")
+        logger.debug(f"Validating pattern: {value}")  # Log the pattern being validated
+        if isinstance(value, str):
+            # If the value is a string, validate using regex
             pattern_values = value.split()
-            
-            # Regular expression to match various note duration formats
-            import re
-            note_pattern = re.compile(r'^(\d+(?:\.\d*)?|\d+/\d+)\.?$')
-            
+            note_pattern = re.compile(r'^(-?\d+(?:\.\d*)?|\d+/\d+)$')
             for note in pattern_values:
                 if not note_pattern.match(note):
+                    logger.error(f"Invalid pattern format for note: {note}")  # Log the invalid note
                     raise ValueError(f"Invalid pattern format for note: {note}. Must be a number, fraction, or dotted number.")
-        
+        elif isinstance(value, list):
+            # If the value is a list, ensure all entries are floats or integers
+            for note in value:
+                if not isinstance(note, (float, int)):
+                    logger.error(f"Invalid entry in pattern list: {note}")  # Log the invalid entry
+                    raise ValueError(f"All entries in the pattern list must be floats or integers.")
         return value
 
     @field_validator('swing_ratio')
@@ -428,33 +425,73 @@ class RhythmPattern(BaseModel):
     @classmethod
     def from_str(cls, pattern_str: str) -> RhythmPattern:
         print(f"Input to from_str: {pattern_str}")
-        # Parse the JSON string instead of expecting a semicolon-separated format
-        pattern_data = json.loads(pattern_str)
+        try:
+            # Parse the JSON string
+            pattern_data = json.loads(pattern_str)
 
-        name = pattern_data['name']
-        time_signature = pattern_data['data']['time_signature']
-        notes_data = pattern_data['data']['notes']
+            # Extract necessary fields
+            name = pattern_data['name']
+            time_signature = pattern_data['data'].get('time_signature', "4/4")
+            notes_data = pattern_data['data']['notes']
 
-        notes = []
-        for note in notes_data:
-            position = note['position']
-            duration = note['duration']
-            velocity = note['velocity']
-            is_rest = note['is_rest']
-            notes.append(RhythmNote(
-                position=position,
-                duration=duration,
-                velocity=velocity,
-                is_rest=is_rest
-            ))
+            # Extract additional fields with defaults
+            swing_enabled = pattern_data['data'].get('swing_enabled', False)
+            humanize_amount = pattern_data['data'].get('humanize_amount', 0.0)
+            swing_ratio = pattern_data['data'].get('swing_ratio', 0.67)
+            default_duration = pattern_data['data'].get('default_duration', 1.0)
+            total_duration = pattern_data['data'].get('total_duration', 4.0)
+            accent_pattern = pattern_data['data'].get('accent_pattern', [])
+            groove_type = pattern_data['data'].get('groove_type', "straight")
+            variation_probability = pattern_data['data'].get('variation_probability', 0.0)
+            duration = pattern_data['data'].get('duration', 1.0)
+            style = pattern_data['data'].get('style', "basic")
 
-        return cls(
-            name=name,
-            data=RhythmPatternData(
-                notes=notes,
-                time_signature=time_signature
+            # Validate extracted fields
+            if not isinstance(name, str):
+                raise ValueError("Invalid name")
+
+            notes = []
+            for note in notes_data:
+                if not all(key in note for key in ['position', 'duration', 'velocity', 'is_rest']):
+                    raise ValueError("Missing required note data")
+
+                position = note['position']
+                duration = note['duration']
+                velocity = note['velocity']
+                is_rest = note['is_rest']
+                notes.append(RhythmNote(
+                    position=position,
+                    duration=duration,
+                    velocity=velocity,
+                    is_rest=is_rest
+                ))
+
+            # Log the state of RhythmPatternData
+            logger.info(f"Creating RhythmPatternData with: notes={notes}, time_signature={time_signature}, swing_enabled={swing_enabled}, humanize_amount={humanize_amount}, swing_ratio={swing_ratio}, default_duration={default_duration}, total_duration={total_duration}, accent_pattern={accent_pattern}, groove_type={groove_type}, variation_probability={variation_probability}, duration={duration}, style={style}")
+
+            print(f"Creating RhythmPatternData with: notes={notes}, time_signature={time_signature}, swing_enabled={swing_enabled}, humanize_amount={humanize_amount}, swing_ratio={swing_ratio}, default_duration={default_duration}, total_duration={total_duration}, accent_pattern={accent_pattern}, groove_type={groove_type}, variation_probability={variation_probability}, duration={duration}, style={style}")
+
+            return cls(
+                name=name,
+                data=RhythmPatternData(
+                    notes=notes,
+                    time_signature=time_signature,
+                    swing_enabled=swing_enabled,
+                    humanize_amount=humanize_amount,
+                    swing_ratio=swing_ratio,
+                    default_duration=default_duration,
+                    total_duration=total_duration,
+                    accent_pattern=accent_pattern,
+                    groove_type=groove_type,
+                    variation_probability=variation_probability,
+                    duration=duration,
+                    style=style
+                )
             )
-        )
+        except json.JSONDecodeError:
+            raise ValueError("Invalid JSON string")
+        except Exception as e:
+            raise ValueError(f"Error processing rhythm pattern: {str(e)}")
 
     class Config:
         model_config = ConfigDict(

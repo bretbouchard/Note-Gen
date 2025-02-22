@@ -31,7 +31,7 @@ import uuid
 from pydantic import BaseModel, ValidationError
 from typing import AsyncGenerator, Optional, List, Union
 
-from tests.test_data_generator import generate_test_data
+from tests.generators.test_data_generator import generate_test_data
 
 # Configure logging
 # logging.basicConfig(level=logging.DEBUG)

@@ -141,23 +141,13 @@ async def create_note_sequence(
             detail="Failed to create note sequence"
         )
 
-@router.post("/generate", response_model=NoteSequence)
+@router.post("/generate-sequence", response_model=NoteSequence)
 async def generate_sequence(
     sequence_data: GenerateSequenceRequest,
     db: AsyncIOMotorDatabase = Depends(get_db_conn)
 ) -> NoteSequence:
     """
-    Generate a note sequence using presets.
-    
-    Args:
-        sequence_data (GenerateSequenceRequest): Data for generating the sequence
-        db (AsyncIOMotorDatabase): Database connection
-    
-    Returns:
-        NoteSequence: The generated note sequence
-    
-    Raises:
-        HTTPException: If there's an error during generation
+    Generate a note sequence based on provided parameters.
     """
     try:
         # Get presets from database

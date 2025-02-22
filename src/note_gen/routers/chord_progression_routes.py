@@ -85,6 +85,17 @@ async def create_chord_progression(
         logger.error(f"Error creating chord progression: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
+@router.post("/generate-chord-progression", response_model=ChordProgressionResponse)
+async def generate_chord_progression(
+    chord_progression: ChordProgression,
+    db: AsyncIOMotorDatabase = Depends(get_db_conn)
+):
+    """
+    Generate a chord progression based on provided parameters.
+    """
+    # Logic to generate chord progression
+    return chord_progression
+
 @router.get("/", response_model=List[ChordProgressionResponse])
 async def get_chord_progressions(
     db: AsyncIOMotorDatabase = Depends(get_db_conn)

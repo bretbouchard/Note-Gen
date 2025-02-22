@@ -49,7 +49,7 @@ class Note(BaseModel):
         description="Scale degree of the note"
     )
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         """
         Initialize a Note instance.
 
@@ -535,12 +535,12 @@ class Note(BaseModel):
         
         return note_names[note_index]
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         if not isinstance(other, Note):
             return NotImplemented
         return (self.note_name == other.note_name and self.octave == other.octave)
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash((self.note_name, self.octave))
 
     def model_dump(self, **kwargs) -> dict:

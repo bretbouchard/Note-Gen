@@ -17,32 +17,29 @@ async def client():
 @pytest.mark.asyncio
 async def test_generate_sequence_from_presets(client) -> None:
     request_data = {
-        "progression_name": "I-IV-V-I",  # Updated to a valid progression name
-        "note_pattern_name": "Simple Triad",  # Ensure this pattern exists
-        "rhythm_pattern_name": "quarter_notes",  # Updated to a valid rhythm pattern name
+        "progression_name": "I-IV-V-I",  
+        "note_pattern_name": "Simple Triad",  
+        "rhythm_pattern_name": "quarter_notes",  
         "scale_info": {
             "root": {
-                "note_name": "C",  # Correct structure for root
+                "note_name": "C",  
                 "octave": 4
             },
-            "scale_type": "MAJOR"  # Optional: include scale type if needed
+            "scale_type": "MAJOR"  
         }
     }
-    response = await client.post("/api/v1/generate-sequence", json=request_data)
+    response = await client.post("/api/v1/note-sequences/generate-sequence", json=request_data)
     
-    # Log the response for debugging
-    print(f"Response Status Code: {response.status_code}")
-    print(f"Response Body: {response.json()}")
-    
+    logger.debug(f"Response: {response.status_code}, {response.json()}")
     assert response.status_code == 200
 
 @pytest.mark.asyncio
 async def test_generate_sequence_invalid_progression(client) -> None:
     """Test generating a sequence with an invalid progression name."""
     data = {
-        "progression_name": "Invalid Progression",
-        "note_pattern_name": "Simple Triad",
-        "rhythm_pattern_name": "quarter_notes",
+        "progression_name": "Invalid Progression",  
+        "note_pattern_name": "Nonexistent Pattern",  
+        "rhythm_pattern_name": "Invalid Rhythm",  
         "scale_info": {
             "root": {
                 "note_name": "C",
@@ -52,8 +49,8 @@ async def test_generate_sequence_invalid_progression(client) -> None:
         }
     }
     logger.debug("Testing invalid progression with data: %s", data)
-    response = await client.post("/api/v1/generate-sequence", json=data)
-    logger.debug("Response status code: %d", response.status_code)
+    response = await client.post("/api/v1/note-sequences/generate-sequence", json=data)
+    logger.debug(f"Invalid progression response: {response.status_code}, {response.json()}")
     assert response.status_code == 422
     assert "Invalid progression name" in response.json()["detail"]
 
@@ -62,7 +59,7 @@ async def test_generate_sequence_invalid_note_pattern(client) -> None:
     """Test generating a sequence with an invalid note pattern name."""
     data = {
         "progression_name": "I-IV-V-I",
-        "note_pattern_name": "Invalid Note Pattern",
+        "note_pattern_name": "Invalid Note Pattern",  
         "rhythm_pattern_name": "quarter_notes",
         "scale_info": {
             "root": {
@@ -73,8 +70,8 @@ async def test_generate_sequence_invalid_note_pattern(client) -> None:
         }
     }
     logger.debug("Testing invalid note pattern with data: %s", data)
-    response = await client.post("/api/v1/generate-sequence", json=data)
-    logger.debug("Response status code: %d", response.status_code)
+    response = await client.post("/api/v1/note-sequences/generate-sequence", json=data)
+    logger.debug(f"Invalid note pattern response: {response.status_code}, {response.json()}")
     assert response.status_code == 422
     assert "Invalid note pattern name" in response.json()["detail"]
 
@@ -84,7 +81,7 @@ async def test_generate_sequence_invalid_rhythm_pattern(client) -> None:
     data = {
         "progression_name": "I-IV-V-I",
         "note_pattern_name": "Simple Triad",
-        "rhythm_pattern_name": "Invalid Rhythm Pattern",
+        "rhythm_pattern_name": "Invalid Rhythm Pattern",  
         "scale_info": {
             "root": {
                 "note_name": "C",
@@ -94,31 +91,33 @@ async def test_generate_sequence_invalid_rhythm_pattern(client) -> None:
         }
     }
     logger.debug("Testing invalid rhythm pattern with data: %s", data)
-    response = await client.post("/api/v1/generate-sequence", json=data)
-    logger.debug("Response status code: %d", response.status_code)
+    response = await client.post("/api/v1/note-sequences/generate-sequence", json=data)
+    logger.debug(f"Invalid rhythm pattern response: {response.status_code}, {response.json()}")
     assert response.status_code == 422
     assert "Invalid rhythm pattern name" in response.json()["detail"]
 
 @pytest.mark.asyncio
 async def test_note_sequence(client):
     request_data = {
-        "progression_name": "I-IV-V-I",  # Updated to a valid progression name
-        "note_pattern_name": "Simple Triad",  # Example note pattern
-        "rhythm_pattern_name": "quarter_notes",  # Updated to a valid rhythm pattern name
+        "progression_name": "I-IV-V-I",
+        "note_pattern_name": "Simple Triad",
+        "rhythm_pattern_name": "quarter_notes",
         "scale_info": {"root": {"note_name": "C", "octave": 4}, "scale_type": "MAJOR"}
     }
-    logger.debug("Request Data: %s", request_data)  # Log the request data
+    logger.debug("Request Data: %s", request_data)
 
-    response = await client.post("/api/v1/generate-sequence", json=request_data)
-    logger.debug("Response Status Code: %d", response.status_code)  # Log the response status
+    response = await client.post("/api/v1/note-sequences/generate-sequence", json=request_data)  
+    logger.debug(f"Response: {response.status_code}, {response.json()}")
     if response.status_code != 200:
-        logger.error("Response Body: %s", response.text)  # Log the response body for debugging
+        logger.error("Response Body: %s", response.text)
 
     assert response.status_code == 200
     data = response.json()
-    logger.debug("Generated Note Sequence: %s", data["notes"])  # Print the generated note sequence
+    logger.debug("Generated Note Sequence: %s", data["notes"])
     assert "notes" in data
     assert len(data["notes"]) > 0
+
+# Ensure all other test functions await the client calls similarly
 
 # Consolidated tests for sequence generation functionality
 
@@ -126,9 +125,9 @@ async def test_note_sequence(client):
 async def test_generate_sequence_functionality(client):
     # Test generate sequence from presets
     request_data = {
-        "progression_name": "I-IV-V-I",  # Updated to a valid progression name
-        "note_pattern_name": "Simple Triad",  # Using actual preset note pattern
-        "rhythm_pattern_name": "quarter_notes",  # Updated to a valid rhythm pattern name
+        "progression_name": "I-IV-V-I",  
+        "note_pattern_name": "Simple Triad",  
+        "rhythm_pattern_name": "quarter_notes",  
         "scale_info": {
             "root": {
                 "note_name": "C",
@@ -137,16 +136,16 @@ async def test_generate_sequence_functionality(client):
             "scale_type": "MAJOR"
         }
     }
-    logger.debug("Request Data: %s", request_data)  # Log the request data
-    response = await client.post("/api/v1/generate-sequence", json=request_data)
-    logger.debug("Response Status Code: %d", response.status_code)  # Log the response status
+    logger.debug("Request Data: %s", request_data)  
+    response = await client.post("/api/v1/note-sequences/generate-sequence", json=request_data)
+    logger.debug(f"Response: {response.status_code}, {response.json()}")
     if response.status_code != 200:
-        logger.error("Response Body: %s", response.text)  # Log the response body for debugging
+        logger.error("Response Body: %s", response.text)  
 
     assert response.status_code == 200
     
     data = response.json()
-    logger.debug("Generated Note Sequence: %s", data["notes"])  # Print the generated note sequence
+    logger.debug("Generated Note Sequence: %s", data["notes"])  
     assert "notes" in data
     assert len(data["notes"]) > 0
     assert data["progression_name"] == request_data["progression_name"]
@@ -155,9 +154,9 @@ async def test_generate_sequence_functionality(client):
     
     # Test invalid progression
     request_data = {
-        "progression_name": "Invalid Progression",
-        "note_pattern_name": "Simple Triad",
-        "rhythm_pattern_name": "quarter_notes",
+        "progression_name": "Invalid Progression",  
+        "note_pattern_name": "Nonexistent Pattern",  
+        "rhythm_pattern_name": "Invalid Rhythm",  
         "scale_info": {
             "root": {
                 "note_name": "C",
@@ -166,19 +165,16 @@ async def test_generate_sequence_functionality(client):
             "scale_type": "MAJOR"
         }
     }
-    logger.debug("Request Data: %s", request_data)  # Log the request data
-    response = await client.post("/api/v1/generate-sequence", json=request_data)
-    logger.debug("Response Status Code: %d", response.status_code)  # Log the response status
-    if response.status_code != 422:
-        logger.error("Response Body: %s", response.text)  # Log the response body for debugging
-
+    logger.debug("Request Data: %s", request_data)  
+    response = await client.post("/api/v1/note-sequences/generate-sequence", json=request_data)
+    logger.debug(f"Invalid progression response: {response.status_code}, {response.json()}")
     assert response.status_code == 422
     assert "Invalid progression name" in response.json()["detail"]
 
     # Test invalid note pattern
     request_data = {
         "progression_name": "I-IV-V-I",
-        "note_pattern_name": "Invalid Note Pattern",
+        "note_pattern_name": "Invalid Note Pattern",  
         "rhythm_pattern_name": "quarter_notes",
         "scale_info": {
             "root": {
@@ -188,12 +184,9 @@ async def test_generate_sequence_functionality(client):
             "scale_type": "MAJOR"
         }
     }
-    logger.debug("Request Data: %s", request_data)  # Log the request data
-    response = await client.post("/api/v1/generate-sequence", json=request_data)
-    logger.debug("Response Status Code: %d", response.status_code)  # Log the response status
-    if response.status_code != 422:
-        logger.error("Response Body: %s", response.text)  # Log the response body for debugging
-
+    logger.debug("Request Data: %s", request_data)  
+    response = await client.post("/api/v1/note-sequences/generate-sequence", json=request_data)
+    logger.debug(f"Invalid note pattern response: {response.status_code}, {response.json()}")
     assert response.status_code == 422
     assert "Invalid note pattern name" in response.json()["detail"]
 
@@ -201,7 +194,7 @@ async def test_generate_sequence_functionality(client):
     request_data = {
         "progression_name": "I-IV-V-I",
         "note_pattern_name": "Simple Triad",
-        "rhythm_pattern_name": "Invalid Rhythm Pattern",
+        "rhythm_pattern_name": "Invalid Rhythm Pattern",  
         "scale_info": {
             "root": {
                 "note_name": "C",
@@ -210,40 +203,37 @@ async def test_generate_sequence_functionality(client):
             "scale_type": "MAJOR"
         }
     }
-    logger.debug("Request Data: %s", request_data)  # Log the request data
-    response = await client.post("/api/v1/generate-sequence", json=request_data)
-    logger.debug("Response Status Code: %d", response.status_code)  # Log the response status
-    if response.status_code != 422:
-        logger.error("Response Body: %s", response.text)  # Log the response body for debugging
-
+    logger.debug("Request Data: %s", request_data)  
+    response = await client.post("/api/v1/note-sequences/generate-sequence", json=request_data)
+    logger.debug(f"Invalid rhythm pattern response: {response.status_code}, {response.json()}")
     assert response.status_code == 422
     assert "Invalid rhythm pattern name" in response.json()["detail"]
 
     # Test note sequence
     request_data = {
-        "progression_name": "I-IV-V-I",  # Updated to a valid progression name
-        "note_pattern_name": "Simple Triad",  # Example note pattern
-        "rhythm_pattern_name": "quarter_notes",  # Updated to a valid rhythm pattern name
+        "progression_name": "I-IV-V-I",  
+        "note_pattern_name": "Simple Triad",  
+        "rhythm_pattern_name": "quarter_notes",  
         "scale_info": {"root": {"note_name": "C", "octave": 4}, "scale_type": "MAJOR"}
     }
-    logger.debug("Request Data: %s", request_data)  # Log the request data
+    logger.debug("Request Data: %s", request_data)  
 
-    response = await client.post("/api/v1/generate-sequence", json=request_data)
-    logger.debug("Response Status Code: %d", response.status_code)  # Log the response status
+    response = await client.post("/api/v1/note-sequences/generate-sequence", json=request_data)
+    logger.debug(f"Response: {response.status_code}, {response.json()}")
     if response.status_code != 200:
-        logger.error("Response Body: %s", response.text)  # Log the response body for debugging
+        logger.error("Response Body: %s", response.text)  
 
     assert response.status_code == 200
     data = response.json()
-    logger.debug("Generated Note Sequence: %s", data["notes"])  # Print the generated note sequence
+    logger.debug("Generated Note Sequence: %s", data["notes"])  
     assert "notes" in data
     assert len(data["notes"]) > 0
 
     # Test generate sequence from presets with note structure check
     request_data = {
-        "progression_name": "I-IV-V-I",  # Updated to a valid progression name
-        "note_pattern_name": "Simple Triad",  # Using actual preset note pattern
-        "rhythm_pattern_name": "quarter_notes",  # Updated to a valid rhythm pattern name
+        "progression_name": "I-IV-V-I",  
+        "note_pattern_name": "Simple Triad",  
+        "rhythm_pattern_name": "quarter_notes",  
         "scale_info": {
             "root": {
                 "note_name": "C",
@@ -252,16 +242,16 @@ async def test_generate_sequence_functionality(client):
             "scale_type": "MAJOR"
         }
     }
-    logger.debug("Request Data: %s", request_data)  # Log the request data
-    response = await client.post("/api/v1/generate-sequence", json=request_data)
-    logger.debug("Response Status Code: %d", response.status_code)  # Log the response status
+    logger.debug("Request Data: %s", request_data)  
+    response = await client.post("/api/v1/note-sequences/generate-sequence", json=request_data)
+    logger.debug(f"Response: {response.status_code}, {response.json()}")
     if response.status_code != 200:
-        logger.error("Response Body: %s", response.text)  # Log the response body for debugging
+        logger.error("Response Body: %s", response.text)  
 
     assert response.status_code == 200
     
     data = response.json()
-    logger.debug("Generated Note Sequence: %s", data["notes"])  # Print the generated note sequence
+    logger.debug("Generated Note Sequence: %s", data["notes"])  
     assert "notes" in data
     assert len(data["notes"]) > 0
     assert data["progression_name"] == request_data["progression_name"]

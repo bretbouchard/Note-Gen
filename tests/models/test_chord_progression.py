@@ -66,7 +66,7 @@ class TestChordProgression(unittest.TestCase):
             progression = ChordProgression(
                 name="Invalid Complexity",
                 chords=[
-                    Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100)),
+                    Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
                 ],
                 key="C",
                 scale_type=ScaleType.MINOR,

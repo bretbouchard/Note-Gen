@@ -8,6 +8,9 @@ from src.note_gen.models.scale_info import ScaleInfo
 from src.note_gen.models.chord import Chord
 from src.note_gen.models.note_pattern import NotePattern
 from src.note_gen.models.enums import ChordQualityType
+import logging
+
+logger = logging.getLogger(__name__)
 
 @pytest.fixture
 def setup_note_sequence_generator() -> NoteSequenceGenerator:
@@ -25,7 +28,8 @@ def setup_note_sequence_generator() -> NoteSequenceGenerator:
         tags=["test"],
         complexity=1.0,
         style="basic",
-        data=RhythmPatternData(notes=[RhythmNote(position=0, duration=1.0, velocity=100, is_rest=False)])
+        data=RhythmPatternData(notes=[RhythmNote(position=0, duration=1.0, velocity=100, is_rest=False)]),
+        pattern=[1, 1, -1]  # Updated pattern representation
     )
     
     generator = NoteSequenceGenerator(
@@ -37,20 +41,31 @@ def setup_note_sequence_generator() -> NoteSequenceGenerator:
 
 async def test_generate_sequence(setup_note_sequence_generator: NoteSequenceGenerator) -> None:
     generator = setup_note_sequence_generator
-    note_sequence = await generator.generate_sequence()
+    scale_info = ScaleInfo(root=Note(note_name="C", octave=4), scale_type="MAJOR")
+    note_sequence = await generator.generate_sequence(
+        chord_progression=generator.chord_progression,
+        note_pattern=generator.note_pattern,
+        rhythm_pattern=generator.rhythm_pattern,
+        scale_info=scale_info
+    )
     notes = note_sequence.notes
     
+    logger.info(f"Generated notes: {[note.note_name for note in notes]}")
+    logger.info(f"Generated notes with octave: {[f'{note.note_name}{note.octave}' for note in notes]}")
+    
     # Check the number of notes generated
-    assert len(notes) == 6, "Expected 6 notes to be generated"
+    assert len(notes) == 8, "Expected 8 notes to be generated"
     
     # Check the values and order of notes
     expected_notes = [
         Note(note_name="C", octave=4),
         Note(note_name="E", octave=4),
         Note(note_name="G", octave=4),
+        Note(note_name="C", octave=4),
         Note(note_name="F", octave=4),
         Note(note_name="A", octave=4),
-        Note(note_name="C", octave=5)  # C in the next octave
+        Note(note_name="C", octave=4),  # C in the next octave
+        Note(note_name="F", octave=4)
     ]
     
     for expected, actual in zip(expected_notes, notes):

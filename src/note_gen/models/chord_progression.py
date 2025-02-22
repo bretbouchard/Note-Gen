@@ -40,11 +40,13 @@ class ChordProgression(BaseModel):
 
     @property
     def progression(self) -> List[str]:
+        """Get the chord progression as a list of strings."""
         logger.debug('Getting chord progression: %s', self.chords)
         return [str(chord) for chord in self.chords]
 
     @property
     def progression_quality(self) -> List[str]:
+        """Get the chord progression quality as a list of strings."""
         logger.debug('Getting chord progression quality: %s', self.chords)
         return [chord.quality.value for chord in self.chords]
 
@@ -70,7 +72,7 @@ class ChordProgression(BaseModel):
         return cleaned_name
 
     @field_validator('chords')
-    def validate_chords_length(cls, v: List[Chord]) -> List[Chord]:
+    def validate_chords(cls, v: List[Chord]) -> List[Chord]:
         """
         Enhanced chord validation:
         - Non-empty list
@@ -220,37 +222,45 @@ class ChordProgression(BaseModel):
         return self.dict()
 
     def add_chord(self, chord: Chord) -> None:
+        """Add a chord to the progression."""
         logger.debug('Adding chord: %s', chord)
         logger.info('Chord added successfully: %s', chord)
         self.chords.append(chord)
 
     def get_chord_at(self, index: int) -> Chord:
+        """Get a chord at a specific index."""
         logger.debug('Getting chord at index: %s', index)
         return self.chords[index]
 
     def get_all_chords(self) -> List[Chord]:
+        """Get all chords in the progression."""
         logger.debug('Getting all chords')
         return self.chords
 
     def get_chord_names(self) -> List[str]:
+        """Get the names of all chords in the progression."""
         logger.debug('Getting chord names')
         return [chord.root.note_name for chord in self.chords]
 
     def transpose(self, interval: int) -> None:
+        """Transpose the chord progression by a given interval."""
         logger.debug('Transposing chord progression by interval: %s', interval)
         pass
 
     def __str__(self) -> str:
+        """Convert the model to a string."""
         logger.debug('Converting model to string')
         return f"{self.name}: {' '.join(str(chord) for chord in self.chords)}"
 
     def __repr__(self) -> str:
+        """Convert the model to a representation."""
         logger.debug('Converting model to representation')
         return (f"ChordProgression(key: {self.key!r}, "
                 f"scale_type: {self.scale_type!r}, "
                 f"chords: List[Chord]={self.chords!r})")
 
     def generate_chord_notes(self, root: Note, quality: ChordQualityType, inversion: int = 0) -> List[Note]:
+        """Generate chord notes for a given root and quality."""
         logger.debug('Generating chord notes for root: %s, quality: %s, inversion: %s', root, quality, inversion)
         intervals = ChordQualityType.get_intervals(quality)  
         notes = []
@@ -275,24 +285,27 @@ class ChordProgression(BaseModel):
         return notes
 
     def get_root_note_from_chord(self, chord: Chord) -> Optional[Note]:
+        """Get the root note of a chord."""
         logger.debug('Getting root note from chord: %s', chord)
         if chord is None or chord.root is None:
             return None
         return Note(note_name=chord.root.note_name, octave=chord.root.octave, duration=1, velocity=100)
 
     def to_roman_numerals(self) -> List['RomanNumeral']:
+        """Convert the chord progression to Roman numerals."""
         logger.debug('Converting chord progression to roman numerals')
         from src.note_gen.models.roman_numeral import RomanNumeral
         scale = Scale(root=Note(note_name=self.key, octave=4, duration=1, velocity=100), scale_type=ScaleType(self.scale_type))
         # Removed unreachable code
 
     def chord_progression_function(self) -> None:
+        """Chord progression function."""
         # Implementation
         pass
 
     @classmethod
     def validate_chord_progression(cls, chord_progression: Dict[str, Any]) -> None:
-        """Validate that chord_progression is a dictionary with required keys."""
+        """Validate a chord progression."""
         logger.debug('Validating chord_progression: %s', chord_progression)
         required_keys = {'id', 'name', 'chords', 'key', 'scale_type', 'scale_info', 'complexity'}
         if not isinstance(chord_progression, dict) or not all(key in chord_progression for key in required_keys):
@@ -306,7 +319,7 @@ class ChordProgression(BaseModel):
         progression_length: int = 4
     ) -> 'ChordProgression':
         """
-        Robust method to generate chord progression from a pattern.
+        Generate a chord progression from a pattern.
 
         Args:
             pattern (List[str]): List of chord patterns (e.g., ['I', 'V', 'vi', 'IV'])

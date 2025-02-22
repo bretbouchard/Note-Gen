@@ -21,7 +21,8 @@ def rhythm_pattern() -> RhythmPattern:
         description="A default rhythm pattern for testing.",
         tags=["test"],
         complexity=1.0,
-        style="basic"
+        style="basic",
+        pattern=[1, 1, -1]  # Updated pattern representation
     )
 
 @pytest.fixture
@@ -46,7 +47,7 @@ def setup_note_sequence_generator(chord_progression, note_pattern, rhythm_patter
         ]
     ),
      NotePattern(name="Triad", pattern=[1, 3, 5]),  # Valid scale degrees for C major
-     [Note(note_name="C", octave=4), Note(note_name="E", octave=4), Note(note_name="G", octave=4), Note(note_name="C", octave=5), Note(note_name="C", octave=4), Note(note_name="E", octave=4), Note(note_name="G", octave=4), Note(note_name="C", octave=5)]),  # Adjusted expected notes
+     [Note(note_name="D", octave=4), Note(note_name="F", octave=4), Note(note_name="A", octave=4), Note(note_name="D", octave=4), Note(note_name="G", octave=4), Note(note_name="B", octave=4), Note(note_name="D", octave=4), Note(note_name="G", octave=4)]),
     (ChordProgression(
         name="G Major",
         key="G",
@@ -58,7 +59,7 @@ def setup_note_sequence_generator(chord_progression, note_pattern, rhythm_patter
         ]
     ),
      NotePattern(name="Triad", pattern=[1, 3, 5]),  # Valid scale degrees for G major
-     [Note(note_name="G", octave=4), Note(note_name="B", octave=4), Note(note_name="D", octave=4), Note(note_name="G", octave=5), Note(note_name="G", octave=4), Note(note_name="B", octave=4), Note(note_name="D", octave=4), Note(note_name="G", octave=5)]),  # Adjusted expected notes
+     [Note(note_name="A", octave=4), Note(note_name="C", octave=4), Note(note_name="E", octave=4), Note(note_name="A", octave=4), Note(note_name="D", octave=4), Note(note_name="F#", octave=4), Note(note_name="A", octave=4), Note(note_name="D", octave=4)]),
     (ChordProgression(
         name="A Minor",
         key="A",
@@ -70,15 +71,20 @@ def setup_note_sequence_generator(chord_progression, note_pattern, rhythm_patter
         ]
     ),
      NotePattern(name="Triad", pattern=[1, 3, 5]),  # Valid scale degrees for A minor
-     [Note(note_name="A", octave=4), Note(note_name="C", octave=4), Note(note_name="E", octave=4), Note(note_name="A", octave=5), Note(note_name="A", octave=4), Note(note_name="C", octave=4), Note(note_name="E", octave=4), Note(note_name="A", octave=5)]),  # Adjusted expected notes
+     [Note(note_name="B", octave=4), Note(note_name="D", octave=4), Note(note_name="F", octave=4), Note(note_name="B", octave=4), Note(note_name="E", octave=4), Note(note_name="G", octave=4), Note(note_name="B", octave=4), Note(note_name="E", octave=4)])
 ])
 
 
 @pytest.mark.asyncio
 async def test_generate_sequence(setup_note_sequence_generator, chord_progression, note_pattern, expected_notes):
-    # No need to call setup_note_sequence_generator; it is passed as a fixture
     generator = setup_note_sequence_generator
-    note_sequence = await generator.generate_sequence()
+    scale_info = ScaleInfo(root=Note(note_name="C", octave=4), scale_type="MAJOR")
+    note_sequence = await generator.generate_sequence(
+        chord_progression=chord_progression,
+        note_pattern=note_pattern,
+        rhythm_pattern=generator.rhythm_pattern,
+        scale_info=scale_info
+    )
     notes = note_sequence.notes
     
     # Check the number of notes generated

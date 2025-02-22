@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import logging
 import threading
 from src.note_gen.database.db import init_db, close_mongo_connection
+from contextlib import asynccontextmanager
 
 from src.note_gen.routers import (
     note_sequence_routes,
@@ -48,13 +49,26 @@ logging.getLogger("asyncio").setLevel(logging.WARNING)
 
 logger = logging.getLogger(__name__)
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Lifespan event handler for managing startup and shutdown processes.
+    This replaces the deprecated @app.on_event decorators for startup and shutdown.
+    The logic here initializes the database connection when the app starts
+    and closes it when the app shuts down.
+    """
+    await init_db()  # Initialize the database connection
+    yield  # This will pause the lifespan until the app is shut down
+    await close_mongo_connection()  # Close the database connection
+
 # Create FastAPI app
 app = FastAPI(
     title="Note Generation API",
     description="API for generating musical note sequences",
     version="1.0.0",
+    lifespan=lifespan,
     trailing_slash=False,
-    redirect_slashes=False
+    redirect_slashes=False,
 )
 
 # Configure CORS
@@ -65,16 +79,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-@app.on_event("startup")
-async def startup_event():
-    """Initialize database connection on startup."""
-    await init_db()
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Close database connection on shutdown."""
-    await close_mongo_connection()
 
 # Include routers
 logger.debug("Registering routers...")
