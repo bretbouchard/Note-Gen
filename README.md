@@ -74,7 +74,6 @@ requirements.txt       # Project dependencies
 - **Testing:** Pytest
 - **Logging:** Python's built-in logging module
 
-![Type Check](https://github.com/bretbouchard/Note-Gen/actions/workflows/type-check.yml/badge.svg)
 
 ## Installation
 
