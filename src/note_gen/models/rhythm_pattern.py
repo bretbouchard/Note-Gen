@@ -499,6 +499,19 @@ class RhythmPattern(BaseModel):
         )
 
 
+class RhythmPatternCreate(BaseModel):
+    name: str = Field(..., description='Name of the rhythm pattern')
+    data: RhythmPatternData = Field(..., description='Pattern data')
+    is_test: bool = Field(default=False, description='Indicates if this is a test pattern')
+    style: str = Field(default='basic', description='Musical style')
+    tags: List[str] = Field(default_factory=list, description='Tags for categorization')
+
+    class Config:
+        model_config = ConfigDict(
+            arbitrary_types_allowed=True
+        )
+
+
 class RhythmNoteSimple(BaseModel):
     """Class representing a single note in a rhythm pattern."""
     duration: float = Field(..., description="Duration in beats", gt=0.0)

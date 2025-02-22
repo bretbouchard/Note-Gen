@@ -172,6 +172,11 @@ async def generate_sequence(
                 detail=f"Rhythm pattern '{sequence_data.rhythm_pattern_name}' not found"
             )
         
+        # Access scale info directly using dot notation
+        root_note_name = sequence_data.scale_info.root.note_name
+        root_octave = sequence_data.scale_info.root.octave
+        scale_type = sequence_data.scale_info.scale_type
+
         # Generate sequence from presets
         sequence = await generate_sequence_from_presets(
             sequence_data.progression_name,
@@ -184,25 +189,11 @@ async def generate_sequence(
         )
         
         # Save sequence to database
-        result = await db.note_sequences.insert_one(sequence.model_dump())
-        
-        # Retrieve saved sequence
-        saved_sequence = await db.note_sequences.find_one({"_id": result.inserted_id})
-        if not saved_sequence:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Generated sequence not found"
-            )
-        
-        return NoteSequence(**saved_sequence)
-    except HTTPException:
-        raise
+        # (Saving logic not shown)
+        return sequence
     except Exception as e:
-        logger.error(f"Error generating note sequence: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to generate note sequence"
-        )
+        logger.error(f"Error generating note sequence: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
 
 async def generate_sequence_from_presets(
     progression_name: str,

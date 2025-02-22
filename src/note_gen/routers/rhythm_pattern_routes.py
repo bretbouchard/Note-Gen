@@ -15,7 +15,7 @@ from pydantic import ValidationError
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from src.note_gen.dependencies import get_db_conn
-from src.note_gen.models.rhythm_pattern import RhythmPattern, RhythmPatternResponse
+from src.note_gen.models.rhythm_pattern import RhythmPattern, RhythmPatternResponse, RhythmPatternCreate
 from fastapi.encoders import jsonable_encoder
 
 # Configure logging
@@ -58,27 +58,26 @@ async def get_rhythm_pattern(
         logger.error(f"Error retrieving rhythm pattern {pattern_id}: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
-@router.post("/", response_model=RhythmPatternResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/api/v1/rhythm-patterns", response_model=RhythmPatternResponse)
 async def create_rhythm_pattern(
-    rhythm_pattern: RhythmPattern,
+    pattern: RhythmPatternCreate,
     db: AsyncIOMotorDatabase = Depends(get_db_conn)
 ) -> RhythmPatternResponse:
     """Create a new rhythm pattern."""
     try:
-        pattern_data = jsonable_encoder(rhythm_pattern)
-        result = await db.rhythm_patterns.insert_one(pattern_data)
-        
-        created_pattern = await db.rhythm_patterns.find_one({"_id": result.inserted_id})
-        if created_pattern:
-            return RhythmPatternResponse(**created_pattern)
-        raise HTTPException(status_code=404, detail="Created pattern not found")
+        logger.debug(f"Creating rhythm pattern: {pattern.name}")
+        created_pattern = await db.rhythm_patterns.insert_one(pattern.dict())
+        logger.info(f"Rhythm pattern created with ID: {created_pattern.inserted_id}")
+        return RhythmPatternResponse(**pattern.dict())
     except DuplicateKeyError:
+        logger.error(f"Duplicate key error when creating rhythm pattern: {pattern.name}")
         raise HTTPException(status_code=409, detail="Rhythm pattern with this ID already exists")
     except ValidationError as e:
+        logger.error(f"Validation error when creating rhythm pattern: {str(e)}")
         raise HTTPException(status_code=422, detail=str(e))
     except Exception as e:
-        logger.error(f"Error creating rhythm pattern: {str(e)}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        logger.error(f"Error creating rhythm pattern: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/generate-rhythm-pattern", response_model=RhythmPatternResponse)
 async def generate_rhythm_pattern(
