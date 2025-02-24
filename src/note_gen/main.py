@@ -80,11 +80,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.get("/")
+async def read_root():
+    return {"message": "Welcome to the Note Generation API!"}
+
+
 # Include routers
 logger.debug("Registering routers...")
-app.include_router(note_sequence_routes.router, prefix="/api/v1/note-sequences", tags=["note_sequences"])
-app.include_router(note_pattern_routes.router, prefix="/api/v1/note-patterns", tags=["note_patterns"])
-app.include_router(rhythm_pattern_routes.router, prefix="/api/v1/rhythm-patterns", tags=["rhythm_patterns"])
-app.include_router(chord_progression_routes.router, prefix="/api/v1/chord-progressions", tags=["chord_progressions"])
+app.include_router(note_sequence_routes.router, prefix="/api/v1/note-sequences", tags=["note-sequences"])
+app.include_router(note_pattern_routes.router, prefix="/api/v1/note-patterns", tags=["note-patterns"])
+app.include_router(rhythm_pattern_routes.router, prefix="/api/v1/rhythm-patterns", tags=["rhythm-patterns"])
+app.include_router(chord_progression_routes.router, prefix="/api/v1/chord-progressions", tags=["chord-progressions"])
 app.include_router(user_routes.router, prefix="/api/v1/users", tags=["users"])
 logger.debug("All routers registered")
+
+

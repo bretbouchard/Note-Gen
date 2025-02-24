@@ -140,153 +140,153 @@ class Presets(BaseModel):
 # Note patterns
 NOTE_PATTERNS: Dict[str, Dict[str, Any]] = {
     "Simple Triad": {
-        "index": 1,
+        "name": "Simple Triad",
         "pattern": [0, 2, 4],
         "tags": ["triad", "basic"],
         "complexity": 0.5,
         "description": "A simple triad pattern."
     },
     "Ascending Scale": {
-        "index": 2,
+        "name": "Ascending Scale",
         "pattern": [0, 1, 2, 3, 4, 5, 6, 7],
         "tags": ["scale", "ascending"],
         "complexity": 0.3,
         "description": "An ascending scale pattern."
     },
     "Descending Scale": {
-        "index": 3,
+        "name": "Descending Scale",
         "pattern": [7, 6, 5, 4, 3, 2, 1, 0],
         "tags": ["scale", "descending"],
         "complexity": 0.3,
         "description": "A descending scale pattern." 
     },
     "Arpeggio": {
-        "index": 4,
+        "name": "Arpeggio",
         "pattern": [0, 2, 4, 7],
         "tags": ["arpeggio", "broken chord"],
         "complexity": 0.4,
         "description": "An arpeggio pattern."
     },
     "Pentatonic": {
-        "index": 5,
+        "name": "Pentatonic",
         "pattern": [0, 2, 4, 7, 9],
         "tags": ["pentatonic", "scale"],
         "complexity": 0.4,
         "description": "A pentatonic scale pattern."
-    },
+    }
 }
 
 # Rhythm patterns
 RHYTHM_PATTERNS: Dict[str, Dict[str, Any]] = {
     "Basic Rhythm": {
-        "index": 1,
-        "pattern": [1, -1, 1, -1],
+        "name": "Basic Rhythm",
+        "pattern": [1, 1, 1, 1],
         "tags": ["basic", "rhythm"],
         "complexity": 0.2,
         "description": "A simple on-off rhythm pattern.",
         "notes": [
             {"position": 0, "duration": 1.0, "velocity": 100, "is_rest": False},
-            {"position": 1, "duration": 1.0, "velocity": 100, "is_rest": False},
+            {"position": 1, "duration": 1.0, "velocity": 100, "is_rest": True},
             {"position": 2, "duration": 1.0, "velocity": 100, "is_rest": False},
-            {"position": 3, "duration": 1.0, "velocity": 100, "is_rest": False}
+            {"position": 3, "duration": 1.0, "velocity": 100, "is_rest": True}
         ]
     },
     "Swing Rhythm": {
-        "index": 2,
+        "name": "Swing Rhythm",
         "pattern": [1, -0.5, 1, -0.5],
         "tags": ["swing", "rhythm"],
         "complexity": 0.3,
         "description": "A swing rhythm pattern.",
         "notes": [
             {"position": 0, "duration": 0.5, "velocity": 100, "is_rest": False},
-            {"position": 0.5, "duration": 0.5, "velocity": 100, "is_rest": False},
+            {"position": 0.5, "duration": 0.5, "velocity": 100, "is_rest": True},
             {"position": 1, "duration": 0.5, "velocity": 100, "is_rest": False},
-            {"position": 1.5, "duration": 0.5, "velocity": 100, "is_rest": False}
+            {"position": 1.5, "duration": 0.5, "velocity": 100, "is_rest": True}
         ]
     },
     "Rock Rhythm": {
-        "index": 3,
-        "pattern": [1, -1, 1, -0.5],
+        "name": "Rock Rhythm",
+        "pattern": [1, 0, 1, 0],
         "tags": ["rock", "rhythm"],
-        "complexity": 0.2,
+        "complexity": 0.4,
         "description": "A simple rock rhythm pattern.",
         "notes": [
             {"position": 0, "duration": 1.0, "velocity": 100, "is_rest": False},
-            {"position": 1, "duration": 1.0, "velocity": 100, "is_rest": False},
-            {"position": 2, "duration": 0.5, "velocity": 100, "is_rest": False}
+            {"position": 1, "duration": 1.0, "velocity": 100, "is_rest": True},
+            {"position": 2, "duration": 0.5, "velocity": 100, "is_rest": False},
+            {"position": 2.5, "duration": 0.5, "velocity": 100, "is_rest": True}
         ]
     },
     "Waltz Rhythm": {
-        "index": 4,
+        "name": "Waltz Rhythm",
         "pattern": [1, -1, 1, -1],
         "tags": ["waltz", "rhythm"],
         "complexity": 0.3,
         "description": "A waltz rhythm pattern.",
         "notes": [
             {"position": 0, "duration": 1.0, "velocity": 100, "is_rest": False},
-            {"position": 1, "duration": 1.0, "velocity": 100, "is_rest": False},
+            {"position": 1, "duration": 1.0, "velocity": 100, "is_rest": True},
             {"position": 2, "duration": 1.0, "velocity": 100, "is_rest": False},
-            {"position": 3, "duration": 1.0, "velocity": 100, "is_rest": False}
+            {"position": 3, "duration": 1.0, "velocity": 100, "is_rest": True}
         ]
     },
     "Bossa Nova": {
-        "index": 5,
+        "name": "Bossa Nova",
         "pattern": [1, -1, 1, -1],
         "tags": ["bossa nova", "rhythm"],
         "complexity": 0.3,
         "description": "A bossa nova rhythm pattern.",
         "notes": [
             {"position": 0.0, "duration": 1.0, "velocity": 100, "is_rest": False},
-            {"position": 1.0, "duration": 0.5, "velocity": 100, "is_rest": False},
+            {"position": 1.0, "duration": 0.5, "velocity": 100, "is_rest": True},
             {"position": 1.5, "duration": 0.5, "velocity": 100, "is_rest": False},
-            {"position": 2.0, "duration": 0.5, "velocity": 100, "is_rest": False}
+            {"position": 2.0, "duration": 0.5, "velocity": 100, "is_rest": True}
         ]
     },
     "Latin Rhythm": {
-        "index": 6,
+        "name": "Latin Rhythm",
         "pattern": [1, -1, 1, -1],
         "tags": ["latin", "rhythm"],
         "complexity": 0.3,
         "description": "A Latin-inspired rhythm pattern.",
         "notes": [
             {"position": 0, "duration": 1, "velocity": 100, "is_rest": False},
-            {"position": 1, "duration": 0.25, "velocity": 100, "is_rest": False},
+            {"position": 1, "duration": 0.25, "velocity": 100, "is_rest": True},
             {"position": 1.5, "duration": 0.5, "velocity": 100, "is_rest": False},
-            {"position": 2.0, "duration": 0.5, "velocity": 100, "is_rest": False}
+            {"position": 2.0, "duration": 0.5, "velocity": 100, "is_rest": True}
         ]
     },
     "Funk Rhythm": {
-        "index": 7,
+        "name": "Funk Rhythm",
         "pattern": [1, -1, 1, -1],
         "tags": ["funk", "rhythm"],
         "complexity": 0.3,
         "description": "A funk-inspired rhythm pattern.",
         "notes": [
             {"position": 0, "duration": 0.5, "velocity": 100, "is_rest": False},
-            {"position": 0.5, "duration": 0.5, "velocity": 100, "is_rest": False},
+            {"position": 0.5, "duration": 0.5, "velocity": 100, "is_rest": True},
             {"position": 1.5, "duration": 0.5, "velocity": 100, "is_rest": False},
-            {"position": 2.0, "duration": 0.5, "velocity": 100, "is_rest": False}
+            {"position": 2.0, "duration": 0.5, "velocity": 100, "is_rest": True}   
         ]
     },
     "Jazz Rhythm": {
-        "index": 8,
+        "name": "Jazz Rhythm",
         "pattern": [1, -1, 1, -1],
         "tags": ["jazz", "rhythm"],
         "complexity": 0.3,
         "description": "A jazz-inspired rhythm pattern.",
         "notes": [
             {"position": 0, "duration": 0.5, "velocity": 100, "is_rest": False},
-            {"position": 0.5, "duration": 0.5, "velocity": 100, "is_rest": False},
+            {"position": 0.5, "duration": 0.5, "velocity": 100, "is_rest": True},
             {"position": 1.0, "duration": 0.5, "velocity": 100, "is_rest": False},
-            {"position": 1.5, "duration": 0.5, "velocity": 100, "is_rest": False}
-        ]
+            {"position": 1.5, "duration": 0.5, "velocity": 100, "is_rest": True}
+        ]   
     }
 } 
 
 # Chord progressions
 CHORD_PROGRESSIONS: Dict[str, Dict[str, Any]] = {
     "I-IV-V": {
-        "index": 1,
         "chords": [
             {"root": {"note_name": "C", "octave": 4}, "quality": "MAJOR"},
             {"root": {"note_name": "F", "octave": 4}, "quality": "MAJOR"},
@@ -299,7 +299,6 @@ CHORD_PROGRESSIONS: Dict[str, Dict[str, Any]] = {
         "description": "A common chord progression in popular music."
     },
     "Pop Ballad_I-V-vi-IV": {
-        "index": 2,
         "chords": [
             {"root": {"note_name": "C", "octave": 4}, "quality": "MAJOR"},
             {"root": {"note_name": "G", "octave": 4}, "quality": "MAJOR"},
@@ -313,7 +312,6 @@ CHORD_PROGRESSIONS: Dict[str, Dict[str, Any]] = {
         "description": "A popular pop ballad progression."
     },
     "ii-V-I": {
-        "index": 3,
         "chords": [
             {"root": {"note_name": "D", "octave": 4}, "quality": "MINOR"},
             {"root": {"note_name": "G", "octave": 4}, "quality": "DOMINANT"},
@@ -326,7 +324,6 @@ CHORD_PROGRESSIONS: Dict[str, Dict[str, Any]] = {
         "description": "A common ii-V-I progression in jazz music."
     },
     "I-vi-IV-V (50s Doo-Wop)": {
-        "index": 4,
         "chords": [
             {"root": {"note_name": "C", "octave": 4}, "quality": "MAJOR"},
             {"root": {"note_name": "A", "octave": 4}, "quality": "MINOR"},
@@ -340,7 +337,6 @@ CHORD_PROGRESSIONS: Dict[str, Dict[str, Any]] = {
         "description": "A classic 50s Doo-Wop progression."
     },
     "vi-IV-I-V (Modern Pop)": {
-        "index": 5,
         "chords": [
             {"root": {"note_name": "A", "octave": 4}, "quality": "MINOR"},
             {"root": {"note_name": "F", "octave": 4}, "quality": "MAJOR"},
@@ -354,7 +350,6 @@ CHORD_PROGRESSIONS: Dict[str, Dict[str, Any]] = {
         "description": "A common modern pop progression."
     },
     "I-V-vi-iii-IV-I-IV-V (Pop Canon)": {
-        "index": 6,
         "chords": [
             {"root": {"note_name": "C", "octave": 4}, "quality": "MAJOR"},
             {"root": {"note_name": "G", "octave": 4}, "quality": "MAJOR"},
@@ -369,7 +364,6 @@ CHORD_PROGRESSIONS: Dict[str, Dict[str, Any]] = {
         "description": "A popular pop canon progression."
     },
     "I-IV-V-I": {
-        "index": 7,
         "chords": [
             {"root": {"note_name": "C", "octave": 4}, "quality": "MAJOR"},
             {"root": {"note_name": "F", "octave": 4}, "quality": "MAJOR"},
@@ -383,7 +377,6 @@ CHORD_PROGRESSIONS: Dict[str, Dict[str, Any]] = {
         "description": "A classic I-IV-V-I progression."
     },
     "ii-V-I": {
-        "index": 8,
         "chords": [
             {"root": {"note_name": "D", "octave": 4}, "quality": "MINOR"},
             {"root": {"note_name": "G", "octave": 4}, "quality": "DOMINANT"},
@@ -396,7 +389,6 @@ CHORD_PROGRESSIONS: Dict[str, Dict[str, Any]] = {
         "description": "A common ii-V-I progression in jazz music."
     },
     "I-V-ii-V (Classic)": {
-        "index": 9,
         "chords": [
             {"root": {"note_name": "C", "octave": 4}, "quality": "MAJOR"},
             {"root": {"note_name": "G", "octave": 4}, "quality": "MAJOR"},
@@ -410,7 +402,6 @@ CHORD_PROGRESSIONS: Dict[str, Dict[str, Any]] = {
         "description": "A classic I-V-ii-V progression."
     },
     "I-vi-ii-V (Classic)": {
-        "index": 10,
         "chords": [
             {"root": {"note_name": "C", "octave": 4}, "quality": "MAJOR"},
             {"root": {"note_name": "A", "octave": 4}, "quality": "MINOR"},
@@ -424,7 +415,6 @@ CHORD_PROGRESSIONS: Dict[str, Dict[str, Any]] = {
         "description": "A classic I-vi-ii-V progression."
     },
     "IV-I-ii-V (Classic)": {
-        "index": 11,
         "chords": [
             {"root": {"note_name": "F", "octave": 4}, "quality": "MAJOR"},
             {"root": {"note_name": "C", "octave": 4}, "quality": "MAJOR"},
@@ -438,7 +428,6 @@ CHORD_PROGRESSIONS: Dict[str, Dict[str, Any]] = {
         "description": "A classic IV-I-ii-V progression."
     },
     "Rock Power": {
-        "index": 12,
         "chords": [
             {"root": {"note_name": "C", "octave": 4}, "quality": "MAJOR"},
             {"root": {"note_name": "G", "octave": 4}, "quality": "MAJOR"},
@@ -451,7 +440,6 @@ CHORD_PROGRESSIONS: Dict[str, Dict[str, Any]] = {
         "description": "A simple rock power progression."
     },
     "Andalusian Cadence": {
-        "index": 13,
         "chords": [
             {"root": {"note_name": "A", "octave": 4}, "quality": "MINOR"},
             {"root": {"note_name": "G", "octave": 4}, "quality": "MAJOR"},
@@ -465,7 +453,6 @@ CHORD_PROGRESSIONS: Dict[str, Dict[str, Any]] = {
         "description": "A classic Andalusian cadence."
     },
     "EDM Build": {
-        "index": 14,
         "chords": [
             {"root": {"note_name": "A", "octave": 4}, "quality": "MINOR"},
             {"root": {"note_name": "E", "octave": 4}, "quality": "MAJOR"},
@@ -479,7 +466,6 @@ CHORD_PROGRESSIONS: Dict[str, Dict[str, Any]] = {
         "description": "An EDM build progression."
     },
     "Pop Minor": {
-        "index": 15,
         "chords": [
             {"root": {"note_name": "A", "octave": 4}, "quality": "MINOR"},
             {"root": {"note_name": "F#", "octave": 4}, "quality": "MAJOR"},
@@ -493,7 +479,6 @@ CHORD_PROGRESSIONS: Dict[str, Dict[str, Any]] = {
         "description": "A common pop minor progression."
     },
     "Funk Groove": {
-        "index": 16,
         "chords": [
             {"root": {"note_name": "C", "octave": 4}, "quality": "MAJOR7"},
             {"root": {"note_name": "F", "octave": 4}, "quality": "MAJOR7"},
@@ -506,7 +491,6 @@ CHORD_PROGRESSIONS: Dict[str, Dict[str, Any]] = {
         "description": "A funky groove progression."
     },
     "I7-IV7-V7 Turnaround": {
-        "index": 17,
         "chords": [
             {"root": {"note_name": "C", "octave": 4}, "quality": "MAJOR7"},
             {"root": {"note_name": "F", "octave": 4}, "quality": "MAJOR7"},
@@ -519,7 +503,6 @@ CHORD_PROGRESSIONS: Dict[str, Dict[str, Any]] = {
         "description": "A classic I7-IV7-V7 turnaround."
     },
     "Bird Blues": {
-        "index": 18,
         "chords": [
             {"root": {"note_name": "C", "octave": 4}, "quality": "MAJOR7"},
             {"root": {"note_name": "A", "octave": 4}, "quality": "MAJOR7"},
@@ -533,7 +516,6 @@ CHORD_PROGRESSIONS: Dict[str, Dict[str, Any]] = {
         "description": "A classic Bird blues progression."
     },
     "So What": {
-        "index": 19,
         "chords": [
             {"root": {"note_name": "D", "octave": 4}, "quality": "MINOR7"},
             {"root": {"note_name": "D", "octave": 4}, "quality": "MINOR7"},
@@ -547,7 +529,6 @@ CHORD_PROGRESSIONS: Dict[str, Dict[str, Any]] = {
         "description": "The famous So What progression."
     },
     "Giant Steps Bridge": {
-        "index": 20,
         "chords": [
             {"root": {"note_name": "B", "octave": 4}, "quality": "MAJOR"},
             {"root": {"note_name": "D", "octave": 4}, "quality": "DOMINANT"},
@@ -563,7 +544,6 @@ CHORD_PROGRESSIONS: Dict[str, Dict[str, Any]] = {
         "description": "The bridge of the Giant Steps progression."
     },
     "Misty": {
-        "index": 21,
         "chords": [
             {"root": {"note_name": "C", "octave": 4}, "quality": "MINOR"},
             {"root": {"note_name": "A", "octave": 4}, "quality": "MINOR"},
@@ -575,24 +555,8 @@ CHORD_PROGRESSIONS: Dict[str, Dict[str, Any]] = {
         "tags": ["jazz", "misty"],
         "complexity": 0.5,
         "description": "The Misty progression."
-    }
-}
-
-CHORD_PROGRESSIONS.update({
-    "progression_1": {
-        "index": 11,
-        "chords": [
-            {"root": {"note_name": "C", "octave": 4}, "quality": "MAJOR"},
-            {"root": {"note_name": "G", "octave": 4}, "quality": "MAJOR"},
-            {"root": {"note_name": "A", "octave": 4}, "quality": "MINOR"},
-            {"root": {"note_name": "F", "octave": 4}, "quality": "MAJOR"}
-        ]
-    }
-})
-
-CHORD_PROGRESSIONS.update({
+    },
     "Minor Blues": {
-        "index": 33,
         "chords": [
             {"root": {"note_name": "A", "octave": 4}, "quality": "MINOR7"},
             {"root": {"note_name": "D", "octave": 4}, "quality": "MINOR7"},
@@ -606,7 +570,6 @@ CHORD_PROGRESSIONS.update({
         "description": "A common minor blues progression."
     },
     "Funk Groove": {
-        "index": 34,
         "chords": [
             {"root": {"note_name": "C", "octave": 4}, "quality": "MAJOR7"},
             {"root": {"note_name": "F", "octave": 4}, "quality": "MAJOR7"},
@@ -619,7 +582,6 @@ CHORD_PROGRESSIONS.update({
         "description": "A funky groove progression."
     },
     "I7-IV7-V7 Turnaround": {
-        "index": 35,
         "chords": [
             {"root": {"note_name": "C", "octave": 4}, "quality": "MAJOR7"},
             {"root": {"note_name": "F", "octave": 4}, "quality": "MAJOR7"},
@@ -632,7 +594,6 @@ CHORD_PROGRESSIONS.update({
         "description": "A classic I7-IV7-V7 turnaround."
     },
     "Bird Blues": {
-        "index": 36,
         "chords": [
             {"root": {"note_name": "C", "octave": 4}, "quality": "MAJOR7"},
             {"root": {"note_name": "A", "octave": 4}, "quality": "MAJOR7"},
@@ -646,7 +607,6 @@ CHORD_PROGRESSIONS.update({
         "description": "A classic Bird blues progression."
     },
     "So What": {
-        "index": 37,
         "chords": [
             {"root": {"note_name": "D", "octave": 4}, "quality": "MINOR7"},
             {"root": {"note_name": "D", "octave": 4}, "quality": "MINOR7"},
@@ -660,7 +620,6 @@ CHORD_PROGRESSIONS.update({
         "description": "The famous So What progression."
     },
     "Giant Steps Bridge": {
-        "index": 38,
         "chords": [
             {"root": {"note_name": "B", "octave": 4}, "quality": "MAJOR"},
             {"root": {"note_name": "D", "octave": 4}, "quality": "DOMINANT"},
@@ -676,7 +635,6 @@ CHORD_PROGRESSIONS.update({
         "description": "The bridge of the Giant Steps progression."
     },
     "Misty": {
-        "index": 39,
         "chords": [
             {"root": {"note_name": "C", "octave": 4}, "quality": "MINOR"},
             {"root": {"note_name": "A", "octave": 4}, "quality": "MINOR"},
@@ -689,7 +647,7 @@ CHORD_PROGRESSIONS.update({
         "complexity": 0.5,
         "description": "The Misty progression."
     }
-})
+}
 
 def get_default_chord_progression(root_note: Note, scale: Scale) -> ChordProgression:
     """Get the default chord progression."""
@@ -740,3 +698,10 @@ def get_available_note_patterns() -> List[str]:
 def get_available_rhythm_patterns() -> List[str]:
     """Get a list of available rhythm pattern names."""
     return list(RHYTHM_PATTERNS.keys())
+
+# Count the number of chord progressions, note patterns, and rhythm patterns
+chord_progressions_count = len(CHORD_PROGRESSIONS)
+note_patterns_count = len(NOTE_PATTERNS)
+rhythm_patterns_count = len(RHYTHM_PATTERNS)
+
+print(f"Chord Progressions: {chord_progressions_count}, Note Patterns: {note_patterns_count}, Rhythm Patterns: {rhythm_patterns_count}")

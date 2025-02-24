@@ -7,6 +7,7 @@ import logging
 import os
 import datetime
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
+from src.note_gen.database.db import get_db_conn
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +16,14 @@ from src.note_gen.models.rhythm_pattern import RhythmPatternData
 from src.note_gen.models.chord_progression import ChordProgression, ScaleInfo, Note, ScaleType
 from typing import Any, Optional, Dict
 
+# Import Presets Script
+# This script is responsible for importing default presets into the MongoDB database.
+# It checks if the collections are empty and populates them with predefined data.
+# The connection to the MongoDB is established using the AsyncIOMotorClient.
+# The database used is 'note_gen'.
+# If the TESTING environment variable is set, it clears existing data before importing.
 
+# Function to import presets if collections are empty
 async def import_presets_if_empty(db: AsyncIOMotorDatabase) -> None:
     """Import default presets into the database if collections are empty."""
     try:
@@ -36,6 +44,14 @@ async def import_presets_if_empty(db: AsyncIOMotorDatabase) -> None:
 
     except Exception as e:
         logger.error(f"Error importing presets: {e}")
+
+    # Clear existing data if in testing mode
+    if os.getenv('TESTING') == '1':
+        # await clear_existing_data(db)
+        await ensure_indexes(db)
+    else:
+        # If not in testing mode, ensure indexes
+        await ensure_indexes(db)
 
 
 async def ensure_indexes(db: AsyncIOMotorDatabase) -> None:
@@ -112,106 +128,62 @@ async def clear_existing_data(database: AsyncIOMotorDatabase) -> None:
         logger.warning(f"Error clearing existing data from rhythm_patterns: {e}")
 
 # Function to import chord progressions
-async def import_chord_progressions(db: AsyncIOMotorDatabase) -> None:
-    """Import chord progressions from COMMON_PROGRESSIONS into the database."""
-    logger.info("Importing chord progressions...")
-    for name, chords in COMMON_PROGRESSIONS.items():
-        try:
-            # Insert each chord progression into the database
-            data = {
-                'name': name,
-                'chords': chords,
-                'key': 'C',  # Default key, can be adjusted
-                'scale_type': 'MAJOR',  # Default scale type, can be adjusted
-                'tags': [],  # Add tags if needed
-                'complexity': 0.5,  # Default complexity
-                'description': f"{name} progression"
-            }
-            await db.chord_progressions.insert_one(data)
-            logger.info(f"Inserted chord progression: {name}")
-        except Exception as e:
-            logger.warning(f"Error importing chord progression: {name} - {e}")
-    logger.info("Finished importing chord progressions.")
+async def import_chord_progressions(db):
+    chord_progressions = COMMON_PROGRESSIONS
+    await db.chord_progressions.insert_many([
+        {
+            "name": name,
+            "index": data["index"],
+            "chords": data["chords"],
+            "key": data["key"],
+            "scale_type": data["scale_type"],
+            "tags": data["tags"],
+            "complexity": data["complexity"],
+            "description": data["description"]
+        }
+        for name, data in chord_progressions.items()
+    ])
 
 # Function to import note patterns
-async def import_note_patterns(database: AsyncIOMotorDatabase) -> None:
-    logger.info("Importing note patterns into the database.")
-    target_db: AsyncIOMotorDatabase = database
-    for i, (name, pattern) in enumerate(NOTE_PATTERNS.items(), start=1):
-        try:
-            result = await target_db.note_patterns.insert_one({
-                "name": name,
-                "pattern": pattern,
-            })
-            logger.info(f"Imported note pattern: {name}. Inserted ID: {result.inserted_id}")
-        except Exception as e:
-            logger.warning(f"Error importing note pattern: {name} - {e}")
-    logger.info("Finished importing note patterns.")
+async def import_note_patterns(db):
+    note_patterns = NOTE_PATTERNS
+    await db.note_patterns.insert_many([
+        {
+            "name": name,
+            "index": data["index"],
+            "pattern": data["pattern"],
+            "tags": data["tags"],
+            "complexity": data["complexity"],
+            "description": data["description"]
+        }
+        for name, data in note_patterns.items()
+    ])
 
 # Function to import rhythm patterns
-async def import_rhythm_patterns(database: AsyncIOMotorDatabase) -> None:
-    logger.info("Importing rhythm patterns into the database.")
-    target_db: AsyncIOMotorDatabase = database
-    for i, (name, pattern_dict) in enumerate(RHYTHM_PATTERNS.items(), start=1):
-        # Ensure that the notes field is included in the pattern_dict
-        notes = pattern_dict.get("notes", [])
-        
-        # Convert dictionary to RhythmPatternData instance
-        pattern = RhythmPatternData(
-            index=pattern_dict["index"],
-            pattern=pattern_dict["pattern"],
-            notes=notes,  # Ensure notes are included
-            tags=pattern_dict["tags"],
-            complexity=pattern_dict["complexity"],
-            description=pattern_dict["description"]
-        )
-        
-        serialized_pattern = serialize_rhythm_pattern(pattern)
-        try:
-            result = await target_db.rhythm_patterns.insert_one({
-                "name": name,
-                "pattern": serialized_pattern,
-            })
-            logger.info(f"Imported rhythm pattern: {name}. Inserted ID: {result.inserted_id}")
-        except Exception as e:
-            logger.error(f"Error inserting rhythm pattern {name}: {e}")
-    logger.info("Finished importing rhythm patterns.")
+async def import_rhythm_patterns(db):
+    rhythm_patterns = RHYTHM_PATTERNS
+    await db.rhythm_patterns.insert_many([
+        {
+            "name": name,
+            "index": data["index"],
+            "pattern": data["pattern"],
+            "tags": data["tags"],
+            "complexity": data["complexity"],
+            "description": data["description"],
+            "notes": data["notes"]
+        }
+        for name, data in rhythm_patterns.items()
+    ])
 
-def serialize_rhythm_pattern(pattern: RhythmPatternData) -> Dict[str, Any]:
-    if not isinstance(pattern, RhythmPatternData):
-        raise ValueError("Expected an instance of RhythmPatternData.")
-    return {
-        'notes': [
-            {
-                'position': note.position,
-                'duration': note.duration,
-                'velocity': note.velocity,
-                'is_rest': note.is_rest,
-                'accent': note.accent,
-                'swing_ratio': note.swing_ratio
-            } for note in pattern.notes
-        ],
-        'time_signature': pattern.time_signature,
-        'swing_enabled': pattern.swing_enabled,
-        'humanize_amount': pattern.humanize_amount,
-        'swing_ratio': pattern.swing_ratio,
-        'style': pattern.style,
-        'default_duration': pattern.default_duration,
-        'total_duration': pattern.total_duration,
-        'accent_pattern': pattern.accent_pattern,
-        'groove_type': pattern.groove_type,
-        'variation_probability': pattern.variation_probability,
-        'duration': pattern.duration
-    }
+async def import_presets():
+    db = await get_db_conn()
+    await import_chord_progressions(db)
+    await import_note_patterns(db)
+    await import_rhythm_patterns(db)
 
 # Main function to run the import
 async def run_imports():
-    client = await initialize_client()
-    database = client.note_gen
-    await clear_existing_data(database)  # Clear existing data before importing
-    await import_chord_progressions(database)  # Import chord progressions
-    await import_note_patterns(database)  # Import note patterns
-    await import_rhythm_patterns(database)  # Import rhythm patterns
+    await import_presets()
 
 if __name__ == '__main__':
     import asyncio

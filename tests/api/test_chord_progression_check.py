@@ -9,6 +9,7 @@ from src.note_gen.database.db import get_db_conn, MONGODB_URI
 from src.note_gen.dependencies import get_db_conn
 from bson import ObjectId
 import logging
+import os
 from src.note_gen.models.fake_scale_info import FakeScaleInfo
 
 logger = logging.getLogger(__name__)
@@ -17,10 +18,9 @@ logger = logging.getLogger(__name__)
 async def setup_database():
     """Setup test database and cleanup after tests."""
     db = await get_db_conn()
-    try:
-        # Clear existing data
+    if os.getenv("CLEAR_DB_AFTER_TESTS", "1") == "1":
         await db.chord_progressions.delete_many({})
-        
+    try:
         # Setup test data
         progression = {
             "_id": ObjectId(),
@@ -44,7 +44,8 @@ async def setup_database():
         yield db
     finally:
         # Cleanup after tests
-        await db.chord_progressions.delete_many({})
+        if os.getenv("CLEAR_DB_AFTER_TESTS", "1") == "1":
+            await db.chord_progressions.delete_many({})
 
 @pytest.mark.asyncio
 async def test_chord_progression_functionality(app_client, async_database):

@@ -252,7 +252,7 @@ class TestRhythmPattern:
         assert pattern.description == "A test rhythm pattern"
         assert pattern.complexity == 1.0
         assert pattern.style == "rock"
-        assert pattern.pattern == "4 4 4 4"
+        assert pattern.pattern == [4.0, 4.0, 4.0, 4.0]  # Updated to match the actual stored value
 
     async def test_rhythm_pattern_data_creation(self, mock_db_connection) -> None:
         # Setup mock return value

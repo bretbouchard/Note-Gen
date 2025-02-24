@@ -1,6 +1,7 @@
 from motor import motor_asyncio
 from motor.motor_asyncio import AsyncIOMotorClient
 import uuid
+import os
 from typing import List, Dict, Any
 from src.note_gen.models.presets import (
     COMMON_PROGRESSIONS,
@@ -84,7 +85,9 @@ async def run_imports():
     client = AsyncIOMotorClient("mongodb://localhost:27017/")
     db = client["note_gen"]
     
-    await clear_existing_data(db)  # Clear existing data
+    # Clear existing data only if in testing mode
+    if os.getenv('TESTING') == '1':
+        await clear_existing_data(db)  # Clear existing data
     
     # Format and prepare all progressions
     chord_progressions = [

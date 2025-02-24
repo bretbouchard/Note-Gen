@@ -20,17 +20,18 @@ async def test_db():
     """Fixture to provide a test database."""
     db_gen = get_db_conn()
     async for db in db_gen:
-        # Clear all collections before each test
-        collections = await db.list_collection_names()
-        for collection in collections:
-            await db[collection].delete_many({})
+        # Clear all collections before each test if CLEAR_DB_AFTER_TESTS is set to 1
+        if os.getenv("CLEAR_DB_AFTER_TESTS", "0") == "1":
+            collections = await db.list_collection_names()
+            for collection in collections:
+                await db[collection].delete_many({})
         yield db
 
 @pytest.fixture
 async def client():
     """Fixture to provide an async test client."""
     transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+    async with httpx.AsyncClient(transport=transport, base_url="http://localhost:8000") as client:
         yield client
 
 # Consolidated tests for note pattern functionality

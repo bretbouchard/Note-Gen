@@ -17,6 +17,16 @@ logger = logging.getLogger(__name__)
 @router.post("")
 async def generate_sequence(request: SequenceRequest):
     try:
+        logger.debug(f"Received request data for generating sequence: {request}")
+        logger.debug(f"Type of progression_name: {type(request.progression_name)}")
+        logger.debug(f"Type of note_pattern_name: {type(request.note_pattern_name)}")
+        logger.debug(f"Type of rhythm_pattern_name: {type(request.rhythm_pattern_name)}")
+        logger.debug(f"Type of scale_info: {type(request.scale_info)}")
+        logger.debug(f"Scale info details: {request.scale_info}")
+        logger.debug(f"Scale info type details: {type(request.scale_info.tonic)}")
+        logger.debug(f"Scale info tonic details: {request.scale_info.tonic}")
+        logger.debug(f"Scale info scale_type details: {request.scale_info.scale_type}")
+        logger.debug(f"Scale info num_octaves details: {request.scale_info.num_octaves}")
         sequence_data = {
             "progression_name": request.progression_name,
             "note_pattern_name": request.note_pattern_name,

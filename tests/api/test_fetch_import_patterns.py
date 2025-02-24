@@ -28,9 +28,12 @@ import httpx
 async def test_db_with_data(test_db):
     """Fixture to setup test database with sample data."""
     # Clear existing data
-    await test_db.chord_progressions.delete_many({})
-    await test_db.note_patterns.delete_many({})
-    await test_db.rhythm_patterns.delete_many({})
+    if os.getenv('CLEAR_DB_AFTER_TESTS', '1') == '1':
+        await test_db.chord_progressions.delete_many({})
+    if os.getenv('CLEAR_DB_AFTER_TESTS', '1') == '1':
+        await test_db.note_patterns.delete_many({})
+    if os.getenv('CLEAR_DB_AFTER_TESTS', '1') == '1':
+        await test_db.rhythm_patterns.delete_many({})
 
     # Sample note patterns to insert into the test database
     sample_patterns = [
@@ -156,9 +159,10 @@ async def test_db_with_data(test_db):
     yield test_db
 
     # Cleanup
-    await test_db.chord_progressions.delete_many({})
-    await test_db.note_patterns.delete_many({})
-    await test_db.rhythm_patterns.delete_many({})
+    if os.getenv("CLEAR_DB_AFTER_TESTS", "1") == "1":
+        await test_db.chord_progressions.delete_many({})
+        await test_db.note_patterns.delete_many({})
+        await test_db.rhythm_patterns.delete_many({})
 
 @pytest.mark.asyncio
 async def test_fetch_note_patterns(test_db):

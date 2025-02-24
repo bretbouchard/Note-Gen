@@ -6,7 +6,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from src.note_gen.dependencies import get_db_conn
-from src.note_gen.models.note_sequence import NoteSequence
+from src.note_gen.models.note_sequence import NoteSequence, NoteSequenceCreate
 from src.note_gen.models.request_models import GenerateSequenceRequest
 from src.note_gen.models.scale_info import ScaleInfo
 from src.note_gen.models.chord_progression import ChordProgression
@@ -97,14 +97,14 @@ async def get_note_sequence(
 
 @router.post("/", response_model=NoteSequence)
 async def create_note_sequence(
-    sequence: NoteSequence, 
+    sequence: NoteSequenceCreate, 
     db: AsyncIOMotorDatabase = Depends(get_db_conn)
 ) -> NoteSequence:
     """
     Create a new note sequence.
     
     Args:
-        sequence (NoteSequence): The note sequence to create
+        sequence (NoteSequenceCreate): The note sequence to create
         db (AsyncIOMotorDatabase): Database connection
     
     Returns:
@@ -118,7 +118,7 @@ async def create_note_sequence(
         _validate_note_sequence(sequence)
         
         # Insert the sequence
-        result = await db.note_sequences.insert_one(sequence.model_dump())
+        result = await db.note_sequences.insert_one(sequence.dict())
         
         # Retrieve the created sequence
         created_sequence = await db.note_sequences.find_one({"_id": result.inserted_id})
@@ -150,6 +150,9 @@ async def generate_sequence(
     Generate a note sequence based on provided parameters.
     """
     try:
+        # Log incoming data structure
+        logger.debug(f"Incoming sequence data: {sequence_data}")
+        
         # Get presets from database
         chord_progression = await db.chord_progressions.find_one({"name": sequence_data.progression_name})
         if not chord_progression:
@@ -178,14 +181,18 @@ async def generate_sequence(
         scale_type = sequence_data.scale_info.scale_type
 
         # Generate sequence from presets
+        logger.debug(f"Incoming chord progression data: {chord_progression}")
+        logger.debug("Chord Progression Data: %s", chord_progression)
+        chord_progression_instance = ChordProgression(**chord_progression)
         sequence = await generate_sequence_from_presets(
             sequence_data.progression_name,
             sequence_data.note_pattern_name,
             sequence_data.rhythm_pattern_name,
             sequence_data.scale_info,
-            ChordProgression(**chord_progression),
+            chord_progression_instance,
             note_pattern,
-            rhythm_pattern
+            rhythm_pattern,
+            sequence_data.chords
         )
         
         # Save sequence to database
@@ -202,7 +209,8 @@ async def generate_sequence_from_presets(
     scale_info: ScaleInfo,
     chord_progression: ChordProgression,
     note_pattern: dict,
-    rhythm_pattern: dict
+    rhythm_pattern: dict,
+    chords: List[dict]
 ) -> NoteSequence:
     """
     Generate a note sequence from presets.
@@ -215,6 +223,7 @@ async def generate_sequence_from_presets(
         chord_progression (ChordProgression): Chord progression details
         note_pattern (dict): Note pattern details
         rhythm_pattern (dict): Rhythm pattern details
+        chords (List[dict]): Chords with root and quality
     
     Returns:
         NoteSequence: Generated note sequence
@@ -226,7 +235,7 @@ async def generate_sequence_from_presets(
         rhythm_notes = rhythm_pattern["data"]["notes"]
         
         # For each chord in the progression
-        for chord_idx, chord in enumerate(chord_progression.chords):
+        for chord_idx, chord in enumerate(chords):
             # For each rhythm note
             for rhythm_note in rhythm_notes:
                 # Skip rests
@@ -236,13 +245,13 @@ async def generate_sequence_from_presets(
                 # For each interval in the pattern
                 for interval in pattern_intervals:
                     # Calculate the actual note
-                    base_note = chord.root
+                    base_note = chord["root"]
                     note_interval = interval
                     
                     # Create the note
                     note = Note(
-                        note_name=base_note.note_name,
-                        octave=base_note.octave + (note_interval // 12),
+                        note_name=base_note,
+                        octave=scale_info.root.octave + (note_interval // 12),
                         duration=rhythm_note["duration"],
                         velocity=rhythm_note["velocity"]
                     )
@@ -294,3 +303,23 @@ async def delete_note_sequence(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to delete note sequence {sequence_id}"
         )
+
+# Example usage
+request_data = {
+    "progression_name": "I-IV-V-I",
+    "note_pattern_name": "Simple Triad",
+    "rhythm_pattern_name": "quarter_notes",
+    "scale_info": {
+        "root": {
+            "note_name": "C",
+            "octave": 4
+        },
+        "scale_type": "MAJOR"
+    },
+    "chords": [
+        {"root": "C", "quality": "MAJOR"},
+        {"root": "F", "quality": "MAJOR"},
+        {"root": "G", "quality": "MAJOR"},
+        {"root": "C", "quality": "MAJOR"}
+    ]
+}

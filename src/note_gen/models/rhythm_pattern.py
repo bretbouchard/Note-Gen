@@ -245,7 +245,7 @@ class RhythmPattern(BaseModel):
     tags: List[str] = Field(default_factory=list, description='Tags for categorization', min_length=1)
     complexity: float = Field(default=1.0, ge=0.0, le=10.0, description='Pattern complexity score (1-10)')
     style: Optional[str] = Field(default='basic', description='Musical style')   
-    pattern: Union[str, List[float]] = Field(..., description='Pattern representation, can include decimals and negatives')
+    pattern: Union[List[float], str] = Field(..., description="List of note durations in the rhythm pattern or a string representation")
     groove_type: str = Field(default='straight', description='Type of groove')
     swing_ratio: Optional[float] = Field(default=0.67, ge=0.5, le=0.75, description='Swing ratio (0.5-0.75)')
     duration: float = Field(default=1.0, gt=0.0, description='Duration in beats')
@@ -265,30 +265,31 @@ class RhythmPattern(BaseModel):
         
         return value
 
-    @field_validator('pattern')
+    @field_validator('pattern', check_fields=False)
     @classmethod
-    def validate_pattern(cls, value: Union[str, List[float]]) -> Union[str, List[float]]:
+    def validate_pattern(cls, value):
         if value is None:
             logger.error("Pattern cannot be None")
             raise ValueError("Pattern cannot be None")
-        logger.debug(f"Validating pattern: {value}")  # Log the pattern being validated
+        
         if isinstance(value, str):
-            # If the value is a string, validate using regex
+            # Split the string into a list of floats
             pattern_values = value.split()
-            note_pattern = re.compile(r'^(-?\d+(?:\.\d*)?|\d+/\d+)$')
+            float_values = []
             for note in pattern_values:
-                if not note_pattern.match(note):
-                    logger.error(f"Invalid pattern format for note: {note}")  # Log the invalid note
+                try:
+                    float_values.append(float(note))
+                except ValueError:
+                    logger.error(f"Invalid pattern format for note: {note}")
                     raise ValueError(f"Invalid pattern format for note: {note}. Must be a number, fraction, or dotted number.")
+            return float_values
         elif isinstance(value, list):
-            # If the value is a list, ensure all entries are floats or integers
             for note in value:
                 if not isinstance(note, (float, int)):
-                    logger.error(f"Invalid entry in pattern list: {note}")  # Log the invalid entry
+                    logger.error(f"Invalid entry in pattern list: {note}")
                     raise ValueError(f"All entries in the pattern list must be floats or integers.")
         return value
-
-    @field_validator('swing_ratio')
+        
     @classmethod
     def validate_swing_ratio(cls, value: Optional[float]) -> Optional[float]:
         if value < 0.5 or value > 0.75:

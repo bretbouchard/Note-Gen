@@ -21,7 +21,7 @@ async def lifespan(app: FastAPI):
     await init_db()
     yield
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(lifespan=lifespan, openapi_prefix="/api/v1")
 
 # CORS setup - Allow requests from your frontend(s)
 origins = [

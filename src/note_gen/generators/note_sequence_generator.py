@@ -64,26 +64,37 @@ class NoteSequenceGenerator(BaseModel):
     rhythm_pattern: RhythmPattern = Field(...)
 
     async def generate_sequence_from_presets(
-        self,
         progression_name: str,
         note_pattern_name: str,
         rhythm_pattern_name: str,
-        scale_info: ScaleInfo
+        scale_info: ScaleInfo,
+        chord_progression: Dict[str, Any],
+        note_pattern: Dict[str, Any],
+        rhythm_pattern: Dict[str, Any]
     ) -> NoteSequence:
-        # Create a ChordProgression instance directly
-        chord_progression = ChordProgression(name=progression_name)  # Assuming ChordProgression can be initialized this way
-
-        # Get other required components (note pattern, rhythm pattern)
-        note_pattern = await self.get_note_pattern(note_pattern_name)
-        rhythm_pattern = await self.get_rhythm_pattern(rhythm_pattern_name)
-
-        # Generate the sequence using the retrieved components
-        return await self.generate_sequence_async(
-            chord_progression=chord_progression,
-            note_pattern=note_pattern,
-            rhythm_pattern=rhythm_pattern,
-            scale_info=scale_info
-        )
+        logger.debug("Generating sequence from presets...")
+        
+        # Retrieve the rhythm pattern
+        logger.debug(f"Retrieving rhythm pattern for: {rhythm_pattern_name}")
+        rhythm_pattern_instance = await self.get_rhythm_pattern(rhythm_pattern_name)
+        if rhythm_pattern_instance is None:
+            logger.error(f"Rhythm pattern '{rhythm_pattern_name}' not found.")
+            raise ValueError(f"Rhythm pattern '{rhythm_pattern_name}' not found.")
+    
+        # Convert the rhythm pattern to a dictionary using model_dump
+        rhythm_pattern_data = rhythm_pattern_instance.model_dump()
+    
+        sequence = []
+        for chord in chord_progression['chords']:
+            # Generate all notes in the chord (not just the root)
+            chord_notes = [Note(note_name=note) for note in chord['notes']]
+            sequence.extend(chord_notes)
+        
+        logger.debug(f"Generated sequence: {sequence}")
+        logger.info(f"Generated notes: {[note.note_name for note in sequence]}")
+        logger.debug(f"Generated notes before returning: {[note.note_name for note in sequence]}")
+        
+        return NoteSequence(notes=sequence)
 
     async def get_note_pattern(self, note_pattern_name: str) -> NotePattern:
         # Placeholder logic to simulate retrieving a note pattern
@@ -106,7 +117,6 @@ class NoteSequenceGenerator(BaseModel):
             logger.debug("Generating sequence asynchronously...")        
 
             try:
-                logger.info(f"Received rhythm_pattern of type: {type(rhythm_pattern)}")
                 print(f"Rhythm pattern before processing: {rhythm_pattern}")
                 print(f"Chord progression: {chord_progression.chords}")
 

@@ -47,13 +47,17 @@ async def test_db():
     """Fixture to provide a test database connection."""
     logger.debug(f'Connecting to database with MONGODB_URI: {os.getenv("MONGODB_URI")}, db_name: test_note_gen')
     async with get_db_conn() as db:
+        if os.getenv("CLEAR_DB_AFTER_TESTS", "0") == "1":
+            collections = await db.list_collection_names()
+            for collection in collections:
+                await db[collection].delete_many({})
         yield db
 
 @pytest.fixture
 async def test_client():
     """Fixture to provide an async test client."""
     transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+    async with httpx.AsyncClient(transport=transport, base_url="http://localhost:8000") as client:
         yield client
 
 # Consolidated tests for user routes functionality

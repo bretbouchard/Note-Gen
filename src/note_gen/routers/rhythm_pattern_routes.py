@@ -24,11 +24,12 @@ logger = logging.getLogger(__name__)
 # Create router with tags
 logger.debug("Creating rhythm pattern router...")
 router = APIRouter(
+    prefix="/api/v1/rhythm-patterns",
     tags=["rhythm-patterns"]
 )
 logger.debug("Router created")
 
-@router.get("/")
+@router.get("/patterns/")
 async def get_rhythm_patterns(
     db: AsyncIOMotorDatabase = Depends(get_db_conn)
 ) -> List[RhythmPatternResponse]:
@@ -41,7 +42,7 @@ async def get_rhythm_patterns(
         logger.error(f"Error retrieving rhythm patterns: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
-@router.get("/{pattern_id}")
+@router.get("/patterns/{pattern_id}")
 async def get_rhythm_pattern(
     pattern_id: str,
     db: AsyncIOMotorDatabase = Depends(get_db_conn)
@@ -58,17 +59,18 @@ async def get_rhythm_pattern(
         logger.error(f"Error retrieving rhythm pattern {pattern_id}: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
-@router.post("/api/v1/rhythm-patterns", response_model=RhythmPatternResponse)
+@router.post("/", response_model=RhythmPatternResponse)
 async def create_rhythm_pattern(
     pattern: RhythmPatternCreate,
     db: AsyncIOMotorDatabase = Depends(get_db_conn)
-) -> RhythmPatternResponse:
+):
     """Create a new rhythm pattern."""
+    logger.debug(f"Received request to create rhythm pattern: {pattern}")
     try:
         logger.debug(f"Creating rhythm pattern: {pattern.name}")
-        created_pattern = await db.rhythm_patterns.insert_one(pattern.dict())
+        created_pattern = await db.rhythm_patterns.insert_one(pattern.model_dump())
         logger.info(f"Rhythm pattern created with ID: {created_pattern.inserted_id}")
-        return RhythmPatternResponse(**pattern.dict())
+        return RhythmPatternResponse(**pattern.model_dump())
     except DuplicateKeyError:
         logger.error(f"Duplicate key error when creating rhythm pattern: {pattern.name}")
         raise HTTPException(status_code=409, detail="Rhythm pattern with this ID already exists")
@@ -87,16 +89,18 @@ async def generate_rhythm_pattern(
     """
     Generate a rhythm pattern based on provided parameters.
     """
+    logger.debug(f"Received request data for generating rhythm pattern: {rhythm_pattern}")
     # Logic to generate rhythm pattern
     return rhythm_pattern
 
-@router.put("/{pattern_id}", response_model=RhythmPatternResponse)
+@router.put("/patterns/{pattern_id}", response_model=RhythmPatternResponse)
 async def update_rhythm_pattern(
     pattern_id: str,
     rhythm_pattern: RhythmPattern,
     db: AsyncIOMotorDatabase = Depends(get_db_conn)
 ) -> RhythmPatternResponse:
     """Update an existing rhythm pattern."""
+    logger.debug(f"Received request data for updating rhythm pattern: {rhythm_pattern}")
     try:
         existing = await db.rhythm_patterns.find_one({"_id": pattern_id})
         if not existing:
@@ -125,12 +129,13 @@ async def update_rhythm_pattern(
         logger.error(f"Error updating rhythm pattern: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
-@router.delete("/{pattern_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/patterns/{pattern_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_rhythm_pattern(
     pattern_id: str,
     db: AsyncIOMotorDatabase = Depends(get_db_conn)
 ) -> Response:
     """Delete a rhythm pattern."""
+    logger.debug(f"Received request data for deleting rhythm pattern ID: {pattern_id}")
     try:
         result = await db.rhythm_patterns.delete_one({"_id": pattern_id})
         if result.deleted_count == 0:

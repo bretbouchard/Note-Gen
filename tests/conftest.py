@@ -31,6 +31,12 @@ os.environ['MONGODB_TEST_URI'] = 'mongodb://localhost:27017/test_note_gen'
 os.environ['DATABASE_NAME'] = 'test_note_gen'
 
 # Configure logging
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+logger.propagate = True
+logger.debug('Logger propagation set to True')
+
 class ThreadSafeStreamHandler(logging.StreamHandler):
     def __init__(self):
         super().__init__()
@@ -48,13 +54,10 @@ class ThreadSafeStreamHandler(logging.StreamHandler):
 handler = ThreadSafeStreamHandler()
 handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
 logging.root.addHandler(handler)
-logging.root.setLevel(logging.INFO)
 
 # Configure specific loggers
 logging.getLogger("pymongo").setLevel(logging.WARNING)
 logging.getLogger("asyncio").setLevel(logging.WARNING)
-
-logger = logging.getLogger(__name__)
 
 # MongoDB connection settings
 MONGODB_URL = os.getenv("MONGODB_TEST_URI", "mongodb://localhost:27017/test_note_gen")
@@ -126,13 +129,18 @@ class RhythmPatternData(BaseModel):
 @pytest.fixture
 async def test_db():
     """Fixture to provide a test database."""
-    await init_db()
+    print('Entering test_db fixture')
+
+    clear_db_value = os.getenv("CLEAR_DB_AFTER_TESTS")
     db = await get_db_conn()
     
-    # Clear all collections before each test
-    collections = await db.list_collection_names()
-    for collection in collections:
-        await db[collection].delete_many({})
+    print(f'CLEAR_DB_AFTER_TESTS value: {os.getenv("CLEAR_DB_AFTER_TESTS")}')
+    # Clear all collections before each test if CLEAR_DB_AFTER_TESTS is set to 1
+    if os.getenv('CLEAR_DB_AFTER_TESTS', '1') == '1':
+        print('CLEAR_DB_AFTER_TESTS Clearing database collections -----')
+        collections = await db.list_collection_names()
+        for collection in collections:
+            await db[collection].delete_many({})
     
     # Sample data to insert
     test_chord_progressions = [
@@ -149,18 +157,23 @@ async def test_db():
     ]
 
     # Insert sample data into the database
+    logger.debug('Inserting sample data into database')
     await db.chord_progressions.insert_many(test_chord_progressions)
     await db.note_patterns.insert_many(test_note_patterns)
     await db.rhythm_patterns.insert_many(test_rhythm_patterns)
     
+    logger.debug('Yielding database connection')
     yield db
     
     # Clean up after test
+    logger.debug('Closing database connection')
     await close_mongo_connection()
 
 @pytest.fixture
 async def async_test_client():
     """Fixture to provide an async test client."""
+    logger.debug('Entering async_test_client fixture')
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://localhost:8000") as client:
+        logger.debug('Yielding async test client')
         yield client

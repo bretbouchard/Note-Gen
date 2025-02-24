@@ -101,6 +101,18 @@ class NoteSequence(BaseModel):
         return len(self.notes)
 
 
+class NoteSequenceCreate(BaseModel):
+    notes: List[Union[Note, int, dict]]
+    events: List[NoteEvent] = []
+    duration: float = Field(default=0.0)
+    default_duration: float = Field(default=1.0)
+    progression_name: Optional[str] = None
+    note_pattern_name: Optional[str] = None
+    rhythm_pattern_name: Optional[str] = None
+    name: Optional[str] = None
+    is_test: bool = False
+
+
 class SimpleNoteSequence(BaseModel):
     """Model for a sequence of notes."""
     

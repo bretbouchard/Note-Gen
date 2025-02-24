@@ -3,6 +3,7 @@ from unittest.mock import patch
 from motor.motor_asyncio import AsyncIOMotorClient
 import asyncio
 import logging
+import os
 
 # Configure logging
 # logging.basicConfig(level=logging.DEBUG)
@@ -12,9 +13,14 @@ async def seed_test_db():
     client = AsyncIOMotorClient('localhost', 27017)
     db = client.test_note_gen
 
+    if os.getenv("CLEAR_DB_AFTER_TESTS", "0") == "1":
+        await db.chord_progressions.delete_many({})
+        await db.note_patterns.delete_many({})
+        await db.rhythm_patterns.delete_many({})
+
     try:
         # Seed chord progressions
-        result = await db.chord_progressions.insert_many([
+        chord_progressions = [
             {
                 'name': 'Sample Progression 1',
                 'chords': [
@@ -33,7 +39,8 @@ async def seed_test_db():
                 'key': 'D',
                 'scale_type': 'MINOR'
             }
-        ])
+        ]
+        result = await db.chord_progressions.insert_many(chord_progressions)
         # logger.debug(f'Successfully inserted {len(result.inserted_ids)} chord progressions.')
     except Exception as e:
         logger.error(f'Error inserting chord progressions: {e}')

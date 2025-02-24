@@ -59,10 +59,10 @@ async def clean_test_db() -> motor.motor_asyncio.AsyncIOMotorDatabase:
         logger.debug(f'Connecting to database with MONGODB_URI: {os.getenv("MONGODB_URI")}, db_name: test_note_gen')
         db_gen = get_db_conn(uri=os.getenv("MONGODB_URI"), db_name='test_note_gen')
         async for db in db_gen:
-            # Clear all collections
-            await db.chord_progressions.delete_many({})
-            await db.note_patterns.delete_many({})
-            await db.rhythm_patterns.delete_many({})
+            if os.getenv("CLEAR_DB_AFTER_TESTS", "0") == "1":
+                await db.chord_progressions.delete_many({})
+                await db.note_patterns.delete_many({})
+                await db.rhythm_patterns.delete_many({})
             
             # Add test data
             await generate_test_data(db)

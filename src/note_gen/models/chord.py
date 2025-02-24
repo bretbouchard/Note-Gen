@@ -46,9 +46,11 @@ class Chord(BaseModel):
         Validate input types before model creation.
         Ensures all critical fields are of the correct type and not None.
         """
-        # Check for None values in critical fields
+        if isinstance(data, str):
+            data = {'root': data}  # Adjust this based on your expected structure
         if data.get('root') is None:
-            raise ValueError("Root note cannot be None")
+            raise ValueError("'root' must be provided")
+        # Check for None values in critical fields
         if data.get('quality') is None:
             raise ValueError("Chord quality cannot be None")
         
@@ -60,7 +62,10 @@ class Chord(BaseModel):
                 raise ValueError(f"Invalid root note: {e}")
         # Ensure root is a Note instance
         elif not isinstance(data['root'], Note):
-            raise TypeError("root must be a Note instance")
+            try:
+                data['root'] = Note.parse_note_name(data['root'])
+            except (TypeError, ValueError) as e:
+                raise TypeError("root must be a Note instance or a valid note name")
         
         # Ensure quality is a valid ChordQualityEnum
         if not isinstance(data['quality'], ChordQualityEnum):

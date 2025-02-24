@@ -7,7 +7,7 @@ from src.note_gen.models.chord_progression import ChordProgression
 from src.note_gen.models.note_pattern import NotePattern
 from src.note_gen.models.rhythm_pattern import RhythmPattern
 from src.note_gen.models.roman_numeral import RomanNumeral
-
+import os
 
 import logging
 import asyncio
@@ -21,9 +21,10 @@ async def ensure_indexes(db: AsyncIOMotorDatabase) -> None:
     """Create indexes for collections."""
     try:
         # Drop existing indexes first
-        await db.chord_progressions.drop_indexes()
-        await db.note_patterns.drop_indexes()
-        await db.rhythm_patterns.drop_indexes()
+        if os.getenv("CLEAR_DB_AFTER_TESTS", "1") == "1":
+            await db.chord_progressions.drop_indexes()
+            await db.note_patterns.drop_indexes()
+            await db.rhythm_patterns.drop_indexes()
 
         # Create new indexes
         await db.chord_progressions.create_index("name", unique=True)
@@ -38,6 +39,11 @@ async def ensure_indexes(db: AsyncIOMotorDatabase) -> None:
 async def import_presets_if_empty(db: AsyncIOMotorDatabase) -> None:
     """Import presets if collections are empty."""
     # Check if collections are empty
+    if os.getenv("CLEAR_DB_AFTER_TESTS", "1") == "1":
+        await db.chord_progressions.delete_many({})
+        await db.note_patterns.delete_many({})
+        await db.rhythm_patterns.delete_many({})
+
     if await db.chord_progressions.count_documents({}) == 0:
         # Convert chord progressions to model objects
         chord_progressions = []
@@ -106,7 +112,8 @@ async def setup_test_db():
     # Clear all collections
     collections = await db.list_collection_names()
     for collection in collections:
-        await db.get_collection(collection).delete_many({})
+        if os.getenv("CLEAR_DB_AFTER_TESTS", "1") == "1":
+            await db.get_collection(collection).delete_many({})
     
     # Create indexes
     await ensure_indexes(db)

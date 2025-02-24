@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 # Create a router with a specific prefix and tags
 router = APIRouter(
+    prefix="/note-patterns",
     tags=["note-patterns"]
 )
 
@@ -27,6 +28,7 @@ async def create_note_pattern(
     db: AsyncIOMotorDatabase = Depends(get_db_conn)
 ) -> NotePatternResponse:
     """Create a new note pattern."""
+    logger.debug(f"Received request data for creating note pattern: {note_pattern}")
     try:
         pattern_data = jsonable_encoder(note_pattern)
         result = await db.note_patterns.insert_one(pattern_data)
@@ -49,6 +51,7 @@ async def generate_note_pattern(
     """
     Generate a note pattern based on provided parameters.
     """
+    logger.debug(f"Received request data for generating note pattern: {note_pattern}")
     # Logic to generate note pattern
     return note_pattern
 
@@ -87,6 +90,7 @@ async def update_note_pattern(
     db: AsyncIOMotorDatabase = Depends(get_db_conn)
 ) -> NotePatternResponse:
     """Update an existing note pattern."""
+    logger.debug(f"Received request data for updating note pattern: {note_pattern}")
     try:
         existing = await db.note_patterns.find_one({"_id": pattern_id})
         if not existing:
@@ -119,6 +123,7 @@ async def delete_note_pattern(
     db: AsyncIOMotorDatabase = Depends(get_db_conn)
 ):
     """Delete a note pattern."""
+    logger.debug(f"Received request data for deleting note pattern ID: {pattern_id}")
     try:
         result = await db.note_patterns.delete_one({"_id": pattern_id})
         if result.deleted_count == 0:

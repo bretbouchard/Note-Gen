@@ -13,9 +13,9 @@ async def test_db():
     db = await get_db_conn()
     
     # Clear all collections before each test
-    collections = await db.list_collection_names()
-    for collection in collections:
-        await db[collection].delete_many({})
+    # collections = await db.list_collection_names()
+    # for collection in collections:
+    #     await db[collection].delete_many({})
     
     yield db
     
@@ -26,7 +26,7 @@ async def test_db():
 async def async_test_client():
     """Async test client fixture."""
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
+    async with AsyncClient(transport=transport, base_url="http://localhost:8000") as client:
         yield client
 
 @pytest.fixture

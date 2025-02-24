@@ -45,12 +45,13 @@ def _validate_chord_progression(chord_progression: ChordProgression):
         if not isinstance(chord.quality, ChordQualityType):
             raise ValueError("Chord quality must be a valid ChordQualityType")
 
-@router.post("/", response_model=ChordProgressionResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/create", response_model=ChordProgressionResponse, status_code=status.HTTP_201_CREATED)
 async def create_chord_progression(
     chord_progression: ChordProgression,
     db: AsyncIOMotorDatabase = Depends(get_db_conn)
 ) -> ChordProgressionResponse:
     """Create a new chord progression."""
+    logger.debug(f"Incoming request to create chord progression with data: {chord_progression}")
     try:
         # Validate the chord progression
         _validate_chord_progression(chord_progression)
@@ -67,6 +68,7 @@ async def create_chord_progression(
         )
         
         if not created_progression:
+            logger.error("Created progression not found in the database.")
             raise HTTPException(
                 status_code=404,
                 detail="Created progression not found"
@@ -75,8 +77,10 @@ async def create_chord_progression(
         return ChordProgressionResponse(**created_progression)
         
     except ValueError as ve:
+        logger.error(f"Validation error: {str(ve)}")
         raise HTTPException(status_code=422, detail=str(ve))
     except DuplicateKeyError:
+        logger.error("Duplicate key error while inserting chord progression.")
         raise HTTPException(
             status_code=409,
             detail="Chord progression with this ID already exists"
