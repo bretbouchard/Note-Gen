@@ -15,13 +15,13 @@ class Chord(BaseModel):
     """
     root: Note
     quality: ChordQualityType
-    notes: Optional[List[Note]] = None
     inversion: Optional[int] = Field(
-        default=None, 
+        default=0, 
         ge=0, 
         le=3,
         validation_alias="inversion"
     )
+    duration: float = Field(default=4.0, description="Duration of each chord in beats")
 
     model_config = ConfigDict(
         arbitrary_types_allowed=True,  # Allow custom types like Note
@@ -45,18 +45,10 @@ class Chord(BaseModel):
 
         return values
     
-    duration: float = Field(default=4.0, description="Duration of each chord in beats")
-
     @model_validator(mode='before')
     @classmethod
     def validate_input_types(cls: 'Type[Chord]', data: Dict[str, Any]) -> Dict[str, Any]:
-
-
         """Validate input types before model creation."""
-        """
-        Validate input types before model creation.
-        Ensures all critical fields are of the correct type and not None.
-        """
         if isinstance(data, str):
             data = {'root': data}  # Adjust this based on your expected structure
         if data.get('root') is None:
@@ -127,21 +119,19 @@ class Chord(BaseModel):
         
         return data
 
-    @field_validator('inversion')
-    @classmethod
-    def validate_inversion(cls, value: Optional[int]) -> Optional[int]:
-        """
-        Validate chord inversion with a specific error message.
-        Ensures inversion is either None or between 0 and 3.
-        """
-        if value is not None:
-            if value < 0:
-                raise ValueError("Inversion cannot be negative")
-            if value > 3:
-                raise ValueError("Inversion must be between 0 and 3")
-        return value
+    def __init__(self, **data):
+        super().__init__(**data)
+        self.notes = []  # Initialize notes as an empty list
+        self.generate_notes()  # Generate notes after initialization
 
-    def _generate_chord_notes(self) -> List[Note]:
+    def generate_notes(self):
+        # Logic to generate notes based on root and quality
+        if not self.notes:  # If notes are not already set
+            # Implement the logic to populate self.notes based on the chord quality
+            self.notes = self.calculate_notes()  # Ensure this method is defined
+        return self.notes
+
+    def calculate_notes(self):
         """
         Generate the actual notes for the chord based on root and quality.
         Uses instance attributes instead of a values dictionary.
@@ -202,7 +192,7 @@ class Chord(BaseModel):
         Safely retrieve chord notes, generating if not already present.
         """
         if not self.notes:
-            self.notes = self._generate_chord_notes()
+            self.notes = self.generate_notes()
         return self.notes
 
     def to_dict(self) -> Dict[str, Any]:
@@ -267,7 +257,7 @@ class Chord(BaseModel):
         """
         # If notes are not generated, generate them without triggering __len__ again
         if self.notes is None:
-            self.notes = self._generate_chord_notes()
+            self.notes = self.generate_notes()
         return len(self.notes or [])
 
     def set_scale_degrees(self, scale_degree: int):
