@@ -1,7 +1,7 @@
 from src.note_gen.models.note import Note
 from src.note_gen.models.chord import Chord
 from src.note_gen.models.note_event import NoteEvent
-from src.note_gen.models.enums import ChordQualityType
+from src.note_gen.models.chord_quality import ChordQualityType
 from pydantic import BaseModel, Field, field_validator
 
 def test_chord_with_note_event_integration() -> None:

@@ -2,7 +2,8 @@ import unittest
 from typing import List, Optional
 from src.note_gen.models.chord_progression import ChordProgression
 from src.note_gen.models.scale_info import ScaleInfo
-from src.note_gen.models.enums import ChordQualityType, ScaleType
+from src.note_gen.models.chord_quality import ChordQualityType
+from src.note_gen.models.enums import ScaleType
 from src.note_gen.models.note import Note
 from src.note_gen.models.chord import Chord
 from src.note_gen.models.fake_scale_info import FakeScaleInfo

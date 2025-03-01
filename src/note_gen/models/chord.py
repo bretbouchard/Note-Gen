@@ -1,11 +1,10 @@
-from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field, field_validator, model_validator, ConfigDict
+from typing import List, Optional, Dict, Any, Union, Type
 import logging
 import json
 
 from src.note_gen.models.note import Note
-from .chord_quality import ChordQualityType
-from src.note_gen.models.enums import ChordQualityType as ChordQualityEnum
+from src.note_gen.models.chord_quality import ChordQualityType
 
 # Set up logging configuration
 logger = logging.getLogger(__name__)
@@ -14,18 +13,8 @@ class Chord(BaseModel):
     """
     Represents a musical chord with a root note, quality, and optional notes.
     """
-    model_config = ConfigDict(
-        arbitrary_types_allowed=True,  # Allow custom types like Note
-        validate_assignment=True,      # Enable validation on attribute assignment
-        extra='forbid',               # Prevent extra fields
-        json_encoders={
-            Note: lambda v: v.model_dump(),
-            ChordQualityEnum: lambda v: v.value
-        }
-    )
-
     root: Note
-    quality: ChordQualityEnum
+    quality: ChordQualityType
     notes: Optional[List[Note]] = None
     inversion: Optional[int] = Field(
         default=None, 
@@ -33,15 +22,37 @@ class Chord(BaseModel):
         le=3,
         validation_alias="inversion"
     )
-    duration: float = Field(default=4.0, description="Duration of each chord in beats")
 
-    def __init__(self, root: Note, quality: ChordQualityEnum, **kwargs):
-        super().__init__(root=root, quality=quality, **kwargs)
-        self.notes = self._generate_chord_notes()  # Generate notes upon initialization
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,  # Allow custom types like Note
+        validate_assignment=True,      # Enable validation on attribute assignment
+        extra='forbid',               # Prevent extra fields
+        json_encoders={
+            Note: lambda v: v.json(),  # Use the json method for Note instances
+            ChordQualityType: lambda v: v.value
+        }
+    )
+
+    @model_validator(mode='before')
+    def validate_root_and_quality(cls , values: dict) -> Dict[str, Any]:
+        root = values.get('root')
+        quality = values.get('quality')
+
+        if not isinstance(root, Note):
+            raise ValueError(f"Expected root to be an instance of Note, got {type(root).__name__}")
+        if not isinstance(quality, ChordQualityType):
+            raise ValueError(f"Invalid chord quality: {quality}")
+
+        return values
+    
+    duration: float = Field(default=4.0, description="Duration of each chord in beats")
 
     @model_validator(mode='before')
     @classmethod
-    def validate_input_types(cls, data: Dict[str, Any]) -> Dict[str, Any]:
+    def validate_input_types(cls: 'Type[Chord]', data: Dict[str, Any]) -> Dict[str, Any]:
+
+
+        """Validate input types before model creation."""
         """
         Validate input types before model creation.
         Ensures all critical fields are of the correct type and not None.
@@ -53,6 +64,8 @@ class Chord(BaseModel):
         # Check for None values in critical fields
         if data.get('quality') is None:
             raise ValueError("Chord quality cannot be None")
+        
+        logger.debug(f"Validating chord with root: {data['root']}, type: {type(data['root'])}")
         
         # Convert root to Note instance if it's a dictionary
         if isinstance(data['root'], dict):
@@ -67,10 +80,10 @@ class Chord(BaseModel):
             except (TypeError, ValueError) as e:
                 raise TypeError("root must be a Note instance or a valid note name")
         
-        # Ensure quality is a valid ChordQualityEnum
-        if not isinstance(data['quality'], ChordQualityEnum):
+        # Ensure quality is a valid ChordQualityType
+        if not isinstance(data['quality'], ChordQualityType):
             try:
-                data['quality'] = ChordQualityEnum(data['quality'])
+                data['quality'] = ChordQualityType(data['quality'])
             except (TypeError, ValueError):
                 raise ValueError(f"Invalid chord quality: {data['quality']}")
         
@@ -138,15 +151,24 @@ class Chord(BaseModel):
         if self.quality is None:
             raise ValueError("Chord quality cannot be None.")
 
+        # Log the quality value being used
+        logger.debug(f"Generating notes for chord quality: {self.quality}")
+        logger.debug(f"Quality value: {self.quality}")
+        logger.debug(f"Intervals dictionary keys: {list(ChordQualityType.get_chord_intervals().keys())}")
+        logger.debug(f"Current chord quality: {self.quality}")
+        logger.debug(f"Intervals dictionary contents: {ChordQualityType.get_chord_intervals()}")
+
         # Determine intervals based on chord quality
         intervals_dict = ChordQualityType.get_chord_intervals()
-        intervals = intervals_dict[self.quality.value]
+        intervals = intervals_dict[self.quality.value] if self.quality.value != 'DOMINANT' else intervals_dict['DOMINANT7']
 
         # Generate chord notes
         notes = [
             self.root.transpose(interval) 
             for interval in intervals
         ]
+
+        logger.debug(f"Generated notes for chord {self.root.note_name} of quality {self.quality}: {notes}")
 
         # Apply inversion if specified
         if self.inversion is not None and 0 <= self.inversion < len(notes):
@@ -155,7 +177,7 @@ class Chord(BaseModel):
         return notes
 
     @classmethod
-    def from_quality(cls, root: Note, quality: ChordQualityEnum, inversion: Optional[int] = None, duration: Optional[float] = None) -> 'Chord':
+    def from_quality(cls, root: Note, quality: ChordQualityType, inversion: Optional[int] = None, duration: Optional[float] = None) -> 'Chord':
         """
         Create a Chord instance with a specified root note and quality.
         Ensures notes are generated during initialization.
@@ -186,9 +208,9 @@ class Chord(BaseModel):
     def to_dict(self) -> Dict[str, Any]:
         """Convert the Chord to a dictionary representation."""
         return {
-            "root": self.root.model_dump() if self.root else None,
+            "root": self.root.json() if self.root else None,
             "quality": self.quality.value if self.quality else None,
-            "notes": [note.model_dump() for note in self.notes] if self.notes else [],
+            "notes": [note.json() for note in self.notes] if self.notes else [],
             "inversion": self.inversion,
             "duration": self.duration
         }
@@ -196,16 +218,17 @@ class Chord(BaseModel):
     def model_dump(self, **kwargs) -> dict:
         """Convert the model to a dictionary."""
         return {
-            "root": self.root.model_dump() if self.root else None,
+            "root": self.root.json() if self.root else None,
             "quality": self.quality.value if self.quality else None,
-            "notes": [note.model_dump() for note in self.notes] if self.notes else [],
+            "notes": [note.json() for note in self.notes] if self.notes else [],
             "inversion": self.inversion,
             "duration": self.duration
         }
 
-    def json(self, *args: Any, **kwargs: Any) -> str:
-        """Convert model to JSON string."""
-        return json.dumps(self.model_dump())
+    def json(self, **kwargs):
+        # Override json method to ensure proper serialization of root
+        data = super().json(**kwargs)
+        return data
 
     @classmethod
     def parse_chord_str(cls, chord_str: str) -> 'Chord':
@@ -219,12 +242,12 @@ class Chord(BaseModel):
             root_end = 2
         root_str = chord_str[:root_end]
         
-        quality = ChordQualityEnum.MAJOR
+        quality = ChordQualityType.MAJOR
         
         if len(chord_str) > root_end:
             quality_str = chord_str[root_end:]
             try:
-                quality = ChordQualityEnum.from_string(quality_str)
+                quality = ChordQualityType.from_string(quality_str)
             except ValueError:
                 raise ValueError(f"Invalid quality string: {quality_str}")
         

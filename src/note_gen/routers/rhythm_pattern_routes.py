@@ -65,12 +65,16 @@ async def create_rhythm_pattern(
     db: AsyncIOMotorDatabase = Depends(get_db_conn)
 ):
     """Create a new rhythm pattern."""
+    if not pattern:
+        logger.error("Received empty pattern data.")
+        raise HTTPException(status_code=400, detail="Pattern data cannot be empty")
+    
     logger.debug(f"Received request to create rhythm pattern: {pattern}")
     try:
         logger.debug(f"Creating rhythm pattern: {pattern.name}")
-        created_pattern = await db.rhythm_patterns.insert_one(pattern.model_dump())
+        created_pattern = await db.rhythm_patterns.insert_one(pattern.dict())
         logger.info(f"Rhythm pattern created with ID: {created_pattern.inserted_id}")
-        return RhythmPatternResponse(**pattern.model_dump())
+        return RhythmPatternResponse(**pattern.dict())
     except DuplicateKeyError:
         logger.error(f"Duplicate key error when creating rhythm pattern: {pattern.name}")
         raise HTTPException(status_code=409, detail="Rhythm pattern with this ID already exists")

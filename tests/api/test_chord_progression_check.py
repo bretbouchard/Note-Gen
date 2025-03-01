@@ -2,7 +2,7 @@ import asyncio
 import pytest
 import pytest_asyncio
 import uuid
-from src.note_gen.main import app
+from main import app
 from httpx import AsyncClient, ASGITransport
 from starlette.concurrency import iterate_in_threadpool
 from src.note_gen.database.db import get_db_conn, MONGODB_URI

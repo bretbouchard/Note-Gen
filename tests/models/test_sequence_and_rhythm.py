@@ -13,6 +13,7 @@ from src.note_gen.models.chord import Chord
 from src.note_gen.models.note_event import NoteEvent
 from src.note_gen.models.scale import Scale
 from src.note_gen.models.enums import ScaleType
+from src.note_gen.models.chord_quality import ChordQualityType
 from src.note_gen.models.scale_info import ScaleInfo
 from src.note_gen.models.note_pattern import NotePattern
 from src.note_gen.models.patterns import NotePatternData 
@@ -60,7 +61,7 @@ class TestNoteSequence(unittest.TestCase):
         self.notes = [Note(note_name='C', octave=4, duration=1.0, velocity=100), Note(note_name='D', octave=4, duration=1.0, velocity=100)]
         self.sequence = NoteSequence(notes=[Note(note_name='C', octave=4, duration=1.0, velocity=100), Note(note_name='D', octave=4, duration=1.0, velocity=100)], events=[], duration=0.0)
         self.data = self.sequence  # Initialize self.data to reference the sequence
-        self.chord = Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality="MAJOR")  # Replace with actual chord instance
+        self.chord = Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR)  # Ensure that the tests are using valid Note instances
         self.scale_info = FakeScaleInfo(root=Note(note_name="C", octave=4, duration=1, velocity=100), scale_type=ScaleType.MAJOR)  # Updated to use ScaleType enum
         self.note = Note(note_name="C", octave=4)
 
@@ -135,7 +136,7 @@ class TestPatternInterpreter(unittest.TestCase):
         fake_scale = FakeScale()
         pattern = [1, 2, 3]
         self.interpreter = ScalePatternInterpreter(scale=fake_scale, pattern=pattern)
-        self.chord = Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality="MAJOR")
+        self.chord = Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR)  # Ensure that the tests are using valid Note instances
         self.scale_info = FakeScaleInfo(root=Note(note_name="C", octave=4, duration=1, velocity=100), scale_type=ScaleType.MAJOR)  # Updated to use ScaleType enum
 
     def test_interpret_returns_note_sequence(self) -> None:
@@ -408,7 +409,7 @@ class TestIntegration(unittest.TestCase):
     def test_full_note_sequence_generation(self) -> None:
         # Setup a fake scale, chord progression, note pattern, and rhythm pattern
         scale = FakeScale()
-        fake_chord = Chord(root=Note(note_name="C", octave=4), quality="MAJOR")
+        fake_chord = Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR)  # Ensure that the tests are using valid Note instances
         note_pattern_data = {
             "name": "Test Note Pattern",
             "pattern": [0, 2, 4],  # Representing intervals

@@ -1,4 +1,4 @@
-from typing import List, Optional, Dict, Union
+from typing import List, Optional, Dict, Union, Any
 from enum import Enum, StrEnum
 import logging
 
@@ -11,224 +11,6 @@ class AccidentalType(StrEnum):
     FLAT = "b"
     DOUBLE_SHARP = "##"
     DOUBLE_FLAT = "bb"
-
-# Define intervals and aliases outside the enum class
-CHORD_QUALITY_INTERVALS = {
-    'MAJOR': [0, 4, 7],
-    'MINOR': [0, 3, 7],
-    'DIMINISHED': [0, 3, 6],
-    'AUGMENTED': [0, 4, 8],
-    'DOMINANT7': [0, 4, 7, 10],
-    'MAJOR7': [0, 4, 7, 11],
-    'MINOR7': [0, 3, 7, 10],
-    'DIMINISHED7': [0, 3, 6, 9],
-    'HALF_DIMINISHED7': [0, 3, 6, 10],
-    'DOMINANT': [0, 4, 7, 10],
-    'MAJOR9': [0, 4, 7, 11],
-    'MINOR9': [0, 3, 7, 10, 14],
-    'DOMINANT9': [0, 4, 7, 10, 14],
-    'AUGMENTED7': [0, 4, 8, 10],
-    'MAJOR11': [0, 4, 7, 11, 14],
-    'MINOR11': [0, 3, 7, 10, 14],
-    'DOMINANT11': [0, 4, 7, 10, 14, 17],
-    'SUS2': [0, 2, 7],
-    'SUS4': [0, 5, 7],
-    'SEVEN_SUS4': [0, 5, 7, 10],
-    'FLAT5': [0, 4, 6],
-    'FLAT7': [0, 4, 7, 9],
-    'SHARP5': [0, 4, 8],
-    'SHARP7': [0, 4, 7, 11],
-    'SUSPENDED': [0, 5, 7],  # Add this line
-}
-
-CHORD_QUALITY_ALIASES = {
-    'maj': 'MAJOR',
-    'M': 'MAJOR',
-    'major': 'MAJOR',
-    'min': 'MINOR',
-    'm': 'MINOR',
-    'minor': 'MINOR',
-    'dim': 'DIMINISHED',
-    'diminished': 'DIMINISHED',
-    'aug': 'AUGMENTED',
-    'augmented': 'AUGMENTED',
-    'dominant': 'DOMINANT',
-    'dominant7': 'DOMINANT7',
-    'dom7': 'DOMINANT7',
-    'maj7': 'MAJOR7',
-    'major7': 'MAJOR7',
-    'm7': 'MINOR7',
-    'minor7': 'MINOR7',
-    'dim7': 'DIMINISHED7',
-    'diminished7': 'DIMINISHED7',
-    'ø7': 'HALF_DIMINISHED7',
-    'm7b5': 'HALF_DIMINISHED7',
-    'half_diminished7': 'HALF_DIMINISHED7',
-    '7': 'DOMINANT7',
-    '7sus4': 'SEVEN_SUS4',
-    'b5': 'FLAT5',
-    'b7': 'FLAT7',
-    '#5': 'SHARP5',
-    '#7': 'SHARP7',
-    '+': 'AUGMENTED',
-    '°': 'DIMINISHED',
-    'sus': 'SUSPENDED',  # Add this line
-}
-
-class ChordQualityType(str, Enum):
-    """Enum for chord quality types."""
-    MAJOR = "MAJOR"
-    MINOR = "MINOR"
-    DIMINISHED = "DIMINISHED"
-    AUGMENTED = "AUGMENTED"
-    DOMINANT = "DOMINANT"
-    DOMINANT7 = "DOMINANT7"
-    MAJOR7 = "MAJOR7"
-    MINOR7 = "MINOR7"
-    DIMINISHED7 = "DIMINISHED7"
-    HALF_DIMINISHED7 = "HALF_DIMINISHED7"
-    MAJOR9 = "MAJOR9"
-    MINOR9 = "MINOR9"
-    DOMINANT9 = "DOMINANT9"
-    AUGMENTED7 = "AUGMENTED7"
-    MAJOR11 = "MAJOR11"
-    MINOR11 = "MINOR11"
-    DOMINANT11 = "DOMINANT11"
-    SUS2 = "SUS2"
-    SUS4 = "SUS4"
-    SEVEN_SUS4 = "SEVEN_SUS4"
-    FLAT5 = "FLAT5"
-    FLAT7 = "FLAT7"
-    SHARP5 = "SHARP5"
-    SHARP7 = "SHARP7"
-    SUSPENDED = "SUSPENDED"
-
-    @classmethod
-    def _missing_(cls, value):
-        """Handle missing values by trying to match common aliases."""
-        if isinstance(value, str):
-            # First normalize the input
-            normalized = value.upper()
-            
-            # Direct mapping for exact matches
-            if normalized in [e.value for e in cls]:
-                return cls(normalized)
-            
-            # Handle aliases with case insensitivity
-            aliases = {
-                'MAJ7': cls.MAJOR7,
-                'MAJOR7': cls.MAJOR7,
-                'MAJ': cls.MAJOR,
-                'MAJOR': cls.MAJOR,
-                'MIN': cls.MINOR,
-                'MINOR': cls.MINOR,
-                'DIM': cls.DIMINISHED,
-                'DIMINISHED': cls.DIMINISHED,
-                'AUG': cls.AUGMENTED,
-                'AUGMENTED': cls.AUGMENTED,
-                'DOM7': cls.DOMINANT7,
-                'DOMINANT7': cls.DOMINANT7,
-                'M7': cls.MAJOR7,
-                'MIN7': cls.MINOR7,
-                'MINOR7': cls.MINOR7,
-                'DIM7': cls.DIMINISHED7,
-                'DIMINISHED7': cls.DIMINISHED7,
-                'SUSPENDED': cls.SUSPENDED,
-                'SUS': cls.SUSPENDED,
-            }
-            
-            if normalized in aliases:
-                return aliases[normalized]
-        return None
-
-    @classmethod
-    def from_string(cls, quality_str: str) -> 'ChordQualityType':
-        """Convert a string representation to a ChordQualityType."""
-        logging.debug(f"Converting string: {quality_str}")
-        if isinstance(quality_str, cls):
-            return quality_str
-
-        # First try aliases
-        # For single-letter aliases, preserve case
-        if len(quality_str) == 1:
-            normalized = quality_str
-        else:
-            normalized = quality_str.lower()
-        logging.debug(f"Normalized string: {normalized}")
-        logging.debug(f"Available aliases: {CHORD_QUALITY_ALIASES}")
-        if normalized in CHORD_QUALITY_ALIASES:
-            alias_quality = CHORD_QUALITY_ALIASES[normalized]
-            logging.debug(f"Found alias mapping: {normalized} -> {alias_quality}")
-            try:
-                return cls(alias_quality)
-            except ValueError:
-                raise ValueError(f"Invalid chord quality alias mapping: {quality_str} -> {alias_quality}")
-
-        # Then try direct mapping
-        try:
-            return cls(quality_str.upper())
-        except ValueError:
-            pass
-
-        # If not found, raise a descriptive error
-        valid_values = list(cls._member_names_) + list(CHORD_QUALITY_ALIASES.keys())
-        raise ValueError(f"Invalid chord quality: {quality_str}. Must be one of {valid_values}")
-
-    # Add alias for backward compatibility
-    @classmethod
-    def from_name(cls, quality_str: str) -> 'ChordQualityType':
-        """Alias for from_string for backward compatibility."""
-        return cls.from_string(quality_str)
-
-    def to_json(self) -> str:
-        """Convert the enum to a JSON string."""
-        return self.value
-
-    @classmethod
-    def from_json(cls, json_value: str) -> 'ChordQualityType':
-        """Create an enum instance from a JSON string."""
-        try:
-            if isinstance(json_value, cls):
-                return json_value
-            return cls.from_string(json_value)
-        except ValueError as e:
-            raise ValueError(f"Invalid JSON value: {json_value}. {str(e)}")
-        except Exception as e:
-            raise ValueError(f"Error deserializing ChordQualityType: {str(e)}")
-
-    def __str__(self) -> str:
-        return self.value
-
-    @classmethod
-    def get_intervals(cls, quality: Union['ChordQualityType', str]) -> List[int]:
-        """Get the intervals for a given chord quality."""
-        logging.debug(f"Getting intervals for quality: {quality}")
-
-        # Convert string to ChordQualityType if needed
-        if isinstance(quality, str):
-            try:
-                quality = cls.from_string(quality)
-            except ValueError as e:
-                raise ValueError(f"Invalid chord quality: {quality}. {str(e)}")
-
-        if quality.value not in CHORD_QUALITY_INTERVALS:
-            raise ValueError(f"No intervals defined for chord quality: {quality}. Must be one of {list(CHORD_QUALITY_INTERVALS.keys())}")
-        return CHORD_QUALITY_INTERVALS[quality.value]
-
-    @classmethod
-    def values(cls) -> List[str]:
-        """Get all enum values as strings."""
-        return [member.value for member in cls]
-
-    @classmethod
-    def get_all_chord_quality_values(cls) -> List[str]:
-        """Get all valid chord quality values."""
-        return [member.value for member in cls]
-
-    @classmethod
-    def get_aliases(cls) -> Dict[str, str]:
-        """Get all chord quality aliases."""
-        return CHORD_QUALITY_ALIASES
 
 class ScaleDegree(Enum):
     TONIC = 1
@@ -304,7 +86,7 @@ class ScaleType(StrEnum):
         return relative_intervals
 
     @classmethod
-    def degree_count(cls, scale_type=None):
+    def degree_count(cls, scale_type: Optional['ScaleType'] = None) -> int:
         """Returns the number of degrees for each scale type."""
         scale_degrees = {
             cls.MAJOR: 7,
@@ -327,7 +109,10 @@ class ScaleType(StrEnum):
             cls.MELODIC_MAJOR: 7,
             cls.DOUBLE_HARMONIC_MAJOR: 7,
         }
-        return scale_degrees[scale_type if scale_type else cls]
+        if scale_type is None:
+            scale_type = cls.MAJOR  # or any other default scale type you prefer
+
+        return scale_degrees[scale_type]
 
 class CustomValidationError(Exception):
     """Custom exception for validation errors."""

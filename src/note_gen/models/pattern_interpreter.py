@@ -1,6 +1,6 @@
 from __future__ import annotations
 from pydantic import BaseModel, ConfigDict, field_validator
-from src.note_gen.models.musical_elements import Note
+from src.note_gen.models.note import Note
 from src.note_gen.models.note_event import NoteEvent
 from src.note_gen.models.scale_degree import ScaleDegree
 from src.note_gen.models.scale import Scale

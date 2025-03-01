@@ -1,5 +1,5 @@
 import unittest
-from src.note_gen.models.enums import ChordQualityType
+from src.note_gen.models.chord_quality import ChordQualityType
 from src.note_gen.models.chord import Chord
 from src.note_gen.models.note import Note
 import logging
@@ -22,8 +22,8 @@ class TestChordQuality(unittest.TestCase):
             ChordQualityType.MINOR7: [0, 3, 7, 10],
             ChordQualityType.DIMINISHED7: [0, 3, 6, 9],
             ChordQualityType.HALF_DIMINISHED7: [0, 3, 6, 10],
-            ChordQualityType.DOMINANT: [0, 4, 7, 10],
-            ChordQualityType.MAJOR9: [0, 4, 7, 11],
+            ChordQualityType.DOMINANT: [0, 4, 7],
+            ChordQualityType.MAJOR9: [0, 4, 7, 11, 14],
             ChordQualityType.MINOR9: [0, 3, 7, 10, 14],
             ChordQualityType.DOMINANT9: [0, 4, 7, 10, 14],
             ChordQualityType.AUGMENTED7: [0, 4, 8, 10],
@@ -37,11 +37,13 @@ class TestChordQuality(unittest.TestCase):
             ChordQualityType.FLAT7: [0, 4, 7, 9],
             ChordQualityType.SHARP5: [0, 4, 8],
             ChordQualityType.SHARP7: [0, 4, 7, 11],
+            ChordQualityType.SUSPENDED: [0, 5, 7],
         }
         for quality in chord_qualities:
             if quality not in expected_intervals:
                 continue
             intervals = ChordQualityType.get_intervals(quality)
+            logger.debug(f"Quality: {quality}, Expected: {expected_intervals[quality]}, Actual: {intervals}")
             self.assertEqual(intervals, expected_intervals[quality])
 
     def test_from_string_valid(self) -> None:

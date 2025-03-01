@@ -17,7 +17,9 @@ from src.note_gen.fetch_patterns import (
     fetch_note_pattern_by_id,
     process_chord_data
 )
-from src.note_gen.models.enums import ScaleType, ChordQualityType
+from src.note_gen.models.enums import ScaleType
+from src.note_gen.models.chord_quality import ChordQualityType
+
 
 from src.note_gen.models.chord_progression import ChordProgression
 from src.note_gen.models.rhythm_pattern import RhythmPattern, RhythmNote, RhythmPatternData

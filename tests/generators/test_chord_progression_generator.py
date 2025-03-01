@@ -4,7 +4,9 @@ from unittest.mock import patch
 from src.note_gen.models.note import Note
 from src.note_gen.models.scale_info import ScaleInfo
 from src.note_gen.models.fake_scale_info import FakeScaleInfo
-from src.note_gen.models.enums import ScaleType, ChordQualityType
+from src.note_gen.models.enums import ScaleType
+from src.note_gen.models.chord_quality import ChordQualityType
+
 from src.note_gen.models.chord import Chord
 from src.note_gen.models.chord_quality import ChordQualityType
 from src.note_gen.models.chord_progression import ChordProgression

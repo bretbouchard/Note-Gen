@@ -12,7 +12,8 @@ from src.note_gen.dependencies import get_db_conn
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import ValidationError
 from src.note_gen.models.note import Note
-from src.note_gen.models.chord_progression import ChordProgression, ChordQualityType
+from src.note_gen.models.chord_quality import ChordQualityType
+from src.note_gen.models.chord_progression import ChordProgression
 from src.note_gen.models.rhythm_pattern import RhythmPattern, RhythmPatternData, RhythmNote
 import asyncio
 import logging
@@ -27,7 +28,7 @@ os.environ['MONGODB_TEST_URI'] = 'mongodb://localhost:27017/test_note_gen'
 os.environ['DATABASE_NAME'] = 'test_note_gen'
 
 @pytest.fixture(scope="function")
-async def test_db():
+async def test_db() -> AsyncGenerator[AsyncIOMotorDatabase, None]:
     """Fixture to provide a test database."""
     try:
         await init_db()
@@ -217,7 +218,7 @@ async def setup_teardown(test_db):
         for collection in collections:
             await test_db[collection].delete_many({})
 
-async def test_api_functionality(test_client: httpx.AsyncClient):
+async def test_api_functionality(test_client: httpx.AsyncClient) -> None:
     """Test basic API functionality."""
     # Test GET /api/v1/chord-progressions/
     response = await test_client.get("/api/v1/chord-progressions/")
@@ -237,25 +238,28 @@ async def test_api_functionality(test_client: httpx.AsyncClient):
     data = response.json()
     assert isinstance(data, list)
 
-    # Test POST /api/v1/chord-progressions/ with valid data
+    # Test POST /api/v1/chord-progressions/ with valid data including DOMINANT quality
     valid_chord_progression = {
         "name": f"Test Progression {int(time.time())}",
         "chords": [
             {
-                "root": {"note_name": "C", "octave": 4},
-                "quality": "MAJOR"
+                "root": {"note_name": "C", "octave": 4, "velocity": 100, "duration": 1},  # Pass as a dictionary
+                "quality": "DOMINANT"
             },
             {
-                "root": {"note_name": "G", "octave": 4},
+                "root": {"note_name": "G", "octave": 4, "velocity": 100, "duration": 1},  # Pass as a dictionary
                 "quality": "MAJOR"
             }
         ],
+        "key": "C",
+        "scale_type": "MAJOR",
         "scale_info": {
-            "root": {"note_name": "C", "octave": 4},
+            "root": {"note_name": "C", "octave": 4, "velocity": 100, "duration": 1},
             "scale_type": "MAJOR",
             "intervals": [0, 2, 4, 5, 7, 9, 11]
         }
     }
+    logger.debug(f"Testing POST with valid chord progression: {valid_chord_progression}")
     response = await test_client.post("/api/v1/chord-progressions/create", json=valid_chord_progression)
     assert response.status_code == 201
     data = response.json()
@@ -315,18 +319,20 @@ async def test_api_functionality(test_client: httpx.AsyncClient):
     data = response.json()
     assert data["name"] == "Test Rhythm"
 
-def test_invalid_note_name():
+@pytest.mark.asyncio
+async def test_invalid_note_name() -> None:
     """Test that invalid note names raise ValueError."""
     with pytest.raises(ValueError, match="Invalid note name format"):
         Note(note_name="H", octave=4, duration=1.0, velocity=64)
 
-def test_invalid_note_octave():
+@pytest.mark.asyncio
+async def test_invalid_note_octave() -> None:
     """Test that invalid octaves raise ValueError."""
     with pytest.raises(ValueError, match="Invalid octave"):
         Note(note_name="C", octave=11, duration=1.0, velocity=64)
 
 @pytest.mark.asyncio
-async def test_create_chord_progression_valid_data(test_client: httpx.AsyncClient):
+async def test_create_chord_progression_valid_data(test_client: httpx.AsyncClient) -> None:
     logger.debug(f'CLEAR_DB_AFTER_TESTS value: {os.getenv("CLEAR_DB_AFTER_TESTS")}')
     if os.getenv("CLEAR_DB_AFTER_TESTS", "0") == "1":
         logger.debug('Clearing database after tests')
@@ -335,27 +341,32 @@ async def test_create_chord_progression_valid_data(test_client: httpx.AsyncClien
         for collection in collections:
             await db[collection].delete_many({})
 
-    valid_data = {
+    valid_chord_progression = {
         "name": f"Test Progression {int(time.time())}",
         "chords": [
             {
-                "root": {"note_name": "C", "octave": 4},
-                "quality": "MAJOR"
+                "root": {"note_name": "C", "octave": 4, "velocity": 100, "duration": 1},  # Pass as a dictionary
+                "quality": "DOMINANT"
             },
             {
-                "root": {"note_name": "G", "octave": 4},
+                "root": {"note_name": "G", "octave": 4, "velocity": 100, "duration": 1},  # Pass as a dictionary
                 "quality": "MAJOR"
             }
         ],
+        "key": "C",
+        "scale_type": "MAJOR",
         "scale_info": {
-            "root": {"note_name": "C", "octave": 4},
+            "root": {"note_name": "C", "octave": 4, "velocity": 100, "duration": 1},
             "scale_type": "MAJOR",
             "intervals": [0, 2, 4, 5, 7, 9, 11]
         }
     }
-    
-    response = await test_client.post("/api/v1/chord-progressions/create", json=valid_data)
-    
+    logger.debug(f"Testing POST with valid chord progression: {valid_chord_progression}")
+    response = await test_client.post("/api/v1/chord-progressions/create", json=valid_chord_progression)
+    logger.debug(f"Response status code: {response.status_code}")
+    logger.debug(f"Response body: {response.text}")
+    if response.status_code != 201:
+        logger.error(f"Error response: {response.text}")
     assert response.status_code == 201
     data = response.json()
     assert data["name"] == f"Test Progression {int(time.time())}"
@@ -364,7 +375,7 @@ async def test_create_chord_progression_valid_data(test_client: httpx.AsyncClien
     assert data["chords"][1]["root"]["note_name"] == "G"
 
 @pytest.mark.asyncio
-async def test_create_chord_progression_invalid_data(test_client: httpx.AsyncClient):
+async def test_create_chord_progression_invalid_data(test_client: httpx.AsyncClient) -> None:
     logger.debug(f'CLEAR_DB_AFTER_TESTS value: {os.getenv("CLEAR_DB_AFTER_TESTS")}')
     if os.getenv("CLEAR_DB_AFTER_TESTS", "0") == "1":
         logger.debug('Clearing database after tests')
@@ -421,4 +432,105 @@ async def test_create_chord_progression_invalid_data(test_client: httpx.AsyncCli
     
     response = await test_client.post("/api/v1/chord-progressions/create", json=invalid_data_wrong_note)
     
+    assert response.status_code == 422
+
+@pytest.mark.asyncio
+async def test_create_chord_progression_valid_data_with_additional_fields(test_client: httpx.AsyncClient) -> None:
+    logger.debug(f'CLEAR_DB_AFTER_TESTS value: {os.getenv("CLEAR_DB_AFTER_TESTS")}')
+    if os.getenv("CLEAR_DB_AFTER_TESTS", "0") == "1":
+        logger.debug('Clearing database after tests')
+        db = await get_db_conn()
+        collections = await db.list_collection_names()
+        for collection in collections:
+            await db[collection].delete_many({})
+
+    valid_chord_progression = {
+        "name": f"Test Progression {int(time.time())}",
+        "chords": [
+            {
+                "root": {"note_name": "C", "octave": 4, "velocity": 100, "duration": 1},  # Pass as a dictionary
+                "quality": "DOMINANT"
+            },
+            {
+                "root": {"note_name": "G", "octave": 4, "velocity": 100, "duration": 1},  # Pass as a dictionary
+                "quality": "MAJOR"
+            }
+        ],
+        "key": "C",
+        "scale_type": "MAJOR",
+        "scale_info": {
+            "root": {"note_name": "C", "octave": 4, "velocity": 100, "duration": 1},
+            "scale_type": "MAJOR",
+            "intervals": [0, 2, 4, 5, 7, 9, 11]
+        },
+        "additional_field": "test"  # Additional field
+    }
+    logger.debug(f"Testing POST with valid chord progression: {valid_chord_progression}")
+    response = await test_client.post("/api/v1/chord-progressions/create", json=valid_chord_progression)
+    logger.debug(f"Response status code: {response.status_code}")
+    logger.debug(f"Response body: {response.text}")
+    if response.status_code != 201:
+        logger.error(f"Error response: {response.text}")
+    assert response.status_code == 201
+    data = response.json()
+    assert data["name"] == f"Test Progression {int(time.time())}"
+    assert len(data["chords"]) == 2
+    assert data["chords"][0]["root"]["note_name"] == "C"
+    assert data["chords"][1]["root"]["note_name"] == "G"
+
+@pytest.mark.asyncio
+async def test_create_chord_progression_invalid_data_with_missing_chords(test_client: httpx.AsyncClient) -> None:
+    logger.debug(f'CLEAR_DB_AFTER_TESTS value: {os.getenv("CLEAR_DB_AFTER_TESTS")}')
+    if os.getenv("CLEAR_DB_AFTER_TESTS", "0") == "1":
+        logger.debug('Clearing database after tests')
+        db = await get_db_conn()
+        collections = await db.list_collection_names()
+        for collection in collections:
+            await db[collection].delete_many({})
+
+    invalid_data_missing_chords = {
+        "name": "Test Progression",
+        "key": "C",
+        "scale_type": "MAJOR",
+        "scale_info": {
+            "root": {"note_name": "C", "octave": 4},
+            "scale_type": "MAJOR",
+            "intervals": [0, 2, 4, 5, 7, 9, 11]
+        }
+    }
+    logger.debug(f"Testing POST with invalid chord progression: {invalid_data_missing_chords}")
+    response = await test_client.post("/api/v1/chord-progressions/create", json=invalid_data_missing_chords)
+    logger.debug(f"Response status code: {response.status_code}")
+    logger.debug(f"Response body: {response.text}")
+    if response.status_code != 422:
+        logger.error(f"Error response: {response.text}")
+    assert response.status_code == 422
+
+@pytest.mark.asyncio
+async def test_create_chord_progression_invalid_data_with_empty_chords(test_client: httpx.AsyncClient) -> None:
+    logger.debug(f'CLEAR_DB_AFTER_TESTS value: {os.getenv("CLEAR_DB_AFTER_TESTS")}')
+    if os.getenv("CLEAR_DB_AFTER_TESTS", "0") == "1":
+        logger.debug('Clearing database after tests')
+        db = await get_db_conn()
+        collections = await db.list_collection_names()
+        for collection in collections:
+            await db[collection].delete_many({})
+
+    invalid_data_empty_chords = {
+        "name": "Test Progression",
+        "chords": [],
+        "key": "C",
+        "scale_type": "MAJOR",
+        "scale_info": {
+            "root": {"note_name": "C", "octave": 4},
+            "scale_type": "MAJOR",
+            "intervals": [0, 2, 4, 5, 7, 9, 11]
+        }
+    }
+    logger.debug(f"Testing POST with invalid chord progression: {invalid_data_empty_chords}")
+    response = await test_client.post("/api/v1/chord-progressions/create", json=invalid_data_empty_chords)
+    logger.debug(f"Response status code: {response.status_code}")
+    logger.debug(f"Response body: {response.text}")
+    if response.status_code != 422:
+        logger.error(f"Error response: {response.text}")
     assert response.status_code == 422

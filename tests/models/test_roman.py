@@ -1,6 +1,6 @@
 import unittest
 
-from src.note_gen.models.enums import ChordQualityType
+from src.note_gen.models.chord_quality import ChordQualityType
 from src.note_gen.models.chord import Chord
 from src.note_gen.models.note import Note
 from src.note_gen.models.scale import Scale, ScaleType

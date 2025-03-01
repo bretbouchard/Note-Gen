@@ -11,9 +11,10 @@ from bson import ObjectId
 
 from src.note_gen.dependencies import get_db_conn
 from src.note_gen.models.chord_progression import ChordProgression, ChordProgressionResponse
-from src.note_gen.models.enums import ChordQualityType
+from src.note_gen.models.chord_quality import ChordQualityType
 from src.note_gen.models.chord import Chord
 
+import logging
 # Configure logging
 logger = logging.getLogger(__name__)
 
@@ -36,12 +37,28 @@ def _validate_chord_progression(chord_progression: ChordProgression):
         raise ValueError("Chord progression must contain at least one chord")
     
     for chord in chord_progression.chords:
+        logger.debug(f"Validating chord: root={chord.root}, quality={chord.quality}")
+        logger.debug(f"Chord details: {chord}")  # Log the chord details
         if not isinstance(chord, Chord):
+            logger.error(f"Invalid chord object: {chord}")
             raise ValueError("Each element in chords must be a valid Chord object")
-        if not chord.root:
-            raise ValueError("Each chord must have a root note")
+        if not isinstance(chord.root, dict):
+            logger.error(f"Chord root must be a dictionary: {chord.root}")
+            raise ValueError("Chord root must be a dictionary")
+        if not chord.root.get("note_name") or not chord.root.get("octave"):
+            logger.error(f"Chord root must contain 'note_name' and 'octave': {chord.root}")
+            raise ValueError("Chord root must contain 'note_name' and 'octave'")
         if not chord.quality:
+            logger.error(f"Chord without quality: {chord}")
             raise ValueError("Each chord must have a quality")
+        if isinstance(chord.quality, str):
+            logger.debug(f"Validating chord quality: {chord.quality}")
+            try:
+                chord.quality = ChordQualityType[chord.quality]
+                logger.info(f"Chord quality '{chord.quality}' is valid")
+            except KeyError:
+                logger.error(f"Invalid chord quality encountered: {chord.quality}")
+                raise ValueError(f"Chord quality '{chord.quality}' is not a valid ChordQualityType")
         if not isinstance(chord.quality, ChordQualityType):
             raise ValueError("Chord quality must be a valid ChordQualityType")
 
@@ -51,16 +68,18 @@ async def create_chord_progression(
     db: AsyncIOMotorDatabase = Depends(get_db_conn)
 ) -> ChordProgressionResponse:
     """Create a new chord progression."""
-    logger.debug(f"Incoming request to create chord progression with data: {chord_progression}")
+    logger.info(f"Incoming request to create chord progression with data: {chord_progression}")
     try:
         # Validate the chord progression
         _validate_chord_progression(chord_progression)
         
         # Prepare data for insertion
         progression_data = jsonable_encoder(chord_progression)
+        logger.info(f"Inserting chord progression into database: {progression_data}")
         
         # Insert into database
         result = await db.chord_progressions.insert_one(progression_data)
+        logger.info(f"Successfully created chord progression with ID: {result.inserted_id}")
         
         # Retrieve the created progression
         created_progression = await db.chord_progressions.find_one(
@@ -86,7 +105,7 @@ async def create_chord_progression(
             detail="Chord progression with this ID already exists"
         )
     except Exception as e:
-        logger.error(f"Error creating chord progression: {str(e)}")
+        logger.error(f"Error creating chord progression: {str(e)}. Data: {chord_progression}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
 @router.post("/generate-chord-progression", response_model=ChordProgressionResponse)
@@ -108,6 +127,9 @@ async def get_chord_progressions(
     try:
         cursor = db.chord_progressions.find({})
         progressions = await cursor.to_list(length=None)
+        logger.info(f"Retrieved {len(progressions)} chord progressions from the database.")
+        for prog in progressions:
+            logger.debug(f"Progression details: {prog}")
         return [ChordProgressionResponse(**prog) for prog in progressions]
     except Exception as e:
         logger.error(f"Error retrieving chord progressions: {str(e)}")

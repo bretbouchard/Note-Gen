@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field, field_validator, ConfigDict, validator
 from src.note_gen.models.note import Note
-from src.note_gen.models.enums import ScaleType, ChordQualityType
+from src.note_gen.models.chord_quality import ChordQualityType
+from src.note_gen.models.enums import ScaleType
 from src.note_gen.models.scale import Scale
 from typing import Optional, Any, Dict, ClassVar
 import logging

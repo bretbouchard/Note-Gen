@@ -2,7 +2,7 @@ from typing import Optional, Dict, ClassVar
 from pydantic import BaseModel, ConfigDict, field_validator
 import re
 
-from src.note_gen.models.enums import ChordQualityType
+from src.note_gen.models.chord_quality import ChordQualityType
 from src.note_gen.models.chord import Chord
 from src.note_gen.models.scale import Scale
 from src.note_gen.models.note import Note

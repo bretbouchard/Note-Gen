@@ -1,4 +1,4 @@
-from typing import Optional, Union, ClassVar, Any, Literal, TypeVar, Type, Generic, overload
+from typing import Optional, Union, ClassVar, Any, Literal, TypeVar, Type, Generic, overload, Dict
 from pydantic import BaseModel, Field, ConfigDict, field_validator, model_validator
 import re
 
@@ -49,7 +49,8 @@ class Note(BaseModel):
         description="Scale degree of the note"
     )
 
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+
         """
         Initialize a Note instance.
 
@@ -535,6 +536,43 @@ class Note(BaseModel):
         
         return note_names[note_index]
 
+    def get_note_at_interval(self, interval: int, key: str, scale_type: str) -> 'Note':
+        """Get a new Note at the specified interval (in semitones) from the current note based on key and scale."""
+        
+        # Use the intervals from the CHORD_QUALITY_INTERVALS dictionary
+        if scale_type not in CHORD_QUALITY_INTERVALS:
+            raise ValueError(f"Invalid scale type: {scale_type}")
+    
+        # Calculate the root note's MIDI number
+        root_note_midi = self.note_name_to_midi(key, self.octave)
+    
+        # Calculate the new note's MIDI number
+        new_note_index = (root_note_midi + interval) % 12
+        new_midi_number = root_note_midi + CHORD_QUALITY_INTERVALS[scale_type][new_note_index]
+    
+        if new_midi_number < 0 or new_midi_number > 127:
+            raise ValueError("MIDI number out of range (0-127)")
+    
+        return self.from_midi(new_midi_number, self.duration, self.velocity)
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'Note':
+        return cls(
+            note_name=data['note_name'],
+            octave=data['octave'],
+            duration=data['duration'],
+            velocity=data['velocity']
+        )
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert Note to a dictionary."""
+        return {
+            'note_name': self.note_name,
+            'octave': self.octave,
+            'duration': self.duration,
+            'velocity': self.velocity
+        }
+
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Note):
             return NotImplemented
@@ -543,7 +581,10 @@ class Note(BaseModel):
     def __hash__(self) -> int:
         return hash((self.note_name, self.octave))
 
-    def model_dump(self, **kwargs) -> dict:
+    def json(self, *args: Any, **kwargs: Any) -> str:
+        return super().model_dump_json(*args, **kwargs)
+
+    def model_dump(self, **kwargs: Any) -> Dict[str, Any]:
         """
         Serialize the Note object to a dictionary.
         

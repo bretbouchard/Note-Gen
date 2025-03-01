@@ -5,7 +5,8 @@ import logging
 from src.note_gen.models.note import Note
 from src.note_gen.models.scale import Scale
 from src.note_gen.models.chord import Chord
-from src.note_gen.models.enums import ChordQualityType, ScaleDegree, ScaleType
+from src.note_gen.models.chord_quality import ChordQualityType
+from src.note_gen.models.enums import ScaleDegree, ScaleType
 
 logger = logging.getLogger(__name__)
 

@@ -14,7 +14,8 @@ from src.note_gen.models.chord_progression import ChordProgression
 from src.note_gen.models.rhythm_pattern import RhythmPattern, RhythmNote
 from src.note_gen.models.chord import Chord
 from src.note_gen.models.note import Note
-from src.note_gen.models.enums import ChordQualityType, ScaleType
+from src.note_gen.models.chord_quality import ChordQualityType
+from src.note_gen.models.enums import ScaleType
 from src.note_gen.models.patterns import NotePattern, NotePatternData
 from src.note_gen.models.scale_info import ScaleInfo
 from src.note_gen.database.db import get_db_conn
@@ -71,7 +72,7 @@ def process_chord_data(chord_data: Dict[str, Any]) -> Dict[str, Any]:
 
     return processed_data
 
-async def fetch_chord_progressions(db: Optional[AsyncIOMotorDatabase] = None) -> List[ChordProgression]:
+async def fetch_chord_progressions(db: Optional[AsyncIOMotorDatabase[Any]] = None) -> List[ChordProgression]:
     """Fetch all chord progressions from the database."""
     try:
         if db is None:
@@ -95,7 +96,7 @@ async def fetch_chord_progressions(db: Optional[AsyncIOMotorDatabase] = None) ->
         logger.error(f"Error fetching chord progressions: {e}")
         return []
 
-async def fetch_chord_progression_by_id(chord_progression_id: str, db: Optional[AsyncIOMotorDatabase] = None) -> Optional[ChordProgression]:
+async def fetch_chord_progression_by_id(chord_progression_id: str, db: Optional[AsyncIOMotorDatabase[Any]] = None) -> Optional[ChordProgression]:
     """Fetch a specific chord progression by its ID."""
     try:
         if db is None:
@@ -112,7 +113,7 @@ async def fetch_chord_progression_by_id(chord_progression_id: str, db: Optional[
         return None
 
 async def fetch_rhythm_patterns(
-    db: Optional[AsyncIOMotorDatabase] = None,
+    db: Optional[AsyncIOMotorDatabase[Any]] = None,
     query: Optional[Dict[str, Any]] = None,
     limit: Optional[int] = None,
     skip: Optional[int] = None
@@ -162,7 +163,7 @@ async def fetch_rhythm_patterns(
 
 async def fetch_rhythm_pattern_by_id(
     pattern_id: str, 
-    db: Optional[AsyncIOMotorDatabase] = None
+    db: Optional[AsyncIOMotorDatabase[Any]] = None
 ) -> Optional[RhythmPattern]:
     """
     Fetch a specific rhythm pattern by its ID with comprehensive validation.
@@ -194,7 +195,7 @@ async def fetch_rhythm_pattern_by_id(
         return None
 
 async def fetch_note_patterns(
-    db: Optional[AsyncIOMotorDatabase] = None,
+    db: Optional[AsyncIOMotorDatabase[Any]] = None,
     query: Optional[Dict[str, Any]] = None,
 ) -> List[NotePattern]:
     """
@@ -238,7 +239,7 @@ async def fetch_note_patterns(
 
 async def fetch_note_pattern_by_id(
     pattern_id: str,
-    db: Optional[AsyncIOMotorDatabase] = None
+    db: Optional[AsyncIOMotorDatabase[Any]] = None
 ) -> Optional[NotePattern]:
     """
     Fetch a specific note pattern by its ID with robust validation.
@@ -353,40 +354,24 @@ def _normalize_note_pattern_document(
         if 'velocity' in normalized_doc:
             normalized_doc['velocity'] = float(normalized_doc['velocity'])
         
-        normalized_doc['data'] = data
-
-    # Convert data field to NotePatternData if it's a dict
-    if 'data' in normalized_doc:
-        try:
-            # If data is already a NotePatternData instance, keep it
-            if isinstance(normalized_doc['data'], NotePatternData):
-                return normalized_doc
-
-            # If data is a dictionary, convert it to NotePatternData
-            if isinstance(normalized_doc['data'], dict):
-                # Ensure velocity is converted to float
-                if 'velocity' in normalized_doc['data']:
-                    normalized_doc['data']['velocity'] = float(normalized_doc['data']['velocity'])
-                
-                # Convert notes' velocities to float
-                if 'notes' in normalized_doc['data']:
-                    for note in normalized_doc['data']['notes']:
-                        if 'velocity' in note:
-                            note['velocity'] = float(note['velocity'])
-                
-                normalized_doc['data'] = NotePatternData(**normalized_doc['data'])
-            
-            # If data is a list or other type, try to create NotePatternData
-            elif normalized_doc['data'] is not None:
-                normalized_doc['data'] = NotePatternData(notes=normalized_doc['data'])
-        except Exception as e:
-            logger.warning(f"Could not convert data field to NotePatternData: {e}")
-            # Fallback to an empty NotePatternData
-            normalized_doc['data'] = NotePatternData()
+        # Update the instantiation of NotePatternData
+        if isinstance(data, dict):
+            try:
+                normalized_doc['data'] = NotePatternData(notes=data.get('notes', []))  # Ensure 'data' contains the required notes
+            except Exception as e:
+                logger.warning(f"Could not convert data field to NotePatternData: {e}")
+                normalized_doc['data'] = NotePatternData(notes=[])  # Fallback to an empty NotePatternData
+        else:
+            # If data is not a dict, try to create NotePatternData
+            try:
+                normalized_doc['data'] = NotePatternData(notes=data)  # Ensure 'data' contains the required notes
+            except Exception as e:
+                logger.warning(f"Could not convert data field to NotePatternData: {e}")
+                normalized_doc['data'] = NotePatternData(notes=[])  # Fallback to an empty NotePatternData
 
     return normalized_doc
 
-def _create_default_note_pattern(*args, **kwargs) -> NotePattern:
+def _create_default_note_pattern(*args: Any, **kwargs: Any) -> NotePattern:
     """
     Create a default NotePattern instance for error handling.
 
@@ -473,7 +458,7 @@ from typing import Any, Dict, List, Optional
 import motor.motor_asyncio
 from pydantic import ValidationError
 
-from src.note_gen.models.note_pattern import NotePattern
+from src.note_gen.models.patterns import NotePatternData, NotePattern
 
 # Main execution
 if __name__ == "__main__":
