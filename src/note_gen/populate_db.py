@@ -2,18 +2,33 @@ from motor import motor_asyncio
 from motor.motor_asyncio import AsyncIOMotorClient
 import uuid
 import os
-from typing import List, Dict, Any
-from src.note_gen.models.presets import (
-    COMMON_PROGRESSIONS,
-    NOTE_PATTERNS,
-    RHYTHM_PATTERNS,
-    DEFAULT_KEY,
-    DEFAULT_SCALE_TYPE
-)
-from src.note_gen.models.rhythm_pattern import RhythmPatternData
-from src.note_gen.models.roman_numeral import RomanNumeral, ChordQualityType
+from typing import List, Dict, Any, Tuple, Optional
+from enum import Enum
+
+# from src.note_gen.models.presets import (
+#     COMMON_PROGRESSIONS,
+#     NOTE_PATTERNS,
+#     RHYTHM_PATTERNS,
+#     DEFAULT_KEY,
+#     DEFAULT_SCALE_TYPE
+# )
+
+
+from src.note_gen.models.roman_numeral import RomanNumeral
+from src.note_gen.models.presets import Patterns, DEFAULT_KEY, DEFAULT_SCALE_TYPE
+from src.note_gen.models.patterns import NOTE_PATTERNS, RHYTHM_PATTERNS
+RHYTHM_PATTERNS = RHYTHM_PATTERNS
+
+
 
 # Import the actual presets
+
+
+class ChordQuality(Enum):
+    MAJOR = 1
+    MINOR = 2
+    DIMINISHED = 3
+    AUGMENTED = 4
 
 
 async def clear_existing_data(db: motor_asyncio.AsyncIOMotorDatabase) -> None:
@@ -21,21 +36,23 @@ async def clear_existing_data(db: motor_asyncio.AsyncIOMotorDatabase) -> None:
     await db.note_patterns.delete_many({})
     await db.rhythm_patterns.delete_many({})
 
-async def format_chord_progression(name: str, progression: List[str]) -> Dict[str, Any]:
-    if not progression:
+async def format_chord_progression(progression_name: str, roman_progression: List[str]) -> Dict:
+    from src.note_gen.models.patterns import Patterns
+    COMMON_PROGRESSIONS = Patterns.COMMON_PROGRESSIONS
+    if not roman_progression:
         raise ValueError("Progression list cannot be empty.")
 
     chord_progressions = []
-    for chord in progression:
+    for chord in roman_progression:  # Assuming progression is a list of tuples (chord, quality)
         try:
-            roman_numeral = RomanNumeral(scale_degree=RomanNumeral.ROMAN_TO_INT[chord], quality=ChordQualityType.MAJOR)
+            roman_numeral = RomanNumeral(scale_degree=RomanNumeral.ROMAN_TO_INT[chord], quality=ChordQuality.MAJOR)
             chord_progressions.append(roman_numeral)
         except KeyError:
             raise ValueError(f"Invalid Roman numeral: {chord}")
 
     return {
         'id': str(uuid.uuid4()),
-        'name': name,
+        'name': progression_name,
         'chords': [
             {
                 'root': {'note_name': roman_numeral.get_note_name(), 'octave': 4},
@@ -90,9 +107,11 @@ async def run_imports():
         await clear_existing_data(db)  # Clear existing data
     
     # Format and prepare all progressions
+    from src.note_gen.models.patterns import Patterns
+    COMMON_PROGRESSIONS = Patterns.COMMON_PROGRESSIONS
     chord_progressions = [
-        await format_chord_progression(name, prog)
-        for name, prog in COMMON_PROGRESSIONS.items()
+        await format_chord_progression(name, prog_list)
+        for name, prog_list in COMMON_PROGRESSIONS.items()
     ]
     
     # Format and prepare all note patterns

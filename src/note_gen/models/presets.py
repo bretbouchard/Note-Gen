@@ -2,21 +2,21 @@
 
 """Presets for chord progressions, note patterns, and rhythm patterns."""
 
-from typing import Dict, List, Any
-from pydantic import BaseModel
+from typing import Dict, List, Any, Optional
+from pydantic import BaseModel, Field, ConfigDict, field_validator, model_validator
 import uuid
+import logging
 
 from src.note_gen.models.chord_progression import ChordProgression
 from src.note_gen.models.chord import Chord
 from src.note_gen.models.note import Note
-from src.note_gen.models.note_pattern import NotePattern
-from src.note_gen.models.rhythm_pattern import (RhythmPattern,RhythmPatternData,RhythmNote,)
+from src.note_gen.models.patterns import Patterns, NotePattern, NotePatternData, RhythmNote, ChordProgressionPattern, RhythmPattern, RhythmPatternData
 from src.note_gen.models.scale import Scale
 from src.note_gen.models.enums import ScaleType
-from src.note_gen.models.chord_quality import ChordQualityType
-
 from src.note_gen.models.scale_info import ScaleInfo 
 from src.note_gen.models.roman_numeral import RomanNumeral
+
+from src.note_gen.models.patterns import COMMON_PROGRESSIONS, NOTE_PATTERNS, RHYTHM_PATTERNS
 
 # Default values for musical components
 DEFAULT_KEY = "C"
@@ -26,54 +26,163 @@ DEFAULT_NOTE_PATTERN = "Simple Triad"
 DEFAULT_RHYTHM_PATTERN = "Basic Rhythm"
 DEFAULT_RHYTHM_PATTERN_NAME = "Basic"
 
-# Common chord progressions in Roman numeral notation
-COMMON_PROGRESSIONS: Dict[str, List[str]] = {
-    # Standard Progressions
-    "I-IV-V": ["I", "IV", "V"], 
-    "Pop Ballad_I-V-vi-IV": ["I", "V", "vi", "IV"],
-    "ii-V-I": ["ii", "V", "I"],
-    "I-vi-IV-V/50s Doo-Wop": ["I", "vi", "IV", "V"], 
-    "vi-IV-I-V/Modern Pop": ["vi", "IV", "I", "V"],
-    "I-V-vi-iii-IV-I-IV-V/Pop Canon": ["I", "V", "vi", "iii", "IV", "I", "IV", "V"],
-    "I-IV-V-I": ["I", "IV", "V", "I"],
-    # Jazz Progressions
-    "Autumn Leaves": ["ii7", "V7", "Imaj7", "IV7", "vii°7", "III7", "vi7"],
-    "Giant Steps": ["Imaj7", "III7", "vi7", "II7", "V7", "VII7", "III7"],
-    "12-Bar Blues": ["I7","I7","I7","I7","IV7","IV7","I7","I7","V7","IV7","I7","V7"],
-    "i vi ii V": ["i", "vi", "ii", "V"],
-    "Minor Scale Ascension": ["i", "ii", "III", "iv", "v", "VI", "VII", "i"],
-    "II-V-I in C Major": ["Dm7", "G7", "Cmaj7"],
-    "II-V-I in G Major": ["Am7", "D7", "Gmaj7"],
-    "I-VI-II-V/Ladybird": ["Imaj7", "vi7", "ii7", "V7"],
-    "Rhythm Changes": ["Imaj7", "VI7", "ii7", "V7", "Imaj7", "VI7", "ii7", "V7"],
-    "Jazz Blues in F": ["F7", "Bb7", "F7", "D7", "G7", "C7"],
-    "Minor II-V-I": ["ii°7", "V7", "i"],
-    "Descending II-Vs": ["ii7", "V7", "ii7", "V7"],
-    "Extended Turnaround": ["I", "vi", "ii", "V", "I"],
-    "Backdoor Progression": ["I", "bIII", "bVII", "IV"],
-    "Modal Interchange": ["I", "bIII", "iv", "V"],
-    "Altered Dominant": ["V7alt", "I"],
-    "Parallel Minor": ["I", "vi", "iv", "V"],
-    "Half-Step II-V": ["ii", "V", "ii♭5", "V♭5"],
-    "Coltrane Changes": ["I", "VI7", "ii7", "V7", "I♭7", "VI♭7", "ii♭7", "V♭7"],
-    "Pedal Point": ["I", "I/V", "V", "I"],
-    "III-VI-II-V": ["iii", "vi", "ii", "V"],
-    "Tritone Substitution": ["V7", "V7alt", "I"],
-    "Minor Blues": ["im7", "iv7", "v7", "im7"],
-    "Funk Groove": ["I7", "IV7", "V7"],
-    "I7-IV7-V7 Turnaround": ["I7", "IV7", "V7"],
-    "Bird Blues": ["I7", "VI7", "ii7", "V7"],
-    "So What": ["Dm7", "Dm7", "Ebm7", "Ebm7"],
-    "Giant Steps Bridge": ["B", "D7", "G", "Bb7", "Eb", "F#7"],
-    "Misty": ["i", "vi", "ii", "V"],
-    "Rock Power": ["I", "V", "vi"],
-    "Andalusian Cadence": ["Am", "G", "F", "E"],
-    "EDM Build": ["i", "V", "vi", "III"],
-    "Pop Minor": ["i", "VI", "III", "VII"],
-}
+class ChordProgressionPreset(BaseModel):
+    """Represents a preset chord progression pattern with proper Roman numeral handling."""
+    name: str = Field(..., description="Name of the chord progression")
+    numerals: List[str] = Field(..., description="List of Roman numerals representing the progression")
+    qualities: Optional[List[str]] = Field(default=None, description="Optional chord qualities")
+    durations: Optional[List[float]] = Field(default=None, description="Optional durations for each chord")
+    description: str = Field(default="", description="Description of the progression")
+    tags: List[str] = Field(default_factory=lambda: ["default"], description="Tags for categorization")
+    complexity: float = Field(default=0.5, ge=0.0, le=1.0, description="Complexity rating")
+    genre: Optional[str] = Field(default=None, description="Musical genre")
+
+    @field_validator('numerals')
+    @classmethod
+    def validate_numerals(cls, v: List[str]) -> List[str]:
+        """Validate Roman numerals are in correct format."""
+        for numeral in v:
+            try:
+                # This will raise ValueError if invalid
+                RomanNumeral.from_string(numeral)
+            except ValueError as e:
+                raise ValueError(f"Invalid Roman numeral '{numeral}': {str(e)}")
+        return v
+
+    @field_validator('qualities')
+    @classmethod
+    def validate_qualities(cls, v: Optional[List[str]]) -> Optional[List[str]]:
+        """Validate chord qualities if provided."""
+        if v is None:
+            return v
+        valid_qualities = {"MAJOR", "MINOR", "DIMINISHED", "AUGMENTED", "DOMINANT", 
+                         "MAJOR7", "MINOR7", "DOMINANT7", "DIMINISHED7", "HALF_DIMINISHED7"}
+        for quality in v:
+            base_quality = quality.split('7')[0].upper() if '7' in quality else quality.upper()
+            if base_quality not in valid_qualities and quality not in valid_qualities:
+                raise ValueError(f"Invalid chord quality: {quality}")
+        return v
+
+    @field_validator('durations')
+    @classmethod
+    def validate_durations(cls, v: Optional[List[float]]) -> Optional[List[float]]:
+        """Validate durations if provided."""
+        if v is None:
+            return v
+        if any(d <= 0 for d in v):
+            raise ValueError("All durations must be positive")
+        return v
+
+    def to_pattern(self) -> ChordProgressionPattern:
+        """Convert to a ChordProgressionPattern."""
+        from src.note_gen.models.patterns import ChordProgressionPattern, ChordPatternItem
+        
+        pattern_items = []
+        for i, numeral in enumerate(self.numerals):
+            roman = RomanNumeral.from_string(numeral)
+            quality = self.qualities[i] if self.qualities and i < len(self.qualities) else "DEFAULT"
+            duration = self.durations[i] if self.durations and i < len(self.durations) else 4.0
+            
+            pattern_items.append(ChordPatternItem(
+                degree=roman.to_scale_degree(),
+                quality=quality,
+                duration=duration
+            ))
+        
+        return ChordProgressionPattern(
+            name=self.name,
+            description=self.description,
+            tags=self.tags,
+            complexity=self.complexity,
+            genre=self.genre,
+            pattern=pattern_items
+        )
+
+class Patterns(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+    
+    chord_progressions: Dict[str, ChordProgressionPreset] = Field(
+        default_factory=lambda: {
+            name: ChordProgressionPreset(
+                name=name,
+                numerals=numerals,
+                description=f"Common {name} progression",
+                tags=["default"],
+                complexity=0.5
+            )
+            for name, numerals in COMMON_PROGRESSIONS_ROMAN.items()
+        },
+        description='Common chord progression patterns with Roman numeral support'
+    )
+    
+    note_patterns: Dict[str, NotePattern] = Field(
+        default_factory=lambda: {
+            'Simple Triad': NotePattern(
+                name='Simple Triad',
+                pattern=[0, 2, 4],
+                complexity=0.5,
+                tags=['default']
+            ),
+            'Minor Triad': NotePattern(
+                name='Minor Triad',
+                pattern=[0, 1, 4],
+                complexity=0.5,
+                tags=['default']
+            )
+        },
+        description='Note pattern configurations'
+    )
+    
+    rhythm_patterns: Dict[str, RhythmPattern] = Field(
+        default_factory=lambda: RHYTHM_PATTERNS,
+        description='Rhythm pattern configurations'
+    )
+
+    @model_validator(mode='after')
+    def validate_patterns(self) -> 'Patterns':
+        """Ensure all patterns are properly initialized and validated."""
+        # Convert any raw progression data to ChordProgressionPreset objects
+        for name, progression in self.chord_progressions.items():
+            if isinstance(progression, dict):
+                self.chord_progressions[name] = ChordProgressionPreset(**progression)
+            elif isinstance(progression, list):
+                self.chord_progressions[name] = ChordProgressionPreset(
+                    name=name,
+                    numerals=progression,
+                    description=f"Common {name} progression"
+                )
+        return self
+
+    def get_chord_progression(self, name: str) -> Optional[ChordProgressionPattern]:
+        """Get a chord progression pattern by name."""
+        if name not in self.chord_progressions:
+            return None
+        return self.chord_progressions[name].to_pattern()
+
+    def add_chord_progression(self, name: str, numerals: List[str], 
+                            qualities: Optional[List[str]] = None,
+                            durations: Optional[List[float]] = None,
+                            description: str = "",
+                            tags: Optional[List[str]] = None,
+                            complexity: float = 0.5,
+                            genre: Optional[str] = None) -> None:
+        """Add a new chord progression pattern."""
+        self.chord_progressions[name] = ChordProgressionPreset(
+            name=name,
+            numerals=numerals,
+            qualities=qualities,
+            durations=durations,
+            description=description,
+            tags=tags or ["default"],
+            complexity=complexity,
+            genre=genre
+        )
 
 class Presets(BaseModel):
-    common_progressions: Dict[str, List[str]] = COMMON_PROGRESSIONS
+    patterns: Patterns = Field(default_factory=Patterns)
+    common_progressions: Dict[str, List[str]] = Field(
+        default_factory=lambda: dict(COMMON_PROGRESSIONS)
+    )
     default_key: str = DEFAULT_KEY
     default_scale_type: ScaleType = DEFAULT_SCALE_TYPE
 
@@ -106,9 +215,9 @@ class Presets(BaseModel):
             scale_info=scale_info
         )
 
-    def get_default_note_pattern(self) -> NotePattern:
+    def get_default_note_pattern(self) -> Patterns:
         """Get the default note pattern."""
-        return NotePattern(
+        return Patterns(
             id=uuid.uuid4(),
             name="Default Pattern",
             pattern=[],
@@ -119,9 +228,9 @@ class Presets(BaseModel):
             data=NOTE_PATTERNS[DEFAULT_NOTE_PATTERN]
         )
 
-    def get_default_rhythm_pattern(self) -> RhythmPattern:
+    def get_default_rhythm_pattern(self) -> Patterns:
         """Get the default rhythm pattern."""
-        return RhythmPattern(
+        return Patterns(
             name="Default Rhythm Pattern",
             data=RHYTHM_PATTERNS[DEFAULT_RHYTHM_PATTERN],
             complexity=0.5
@@ -139,155 +248,8 @@ class Presets(BaseModel):
         """Get a list of available rhythm pattern names."""
         return list(RHYTHM_PATTERNS.keys())
 
-# Note patterns
-NOTE_PATTERNS: Dict[str, Dict[str, Any]] = {
-    "Simple Triad": {
-        "name": "Simple Triad",
-        "pattern": [0, 2, 4],
-        "tags": ["triad", "basic"],
-        "complexity": 0.5,
-        "description": "A simple triad pattern."
-    },
-    "Ascending Scale": {
-        "name": "Ascending Scale",
-        "pattern": [0, 1, 2, 3, 4, 5, 6, 7],
-        "tags": ["scale", "ascending"],
-        "complexity": 0.3,
-        "description": "An ascending scale pattern."
-    },
-    "Descending Scale": {
-        "name": "Descending Scale",
-        "pattern": [7, 6, 5, 4, 3, 2, 1, 0],
-        "tags": ["scale", "descending"],
-        "complexity": 0.3,
-        "description": "A descending scale pattern." 
-    },
-    "Arpeggio": {
-        "name": "Arpeggio",
-        "pattern": [0, 2, 4, 7],
-        "tags": ["arpeggio", "broken chord"],
-        "complexity": 0.4,
-        "description": "An arpeggio pattern."
-    },
-    "Pentatonic": {
-        "name": "Pentatonic",
-        "pattern": [0, 2, 4, 7, 9],
-        "tags": ["pentatonic", "scale"],
-        "complexity": 0.4,
-        "description": "A pentatonic scale pattern."
-    }
-}
-
-# Rhythm patterns
-RHYTHM_PATTERNS: Dict[str, Dict[str, Any]] = {
-    "Basic Rhythm": {
-        "name": "Basic Rhythm",
-        "pattern": [1, 1, 1, 1],
-        "tags": ["basic", "rhythm"],
-        "complexity": 0.2,
-        "description": "A simple on-off rhythm pattern.",
-        "notes": [
-            {"position": 0, "duration": 1.0, "velocity": 100, "is_rest": False},
-            {"position": 1, "duration": 1.0, "velocity": 100, "is_rest": True},
-            {"position": 2, "duration": 1.0, "velocity": 100, "is_rest": False},
-            {"position": 3, "duration": 1.0, "velocity": 100, "is_rest": True}
-        ]
-    },
-    "Swing Rhythm": {
-        "name": "Swing Rhythm",
-        "pattern": [1, -0.5, 1, -0.5],
-        "tags": ["swing", "rhythm"],
-        "complexity": 0.3,
-        "description": "A swing rhythm pattern.",
-        "notes": [
-            {"position": 0, "duration": 0.5, "velocity": 100, "is_rest": False},
-            {"position": 0.5, "duration": 0.5, "velocity": 100, "is_rest": True},
-            {"position": 1, "duration": 0.5, "velocity": 100, "is_rest": False},
-            {"position": 1.5, "duration": 0.5, "velocity": 100, "is_rest": True}
-        ]
-    },
-    "Rock Rhythm": {
-        "name": "Rock Rhythm",
-        "pattern": [1, 0, 1, 0],
-        "tags": ["rock", "rhythm"],
-        "complexity": 0.4,
-        "description": "A simple rock rhythm pattern.",
-        "notes": [
-            {"position": 0, "duration": 1.0, "velocity": 100, "is_rest": False},
-            {"position": 1, "duration": 1.0, "velocity": 100, "is_rest": True},
-            {"position": 2, "duration": 0.5, "velocity": 100, "is_rest": False},
-            {"position": 2.5, "duration": 0.5, "velocity": 100, "is_rest": True}
-        ]
-    },
-    "Waltz Rhythm": {
-        "name": "Waltz Rhythm",
-        "pattern": [1, -1, 1, -1],
-        "tags": ["waltz", "rhythm"],
-        "complexity": 0.3,
-        "description": "A waltz rhythm pattern.",
-        "notes": [
-            {"position": 0, "duration": 1.0, "velocity": 100, "is_rest": False},
-            {"position": 1, "duration": 1.0, "velocity": 100, "is_rest": True},
-            {"position": 2, "duration": 1.0, "velocity": 100, "is_rest": False},
-            {"position": 3, "duration": 1.0, "velocity": 100, "is_rest": True}
-        ]
-    },
-    "Bossa Nova": {
-        "name": "Bossa Nova",
-        "pattern": [1, -1, 1, -1],
-        "tags": ["bossa nova", "rhythm"],
-        "complexity": 0.3,
-        "description": "A bossa nova rhythm pattern.",
-        "notes": [
-            {"position": 0.0, "duration": 1.0, "velocity": 100, "is_rest": False},
-            {"position": 1.0, "duration": 0.5, "velocity": 100, "is_rest": True},
-            {"position": 1.5, "duration": 0.5, "velocity": 100, "is_rest": False},
-            {"position": 2.0, "duration": 0.5, "velocity": 100, "is_rest": True}
-        ]
-    },
-    "Latin Rhythm": {
-        "name": "Latin Rhythm",
-        "pattern": [1, -1, 1, -1],
-        "tags": ["latin", "rhythm"],
-        "complexity": 0.3,
-        "description": "A Latin-inspired rhythm pattern.",
-        "notes": [
-            {"position": 0, "duration": 1, "velocity": 100, "is_rest": False},
-            {"position": 1, "duration": 0.25, "velocity": 100, "is_rest": True},
-            {"position": 1.5, "duration": 0.5, "velocity": 100, "is_rest": False},
-            {"position": 2.0, "duration": 0.5, "velocity": 100, "is_rest": True}
-        ]
-    },
-    "Funk Rhythm": {
-        "name": "Funk Rhythm",
-        "pattern": [1, -1, 1, -1],
-        "tags": ["funk", "rhythm"],
-        "complexity": 0.3,
-        "description": "A funk-inspired rhythm pattern.",
-        "notes": [
-            {"position": 0, "duration": 0.5, "velocity": 100, "is_rest": False},
-            {"position": 0.5, "duration": 0.5, "velocity": 100, "is_rest": True},
-            {"position": 1.5, "duration": 0.5, "velocity": 100, "is_rest": False},
-            {"position": 2.0, "duration": 0.5, "velocity": 100, "is_rest": True}   
-        ]
-    },
-    "Jazz Rhythm": {
-        "name": "Jazz Rhythm",
-        "pattern": [1, -1, 1, -1],
-        "tags": ["jazz", "rhythm"],
-        "complexity": 0.3,
-        "description": "A jazz-inspired rhythm pattern.",
-        "notes": [
-            {"position": 0, "duration": 0.5, "velocity": 100, "is_rest": False},
-            {"position": 0.5, "duration": 0.5, "velocity": 100, "is_rest": True},
-            {"position": 1.0, "duration": 0.5, "velocity": 100, "is_rest": False},
-            {"position": 1.5, "duration": 0.5, "velocity": 100, "is_rest": True}
-        ]   
-    }
-} 
-
 # Chord progressions
-CHORD_PROGRESSIONS: Dict[str, Dict[str, Any]] = {
+Patterns.CHORD_PROGRESSIONS = {
     "I-IV-V": {
         "chords": [
             {"root": {"note_name": "C", "octave": 4}, "quality": "MAJOR"},
@@ -702,7 +664,7 @@ def get_available_rhythm_patterns() -> List[str]:
     return list(RHYTHM_PATTERNS.keys())
 
 # Count the number of chord progressions, note patterns, and rhythm patterns
-chord_progressions_count = len(CHORD_PROGRESSIONS)
+chord_progressions_count = len(Patterns.CHORD_PROGRESSIONS)
 note_patterns_count = len(NOTE_PATTERNS)
 rhythm_patterns_count = len(RHYTHM_PATTERNS)
 

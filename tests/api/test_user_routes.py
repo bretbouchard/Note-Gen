@@ -2,9 +2,10 @@
 
 import os
 import pytest
+import pytest_asyncio
 from fastapi.testclient import TestClient
-from main import app
-from src.note_gen.models.rhythm_pattern import RhythmPattern, RhythmPatternData, RhythmNote
+from src.note_gen import app    
+from src.note_gen.models.patterns import RhythmPattern, RhythmPatternData, RhythmNote
 from src.note_gen.database.db import get_db_conn, init_db, close_mongo_connection
 from motor.motor_asyncio import AsyncIOMotorClient
 from bson import ObjectId
@@ -42,38 +43,49 @@ def rhythm_data():
         "groove_type": "swing"
     }
 
-@pytest.fixture
-async def test_db():
-    """Fixture to provide a test database connection."""
-    logger.debug(f'Connecting to database with MONGODB_URI: {os.getenv("MONGODB_URI")}, db_name: test_note_gen')
-    async with get_db_conn() as db:
-        if os.getenv("CLEAR_DB_AFTER_TESTS", "0") == "1":
-            collections = await db.list_collection_names()
-            for collection in collections:
-                await db[collection].delete_many({})
-        yield db
-
-@pytest.fixture
-async def test_client():
-    """Fixture to provide an async test client."""
+@pytest_asyncio.fixture
+async def test_client(test_db):
+    """
+    Provides an async test client specifically for user routes tests.
+    Uses test_db fixture from conftest.py to ensure database is properly initialized.
+    """
+    logger.debug("Creating test client for user routes tests")
+    
+    # Create transport using the ASGI app
     transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://localhost:8000") as client:
+    
+    # Use http://test as base_url - the actual URL doesn't matter
+    # because we're using the transport directly
+    async with httpx.AsyncClient(
+        transport=transport, 
+        base_url="http://test",
+        # Explicitly set follow_redirects to True to handle 307 Temporary Redirect responses
+        # This is necessary to ensure the test client follows redirects correctly
+        follow_redirects=True,  
+    ) as client:
+        logger.debug("Test client created")
         yield client
+    
+    logger.debug("Test client closed")
 
 # Consolidated tests for user routes functionality
 
 @pytest.mark.asyncio
 async def test_user_routes_functionality(test_client):
     """Test user routes functionality."""
-    # Test get user - should return 404 since no user exists
+    # Test get user - should return 200 with default test user
     response = await test_client.get('/api/v1/users/me')
-    assert response.status_code == 404
+    assert response.status_code == 200
+    assert response.json() == {"username": "testuser"}
 
 @pytest.mark.asyncio
 async def test_get_rhythm_pattern(test_client, rhythm_data):
     """Test getting a rhythm pattern."""
+    # Generate a unique name using a timestamp to avoid conflicts with other tests
+    unique_name = f"Test Get Pattern {uuid.uuid4()}"
+    
     pattern = {
-        "name": "Test Get Pattern",
+        "name": unique_name,
         "data": rhythm_data,
         "is_test": True,
         "style": "basic",
@@ -81,6 +93,13 @@ async def test_get_rhythm_pattern(test_client, rhythm_data):
     }
     response = await test_client.post('/api/v1/rhythm-patterns', json=pattern)
     assert response.status_code == 201
+    created_pattern = response.json()
+    pattern_id = created_pattern["id"]
+
+    # Get pattern
+    response = await test_client.get(f'/api/v1/rhythm-patterns/{pattern_id}')
+    assert response.status_code == 200
+    assert response.json()["name"] == unique_name
 
 @pytest.mark.asyncio
 async def test_invalid_rhythm_pattern_id(test_client):
@@ -108,8 +127,11 @@ async def test_create_rhythm_pattern(test_client, rhythm_data):
 @pytest.mark.asyncio
 async def test_create_duplicate_rhythm_pattern(test_client, rhythm_data):
     """Test creating a duplicate rhythm pattern."""
+    # Generate a unique name using a timestamp to avoid conflicts with other tests
+    unique_name = f"Test Duplicate Pattern {uuid.uuid4()}"
+    
     pattern = {
-        "name": "Test Duplicate Pattern",
+        "name": unique_name,
         "data": rhythm_data,
         "is_test": True,
         "style": "basic",
@@ -141,8 +163,11 @@ async def test_invalid_rhythm_pattern(test_client):
 @pytest.mark.asyncio
 async def test_create_and_delete_rhythm_pattern(test_client, rhythm_data):
     """Test creating and deleting a rhythm pattern."""
+    # Use a unique name for each test run
+    unique_name = f"Test Delete Pattern {uuid.uuid4()}"
+    
     pattern = {
-        "name": "Test Delete Pattern",
+        "name": unique_name,
         "data": rhythm_data,
         "is_test": True,
         "style": "basic",
@@ -151,14 +176,22 @@ async def test_create_and_delete_rhythm_pattern(test_client, rhythm_data):
 
     # Create pattern
     response = await test_client.post('/api/v1/rhythm-patterns', json=pattern)
-    assert response.status_code == 201, f"Failed to create pattern: {response.json()}"
+    assert response.status_code == 201, f"Failed to create pattern: {response.text}"
     created_pattern = response.json()
-    pattern_id = created_pattern["id"]
+    pattern_id = created_pattern.get("id")
+    
+    # Ensure we have a valid ID
+    assert pattern_id is not None, "Created pattern is missing ID"
+    print(f"Created rhythm pattern ID: {pattern_id}")
+    
+    # Test we can retrieve the pattern first
+    response = await test_client.get(f'/api/v1/rhythm-patterns/{pattern_id}')
+    assert response.status_code == 200, f"Failed to retrieve pattern before deletion: {response.text}"
 
     # Delete the pattern
     response = await test_client.delete(f'/api/v1/rhythm-patterns/{pattern_id}')
-    assert response.status_code == 204
+    assert response.status_code == 204, f"Failed to delete pattern: {response.text}"
 
     # Verify pattern is deleted
     response = await test_client.get(f'/api/v1/rhythm-patterns/{pattern_id}')
-    assert response.status_code == 404
+    assert response.status_code == 404, f"Pattern still exists after deletion: {response.text}"

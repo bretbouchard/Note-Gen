@@ -11,8 +11,8 @@ from bson import ObjectId
 
 from src.note_gen.dependencies import get_db_conn
 from src.note_gen.models.chord_progression import ChordProgression, ChordProgressionResponse
-from src.note_gen.models.chord_quality import ChordQualityType
 from src.note_gen.models.chord import Chord
+from src.note_gen.models.note import Note  # Import the Note model
 
 import logging
 # Configure logging
@@ -42,27 +42,35 @@ def _validate_chord_progression(chord_progression: ChordProgression):
         if not isinstance(chord, Chord):
             logger.error(f"Invalid chord object: {chord}")
             raise ValueError("Each element in chords must be a valid Chord object")
-        if not isinstance(chord.root, dict):
-            logger.error(f"Chord root must be a dictionary: {chord.root}")
-            raise ValueError("Chord root must be a dictionary")
-        if not chord.root.get("note_name") or not chord.root.get("octave"):
-            logger.error(f"Chord root must contain 'note_name' and 'octave': {chord.root}")
-            raise ValueError("Chord root must contain 'note_name' and 'octave'")
+        if not chord.root:
+            logger.error(f"Chord missing root: {chord}")
+            raise ValueError("Each chord must have a root")
+        # Check if root is a Note instance or a dictionary with proper fields
+        if isinstance(chord.root, Note):
+            # Note instance is valid
+            pass
+        elif isinstance(chord.root, dict):
+            if not chord.root.get("note_name") or not chord.root.get("octave"):
+                logger.error(f"Chord root must contain 'note_name' and 'octave': {chord.root}")
+                raise ValueError("Chord root must contain 'note_name' and 'octave'")
+        else:
+            logger.error(f"Chord root must be a Note instance or a dictionary: {chord.root}")
+            raise ValueError("Chord root must be a Note instance or a dictionary")
         if not chord.quality:
             logger.error(f"Chord without quality: {chord}")
             raise ValueError("Each chord must have a quality")
         if isinstance(chord.quality, str):
             logger.debug(f"Validating chord quality: {chord.quality}")
             try:
-                chord.quality = ChordQualityType[chord.quality]
+                chord.quality = Chord.quality[chord.quality]
                 logger.info(f"Chord quality '{chord.quality}' is valid")
             except KeyError:
                 logger.error(f"Invalid chord quality encountered: {chord.quality}")
-                raise ValueError(f"Chord quality '{chord.quality}' is not a valid ChordQualityType")
-        if not isinstance(chord.quality, ChordQualityType):
-            raise ValueError("Chord quality must be a valid ChordQualityType")
+                raise ValueError(f"Chord quality '{chord.quality}' is not a valid Chord.quality")
+        if not hasattr(Chord, 'quality') or not isinstance(chord.quality, Chord.quality):
+            raise ValueError("Chord quality must be a valid Chord.quality")
 
-@router.post("/create", response_model=ChordProgressionResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=ChordProgressionResponse, status_code=status.HTTP_201_CREATED)
 async def create_chord_progression(
     chord_progression: ChordProgression,
     db: AsyncIOMotorDatabase = Depends(get_db_conn)
@@ -108,6 +116,14 @@ async def create_chord_progression(
         logger.error(f"Error creating chord progression: {str(e)}. Data: {chord_progression}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
+@router.post("/create", response_model=ChordProgressionResponse, status_code=status.HTTP_201_CREATED)
+async def create_chord_progression_alt(
+    chord_progression: ChordProgression,
+    db: AsyncIOMotorDatabase = Depends(get_db_conn)
+) -> ChordProgressionResponse:
+    """Alternative endpoint for creating a chord progression (for backward compatibility)."""
+    return await create_chord_progression(chord_progression, db)
+
 @router.post("/generate-chord-progression", response_model=ChordProgressionResponse)
 async def generate_chord_progression(
     chord_progression: ChordProgression,
@@ -119,7 +135,7 @@ async def generate_chord_progression(
     # Logic to generate chord progression
     return chord_progression
 
-@router.get("/", response_model=List[ChordProgressionResponse])
+@router.get("", response_model=List[ChordProgressionResponse])
 async def get_chord_progressions(
     db: AsyncIOMotorDatabase = Depends(get_db_conn)
 ) -> List[ChordProgressionResponse]:

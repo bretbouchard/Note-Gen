@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field, field_validator, ConfigDict, validator
 from src.note_gen.models.note import Note
-from src.note_gen.models.chord_quality import ChordQualityType
+from src.note_gen.models.chord import Chord, ChordQuality
 from src.note_gen.models.enums import ScaleType
 from src.note_gen.models.scale import Scale
 from typing import Optional, Any, Dict, ClassVar
@@ -14,25 +14,28 @@ class FakeScaleInfo(BaseModel):
     complexity: float = Field(default=0.0)
     _scale: Optional[Scale] = None  # Cache for Scale instance
 
-    # Add scale qualities mappings
-    MAJOR_SCALE_QUALITIES: ClassVar[Dict[int, ChordQualityType]] = {
-        1: ChordQualityType.MAJOR,
-        2: ChordQualityType.MINOR,
-        3: ChordQualityType.MINOR,
-        4: ChordQualityType.MAJOR,
-        5: ChordQualityType.MAJOR,
-        6: ChordQualityType.MINOR,
-        7: ChordQualityType.DIMINISHED
+    # Define a root note as a ClassVar
+    root_note: ClassVar[Note] = Note(name="C")  # Define a root note
+
+    # Update the MAJOR_SCALE_QUALITIES and MINOR_SCALE_QUALITIES mappings
+    MAJOR_SCALE_QUALITIES: ClassVar[Dict[int, ChordQuality]] = {
+        1: ChordQuality.MAJOR,
+        2: ChordQuality.MINOR,
+        3: ChordQuality.MINOR,
+        4: ChordQuality.MAJOR,
+        5: ChordQuality.MAJOR,
+        6: ChordQuality.MINOR,
+        7: ChordQuality.DIMINISHED
     }
 
-    MINOR_SCALE_QUALITIES: ClassVar[Dict[int, ChordQualityType]] = {
-        1: ChordQualityType.MINOR,
-        2: ChordQualityType.DIMINISHED,
-        3: ChordQualityType.MAJOR,
-        4: ChordQualityType.MINOR,
-        5: ChordQualityType.MINOR,
-        6: ChordQualityType.MAJOR,
-        7: ChordQualityType.MAJOR
+    MINOR_SCALE_QUALITIES: ClassVar[Dict[int, ChordQuality]] = {
+        1: ChordQuality.MINOR,
+        2: ChordQuality.DIMINISHED,
+        3: ChordQuality.MAJOR,
+        4: ChordQuality.MINOR,
+        5: ChordQuality.MINOR,
+        6: ChordQuality.MAJOR,
+        7: ChordQuality.MAJOR
     }
 
     @field_validator('scale_type')
@@ -47,10 +50,6 @@ class FakeScaleInfo(BaseModel):
             raise ValueError("Complexity must be between 0 and 1")
         return value
 
-    class Config:
-        model_config = ConfigDict(
-            arbitrary_types_allowed=True
-        )
 
     def _get_scale(self) -> Scale:
         """Get or create the Scale instance."""
@@ -86,28 +85,38 @@ class FakeScaleInfo(BaseModel):
                 
         raise ValueError(f"Note {note.note_name} is not in the scale")
 
-    def get_quality_for_degree(self, degree: int) -> ChordQualityType:
+    def get_quality_for_degree(self, degree: int) -> Chord:
         """Get the chord quality for a given scale degree."""
         if not (1 <= degree <= 7):
             raise ValueError("Scale degree must be between 1 and 7")
             
         # Define chord qualities for major and minor scales
         if self.scale_type == ScaleType.MAJOR:
-            return self.MAJOR_SCALE_QUALITIES[degree]
+            return Chord(root=self.get_note_for_degree(degree), quality=self.MAJOR_SCALE_QUALITIES[degree])
         else:
-            return self.MINOR_SCALE_QUALITIES[degree]
+            return Chord(root=self.get_note_for_degree(degree), quality=self.MINOR_SCALE_QUALITIES[degree])
 
     def get_note_for_degree(self, degree: int) -> Note:
         """Get the note for a given scale degree."""
         scale = self._get_scale()
         return scale.get_scale_degree(degree)
 
-    def get_chord_quality_for_degree(self, degree: int) -> ChordQualityType:
+    def get_chord_quality_for_degree(self, degree: int) -> ChordQuality:
+        """Return the chord quality for a given scale degree."""
+        logger.debug(f"Getting chord quality for degree {degree} in {self.scale_type} scale")
+        
         if self.scale_type == ScaleType.MAJOR:
-            return self.MAJOR_SCALE_QUALITIES.get(degree, ChordQualityType.DIMINISHED)
+            quality = self.MAJOR_SCALE_QUALITIES.get(degree, ChordQuality.DIMINISHED)
+            logger.debug(f"For degree {degree} in MAJOR scale, using quality: {quality}")
+            return quality
         elif self.scale_type == ScaleType.MINOR:
-            return self.MINOR_SCALE_QUALITIES.get(degree, ChordQualityType.DIMINISHED)
-        raise ValueError(f"Invalid degree: {degree}")
+            quality = self.MINOR_SCALE_QUALITIES.get(degree, ChordQuality.DIMINISHED)
+            logger.debug(f"For degree {degree} in MINOR scale, using quality: {quality}")
+            return quality
+            
+        # If we get here, it's an error
+        logger.error(f"Invalid scale type: {self.scale_type} for degree: {degree}")
+        raise ValueError(f"Invalid degree: {degree} or scale type: {self.scale_type}")
 
     def get_scale_note_at_degree(self, degree: int) -> Note:
         """Return the note at a given scale degree."""

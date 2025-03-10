@@ -1,6 +1,6 @@
 from __future__ import annotations
 import pytest
-from src.note_gen.models.rhythm_pattern import RhythmNote
+from src.note_gen.models.patterns import RhythmNote
 from pydantic_core import ValidationError
 
 

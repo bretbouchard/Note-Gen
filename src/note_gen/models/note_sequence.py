@@ -6,7 +6,7 @@ from pydantic import BaseModel, field_validator, Field, ConfigDict
 from src.note_gen.models.note import Note
 from src.note_gen.models.chord import Chord
 from src.note_gen.models.note_event import NoteEvent
-
+from src.note_gen.models.patterns import NotePattern
 
 class NoteSequence(BaseModel):
     """A sequence of musical notes or events."""

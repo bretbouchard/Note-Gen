@@ -1,7 +1,6 @@
 import pytest
-from src.note_gen.models.rhythm_pattern import RhythmPatternData
-from src.note_gen.models.rhythm_pattern import RhythmNote
-
+from src.note_gen.models.patterns import RhythmPatternData
+from src.note_gen.models.patterns import RhythmNote
 
 def test_rhythm_pattern_data_initialization_empty_notes() -> None:
     from pydantic import ValidationError
@@ -147,3 +146,141 @@ def test_rhythm_note_missing_fields() -> None:
     errors = exc_info.value.errors()
     assert len(errors) == 2
     assert any(err['type'] == 'missing' for err in errors)
+
+
+def test_chord_pattern_item_initialization():
+    from src.note_gen.models.patterns import ChordPatternItem
+    
+    # Test valid initialization
+    item = ChordPatternItem(degree=1, quality="MAJOR", duration=4.0)
+    assert item.degree == 1
+    assert item.quality == "MAJOR"
+    assert item.duration == 4.0
+    
+    # Test Roman numeral as degree
+    item = ChordPatternItem(degree="I", quality="MAJOR", duration=4.0)
+    assert item.degree == 1
+    assert item.quality == "MAJOR"
+    
+    # Test initialization with default duration
+    item = ChordPatternItem(degree=1, quality="MAJOR")
+    assert item.duration == 4.0  # Default value
+    
+    # Test initialization with inversion
+    item = ChordPatternItem(degree=1, quality="MAJOR", inversion=1)
+    assert item.inversion == 1
+
+def test_chord_pattern_item_validation():
+    from src.note_gen.models.patterns import ChordPatternItem
+    from pydantic import ValidationError
+    
+    # Test invalid degree
+    with pytest.raises(ValidationError):
+        ChordPatternItem(degree=8, quality="MAJOR")  # Degree outside valid range
+    
+    # Test invalid degree type
+    with pytest.raises(ValidationError):
+        ChordPatternItem(degree="not_a_degree", quality="MAJOR")
+    
+    # Test negative duration
+    with pytest.raises(ValidationError):
+        ChordPatternItem(degree=1, quality="MAJOR", duration=-1.0)
+
+def test_chord_progression_pattern_initialization():
+    from src.note_gen.models.patterns import ChordProgressionPattern, ChordPatternItem
+    
+    # Test valid initialization with pattern items
+    pattern_items = [
+        ChordPatternItem(degree=1, quality="MAJOR", duration=4.0),
+        ChordPatternItem(degree=4, quality="MAJOR", duration=4.0),
+        ChordPatternItem(degree=5, quality="MAJOR", duration=4.0),
+        ChordPatternItem(degree=1, quality="MAJOR", duration=4.0)
+    ]
+    
+    pattern = ChordProgressionPattern(
+        name="I-IV-V-I",
+        pattern=pattern_items,
+        description="Basic I-IV-V-I progression",
+        tags=["basic", "common"]
+    )
+    
+    assert pattern.name == "I-IV-V-I"
+    assert len(pattern.pattern) == 4
+    assert pattern.pattern[0].degree == 1
+    assert pattern.pattern[1].degree == 4
+    assert pattern.pattern[2].degree == 5
+    assert pattern.tags == ["basic", "common"]
+    
+    # Test initialization with string degrees
+    pattern_items = [
+        {"degree": "I", "quality": "MAJOR"},
+        {"degree": "IV", "quality": "MAJOR"},
+        {"degree": "V", "quality": "DOMINANT_SEVENTH"},
+        {"degree": "I", "quality": "MAJOR"}
+    ]
+    
+    pattern = ChordProgressionPattern(
+        name="I-IV-V7-I",
+        pattern=pattern_items
+    )
+    
+    assert pattern.pattern[0].degree == 1
+    assert pattern.pattern[1].degree == 4
+    assert pattern.pattern[2].degree == 5
+    assert pattern.pattern[2].quality == "DOMINANT_SEVENTH"
+
+def test_chord_progression_pattern_validation():
+    from src.note_gen.models.patterns import ChordProgressionPattern
+    from pydantic import ValidationError
+    
+    # Test empty pattern
+    with pytest.raises(ValidationError):
+        ChordProgressionPattern(
+            name="Empty Pattern",
+            pattern=[]
+        )
+    
+    # Test invalid pattern item
+    with pytest.raises(ValidationError):
+        ChordProgressionPattern(
+            name="Invalid Pattern",
+            pattern=[{"not_a_degree": 1, "not_a_quality": "X"}]
+        )
+
+def test_chord_progression_pattern_from_chord_progression():
+    from src.note_gen.models.patterns import ChordProgressionPattern
+    from src.note_gen.models.chord_progression import ChordProgression
+    from src.note_gen.models.chord import Chord, ChordQuality
+    from src.note_gen.models.note import Note
+    from src.note_gen.models.scale_info import ScaleInfo
+    from src.note_gen.models.enums import ScaleType
+    
+    # Create a scale info
+    scale_info = ScaleInfo(root=Note(note_name="C", octave=4), scale_type=ScaleType.MAJOR)
+    
+    # Create chord progression
+    chords = [
+        Chord(root=Note(note_name="C", octave=4), quality=ChordQuality.MAJOR),
+        Chord(root=Note(note_name="F", octave=4), quality=ChordQuality.MAJOR),
+        Chord(root=Note(note_name="G", octave=4), quality=ChordQuality.DOMINANT_SEVENTH),
+        Chord(root=Note(note_name="C", octave=4), quality=ChordQuality.MAJOR)
+    ]
+    
+    progression = ChordProgression(
+        name="C-F-G7-C",
+        chords=chords,
+        key="C",
+        scale_type=ScaleType.MAJOR,
+        scale_info=scale_info
+    )
+    
+    # Extract pattern from progression
+    pattern = ChordProgressionPattern.from_chord_progression(progression)
+    
+    # Verify the pattern
+    assert pattern.name == "C-F-G7-C Pattern"
+    assert len(pattern.pattern) == 4
+    assert pattern.pattern[0].degree == 1
+    assert pattern.pattern[1].degree == 4
+    assert pattern.pattern[2].degree == 5
+    assert pattern.pattern[2].quality == "DOMINANT_SEVENTH"

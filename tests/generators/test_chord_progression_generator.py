@@ -5,10 +5,8 @@ from src.note_gen.models.note import Note
 from src.note_gen.models.scale_info import ScaleInfo
 from src.note_gen.models.fake_scale_info import FakeScaleInfo
 from src.note_gen.models.enums import ScaleType
-from src.note_gen.models.chord_quality import ChordQualityType
+from src.note_gen.models.chord import Chord, ChordQuality
 
-from src.note_gen.models.chord import Chord
-from src.note_gen.models.chord_quality import ChordQualityType
 from src.note_gen.models.chord_progression import ChordProgression
 from src.note_gen.generators.chord_progression_generator import ChordProgressionGenerator
 from typing import List, Optional
@@ -46,9 +44,9 @@ class TestChordProgressionGenerator(unittest.TestCase):
         import logging
         # logging.basicConfig(level=logging.DEBUG)
         chords = [
-            Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
-            Chord(root=Note(note_name="F", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
-            Chord(root=Note(note_name="G", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR)
+            Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQuality.MAJOR),
+            Chord(root=Note(note_name="F", octave=4, duration=1.0, velocity=100), quality=ChordQuality.MAJOR),
+            Chord(root=Note(note_name="G", octave=4, duration=1.0, velocity=100), quality=ChordQuality.MAJOR)
         ]
         try:
             progression = ChordProgression(
@@ -57,7 +55,7 @@ class TestChordProgressionGenerator(unittest.TestCase):
                 key="C",
                 scale_type=ScaleType.MAJOR,
                 scale_info=self.scale_info,
-                quality=ChordQualityType.MAJOR  # Added quality field
+                quality=ChordQuality.MAJOR  # Added quality field
             )
         except ValidationError as e:
             print(f"Validation errors: {e.errors()}")
@@ -81,13 +79,13 @@ class TestChordProgressionGenerator(unittest.TestCase):
 
     def test_generate_custom_with_mismatched_lists_raises_error(self) -> None:
         with self.assertRaises(ValueError):
-            self.generator.generate_custom(degrees=[1, 2], qualities=["MAJOR"])
+            self.generator.generate_custom(degrees=[1, 2], qualities=[ChordQuality.MAJOR])
 
     def test_generate_custom_valid(self):
         root_note = Note(note_name='C', octave=4)
         scale_info = FakeScaleInfo(root=root_note, scale_type=ScaleType.MINOR)
-        chord1 = Chord(root=Note(note_name='C', octave=4), quality=ChordQualityType.MAJOR)
-        chord2 = Chord(root=Note(note_name='D', octave=4), quality=ChordQualityType.MINOR)
+        chord1 = Chord(root=Note(note_name='C', octave=4), quality=ChordQuality.MAJOR)
+        chord2 = Chord(root=Note(note_name='D', octave=4), quality=ChordQuality.MINOR)
         progression = ChordProgression(
             name='Test Progression',
             chords=[chord1, chord2],
@@ -107,19 +105,19 @@ class TestChordProgressionGenerator(unittest.TestCase):
             key="C",
             scale_type=ScaleType.MAJOR,
             chords=[
-                Chord(root=Note(note_name="C", octave=4), quality=ChordQualityType.MAJOR)
+                Chord(root=Note(note_name="C", octave=4), quality=ChordQuality.MAJOR)
             ],
             complexity=1
         )
         with pytest.raises(ValueError):
             # Try to generate a chord progression with an invalid scale degree (8 is invalid, valid range is 1-7)
-            gen.generate_custom(degrees=[8], qualities=[ChordQualityType.MAJOR])
+            gen.generate_custom(degrees=[8], qualities=[ChordQuality.MAJOR])
 
     def test_generate_custom_valid_chord_instance(self) -> ChordProgression:
         root_note = Note(note_name='C', octave=4)
         scale_info = FakeScaleInfo(root=root_note, scale_type=ScaleType.MINOR)
-        chord1 = Chord(root=Note(note_name='C', octave=4), quality=ChordQualityType.MAJOR)
-        chord2 = Chord(root=Note(note_name='D', octave=4), quality=ChordQualityType.MINOR)
+        chord1 = Chord(root=Note(note_name='C', octave=4), quality=ChordQuality.MAJOR)
+        chord2 = Chord(root=Note(note_name='D', octave=4), quality=ChordQuality.MINOR)
         progression = ChordProgression(
             name='Test Progression',
             chords=[chord1, chord2],
@@ -138,13 +136,13 @@ class TestChordProgressionGenerator(unittest.TestCase):
             key="C", 
             scale_type=ScaleType.MINOR, 
             chords=[
-                Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
-                Chord(root=Note(note_name="Eb", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MINOR),
-                Chord(root=Note(note_name="G", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MINOR)
+                Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQuality.MAJOR),
+                Chord(root=Note(note_name="Eb", octave=4, duration=1.0, velocity=100), quality=ChordQuality.MINOR),
+                Chord(root=Note(note_name="G", octave=4, duration=1.0, velocity=100), quality=ChordQuality.MINOR)
             ],
             complexity=1
         )
-        with patch.object(random, 'choice', side_effect=[1, ChordQualityType.MAJOR, 5, ChordQualityType.MINOR]):
+        with patch.object(random, 'choice', side_effect=[1, ChordQuality.MAJOR, 5, ChordQuality.MINOR]):
             progression = gen.generate_random(length=2)
             self.assertEqual(len(progression.chords), 2)
 
@@ -156,9 +154,9 @@ class TestChordProgressionGenerator(unittest.TestCase):
             key="C", 
             scale_type=ScaleType.MINOR, 
             chords=[
-                Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
-                Chord(root=Note(note_name="F", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
-                Chord(root=Note(note_name="G", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR)
+                Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQuality.MAJOR),
+                Chord(root=Note(note_name="F", octave=4, duration=1.0, velocity=100), quality=ChordQuality.MAJOR),
+                Chord(root=Note(note_name="G", octave=4, duration=1.0, velocity=100), quality=ChordQuality.MAJOR)
             ],
             complexity=1
         )
@@ -173,9 +171,9 @@ class TestChordProgressionGenerator(unittest.TestCase):
             key="C", 
             scale_type=ScaleType.MINOR, 
             chords=[
-                Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
-                Chord(root=Note(note_name="F", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
-                Chord(root=Note(note_name="G", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR)
+                Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQuality.MAJOR),
+                Chord(root=Note(note_name="F", octave=4, duration=1.0, velocity=100), quality=ChordQuality.MAJOR),
+                Chord(root=Note(note_name="G", octave=4, duration=1.0, velocity=100), quality=ChordQuality.MAJOR)
             ],
             complexity=1
         )
@@ -185,9 +183,9 @@ class TestChordProgressionGenerator(unittest.TestCase):
     def test_generate_chord_valid(self) -> None:
         scale_info = FakeScaleInfo(root=Note(note_name="C", octave=4, duration=1, velocity=64), scale_type=ScaleType.MINOR)
         chords = [
-            Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
-            Chord(root=Note(note_name="F", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
-            Chord(root=Note(note_name="G", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR)
+            Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQuality.MAJOR),
+            Chord(root=Note(note_name="F", octave=4, duration=1.0, velocity=100), quality=ChordQuality.MAJOR),
+            Chord(root=Note(note_name="G", octave=4, duration=1.0, velocity=100), quality=ChordQuality.MAJOR)
         ]
         gen = ChordProgressionGenerator(
             scale_info=scale_info, 
@@ -215,9 +213,9 @@ class TestChordProgressionGenerator(unittest.TestCase):
             key="C", 
             scale_type=ScaleType.MINOR, 
             chords=[
-                Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
-                Chord(root=Note(note_name="F", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
-                Chord(root=Note(note_name="G", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR)
+                Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQuality.MAJOR),
+                Chord(root=Note(note_name="F", octave=4, duration=1.0, velocity=100), quality=ChordQuality.MAJOR),
+                Chord(root=Note(note_name="G", octave=4, duration=1.0, velocity=100), quality=ChordQuality.MAJOR)
             ],
             complexity=1
         )
@@ -232,9 +230,9 @@ class TestChordProgressionGenerator(unittest.TestCase):
             key="C", 
             scale_type=ScaleType.MINOR, 
             chords=[
-                Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
-                Chord(root=Note(note_name="F", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
-                Chord(root=Note(note_name="G", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR)
+                Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQuality.MAJOR),
+                Chord(root=Note(note_name="F", octave=4, duration=1.0, velocity=100), quality=ChordQuality.MAJOR),
+                Chord(root=Note(note_name="G", octave=4, duration=1.0, velocity=100), quality=ChordQuality.MAJOR)
             ],
             complexity=1
         )
@@ -244,9 +242,9 @@ class TestChordProgressionGenerator(unittest.TestCase):
     def test_generate_large_chord_progression(self) -> None:
         scale_info = FakeScaleInfo(root=Note(note_name="C", octave=4, duration=1, velocity=64), scale_type=ScaleType.MINOR)
         chords = [
-            Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
-            Chord(root=Note(note_name="F", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
-            Chord(root=Note(note_name="G", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR)
+            Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQuality.MAJOR),
+            Chord(root=Note(note_name="F", octave=4, duration=1.0, velocity=100), quality=ChordQuality.MAJOR),
+            Chord(root=Note(note_name="G", octave=4, duration=1.0, velocity=100), quality=ChordQuality.MAJOR)
         ]
         gen = ChordProgressionGenerator(
             scale_info=scale_info, 
@@ -262,9 +260,9 @@ class TestChordProgressionGenerator(unittest.TestCase):
     def test_generate_chord_progression_with_zero_length(self) -> None:
         scale_info = FakeScaleInfo(root=Note(note_name="C", octave=4), scale_type=ScaleType.MINOR)
         chords = [
-            Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
-            Chord(root=Note(note_name="F", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
-            Chord(root=Note(note_name="G", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR)
+            Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQuality.MAJOR),
+            Chord(root=Note(note_name="F", octave=4, duration=1.0, velocity=100), quality=ChordQuality.MAJOR),
+            Chord(root=Note(note_name="G", octave=4, duration=1.0, velocity=100), quality=ChordQuality.MAJOR)
         ]
         gen = ChordProgressionGenerator(
             scale_info=scale_info, 
@@ -283,9 +281,9 @@ class TestChordProgressionGenerator(unittest.TestCase):
             key="C", 
             scale_type=ScaleType.MINOR, 
             chords=[
-                Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
-                Chord(root=Note(note_name="F", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
-                Chord(root=Note(note_name="G", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR)
+                Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQuality.MAJOR),
+                Chord(root=Note(note_name="F", octave=4, duration=1.0, velocity=100), quality=ChordQuality.MAJOR),
+                Chord(root=Note(note_name="G", octave=4, duration=1.0, velocity=100), quality=ChordQuality.MAJOR)
             ],
             complexity=1
         )
@@ -298,9 +296,9 @@ class TestChordProgressionGenerator(unittest.TestCase):
             key="C", 
             scale_type=ScaleType.MINOR, 
             chords=[
-                Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
-                Chord(root=Note(note_name="F", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
-                Chord(root=Note(note_name="G", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR)
+                Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQuality.MAJOR),
+                Chord(root=Note(note_name="F", octave=4, duration=1.0, velocity=100), quality=ChordQuality.MAJOR),
+                Chord(root=Note(note_name="G", octave=4, duration=1.0, velocity=100), quality=ChordQuality.MAJOR)
             ],
             complexity=1
         )
@@ -315,9 +313,9 @@ class TestChordProgressionGenerator(unittest.TestCase):
             key="C", 
             scale_type=ScaleType.MINOR, 
             chords=[
-                Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
-                Chord(root=Note(note_name="F", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
-                Chord(root=Note(note_name="G", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR)
+                Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQuality.MAJOR),
+                Chord(root=Note(note_name="F", octave=4, duration=1.0, velocity=100), quality=ChordQuality.MAJOR),
+                Chord(root=Note(note_name="G", octave=4, duration=1.0, velocity=100), quality=ChordQuality.MAJOR)
             ],
             complexity=1
         )
@@ -334,14 +332,14 @@ class TestChordProgressionGenerator(unittest.TestCase):
             key="C", 
             scale_type=ScaleType.MINOR, 
             chords=[
-                Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
-                Chord(root=Note(note_name="F", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
-                Chord(root=Note(note_name="G", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR)
+                Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQuality.MAJOR),
+                Chord(root=Note(note_name="F", octave=4, duration=1.0, velocity=100), quality=ChordQuality.MAJOR),
+                Chord(root=Note(note_name="G", octave=4, duration=1.0, velocity=100), quality=ChordQuality.MAJOR)
             ],
             complexity=1
         )
-        generated_chord = gen.generate_chord(root=Note(note_name="C", octave=4), quality=ChordQualityType.MAJOR)
-        self.assertEqual(generated_chord.quality, ChordQualityType.MAJOR)
+        generated_chord = gen.generate_chord(root=Note(note_name="C", octave=4), quality=ChordQuality.MAJOR)
+        self.assertEqual(generated_chord.quality, ChordQuality.MAJOR)
 
     def test_generate_chord_notes_minor(self) -> None:
         scale_info = FakeScaleInfo(root=Note(note_name="C", octave=4), scale_type=ScaleType.MINOR)
@@ -351,14 +349,14 @@ class TestChordProgressionGenerator(unittest.TestCase):
             key="C", 
             scale_type=ScaleType.MINOR, 
             chords=[
-                Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
-                Chord(root=Note(note_name="F", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
-                Chord(root=Note(note_name="G", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR)
+                Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQuality.MAJOR),
+                Chord(root=Note(note_name="F", octave=4, duration=1.0, velocity=100), quality=ChordQuality.MAJOR),
+                Chord(root=Note(note_name="G", octave=4, duration=1.0, velocity=100), quality=ChordQuality.MAJOR)
             ],
             complexity=1
         )
-        generated_chord = gen.generate_chord(root=Note(note_name="C", octave=4), quality=ChordQualityType.MINOR)
-        self.assertEqual(generated_chord.quality, ChordQualityType.MINOR)
+        generated_chord = gen.generate_chord(root=Note(note_name="C", octave=4), quality=ChordQuality.MINOR)
+        self.assertEqual(generated_chord.quality, ChordQuality.MINOR)
 
     def test_generate_chord_notes_augmented(self) -> None:
         scale_info = FakeScaleInfo(root=Note(note_name="C", octave=4), scale_type=ScaleType.MINOR)
@@ -368,14 +366,14 @@ class TestChordProgressionGenerator(unittest.TestCase):
             key="C", 
             scale_type=ScaleType.MINOR, 
             chords=[
-                Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
-                Chord(root=Note(note_name="F", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
-                Chord(root=Note(note_name="G", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR)
+                Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQuality.MAJOR),
+                Chord(root=Note(note_name="F", octave=4, duration=1.0, velocity=100), quality=ChordQuality.MAJOR),
+                Chord(root=Note(note_name="G", octave=4, duration=1.0, velocity=100), quality=ChordQuality.MAJOR)
             ],
             complexity=1
         )
-        generated_chord = gen.generate_chord(root=Note(note_name="C", octave=4), quality=ChordQualityType.AUGMENTED)
-        self.assertEqual(generated_chord.quality, ChordQualityType.AUGMENTED)
+        generated_chord = gen.generate_chord(root=Note(note_name="C", octave=4), quality=ChordQuality.AUGMENTED)
+        self.assertEqual(generated_chord.quality, ChordQuality.AUGMENTED)
 
     def test_generate_chord_notes_diminished(self) -> None:
         scale_info = FakeScaleInfo(root=Note(note_name="C", octave=4), scale_type=ScaleType.MINOR)
@@ -385,19 +383,19 @@ class TestChordProgressionGenerator(unittest.TestCase):
             key="C", 
             scale_type=ScaleType.MINOR, 
             chords=[
-                Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
-                Chord(root=Note(note_name="F", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
-                Chord(root=Note(note_name="G", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR)
+                Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQuality.MAJOR),
+                Chord(root=Note(note_name="F", octave=4, duration=1.0, velocity=100), quality=ChordQuality.MAJOR),
+                Chord(root=Note(note_name="G", octave=4, duration=1.0, velocity=100), quality=ChordQuality.MAJOR)
             ],
             complexity=1
         )
-        generated_chord = gen.generate_chord(root=Note(note_name="C", octave=4), quality=ChordQualityType.DIMINISHED)
-        self.assertEqual(generated_chord.quality, ChordQualityType.DIMINISHED)
+        generated_chord = gen.generate_chord(root=Note(note_name="C", octave=4), quality=ChordQuality.DIMINISHED)
+        self.assertEqual(generated_chord.quality, ChordQuality.DIMINISHED)
 
     def test_generate_chord_notes_transposition(self) -> None:
         root_note = Note(note_name="B", octave=4, duration=1.0, velocity=100)
-        chord = Chord(root=root_note, quality=ChordQualityType.MAJOR)
-        generated_notes = chord._generate_chord_notes()
+        chord = Chord(root=root_note, quality=ChordQuality.MAJOR)
+        generated_notes = chord.generate_notes()
         expected_notes = [
             root_note,
             root_note.transpose(4),  # E
@@ -407,14 +405,14 @@ class TestChordProgressionGenerator(unittest.TestCase):
 
     def test_generate_chord_notes_out_of_range(self) -> None:
         root_note = Note(note_name="C", octave=6, duration=1.0, velocity=100)  # High octave
-        chord = Chord(root=root_note, quality=ChordQualityType.MAJOR)
-        generated_notes = chord._generate_chord_notes()
+        chord = Chord(root=root_note, quality=ChordQuality.MAJOR)
+        generated_notes = chord.generate_notes()
         self.assertTrue(all(note.octave <= 6 for note in generated_notes))  # Ensure no note exceeds octave 6
 
     def test_generate_chord_notes_major(self) -> None:
         root_note = Note(note_name="C", octave=4, duration=1.0, velocity=100)
-        chord = Chord(root=root_note, quality=ChordQualityType.MAJOR)
-        generated_notes = chord._generate_chord_notes()
+        chord = Chord(root=root_note, quality=ChordQuality.MAJOR)
+        generated_notes = chord.generate_notes()
         expected_notes = [
             root_note,
             root_note.transpose(4),  # E
@@ -424,8 +422,8 @@ class TestChordProgressionGenerator(unittest.TestCase):
 
     def test_generate_chord_notes_minor(self) -> None:
         root_note = Note(note_name="C", octave=4, duration=1.0, velocity=100)
-        chord = Chord(root=root_note, quality=ChordQualityType.MINOR)
-        generated_notes = chord._generate_chord_notes()
+        chord = Chord(root=root_note, quality=ChordQuality.MINOR)
+        generated_notes = chord.generate_notes()
         expected_notes = [
             root_note,
             root_note.transpose(3),  # Eb
@@ -435,8 +433,8 @@ class TestChordProgressionGenerator(unittest.TestCase):
 
     def test_generate_chord_notes_augmented(self) -> None:
         root_note = Note(note_name="C", octave=4, duration=1.0, velocity=100)
-        chord = Chord(root=root_note, quality=ChordQualityType.AUGMENTED)
-        generated_notes = chord._generate_chord_notes()
+        chord = Chord(root=root_note, quality=ChordQuality.AUGMENTED)
+        generated_notes = chord.generate_notes()
         expected_notes = [
             root_note,
             root_note.transpose(4),  # E
@@ -446,8 +444,8 @@ class TestChordProgressionGenerator(unittest.TestCase):
 
     def test_generate_chord_notes_diminished(self) -> None:
         root_note = Note(note_name="C", octave=4, duration=1.0, velocity=100)
-        chord = Chord(root=root_note, quality=ChordQualityType.DIMINISHED)
-        generated_notes = chord._generate_chord_notes()
+        chord = Chord(root=root_note, quality=ChordQuality.DIMINISHED)
+        generated_notes = chord.generate_notes()
         expected_notes = [
             root_note,
             root_note.transpose(3),  # Eb
@@ -473,17 +471,17 @@ class TestAdvancedChordProgressionGenerator:
     def test_calculate_pattern_complexity(self, chord_progression_generator):
         """Test complexity calculation for different chord patterns."""
         # Simple major progression
-        simple_pattern = [(1, ChordQualityType.MAJOR), (4, ChordQualityType.MAJOR), (5, ChordQualityType.MAJOR)]
+        simple_pattern = [(1, ChordQuality.MAJOR), (4, ChordQuality.MAJOR), (5, ChordQuality.MAJOR)]
         complexity = chord_progression_generator.calculate_pattern_complexity(simple_pattern)
         assert 0 <= complexity <= 1, "Complexity should be between 0 and 1"
         assert complexity < 0.5, "Simple progression should have low complexity"
 
         # Complex progression with varied qualities
         complex_pattern = [
-            (2, ChordQualityType.MINOR7), 
-            (5, ChordQualityType.DOMINANT7), 
-            (1, ChordQualityType.MAJOR7), 
-            (6, ChordQualityType.DIMINISHED)
+            (2, ChordQuality.MINOR_SEVENTH), 
+            (5, ChordQuality.DOMINANT_SEVENTH), 
+            (1, ChordQuality.MAJOR_SEVENTH), 
+            (6, ChordQuality.DIMINISHED)
         ]
         complexity = chord_progression_generator.calculate_pattern_complexity(complex_pattern)
         assert complexity > 0.5, "Complex progression should have higher complexity"
@@ -498,15 +496,15 @@ class TestAdvancedChordProgressionGenerator:
             
             assert len(pattern) == 4, f"Pattern for {genre} should have 4 chords"
             assert all(isinstance(degree, int) and 1 <= degree <= 7 for degree, _ in pattern), f"Invalid scale degrees in {genre} pattern"
-            assert all(isinstance(quality, ChordQualityType) for _, quality in pattern), f"Invalid chord qualities in {genre} pattern"
+            assert all(isinstance(quality, ChordQuality) for _, quality in pattern), f"Invalid chord qualities in {genre} pattern"
 
     def test_generate_with_tension_resolution(self, chord_progression_generator):
         """Test tension and resolution pattern generation."""
         base_pattern = [
-            (1, ChordQualityType.MAJOR), 
-            (4, ChordQualityType.MAJOR), 
-            (5, ChordQualityType.MAJOR), 
-            (1, ChordQualityType.MAJOR)
+            (1, ChordQuality.MAJOR), 
+            (4, ChordQuality.MAJOR), 
+            (5, ChordQuality.MAJOR), 
+            (1, ChordQuality.MAJOR)
         ]
         
         enhanced_pattern = chord_progression_generator.generate_with_tension_resolution(base_pattern)
@@ -514,7 +512,7 @@ class TestAdvancedChordProgressionGenerator:
         assert len(enhanced_pattern) == len(base_pattern), "Pattern length should remain the same"
         
         # Check that some chords might have been replaced with tension-creating chords
-        tension_qualities = {ChordQualityType.DOMINANT7, ChordQualityType.DIMINISHED, ChordQualityType.AUGMENTED}
+        tension_qualities = {ChordQuality.DOMINANT_SEVENTH, ChordQuality.DIMINISHED, ChordQuality.AUGMENTED}
         tension_count = sum(1 for _, quality in enhanced_pattern if quality in tension_qualities)
         assert 0 <= tension_count <= len(enhanced_pattern), "Tension chords added within reasonable limits"
 
@@ -592,10 +590,10 @@ class TestChordProgressionGeneratorComprehensive(unittest.TestCase):
         progression = cpg.generate_custom(
             degrees=[1, 6, 4, 5],
             qualities=[
-                ChordQualityType.MAJOR,
-                ChordQualityType.MINOR,
-                ChordQualityType.MAJOR,
-                ChordQualityType.DOMINANT7
+                ChordQuality.MAJOR,
+                ChordQuality.MINOR,
+                ChordQuality.MAJOR,
+                ChordQuality.DOMINANT_SEVENTH
             ]
         )
 
@@ -605,13 +603,13 @@ class TestChordProgressionGeneratorComprehensive(unittest.TestCase):
 
         # Verify specific chord details
         assert progression.chords[0].root.note_name == 'C'
-        assert progression.chords[0].quality == ChordQualityType.MAJOR
+        assert progression.chords[0].quality == ChordQuality.MAJOR
         assert progression.chords[1].root.note_name == 'A'
-        assert progression.chords[1].quality == ChordQualityType.MINOR
+        assert progression.chords[1].quality == ChordQuality.MINOR
         assert progression.chords[2].root.note_name == 'F'
-        assert progression.chords[2].quality == ChordQualityType.MAJOR
+        assert progression.chords[2].quality == ChordQuality.MAJOR
         assert progression.chords[3].root.note_name == 'G'
-        assert progression.chords[3].quality == ChordQualityType.DOMINANT7
+        assert progression.chords[3].quality == ChordQuality.DOMINANT_SEVENTH
 
     def test_generate_custom_edge_cases(self):
         """Test edge cases in chord progression generation"""
@@ -627,7 +625,7 @@ class TestChordProgressionGeneratorComprehensive(unittest.TestCase):
         # Test single chord progression
         single_chord_prog = cpg.generate_custom(
             degrees=[1],
-            qualities=[ChordQualityType.MAJOR]
+            qualities=[ChordQuality.MAJOR]
         )
         assert len(single_chord_prog.chords) == 1
 
@@ -635,12 +633,12 @@ class TestChordProgressionGeneratorComprehensive(unittest.TestCase):
         minor_prog = cpg.generate_custom(
             degrees=[2, 3, 6],
             qualities=[
-                ChordQualityType.MINOR,
-                ChordQualityType.MINOR,
-                ChordQualityType.MINOR
+                ChordQuality.MINOR,
+                ChordQuality.MINOR,
+                ChordQuality.MINOR
             ]
         )
-        assert all(chord.quality == ChordQualityType.MINOR for chord in minor_prog.chords)
+        assert all(chord.quality == ChordQuality.MINOR for chord in minor_prog.chords)
 
     def test_generate_custom_invalid_inputs(self):
         """Test handling of invalid inputs in chord progression generation"""
@@ -657,14 +655,14 @@ class TestChordProgressionGeneratorComprehensive(unittest.TestCase):
         with pytest.raises(ValueError, match="Degrees and qualities must have the same length."):
             cpg.generate_custom(
                 degrees=[1, 4],
-                qualities=[ChordQualityType.MAJOR]
+                qualities=[ChordQuality.MAJOR]
             )
 
         # Test out-of-range degrees
         with pytest.raises(ValueError, match="Invalid degree: 8"):
             cpg.generate_custom(
                 degrees=[8],
-                qualities=[ChordQualityType.MAJOR]
+                qualities=[ChordQuality.MAJOR]
             )
 
     def test_generate_custom_default_quality(self):
@@ -680,12 +678,12 @@ class TestChordProgressionGeneratorComprehensive(unittest.TestCase):
 
         progression = cpg.generate_custom(
             degrees=[1, 4, 5],
-            qualities=[None, ChordQualityType.MINOR, None]
+            qualities=[None, ChordQuality.MINOR, None]
         )
 
-        assert progression.chords[0].quality == ChordQualityType.MAJOR
-        assert progression.chords[1].quality == ChordQualityType.MINOR
-        assert progression.chords[2].quality == ChordQualityType.MAJOR
+        assert progression.chords[0].quality == ChordQuality.MAJOR
+        assert progression.chords[1].quality == ChordQuality.MINOR
+        assert progression.chords[2].quality == ChordQuality.MAJOR
 
 if __name__ == "__main__":
     unittest.main()

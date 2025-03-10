@@ -12,8 +12,9 @@ from src.note_gen.database.db import get_db_conn
 logger = logging.getLogger(__name__)
 
 from src.note_gen.models.presets import COMMON_PROGRESSIONS, NOTE_PATTERNS, RHYTHM_PATTERNS
-from src.note_gen.models.rhythm_pattern import RhythmPatternData
+from src.note_gen.models.patterns import RhythmPatternData
 from src.note_gen.models.chord_progression import ChordProgression, ScaleInfo, Note, ScaleType
+from src.note_gen.models.patterns import NotePattern
 from typing import Any, Optional, Dict
 
 # Import Presets Script

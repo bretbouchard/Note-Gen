@@ -11,7 +11,7 @@ from src.note_gen.models.scale_degree import ScaleDegree
 from src.note_gen.models.roman_numeral import RomanNumeral
 from src.note_gen.models.note import Note
 from src.note_gen.models.enums import ScaleType
-from src.note_gen.models.chord_quality import ChordQualityType
+from src.note_gen.models.chord import Chord
 
 class Scale(BaseModel):
     root: Note
@@ -107,27 +107,27 @@ class ChordProgression(BaseModel):
     logger: ClassVar[logging.Logger] = logging.getLogger(__name__)
 
 CHORD_QUALITY_ALIASES = {
-    "dominant": "dominant7",           # Map to the enum value, not the enum name
-    "dom": "dominant7", 
-    'maj': 'MAJOR',
-    'min': 'MINOR',
-    'm': 'MINOR',
-    'dim': 'DIMINISHED',
-    'aug': 'AUGMENTED',
-    '7': 'DOMINANT7',
-    'maj7': 'MAJOR7',
-    'min7': 'MINOR7',
-    'm7': 'MINOR7',
-    'dim7': 'DIMINISHED7',
-    'm7b5': 'M7B5',
-    'sus2': 'SUSPENDED2',
-    'sus4': 'SUSPENDED4',
-    '6': 'MAJOR7',
-    'm6': 'MINOR7',
-    'minmaj7': 'MINOR_MAJOR7',
-    'aug7': 'AUGMENTED7',
-    'ø7': 'HALF_DIMINISHED7',
-    'b5': 'FLAT5',
-    '#5': 'SHARP5',
-    '#7': 'SHARP7',
+    "dominant": Chord.quality.dominant7,           # Map to the enum value, not the enum name
+    "dom": Chord.quality.dominant7, 
+    'maj': Chord.quality.MAJOR,
+    'min': Chord.quality.MINOR,
+    'm': Chord.quality.MINOR,
+    'dim': Chord.quality.DIMINISHED,
+    'aug': Chord.quality.AUGMENTED,
+    '7': Chord.quality.DOMINANT7,
+    'maj7': Chord.quality.MAJOR7,
+    'min7': Chord.quality.MINOR7,
+    'm7': Chord.quality.MINOR7,
+    'dim7': Chord.quality.DIMINISHED7,
+    'm7b5': Chord.quality.M7B5,
+    'sus2': Chord.quality.SUSPENDED2,
+    'sus4': Chord.quality.SUSPENDED4,
+    '6': Chord.quality.MAJOR7,
+    'm6': Chord.quality.MINOR7,
+    'minmaj7': Chord.quality.MINOR_MAJOR7,
+    'aug7': Chord.quality.AUGMENTED7,
+    'ø7': Chord.quality.HALF_DIMINISHED7,
+    'b5': Chord.quality.FLAT5,
+    '#5': Chord.quality.SHARP5,
+    '#7': Chord.quality.SHARP7,
 }

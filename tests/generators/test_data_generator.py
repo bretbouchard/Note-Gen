@@ -10,8 +10,8 @@ import logging
 from typing import List, Dict, Any, Optional, Union, Tuple
 
 from src.note_gen.models.note import Note
-from src.note_gen.models.rhythm_pattern import RhythmNote, RhythmPatternData, RhythmPattern
-from src.note_gen.models.note_pattern import NotePattern, NotePatternData
+from src.note_gen.models.patterns import RhythmNote, RhythmPatternData, RhythmPattern
+from src.note_gen.models.patterns import NotePattern, NotePatternData
 
 def generate_rhythm_note(
     position: Optional[float] = None,

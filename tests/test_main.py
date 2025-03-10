@@ -1,11 +1,10 @@
 import pytest
 from fastapi.testclient import TestClient
 from main import app
-from src.note_gen.models.presets import COMMON_PROGRESSIONS, NOTE_PATTERNS, RHYTHM_PATTERNS
+from src.note_gen.models.presets import Patterns
 from src.note_gen.database.db import init_db, get_db_conn
 from src.note_gen.models.chord_progression import ChordProgression
-from src.note_gen.models.note_pattern import NotePattern
-from src.note_gen.models.rhythm_pattern import RhythmPattern
+from src.note_gen.models.patterns import NotePattern, RhythmPattern, NOTE_PATTERNS, RHYTHM_PATTERNS
 from src.note_gen.models.roman_numeral import RomanNumeral
 import os
 
@@ -38,6 +37,8 @@ async def ensure_indexes(db: AsyncIOMotorDatabase) -> None:
 
 async def import_presets_if_empty(db: AsyncIOMotorDatabase) -> None:
     """Import presets if collections are empty."""
+    from src.note_gen.models.presets import Patterns
+    COMMON_PROGRESSIONS = Patterns.common_progressions
     # Check if collections are empty
     if os.getenv("CLEAR_DB_AFTER_TESTS", "1") == "1":
         await db.chord_progressions.delete_many({})
@@ -95,13 +96,6 @@ async def import_presets_if_empty(db: AsyncIOMotorDatabase) -> None:
 @pytest.fixture
 def test_client():
     return TestClient(app)
-
-@pytest.fixture
-def event_loop():
-    policy = asyncio.get_event_loop_policy()
-    loop = policy.new_event_loop()
-    asyncio.set_event_loop(loop)
-    return loop
 
 @pytest.fixture(autouse=True)
 async def setup_test_db():

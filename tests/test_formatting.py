@@ -1,11 +1,13 @@
 import pytest
 from src.note_gen.populate_db import format_chord_progression
-from src.note_gen.models.chord_quality import ChordQualityType
+from src.note_gen.models.chord import Chord, ChordQuality
 from src.note_gen.models.roman_numeral import RomanNumeral
-
+from src.note_gen.models.presets import Presets
 
 @pytest.mark.asyncio
 async def test_format_chord_progression_valid():
+    from src.note_gen.models.patterns import Patterns
+    COMMON_PROGRESSIONS = Patterns.COMMON_PROGRESSIONS
     progression_name = "I-IV-V"
     roman_progression = ["I", "IV", "V"]
     expected_output = {
@@ -16,9 +18,9 @@ async def test_format_chord_progression_valid():
             'scale_type': 'MAJOR'
         },
         'chords': [
-            {'root': {'note_name': 'C', 'octave': 4}, 'quality': 'MAJOR'},
-            {'root': {'note_name': 'F', 'octave': 4}, 'quality': 'MAJOR'},
-            {'root': {'note_name': 'G', 'octave': 4}, 'quality': 'MAJOR'},
+            {'root': {'note_name': 'C', 'octave': 4}, 'quality': ChordQuality.MAJOR},
+            {'root': {'note_name': 'F', 'octave': 4}, 'quality': ChordQuality.MAJOR},
+            {'root': {'note_name': 'G', 'octave': 4}, 'quality': ChordQuality.MAJOR},
         ],
         'key': 'C',
         'scale_type': 'MAJOR',
@@ -35,6 +37,8 @@ async def test_format_chord_progression_valid():
 
 @pytest.mark.asyncio
 async def test_format_chord_progression_invalid():
+    from src.note_gen.models.patterns import Patterns
+    COMMON_PROGRESSIONS = Patterns.COMMON_PROGRESSIONS
     progression_name = "Invalid Progression"
     roman_progression = ["X", "Y", "Z"]  # Invalid Roman numerals
 
@@ -44,6 +48,8 @@ async def test_format_chord_progression_invalid():
 
 @pytest.mark.asyncio
 async def test_format_chord_progression_empty():
+    from src.note_gen.models.patterns import Patterns
+    COMMON_PROGRESSIONS = Patterns.COMMON_PROGRESSIONS
     progression_name = "Empty Progression"
     roman_progression = []  # Empty input
 

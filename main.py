@@ -2,17 +2,10 @@ import os
 import sys
 import logging
 import threading
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from src.note_gen.database.db import init_db, close_mongo_connection
-from src.note_gen.routers import (
-    note_sequence_routes,
-    note_pattern_routes,
-    rhythm_pattern_routes,
-    chord_progression_routes,
-    user_routes,
-)
+from src.note_gen import app as note_gen_app
+from fastapi.middleware.cors import CORSMiddleware
 
 # Set up a thread-safe logging handler
 class ThreadSafeStreamHandler(logging.StreamHandler):
@@ -40,25 +33,19 @@ logging.getLogger("asyncio").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app):
     await init_db()
     yield
     await close_mongo_connection()
 
-# Create FastAPI app with API metadata and custom behavior
-app = FastAPI(
-    title="Note Generation API",
-    description="API for generating musical note sequences",
-    version="1.0.0",
-    lifespan=lifespan,
-    trailing_slash=False,
-    redirect_slashes=False,
-)
+# Update the imported app with needed middleware and lifespan
+app = note_gen_app
+app.lifespan = lifespan
 
 # CORS configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Adjust for production as needed
+    allow_origins=["*"],  # Update this for production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -68,15 +55,9 @@ app.add_middleware(
 async def read_root():
     return {"message": "Welcome to the Note Generation API!"}
 
-# Include routers with specific prefixes and tags
-logger.debug("Registering routers...")
-app.include_router(note_sequence_routes.router, prefix="/api/v1/note-sequences", tags=["note-sequences"])
-app.include_router(note_pattern_routes.router, prefix="/api/v1/note-patterns", tags=["note-patterns"])
-app.include_router(rhythm_pattern_routes.router, prefix="/api/v1/rhythm-patterns", tags=["rhythm-patterns"])
-app.include_router(chord_progression_routes.router, prefix="/api/v1/chord-progressions", tags=["chord-progressions"])
-app.include_router(user_routes.router, prefix="/api/v1/users", tags=["users"])
-logger.debug("All routers registered")
+# The routers are already included in the note_gen_app import
+logger.info("Note Generation API is initialized and ready")
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

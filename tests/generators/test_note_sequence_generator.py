@@ -2,12 +2,11 @@ import pytest
 from src.note_gen.generators.note_sequence_generator import NoteSequenceGenerator
 from src.note_gen.models.chord_progression import ChordProgression
 from src.note_gen.models.note_sequence import NoteSequence
-from src.note_gen.models.rhythm_pattern import RhythmPattern, RhythmPatternData, RhythmNote
+from src.note_gen.models.patterns import RhythmPattern, RhythmPatternData, RhythmNote
 from src.note_gen.models.note import Note
 from src.note_gen.models.scale_info import ScaleInfo
-from src.note_gen.models.chord import Chord
-from src.note_gen.models.note_pattern import NotePattern
-from src.note_gen.models.chord_quality import ChordQualityType
+from src.note_gen.models.chord import Chord, ChordQuality
+from src.note_gen.models.patterns import NotePattern
 import logging
 
 logger = logging.getLogger(__name__)
@@ -15,8 +14,11 @@ logger = logging.getLogger(__name__)
 @pytest.fixture
 def setup_note_sequence_generator() -> NoteSequenceGenerator:
     scale_info = ScaleInfo(root=Note(note_name="C", octave=4), scale_type="MAJOR")
-    chord1 = Chord(root=Note(note_name="C", octave=4), quality=ChordQualityType.MAJOR)
-    chord2 = Chord(root=Note(note_name="F", octave=4), quality=ChordQualityType.MAJOR)
+    
+    # Fix: Create Chord instances with ChordQuality directly instead of trying to use Chord as a factory
+    chord1 = Chord(root=Note(note_name="C", octave=4), quality=ChordQuality.MAJOR)
+    chord2 = Chord(root=Note(note_name="F", octave=4), quality=ChordQuality.MAJOR)
+    
     chord_progression = ChordProgression(name="Test Progression", key="C", scale_type="MAJOR", scale_info=scale_info, chords=[chord1, chord2])
     note_pattern = NotePattern(name="Test Pattern", pattern=[0, 2, 4])  # Example intervals for a triad
     

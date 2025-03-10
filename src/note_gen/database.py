@@ -3,8 +3,7 @@
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 from motor import motor_asyncio
 from src.note_gen.models.chord_progression import ChordProgression
-from src.note_gen.models.note_pattern import NotePattern
-from src.note_gen.models.rhythm_pattern import RhythmPattern
+from src.note_gen.models.patterns import NotePattern, RhythmPattern
 from typing import Any, AsyncGenerator, Dict, List, Optional
 import logging
 from contextlib import asynccontextmanager

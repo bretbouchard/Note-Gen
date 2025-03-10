@@ -2,12 +2,11 @@ import unittest
 from typing import List, Optional
 from src.note_gen.models.chord_progression import ChordProgression
 from src.note_gen.models.scale_info import ScaleInfo
-from src.note_gen.models.chord_quality import ChordQualityType
+from src.note_gen.models.chord import Chord, ChordQuality
 from src.note_gen.models.enums import ScaleType
 from src.note_gen.models.note import Note
-from src.note_gen.models.chord import Chord
 from src.note_gen.models.fake_scale_info import FakeScaleInfo
-from src.note_gen.models.note_pattern import NotePattern
+from src.note_gen.models.patterns import NotePattern
 from pydantic import ValidationError
 import logging
 
@@ -20,9 +19,9 @@ class TestChordProgression(unittest.TestCase):
     def test_create_chord_progression_valid_data(self) -> None:
         logger.debug("Starting test_create_chord_progression_valid_data")
         chords = [
-            Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
-            Chord(root=Note(note_name="F", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
-            Chord(root=Note(note_name="G", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
+            Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQuality.MAJOR),
+            Chord(root=Note(note_name="F", octave=4, duration=1.0, velocity=100), quality=ChordQuality.MAJOR),
+            Chord(root=Note(note_name="G", octave=4, duration=1.0, velocity=100), quality=ChordQuality.MAJOR),
         ]
         logger.debug(f"Chords created: {chords}")
 
@@ -67,7 +66,7 @@ class TestChordProgression(unittest.TestCase):
             progression = ChordProgression(
                 name="Invalid Complexity",
                 chords=[
-                    Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
+                    Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQuality.MAJOR),
                 ],
                 key="C",
                 scale_type=ScaleType.MINOR,
@@ -88,8 +87,8 @@ class TestChordProgression(unittest.TestCase):
         This test case checks if the model can be converted to a dictionary correctly.
         """
         chords = [
-            Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
-            Chord(root=Note(note_name="F", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
+            Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQuality.MAJOR),
+            Chord(root=Note(note_name="F", octave=4, duration=1.0, velocity=100), quality=ChordQuality.MAJOR),
         ]
         progression = ChordProgression(
             name="Test Progression",
@@ -119,8 +118,8 @@ class TestChordProgression(unittest.TestCase):
         This test case checks if the model can be converted to a dictionary correctly using the to_dict method.
         """
         chords = [
-            Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
-            Chord(root=Note(note_name="F", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
+            Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQuality.MAJOR),
+            Chord(root=Note(note_name="F", octave=4, duration=1.0, velocity=100), quality=ChordQuality.MAJOR),
         ]
         progression = ChordProgression(
             name="Test To Dict",
@@ -154,8 +153,8 @@ class TestChordProgression(unittest.TestCase):
         progression = ChordProgression(
             name="Test Progression",
             chords=[
-                Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
-                Chord(root=Note(note_name="F", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR)
+                Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQuality.MAJOR),
+                Chord(root=Note(note_name="F", octave=4, duration=1.0, velocity=100), quality=ChordQuality.MAJOR)
             ],
             key="C",
             scale_type=ScaleType.MAJOR,
@@ -175,8 +174,8 @@ class TestChordProgression(unittest.TestCase):
         ChordProgression(
             name="Valid Progression",
             chords=[
-                Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
-                Chord(root=Note(note_name="F", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MINOR)
+                Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQuality.MAJOR),
+                Chord(root=Note(note_name="F", octave=4, duration=1.0, velocity=100), quality=ChordQuality.MINOR)
             ],
             key="C",
             scale_type=ScaleType.MAJOR,
@@ -192,7 +191,7 @@ class TestChordProgression(unittest.TestCase):
         with self.assertRaises(ValidationError):
             ChordProgression(
                 name="Too Many Chords",
-                chords=[Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR)] * 20,
+                chords=[Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQuality.MAJOR)] * 20,
                 key="C",
                 scale_type=ScaleType.MAJOR,
                 scale_info=ScaleInfo(
@@ -249,7 +248,7 @@ class TestChordProgression(unittest.TestCase):
         chords = [
             Chord(
                 root=Note(note_name="C", octave=4, duration=1.0, velocity=100), 
-                quality=ChordQualityType.MAJOR
+                quality=ChordQuality.MAJOR
             ),
         ]
         with self.assertRaises(ValidationError):
@@ -272,8 +271,8 @@ class TestChordProgression(unittest.TestCase):
         ChordProgression(
             name="Valid Progression",
             chords=[
-                Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
-                Chord(root=Note(note_name="F", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR)
+                Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQuality.MAJOR),
+                Chord(root=Note(note_name="F", octave=4, duration=1.0, velocity=100), quality=ChordQuality.MAJOR)
             ],
             key="C",
             scale_type=ScaleType.MAJOR,
@@ -290,7 +289,7 @@ class TestChordProgression(unittest.TestCase):
             ChordProgression(
                 name="",  # Empty name
                 chords=[
-                    Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR)
+                    Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQuality.MAJOR)
                 ],
                 key="C",
                 scale_type=ScaleType.MAJOR,
@@ -308,7 +307,7 @@ class TestChordProgression(unittest.TestCase):
         ChordProgression(
             name="Valid Progression",
             chords=[
-                Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR)
+                Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQuality.MAJOR)
             ],
             key="c",  # Lowercase
             scale_type=ScaleType.MAJOR,
@@ -325,7 +324,7 @@ class TestChordProgression(unittest.TestCase):
             ChordProgression(
                 name="Invalid Key Progression",
                 chords=[
-                    Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR)
+                    Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQuality.MAJOR)
                 ],
                 key="H",  # Invalid key
                 scale_type=ScaleType.MAJOR,
@@ -343,7 +342,7 @@ class TestChordProgression(unittest.TestCase):
         ChordProgression(
             name="Valid Progression",
             chords=[
-                Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR)
+                Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQuality.MAJOR)
             ],
             key="C",
             scale_type=ScaleType.MAJOR,
@@ -360,7 +359,7 @@ class TestChordProgression(unittest.TestCase):
             ChordProgression(
                 name="Invalid Complexity Progression",
                 chords=[
-                    Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR)
+                    Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQuality.MAJOR)
                 ],
                 key="C",
                 scale_type=ScaleType.MAJOR,
@@ -390,8 +389,8 @@ class TestChordProgression(unittest.TestCase):
     
         # Create initial chords for the progression
         initial_chords = [
-            Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR),
-            Chord(root=Note(note_name="G", octave=4, duration=1.0, velocity=100), quality=ChordQualityType.MAJOR)
+            Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQuality.MAJOR),
+            Chord(root=Note(note_name="G", octave=4, duration=1.0, velocity=100), quality=ChordQuality.MAJOR)
         ]
     
         # Create an instance of ChordProgression first

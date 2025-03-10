@@ -102,14 +102,13 @@ class Scale(BaseModel):
         for interval in intervals[1:]:  # Skip the first interval (0) as it's the root
             try:
                 # Create a new note for each interval
-                new_midi = root_midi + interval
-                note = Note.from_midi_number(
-                    midi_number=new_midi,
+                note = Note.from_midi(
+                    midi_number=root_midi + interval,
                     duration=self.root.duration,
                     velocity=self.root.velocity
                 )
                 notes.append(note)
-                logger.debug(f"Generated note: {note.note_name}{note.octave} (MIDI: {new_midi})")
+                logger.debug(f"Generated note: {note.note_name}{note.octave} (MIDI: {root_midi + interval})")
             except ValueError as e:
                 # Provide a more helpful error message
                 raise ValueError(
@@ -122,64 +121,62 @@ class Scale(BaseModel):
         logger.debug(f"Generated Scale notes before deduplication: {[note.note_name + str(note.octave) for note in notes]}")
         return notes
 
+    def get_degree_number(self, note: Union[int, 'Note']) -> int:
+        """
+        Get the scale degree number (1-based index) for a given note.
+
+        Args:
+            note: Either a scale degree (int) or a Note object
+
+        Returns:
+            int: The scale degree number (1-based index)
+
+        Raises:
+            ValueError: If the note is not in scale or invalid type
+        """
+        if isinstance(note, int):
+            if 1 <= note <= len(self.notes):
+                return note
+            raise ValueError(f'Invalid scale degree: {note}')
+
+        if not isinstance(note, Note):
+            raise TypeError(f'Expected int or Note, got {type(note)}')
+
+        if not self.notes:
+            self.notes = self._generate_scale_notes()
+
+        try:
+            return self.notes.index(note) + 1
+        except ValueError:
+            raise ValueError(f'Note {note} is not in scale')
+
     def get_scale_degree(self, degree: int) -> Note:
         """
-        Alias for get_note_at_degree to maintain backward compatibility.
-        """
-        return self.get_note_at_degree(degree)
+        Get the note at a specific scale degree (1-based indexing).
 
-    def get_note_at_degree(self, degree: int) -> Note:
-        """
-        Get a note at a specific scale degree (1-based indexing).
-        
         Args:
             degree: The scale degree (1-based indexing)
-            
+
         Returns:
             Note: The note at the specified scale degree
-            
+
         Raises:
             ValueError: If the degree is not valid for this scale
         """
         if not self.notes:
             self.notes = self._generate_scale_notes()
 
-        # Validate degree
         if not isinstance(degree, int):
             try:
                 degree = int(degree)
             except (TypeError, ValueError):
-                raise ValueError(f"Invalid degree type: {type(degree)}")
+                raise ValueError(f'Invalid degree type: {type(degree)}')
 
-        # Get the number of unique notes in the scale
         scale_length = len(self.calculate_intervals())
-        
         if not 1 <= degree <= scale_length:
-            raise ValueError(f"Scale degree must be between 1 and {scale_length}")
-        
+            raise ValueError(f'Scale degree must be between 1 and {scale_length}')
+
         return self.notes[degree - 1]
-
-    def calculate_intervals(self) -> List[int]:
-        """
-        Calculate intervals for the scale based on its type.
-        
-        Returns:
-            List[int]: Intervals for the scale
-            
-        Raises:
-            ValueError: If the scale type is not recognized
-        """
-        if self.scale_type is None:
-            raise ValueError("Scale type cannot be None")
-
-        try:
-            intervals = self.SCALE_INTERVALS.get(self.scale_type)
-            if intervals is None:
-                raise ValueError(f"Unsupported scale type: {self.scale_type}")
-            return intervals
-        except Exception as e:
-            logger.error(f"Error calculating intervals for scale type {self.scale_type}: {e}")
-            raise
 
     def get_triad(self, degree: int) -> List[Note]:
         """
@@ -282,3 +279,25 @@ class Scale(BaseModel):
 
     def another_scale_function(self) -> None:
         pass
+
+    def calculate_intervals(self) -> List[int]:
+        """
+        Calculate intervals for the scale based on its type.
+        
+        Returns:
+            List[int]: Intervals for the scale
+            
+        Raises:
+            ValueError: If the scale type is not recognized
+        """
+        if self.scale_type is None:
+            raise ValueError("Scale type cannot be None")
+
+        try:
+            intervals = self.SCALE_INTERVALS.get(self.scale_type)
+            if intervals is None:
+                raise ValueError(f"Unsupported scale type: {self.scale_type}")
+            return intervals
+        except Exception as e:
+            logger.error(f"Error calculating intervals for scale type {self.scale_type}: {e}")
+            raise

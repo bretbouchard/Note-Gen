@@ -7,32 +7,17 @@ import sys
 
 # Set up logging configuration
 logger = logging.getLogger(__name__)
-logger.propagate = False
-
-# Set up logging to output to test console only
-logging.basicConfig(
-    level=logging.DEBUG,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(sys.stdout)  # Log to console only
-    ]
-)
 
 from src.note_gen.models.note import Note
-from src.note_gen.models.chord_progression import ChordProgression 
-from src.note_gen.models.rhythm_pattern import RhythmPattern
+from src.note_gen.models.patterns import Patterns
+from src.note_gen.models.patterns import RhythmPattern
 from src.note_gen.models.note_sequence import NoteSequence
 from src.note_gen.models.note_event import NoteEvent
 from src.note_gen.models.chord import Chord
 from src.note_gen.models.scale_info import ScaleInfo
-from src.note_gen.models.chord_quality import ChordQualityType
 from src.note_gen.models.enums import ScaleType
 from src.note_gen.models.scale import Scale
-from src.note_gen.models.note_pattern import NotePattern
 from src.note_gen.models.scale_degree import ScaleDegree
-
-logger = logging.getLogger(__name__)
-logger.propagate = False
 
 async def generate_sequence_from_presets(
     progression_name: str,
@@ -43,9 +28,8 @@ async def generate_sequence_from_presets(
     note_pattern: Dict[str, Any],
     rhythm_pattern: Dict[str, Any]
 ) -> NoteSequence:
-    # Placeholder logic for generating a sequence from presets
     logger.debug("Generating sequence from presets...")
-    # Implement placeholder body for the generate_sequence_from_presets function
+    # Placeholder logic for generating a sequence from presets
     sequence = []
     for chord in chord_progression['chords']:
         # Generate all notes in the chord (not just the root)
@@ -53,7 +37,8 @@ async def generate_sequence_from_presets(
         sequence.extend(chord_notes)
     logger.debug(f"Generated sequence: {sequence}")
     logger.info(f"Generated notes: {[note.note_name for note in sequence]}")
-    logger.debug(f"Generated notes: {[note.note_name for note in sequence]}")  
+    logger.debug(f"Generated notes before returning: {[note.note_name for note in sequence]}")
+    logger.debug(f"Generated notes before returning: {[note.note_name for note in sequence]}")  
     logger.debug(f"Generated notes before returning: {[note.note_name for note in sequence]}")
     return NoteSequence(notes=sequence)
 
@@ -61,9 +46,10 @@ class NoteSequenceGenerator(BaseModel):
     """Generator for creating note sequences from chord progressions and rhythm patterns."""
     
     chord_progression: ChordProgression = Field(...)
-    note_pattern: NotePattern = Field(...)
+    note_pattern: Patterns = Field(...)
     rhythm_pattern: RhythmPattern = Field(...)
 
+    @staticmethod
     async def generate_sequence_from_presets(
         progression_name: str,
         note_pattern_name: str,
@@ -77,7 +63,7 @@ class NoteSequenceGenerator(BaseModel):
         
         # Retrieve the rhythm pattern
         logger.debug(f"Retrieving rhythm pattern for: {rhythm_pattern_name}")
-        rhythm_pattern_instance = await self.get_rhythm_pattern(rhythm_pattern_name)
+        rhythm_pattern_instance = await NoteSequenceGenerator.get_rhythm_pattern(rhythm_pattern_name)
         if rhythm_pattern_instance is None:
             logger.error(f"Rhythm pattern '{rhythm_pattern_name}' not found.")
             raise ValueError(f"Rhythm pattern '{rhythm_pattern_name}' not found.")
@@ -97,10 +83,10 @@ class NoteSequenceGenerator(BaseModel):
         
         return NoteSequence(notes=sequence)
 
-    async def get_note_pattern(self, note_pattern_name: str) -> NotePattern:
+    async def get_note_pattern(self, note_pattern_name: str) -> Patterns:
         # Placeholder logic to simulate retrieving a note pattern
         logger.debug(f"Retrieving note pattern for: {note_pattern_name}")
-        return NotePattern(pattern=[0, 2, 4])  # Example pattern
+        return Patterns(pattern=[0, 2, 4])  # Example pattern
 
     async def get_rhythm_pattern(self, rhythm_pattern_name: str) -> RhythmPattern:
         # Placeholder logic to simulate retrieving a rhythm pattern
@@ -110,7 +96,7 @@ class NoteSequenceGenerator(BaseModel):
     async def generate_sequence_async(
         self,
         chord_progression: ChordProgression,
-        note_pattern: NotePattern,
+        note_pattern: Patterns,
         rhythm_pattern: RhythmPattern,
         scale_info: ScaleInfo
     ) -> NoteSequence:
@@ -153,7 +139,8 @@ class NoteSequenceGenerator(BaseModel):
                         raise ValueError(f"Chord root {chord.root} not found in scale notes.")  # Current chord root index
                     logger.debug(f"Root index: {rootIndex}")
 
-                    chordDuration = chord.duration 
+                    # If chord duration is None, use a default value of 4.0 seconds
+                    chordDuration = chord.duration if chord.duration is not None else 4.0
                     print(f"Chord Duration: {chordDuration} seconds")
                     logger.debug(f"Chord Duration: {chordDuration}")  # Log the chord duration
 
@@ -213,12 +200,12 @@ class NoteSequenceGenerator(BaseModel):
                 logger.debug(f"Generated notes: {[note.note_name for note in sequence]}")  
                 logger.info(f"Generated notes before returning: {[note.note_name for note in sequence]}")
                 logger.debug(f"Generated notes before returning: {[note.note_name for note in sequence]}")
-                logger.info(f"Generated notes before returning: {[note.note_name for note in sequence]}") # Added this line
-                logger.info(f"Generated notes before returning: {[note.note_name for note in sequence]}") # Added this line
+                logger.info(f"Generated notes before returning: {[note.note_name for note in sequence]}") 
+                logger.info(f"Generated notes before returning: {[note.note_name for note in sequence]}") 
                 logger.debug(f"Generated notes: {[note.note_name for note in generated_notes]}")
-                logger.debug(f"Generated notes: {[note.note_name for note in generated_notes]}") # Added this line
-                print(f"Generated notes: {[note.note_name for note in generated_notes]}") # Added this line
-                print(f"Generated notes: {[note.note_name for note in generated_notes]}") # Added this line
+                logger.debug(f"Generated notes: {[note.note_name for note in generated_notes]}") 
+                print(f"Generated notes: {[note.note_name for note in generated_notes]}") 
+                print(f"Generated notes: {[note.note_name for note in generated_notes]}") 
                 logger.debug(f"Generated notes structure: {[{'name': note.note_name, 'octave': note.octave} for note in generated_notes]}")
                 logger.debug(f"Generated notes: {[note.note_name for note in generated_notes]}")
                 return NoteSequence(notes=generated_notes, is_test=False)
@@ -231,7 +218,7 @@ class NoteSequenceGenerator(BaseModel):
         finally:
             logger.debug("generate_sequence_async function execution completed.")
 
-    async def generate_sequence(self, chord_progression: ChordProgression, note_pattern: NotePattern, rhythm_pattern: RhythmPattern, scale_info: ScaleInfo) -> List[Note]:
+    async def generate_sequence(self, chord_progression: ChordProgression, note_pattern: Patterns, rhythm_pattern: RhythmPattern, scale_info: ScaleInfo) -> List[Note]:
         logger.debug("Generating sequence asynchronously...")
         note_sequence = await self.generate_sequence_async(
             chord_progression,

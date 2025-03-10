@@ -144,8 +144,8 @@ class NotePattern(BaseModel):
     def __init__(self, pattern: str | list[str], name: str | None = None, description: str | None = None) -> None: ...
     @classmethod
     def create(cls, name: str, data: NotePatternData) -> NotePattern: ...
-    def model_dump(self, *, mode: Literal['json', 'python'] | str = 'json', include: Any | None = None,
-                exclude: Any | None = None, context: Any | None = None, by_alias: bool = True,
-                exclude_unset: bool = False, exclude_defaults: bool = False, exclude_none: bool = False,
-                round_trip: bool = False, warnings: Literal['none', 'warn', 'error'] | bool = 'warn',
-                serialize_as_any: bool = False) -> dict[str, Any]: ...
+    def model_dump(self, *, mode: Literal['json', 'python'] | str = 'json', include: Any | None = ..., exclude: Any | None = ..., context: Any | None = ..., by_alias: bool = ..., exclude_unset: bool = ..., exclude_defaults: bool = ..., exclude_none: bool = ..., round_trip: bool = ..., warnings: Literal['none', 'warn', 'error'] | bool = ..., serialize_as_any: bool = ...) -> dict[str, Any]:
+        """Convert the model to a dictionary representation."""
+        return {
+            # Include your fields here
+        }

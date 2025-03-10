@@ -2,12 +2,12 @@ import pytest
 from src.note_gen.generators.note_sequence_generator import NoteSequenceGenerator
 from src.note_gen.models.chord_progression import ChordProgression
 from src.note_gen.models.note_sequence import NoteSequence
-from src.note_gen.models.rhythm_pattern import RhythmPattern, RhythmNote, RhythmPatternData
+from src.note_gen.models.patterns import RhythmPattern, RhythmNote, RhythmPatternData, NotePattern, NotePatternData
 from src.note_gen.models.note import Note
 from src.note_gen.models.scale_info import ScaleInfo
-from src.note_gen.models.chord import Chord
-from src.note_gen.models.note_pattern import NotePattern
-from src.note_gen.models.chord_quality import ChordQualityType
+from src.note_gen.models.chord import Chord, ChordQuality
+from src.note_gen.models.patterns import NotePattern
+
 
 # Fixture for rhythm pattern
 @pytest.fixture
@@ -42,11 +42,21 @@ def setup_note_sequence_generator(chord_progression, note_pattern, rhythm_patter
         scale_type="MAJOR",
         scale_info=ScaleInfo(root=Note(note_name="C", octave=4), scale_type="MAJOR"),
         chords=[
-            Chord(root=Note(note_name="C", octave=4), quality=ChordQualityType.MAJOR),
-            Chord(root=Note(note_name="F", octave=4), quality=ChordQualityType.MAJOR)
+            Chord(root=Note(note_name="C", octave=4), quality=ChordQuality.MAJOR),
+            Chord(root=Note(note_name="F", octave=4), quality=ChordQuality.MAJOR)
         ]
     ),
-     NotePattern(name="Triad", pattern=[1, 3, 5]),  # Valid scale degrees for C major
+     NotePattern(
+        name="Triad",
+        description="Test triad pattern",
+        data=NotePatternData(
+            intervals=[1, 3, 5],  # Valid scale degrees for C major
+            duration=1.0,
+            velocity=100
+        ),
+        tags=["valid_tag"],
+        complexity=0.5
+    ),
      [Note(note_name="D", octave=4), Note(note_name="F", octave=4), Note(note_name="A", octave=4), Note(note_name="D", octave=4), Note(note_name="G", octave=4), Note(note_name="B", octave=4), Note(note_name="D", octave=4), Note(note_name="G", octave=4)]),
     (ChordProgression(
         name="G Major",
@@ -54,11 +64,21 @@ def setup_note_sequence_generator(chord_progression, note_pattern, rhythm_patter
         scale_type="MAJOR",
         scale_info=ScaleInfo(root=Note(note_name="G", octave=4), scale_type="MAJOR"),
         chords=[
-            Chord(root=Note(note_name="G", octave=4), quality=ChordQualityType.MAJOR),
-            Chord(root=Note(note_name="C", octave=4), quality=ChordQualityType.MAJOR)
+            Chord(root=Note(note_name="G", octave=4), quality=ChordQuality.MAJOR),
+            Chord(root=Note(note_name="C", octave=4), quality=ChordQuality.MAJOR)
         ]
     ),
-     NotePattern(name="Triad", pattern=[1, 3, 5]),  # Valid scale degrees for G major
+     NotePattern(
+        name="Triad",
+        description="Test triad pattern",
+        data=NotePatternData(
+            intervals=[1, 3, 5],  # Valid scale degrees for G major
+            duration=1.0,
+            velocity=100
+        ),
+        tags=["valid_tag"],
+        complexity=0.5
+    ),
      [Note(note_name="A", octave=4), Note(note_name="C", octave=4), Note(note_name="E", octave=4), Note(note_name="A", octave=4), Note(note_name="D", octave=4), Note(note_name="F#", octave=4), Note(note_name="A", octave=4), Note(note_name="D", octave=4)]),
     (ChordProgression(
         name="A Minor",
@@ -66,11 +86,21 @@ def setup_note_sequence_generator(chord_progression, note_pattern, rhythm_patter
         scale_type="MINOR",
         scale_info=ScaleInfo(root=Note(note_name="A", octave=4), scale_type="MINOR"),
         chords=[
-            Chord(root=Note(note_name="A", octave=4), quality=ChordQualityType.MINOR),
-            Chord(root=Note(note_name="D", octave=4), quality=ChordQualityType.MAJOR)
+            Chord(root=Note(note_name="A", octave=4), quality=ChordQuality.MINOR),
+            Chord(root=Note(note_name="D", octave=4), quality=ChordQuality.MAJOR)
         ]
     ),
-     NotePattern(name="Triad", pattern=[1, 3, 5]),  # Valid scale degrees for A minor
+     NotePattern(
+        name="Triad",
+        description="Test triad pattern",
+        data=NotePatternData(
+            intervals=[1, 3, 5],  # Valid scale degrees for A minor
+            duration=1.0,
+            velocity=100
+        ),
+        tags=["valid_tag"],
+        complexity=0.5
+    ),
      [Note(note_name="B", octave=4), Note(note_name="D", octave=4), Note(note_name="F", octave=4), Note(note_name="B", octave=4), Note(note_name="E", octave=4), Note(note_name="G", octave=4), Note(note_name="B", octave=4), Note(note_name="E", octave=4)])
 ])
 

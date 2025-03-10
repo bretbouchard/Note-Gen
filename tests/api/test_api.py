@@ -12,9 +12,9 @@ from src.note_gen.dependencies import get_db_conn
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import ValidationError
 from src.note_gen.models.note import Note
-from src.note_gen.models.chord_quality import ChordQualityType
+from src.note_gen.models.chord import Chord, ChordQuality  # Import ChordQuality directly
 from src.note_gen.models.chord_progression import ChordProgression
-from src.note_gen.models.rhythm_pattern import RhythmPattern, RhythmPatternData, RhythmNote
+from src.note_gen.models.patterns import RhythmPattern, RhythmPatternData, RhythmNote
 import asyncio
 import logging
 import uuid
@@ -108,19 +108,19 @@ class MockDatabase:
             "chords": [
                 {
                     "root": {"note_name": "C", "octave": 4},  
-                    "quality": ChordQualityType.MAJOR,
+                    "quality": "DOMINANT",  # Use string instead of enum
                 },
                 {
                     "root": {"note_name": "G", "octave": 4},  
-                    "quality": ChordQualityType.MAJOR,
+                    "quality": "MAJOR",  # Use string instead of enum
                 },
                 {
                     "root": {"note_name": "A", "octave": 4},  
-                    "quality": ChordQualityType.MINOR,
+                    "quality": "MINOR",  # Use string instead of enum
                 },
                 {
                     "root": {"note_name": "F", "octave": 4},  
-                    "quality": ChordQualityType.MAJOR,
+                    "quality": "MAJOR",  # Use string instead of enum
                 }
             ],
             "scale_info": {
@@ -244,11 +244,11 @@ async def test_api_functionality(test_client: httpx.AsyncClient) -> None:
         "chords": [
             {
                 "root": {"note_name": "C", "octave": 4, "velocity": 100, "duration": 1},  # Pass as a dictionary
-                "quality": "DOMINANT"
+                "quality": "DOMINANT"  # Use string instead of enum
             },
             {
                 "root": {"note_name": "G", "octave": 4, "velocity": 100, "duration": 1},  # Pass as a dictionary
-                "quality": "MAJOR"
+                "quality": "MAJOR"  # Use string instead of enum
             }
         ],
         "key": "C",
@@ -346,11 +346,11 @@ async def test_create_chord_progression_valid_data(test_client: httpx.AsyncClien
         "chords": [
             {
                 "root": {"note_name": "C", "octave": 4, "velocity": 100, "duration": 1},  # Pass as a dictionary
-                "quality": "DOMINANT"
+                "quality": "DOMINANT"  # Use string instead of enum
             },
             {
-                "root": {"note_name": "G", "octave": 4, "velocity": 100, "duration": 1},  # Pass as a dictionary
-                "quality": "MAJOR"
+                "root": {"note_name": "G", "octave": 4, "velocity": 100, "duration": 1},
+                "quality": "MAJOR"  # Use string instead of enum
             }
         ],
         "key": "C",
@@ -420,7 +420,7 @@ async def test_create_chord_progression_invalid_data(test_client: httpx.AsyncCli
         "chords": [
             {
                 "root": {"note_name": "H", "octave": 4},  # H is not a valid note name
-                "quality": "MAJOR"
+                "quality": "MAJOR"  # Use string instead of enum
             }
         ],
         "scale_info": {
@@ -448,12 +448,12 @@ async def test_create_chord_progression_valid_data_with_additional_fields(test_c
         "name": f"Test Progression {int(time.time())}",
         "chords": [
             {
-                "root": {"note_name": "C", "octave": 4, "velocity": 100, "duration": 1},  # Pass as a dictionary
-                "quality": "DOMINANT"
+                "root": {"note_name": "C", "octave": 4, "velocity": 100, "duration": 1},
+                "quality": "DOMINANT"  # Use string instead of enum
             },
             {
-                "root": {"note_name": "G", "octave": 4, "velocity": 100, "duration": 1},  # Pass as a dictionary
-                "quality": "MAJOR"
+                "root": {"note_name": "G", "octave": 4, "velocity": 100, "duration": 1},
+                "quality": "MAJOR"  # Use string instead of enum
             }
         ],
         "key": "C",

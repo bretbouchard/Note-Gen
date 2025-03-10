@@ -12,7 +12,9 @@ from src.note_gen.dependencies import get_db_conn
 import logging
 
 logger = logging.getLogger(__name__)
-router = APIRouter()
+router = APIRouter(
+    tags=["users"]
+)
 
 @router.get("/me")
 async def get_current_user():

@@ -59,132 +59,45 @@ logging.getLogger("pymongo").setLevel(logging.WARNING)
 logging.getLogger("asyncio").setLevel(logging.WARNING)
 
 # Import the FastAPI app and database functions.
-from main import app
-from src.note_gen.database.db import init_db, close_mongo_connection, get_db_conn
+from src.note_gen import app
+from src.note_gen.database.db import init_db, close_mongo_connection, get_db_conn, drop_database
 from motor.motor_asyncio import AsyncIOMotorDatabase
+from src.note_gen.fetch_patterns import extract_patterns_from_chord_progressions
 
-# Minimal model definitions for sample data insertion.
-from pydantic import BaseModel, validator, field_validator
+# Import proper models for test data
+from src.note_gen.models.note import Note
+from src.note_gen.models.chord import Chord, ChordQuality
+from src.note_gen.models.patterns import NotePattern, NotePatternData, RhythmPattern, RhythmPatternData
 
-class Note(BaseModel):
-    note_name: str
-    octave: int
-    duration: float
-    velocity: int
-
-class NotePatternData(BaseModel):
-    notes: List[Dict[str, Any]]
-    duration: float
-    position: float
-    velocity: int
-    intervals: List[Any]
-    index: int
-
-    class Config:
-        arbitrary_types_allowed = True
-
-class NotePattern(BaseModel):
-    id: str
-    name: str
-    description: str
-    tags: List[str]
-    notes: List[Note]
-    data: NotePatternData
-    intervals: List[Any]
-    duration: float
-    position: float
-    velocity: float
-
-class Chord(BaseModel):
-    pass  # Replace with your actual Chord model
-
-class ChordProgression(BaseModel):
-    index: int
-    id: str
-    name: str
-    chords: List[Chord]
-    key: str
-    scale_type: str
-    complexity: float
-
-class RhythmNote(BaseModel):
-    position: float
-    duration: float
-    velocity: int
-    is_rest: bool
-
-class RhythmPatternData(BaseModel):
-    notes: List[RhythmNote]
-    time_signature: str
-    swing_ratio: Any  # Use a more specific type if available
-    default_duration: Any
-    total_duration: Any
-    groove_type: Any
-
-    class Config:
-        arbitrary_types_allowed = True
-
-    @field_validator('notes')
-    def validate_notes(cls, value: List[RhythmNote]) -> List[RhythmNote]:
-        if not value:
-            raise ValueError('Notes must not be empty')
-        return value
+# Override pytest-asyncio's event_loop with proper session scope
+@pytest.fixture(scope="session")
+def event_loop():
+    policy = asyncio.get_event_loop_policy()
+    loop = policy.new_event_loop()
+    yield loop
+    loop.close()
 
 # -------------------------------
 # Fixtures
 # -------------------------------
 
-@pytest_asyncio.fixture
-async def test_db() -> AsyncGenerator[AsyncIOMotorDatabase[Any], None]:
-    """
-    Provides a test database connection with sample data.
-    """
-    logger.debug('Entering test_db fixture')
-    db: AsyncIOMotorDatabase[Any] = await get_db_conn()
-    clear_db_after_tests = os.getenv('CLEAR_DB_AFTER_TESTS', '1')
-    logger.debug(f'CLEAR_DB_AFTER_TESTS value: {clear_db_after_tests}')
-    logger.debug(f'CLEAR_DB_AFTER_TESTS value: {os.getenv("CLEAR_DB_AFTER_TESTS")}')
-    if os.getenv('CLEAR_DB_AFTER_TESTS', '1') == '1':
-        logger.debug('Clearing database collections')
-        collections: List[str] = await db.list_collection_names()
-        for collection in collections:
-            await db[collection].delete_many({})
-    logger.debug('Inserting sample data into database')
-    test_chord_progressions = [
-        {"name": "I-IV-V-I", "chords": ["C", "F", "G", "C"]},
-        {"name": "ii-V-I", "chords": ["Dm", "G", "C"]}
-    ]
-    test_note_patterns = [
-        {"name": "Simple Triad", "notes": ["C", "E", "G"]},
-        {"name": "Major Scale", "notes": ["C", "D", "E", "F", "G", "A", "B"]}
-    ]
-    test_rhythm_patterns = [
-        {"name": "quarter_notes", "pattern": [1, 0, 1, 0]},
-        {"name": "eighth_notes", "pattern": [1, 1, 0, 0]}
-    ]
-    await db.chord_progressions.insert_many(test_chord_progressions)
-    await db.note_patterns.insert_many(test_note_patterns)
-    await db.rhythm_patterns.insert_many(test_rhythm_patterns)
-    logger.debug('Yielding database connection')
+@pytest_asyncio.fixture(scope="session")
+async def test_db(event_loop):
+    await init_db()
+    db = get_db_conn()
     yield db
-    logger.debug('Closing database connection')
     await close_mongo_connection()
 
-@pytest_asyncio.fixture
-async def async_test_client() -> AsyncGenerator[httpx.AsyncClient, None]:
-    """
-    Provides an async test client.
-    """
-    logger.debug('Entering async_test_client fixture')
-    transport: ASGITransport = ASGITransport(app=app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://localhost:8000") as client:
-        logger.debug('Yielding async test client')
+@pytest.fixture(scope="session")
+def sync_client():
+    return TestClient(app)
+
+@pytest_asyncio.fixture(scope="session")
+async def async_client(test_db):
+    async with TestClient(app) as client:
         yield client
 
-@pytest.fixture
-def test_client() -> Generator[TestClient, None, None]:
-    """
-    Provides a synchronous test client.
-    """
-    with TestClient(app=app) as client:
-        yield client
+@pytest.fixture(scope="session")
+async def global_cleanup(test_db):
+    yield
+    await test_db.client.drop_database("test_note_gen")
