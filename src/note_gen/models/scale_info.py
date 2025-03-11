@@ -18,23 +18,23 @@ class ScaleInfo(BaseModel):
     _scale_notes: Optional[List[Note]] = None  # Private field to cache scale notes
 
     MAJOR_SCALE_QUALITIES: ClassVar[Dict[int, Chord]] = {
-        1: Chord(root=Note(), quality=ChordQuality.MAJOR),
-        2: Chord(root=Note(), quality=ChordQuality.MINOR),
-        3: Chord(root=Note(), quality=ChordQuality.MINOR),
-        4: Chord(root=Note(), quality=ChordQuality.MAJOR),
-        5: Chord(root=Note(), quality=ChordQuality.MAJOR),
-        6: Chord(root=Note(), quality=ChordQuality.MINOR),
-        7: Chord(root=Note(), quality=ChordQuality.DIMINISHED)
+        1: Chord(root=Note(note_name='C', octave=4), quality=ChordQuality.MAJOR),
+        2: Chord(root=Note(note_name='D', octave=4), quality=ChordQuality.MINOR),
+        3: Chord(root=Note(note_name='E', octave=4), quality=ChordQuality.MINOR),
+        4: Chord(root=Note(note_name='F', octave=4), quality=ChordQuality.MAJOR),
+        5: Chord(root=Note(note_name='G', octave=4), quality=ChordQuality.MAJOR),
+        6: Chord(root=Note(note_name='A', octave=4), quality=ChordQuality.MINOR),
+        7: Chord(root=Note(note_name='B', octave=4), quality=ChordQuality.DIMINISHED)
     }
 
     MINOR_SCALE_QUALITIES: ClassVar[Dict[int, Chord]] = {
-        1: Chord(root=Note(), quality=ChordQuality.MINOR),
-        2: Chord(root=Note(), quality=ChordQuality.DIMINISHED),
-        3: Chord(root=Note(), quality=ChordQuality.MAJOR),
-        4: Chord(root=Note(), quality=ChordQuality.MINOR),
-        5: Chord(root=Note(), quality=ChordQuality.MINOR),
-        6: Chord(root=Note(), quality=ChordQuality.MAJOR),
-        7: Chord(root=Note(), quality=ChordQuality.MAJOR)
+        1: Chord(root=Note(note_name='C', octave=4), quality=ChordQuality.MINOR),
+        2: Chord(root=Note(note_name='D', octave=4), quality=ChordQuality.DIMINISHED),
+        3: Chord(root=Note(note_name='E', octave=4), quality=ChordQuality.MAJOR),
+        4: Chord(root=Note(note_name='F', octave=4), quality=ChordQuality.MINOR),
+        5: Chord(root=Note(note_name='G', octave=4), quality=ChordQuality.MINOR),
+        6: Chord(root=Note(note_name='A', octave=4), quality=ChordQuality.MAJOR),
+        7: Chord(root=Note(note_name='B', octave=4), quality=ChordQuality.MAJOR)
     }
 
     model_config = ConfigDict(

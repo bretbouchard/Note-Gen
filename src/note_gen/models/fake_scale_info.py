@@ -15,7 +15,7 @@ class FakeScaleInfo(BaseModel):
     _scale: Optional[Scale] = None  # Cache for Scale instance
 
     # Define a root note as a ClassVar
-    root_note: ClassVar[Note] = Note(name="C")  # Define a root note
+    root_note: ClassVar[Note] = Note(note_name='C', octave=4)  # Define a root note
 
     # Update the MAJOR_SCALE_QUALITIES and MINOR_SCALE_QUALITIES mappings
     MAJOR_SCALE_QUALITIES: ClassVar[Dict[int, ChordQuality]] = {

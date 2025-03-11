@@ -19,7 +19,11 @@ class TestRhythmPattern:
         # Create pattern with valid time signature
         pattern_data = RhythmPatternData(
             notes=[RhythmNote(position=0, duration=1.0)],
-            time_signature="3/4"
+            time_signature="3/4",
+            default_duration=1.0,
+            groove_type="straight",
+            style="jazz",
+            duration=3.0
         )
         assert pattern_data.time_signature == "3/4"
 
@@ -27,20 +31,41 @@ class TestRhythmPattern:
         # Setup mock return value
         mock_db_connection.return_value.__aenter__.return_value = AsyncMock()
         with pytest.raises(ValueError) as exc_info:
-            RhythmPatternData(notes=[RhythmNote(position=0, duration=1.0)], time_signature="5/0")  # Invalid denominator
+            RhythmPatternData(
+                notes=[RhythmNote(position=0, duration=1.0)],
+                time_signature="5/0",
+                default_duration=1.0,
+                groove_type="straight",
+                style="jazz",
+                duration=5.0
+            )  # Invalid denominator
         assert "Both numerator and denominator must be positive" in str(exc_info.value)
 
     async def test_validate_time_signature_invalid_during_instantiation(self, mock_db_connection) -> None:
         # Setup mock return value
         mock_db_connection.return_value.__aenter__.return_value = AsyncMock()
         with pytest.raises(ValueError) as exc_info:
-            RhythmPatternData(notes=[RhythmNote(position=0, duration=1.0)], time_signature="5/")  # Invalid format
+            RhythmPatternData(
+                notes=[RhythmNote(position=0, duration=1.0)],
+                time_signature="5/",
+                default_duration=1.0,
+                groove_type="straight",
+                style="jazz",
+                duration=5.0
+            )  # Invalid format
         assert "String should match pattern" in str(exc_info.value)
 
     async def test_validate_groove_type_valid(self, mock_db_connection) -> None:
         # Setup mock return value
         mock_db_connection.return_value.__aenter__.return_value = AsyncMock()
-        pattern_data = RhythmPatternData(notes=[RhythmNote(position=0, duration=1.0)])
+        pattern_data = RhythmPatternData(
+            notes=[RhythmNote(position=0, duration=1.0)],
+            time_signature="4/4",
+            default_duration=1.0,
+            groove_type="swing",
+            style="jazz",
+            duration=4.0
+        )
         pattern_data.groove_type = "swing"
         assert pattern_data.groove_type == "swing"
 
@@ -48,34 +73,69 @@ class TestRhythmPattern:
         # Setup mock return value
         mock_db_connection.return_value.__aenter__.return_value = AsyncMock()
         with pytest.raises(ValueError) as exc_info:
-            RhythmPatternData(notes=[RhythmNote(position=0, duration=1.0)], groove_type="invalid")
+            RhythmPatternData(
+                notes=[RhythmNote(position=0, duration=1.0)],
+                time_signature="4/4",
+                default_duration=1.0,
+                groove_type="invalid",
+                style="jazz",
+                duration=4.0
+            )
         assert "Invalid groove type" in str(exc_info.value)
 
     async def test_validate_notes_valid(self, mock_db_connection) -> None:
         # Setup mock return value
         mock_db_connection.return_value.__aenter__.return_value = AsyncMock()
         valid_notes = [RhythmNote(position=0, duration=1.0)]
-        pattern_data = RhythmPatternData(notes=valid_notes)
+        pattern_data = RhythmPatternData(
+            notes=valid_notes,
+            time_signature="4/4",
+            default_duration=1.0,
+            groove_type="straight",
+            style="jazz",
+            duration=4.0
+        )
         assert pattern_data.notes == valid_notes
 
     async def test_validate_notes_empty(self, mock_db_connection) -> None:
         # Setup mock return value
         mock_db_connection.return_value.__aenter__.return_value = AsyncMock()
         with pytest.raises(ValueError) as exc_info:
-            RhythmPatternData(notes=[])
+            RhythmPatternData(
+                notes=[],
+                time_signature="4/4",
+                default_duration=1.0,
+                groove_type="straight",
+                style="jazz",
+                duration=4.0
+            )
         assert "List should have at least 1 item" in str(exc_info.value)
 
     async def test_validate_default_duration_valid(self, mock_db_connection) -> None:
         # Setup mock return value
         mock_db_connection.return_value.__aenter__.return_value = AsyncMock()
-        pattern_data = RhythmPatternData(notes=[RhythmNote(position=0, duration=1.0)], default_duration=2.0)
+        pattern_data = RhythmPatternData(
+            notes=[RhythmNote(position=0, duration=1.0)],
+            time_signature="4/4",
+            default_duration=2.0,
+            groove_type="straight",
+            style="jazz",
+            duration=4.0
+        )
         assert pattern_data.default_duration == 2.0
 
     async def test_validate_default_duration_invalid(self, mock_db_connection) -> None:
         # Setup mock return value
         mock_db_connection.return_value.__aenter__.return_value = AsyncMock()
         with pytest.raises(ValueError) as exc_info:
-            RhythmPatternData(notes=[RhythmNote(position=0, duration=1.0)], default_duration=0.0)
+            RhythmPatternData(
+                notes=[RhythmNote(position=0, duration=1.0)],
+                time_signature="4/4",
+                default_duration=0.0,
+                groove_type="straight",
+                style="jazz",
+                duration=4.0
+            )
         assert "Input should be greater than 0" in str(exc_info.value)
 
     async def test_validate_name_valid(self, mock_db_connection) -> None:
@@ -84,8 +144,15 @@ class TestRhythmPattern:
         pattern = RhythmPattern(
             id="1",
             name="Test Pattern",
-            data=RhythmPatternData(notes=[RhythmNote(position=0, duration=1.0)]),
-            pattern="4 4 4 4",  # 4 quarter notes = 4 beats, matches 4/4 time signature
+            data=RhythmPatternData(
+                notes=[RhythmNote(position=0, duration=1.0)],
+                time_signature="4/4",
+                default_duration=1.0,
+                groove_type="straight",
+                style="jazz",
+                duration=4.0
+            ),
+            pattern="4 4 4 4",
             complexity=1.0,
             tags=["valid_tag"]
         )
@@ -99,7 +166,14 @@ class TestRhythmPattern:
             RhythmPattern(
                 id="1",
                 name="",
-                data=RhythmPatternData(notes=[RhythmNote(position=0, duration=1.0)]),
+                data=RhythmPatternData(
+                    notes=[RhythmNote(position=0, duration=1.0)],
+                    time_signature="4/4",
+                    default_duration=1.0,
+                    groove_type="straight",
+                    style="jazz",
+                    duration=4.0
+                ),
                 pattern="4 4 4 4",
                 complexity=1.0,
                 tags=["valid_tag"]
@@ -109,12 +183,19 @@ class TestRhythmPattern:
     async def test_validate_data_valid(self, mock_db_connection) -> None:
         # Setup mock return value
         mock_db_connection.return_value.__aenter__.return_value = AsyncMock()
-        data = RhythmPatternData(notes=[RhythmNote(position=0, duration=1.0)])
+        data = RhythmPatternData(
+            notes=[RhythmNote(position=0, duration=1.0)],
+            time_signature="4/4",
+            default_duration=1.0,
+            groove_type="straight",
+            style="jazz",
+            duration=4.0
+        )
         pattern = RhythmPattern(
             id="1",
             name="Test Pattern",
             data=data,
-            pattern="4 4 4 4",  # 4 quarter notes = 4 beats, matches 4/4 time signature
+            pattern="4 4 4 4",
             complexity=1.0,
             tags=["valid_tag"]
         )
@@ -140,8 +221,15 @@ class TestRhythmPattern:
         pattern = RhythmPattern(
             id="1",
             name="Test Pattern",
-            data=RhythmPatternData(notes=[RhythmNote(position=0, duration=1.0)]),
-            pattern="4 4 4 4",  # 4 quarter notes = 4 beats, matches 4/4 time signature
+            data=RhythmPatternData(
+                notes=[RhythmNote(position=0, duration=1.0)],
+                time_signature="4/4",
+                default_duration=1.0,
+                groove_type="straight",
+                style="jazz",
+                duration=4.0
+            ),
+            pattern="4 4 4 4",
             complexity=1.0,
             tags=["valid_tag"]
         )
@@ -154,7 +242,14 @@ class TestRhythmPattern:
             RhythmPattern(
                 id="1",
                 name="Test Pattern",
-                data=RhythmPatternData(notes=[RhythmNote(position=0, duration=1.0)]),
+                data=RhythmPatternData(
+                    notes=[RhythmNote(position=0, duration=1.0)],
+                    time_signature="4/4",
+                    default_duration=1.0,
+                    groove_type="straight",
+                    style="jazz",
+                    duration=4.0
+                ),
                 pattern="invalid_pattern",
                 complexity=1.0,
                 tags=["valid_tag"]
@@ -164,12 +259,19 @@ class TestRhythmPattern:
     async def test_rhythm_pattern_initialization_valid(self, mock_db_connection) -> None:
         # Setup mock return value
         mock_db_connection.return_value.__aenter__.return_value = AsyncMock()
-        data = RhythmPatternData(notes=[RhythmNote(position=0, duration=1.0)])
+        data = RhythmPatternData(
+            notes=[RhythmNote(position=0, duration=1.0)],
+            time_signature="4/4",
+            default_duration=1.0,
+            groove_type="straight",
+            style="jazz",
+            duration=4.0
+        )
         pattern = RhythmPattern(
             id="1",
             name="Test Pattern",
             data=data,
-            pattern="4 4 4 4",  # 4 quarter notes = 4 beats, matches 4/4 time signature
+            pattern="4 4 4 4",
             complexity=1.0,
             tags=["valid_tag"]
         )
@@ -185,7 +287,14 @@ class TestRhythmPattern:
             RhythmPattern(
                 id="1",
                 name="Test Pattern",
-                data=RhythmPatternData(notes=[RhythmNote(position=0, duration=1.0)]),
+                data=RhythmPatternData(
+                    notes=[RhythmNote(position=0, duration=1.0)],
+                    time_signature="4/4",
+                    default_duration=1.0,
+                    groove_type="straight",
+                    style="jazz",
+                    duration=4.0
+                ),
                 pattern="4 4 4 4",
                 complexity=1.0,
                 tags=None  # Invalid parameter
@@ -196,7 +305,14 @@ class TestRhythmPattern:
         # Setup mock return value
         mock_db_connection.return_value.__aenter__.return_value = AsyncMock()
         with pytest.raises(ValueError) as exc_info:
-            RhythmPatternData(notes=[], duration=1.0)
+            RhythmPatternData(
+                notes=[],
+                time_signature="4/4",
+                default_duration=1.0,
+                groove_type="straight",
+                style="jazz",
+                duration=4.0
+            )
         assert "List should have at least 1 item" in str(exc_info.value)
 
     async def test_rhythm_note_validation_velocity_invalid(self, mock_db_connection) -> None:
@@ -210,7 +326,14 @@ class TestRhythmPattern:
         # Setup mock return value
         mock_db_connection.return_value.__aenter__.return_value = AsyncMock()
         with pytest.raises(ValueError) as exc_info:
-            RhythmPatternData(notes=[RhythmNote(position=0, duration=1.0)], duration=-1.0)  # Invalid duration
+            RhythmPatternData(
+                notes=[RhythmNote(position=0, duration=1.0)],
+                time_signature="4/4",
+                default_duration=1.0,
+                groove_type="straight",
+                style="jazz",
+                duration=-1.0
+            )  # Invalid duration
         assert "Input should be greater than 0" in str(exc_info.value)
 
     async def test_rhythm_pattern_creation(self, mock_db_connection) -> None:
@@ -308,14 +431,28 @@ class TestRhythmPattern:
         # Setup mock return value
         mock_db_connection.return_value.__aenter__.return_value = AsyncMock()
         with pytest.raises(ValueError) as exc_info:
-            RhythmPatternData(notes=[RhythmNote(position=0, duration=1.0)], duration=-1.0)  # Invalid duration
+            RhythmPatternData(
+                notes=[RhythmNote(position=0, duration=1.0)],
+                time_signature="4/4",
+                default_duration=1.0,
+                groove_type="straight",
+                style="jazz",
+                duration=-1.0
+            )  # Invalid duration
         assert "Input should be greater than 0" in str(exc_info.value)
 
     async def test_validate_default_duration(self, mock_db_connection) -> None:
         # Setup mock return value
         mock_db_connection.return_value.__aenter__.return_value = AsyncMock()
         try:
-            RhythmPatternData(notes=[RhythmNote(position=0, duration=1.0)], default_duration=-1.0)
+            RhythmPatternData(
+                notes=[RhythmNote(position=0, duration=1.0)],
+                time_signature="4/4",
+                default_duration=-1.0,
+                groove_type="straight",
+                style="jazz",
+                duration=4.0
+            )
             assert False, "Expected ValidationError was not raised for negative default duration"
         except ValidationError as e:
             errors = e.errors()
@@ -325,7 +462,14 @@ class TestRhythmPattern:
         # Setup mock return value
         mock_db_connection.return_value.__aenter__.return_value = AsyncMock()
         try:
-            RhythmPatternData(notes=[RhythmNote(position=0, duration=1.0)], time_signature="invalid")
+            RhythmPatternData(
+                notes=[RhythmNote(position=0, duration=1.0)],
+                time_signature="invalid",
+                default_duration=1.0,
+                groove_type="straight",
+                style="jazz",
+                duration=4.0
+            )
             assert False, "Expected ValidationError was not raised for invalid time signature"
         except ValidationError as e:
             errors = e.errors()
@@ -336,6 +480,11 @@ class TestRhythmPattern:
         mock_db_connection.return_value.__aenter__.return_value = AsyncMock()
         data = RhythmPatternData(
             notes=[RhythmNote(position=0, duration=1.0)],
+            time_signature="4/4",
+            default_duration=1.0,
+            groove_type="straight",
+            style="jazz",
+            duration=4.0,
             swing_ratio=0.5
         )
         assert data.swing_ratio == 0.5
@@ -343,6 +492,11 @@ class TestRhythmPattern:
         with pytest.raises(ValueError) as exc_info:
             RhythmPatternData(
                 notes=[RhythmNote(position=0, duration=1.0)],
+                time_signature="4/4",
+                default_duration=1.0,
+                groove_type="straight",
+                style="jazz",
+                duration=4.0,
                 swing_ratio=0.25
             )
         assert "Input should be greater than or equal to 0.5" in str(exc_info.value)
@@ -352,6 +506,11 @@ class TestRhythmPattern:
         mock_db_connection.return_value.__aenter__.return_value = AsyncMock()
         data = RhythmPatternData(
             notes=[RhythmNote(position=0, duration=1.0)],
+            time_signature="4/4",
+            default_duration=1.0,
+            groove_type="straight",
+            style="jazz",
+            duration=4.0,
             humanize_amount=0.5
         )
         assert data.humanize_amount == 0.5
@@ -359,6 +518,11 @@ class TestRhythmPattern:
         with pytest.raises(ValueError) as exc_info:
             RhythmPatternData(
                 notes=[RhythmNote(position=0, duration=1.0)],
+                time_signature="4/4",
+                default_duration=1.0,
+                groove_type="straight",
+                style="jazz",
+                duration=4.0,
                 humanize_amount=1.5
             )
         assert "Input should be less than or equal to 1" in str(exc_info.value)
@@ -369,6 +533,11 @@ class TestRhythmPattern:
         # Test valid accent pattern
         pattern = RhythmPatternData(
             notes=[RhythmNote(position=0, duration=1.0)],
+            time_signature="4/4",
+            default_duration=1.0,
+            groove_type="straight",
+            style="jazz",
+            duration=4.0,
             accent_pattern=["0.5", "0.8"]
         )
         assert pattern.accent_pattern == ["0.5", "0.8"]
@@ -377,6 +546,11 @@ class TestRhythmPattern:
         with pytest.raises(ValueError) as exc_info:
             RhythmPatternData(
                 notes=[RhythmNote(position=0, duration=1.0)],
+                time_signature="4/4",
+                default_duration=1.0,
+                groove_type="straight",
+                style="jazz",
+                duration=4.0,
                 accent_pattern=["-0.5", "2.5"]
             )
         assert "Invalid accent value. Must be a float between 0.0 and 2.0" in str(exc_info.value)
@@ -386,14 +560,22 @@ class TestRhythmPattern:
         mock_db_connection.return_value.__aenter__.return_value = AsyncMock()
         data = RhythmPatternData(
             notes=[RhythmNote(position=0, duration=1.0)],
-            groove_type="swing"
+            time_signature="4/4",
+            default_duration=1.0,
+            groove_type="swing",
+            style="jazz",
+            duration=4.0
         )
         assert data.groove_type == "swing"
         
         with pytest.raises(ValueError) as exc_info:
             RhythmPatternData(
                 notes=[RhythmNote(position=0, duration=1.0)],
-                groove_type="invalid"
+                time_signature="4/4",
+                default_duration=1.0,
+                groove_type="invalid",
+                style="jazz",
+                duration=4.0
             )
         assert "Invalid groove type. Must be one of: straight, swing, shuffle" in str(exc_info.value)
 
@@ -402,6 +584,11 @@ class TestRhythmPattern:
         mock_db_connection.return_value.__aenter__.return_value = AsyncMock()
         data = RhythmPatternData(
             notes=[RhythmNote(position=0, duration=1.0)],
+            time_signature="4/4",
+            default_duration=1.0,
+            groove_type="straight",
+            style="jazz",
+            duration=4.0,
             variation_probability=0.5
         )
         assert data.variation_probability == 0.5
@@ -409,6 +596,11 @@ class TestRhythmPattern:
         with pytest.raises(ValueError) as exc_info:
             RhythmPatternData(
                 notes=[RhythmNote(position=0, duration=1.0)],
+                time_signature="4/4",
+                default_duration=1.0,
+                groove_type="straight",
+                style="jazz",
+                duration=4.0,
                 variation_probability=1.5
             )
         assert "Input should be less than or equal to 1" in str(exc_info.value)
@@ -418,12 +610,26 @@ class TestRhythmPattern:
         mock_db_connection.return_value.__aenter__.return_value = AsyncMock()
         # For a non-empty case, it should pass without error:
         valid_notes = [RhythmNote(position=0, duration=1.0)]
-        data = RhythmPatternData(notes=valid_notes)
+        data = RhythmPatternData(
+            notes=valid_notes,
+            time_signature="4/4",
+            default_duration=1.0,
+            groove_type="straight",
+            style="jazz",
+            duration=4.0
+        )
         assert data.notes == valid_notes
         
         # Test empty notes case
         with pytest.raises(ValueError) as exc_info:
-            RhythmPatternData(notes=[])
+            RhythmPatternData(
+                notes=[],
+                time_signature="4/4",
+                default_duration=1.0,
+                groove_type="straight",
+                style="jazz",
+                duration=4.0
+            )
         assert "List should have at least 1 item" in str(exc_info.value)
 
     async def test_validate_pattern_required(self, mock_db_connection) -> None:
@@ -435,7 +641,11 @@ class TestRhythmPattern:
         rhythm_note = RhythmNote(position=0, duration=1.0)
         rhythm_data = RhythmPatternData(
             notes=[rhythm_note],
-            time_signature="4/4"
+            time_signature="4/4",
+            default_duration=1.0,
+            groove_type="straight",
+            style="jazz",
+            duration=4.0
         )
         
         # Attempt to create RhythmPattern without pattern field
@@ -497,7 +707,10 @@ class TestRhythmPattern:
                     RhythmNote(position=1.5, duration=2.0, is_rest=False, velocity=100)
                 ],
                 time_signature="4/4",
-                groove_type="straight"
+                default_duration=1.0,
+                groove_type="straight",
+                style="jazz",
+                duration=4.0
             )
         )
         
@@ -528,7 +741,7 @@ class TestRhythmPattern:
         assert rhythm_pattern.pattern == pattern
 
     async def test_rhythm_pattern_with_rests(self, mock_db_connection) -> None:
-        pattern = "4 0 4 4"
+        pattern = "1 -1 1 -1"
         rhythm_pattern = RhythmPattern(name="Test Pattern", pattern=pattern)
         assert rhythm_pattern.pattern == pattern
 
@@ -589,3 +802,82 @@ class TestRhythmPattern:
         pattern = "4 4 4 4"
         rhythm_pattern = RhythmPattern(pattern=pattern)
         assert rhythm_pattern.pattern == pattern
+
+    async def test_validate_default_duration_valid(self, mock_db_connection) -> None:
+        # Setup mock return value
+        mock_db_connection.return_value.__aenter__.return_value = AsyncMock()
+        pattern_data = RhythmPatternData(
+            notes=[RhythmNote(position=0, duration=1.0)],
+            time_signature="4/4",
+            default_duration=2.0,
+            groove_type="straight",
+            style="jazz",
+            duration=4.0
+        )
+        assert pattern_data.default_duration == 2.0
+
+    async def test_validate_name_valid(self, mock_db_connection) -> None:
+        # Setup mock return value
+        mock_db_connection.return_value.__aenter__.return_value = AsyncMock()
+        pattern = RhythmPattern(
+            id="1",
+            name="Test Pattern",
+            data=RhythmPatternData(
+                notes=[RhythmNote(position=0, duration=1.0)],
+                time_signature="4/4",
+                default_duration=1.0,
+                groove_type="straight",
+                style="jazz",
+                duration=4.0
+            ),
+            pattern="4 4 4 4",
+            complexity=1.0,
+            tags=["valid_tag"]
+        )
+        assert pattern.name == "Test Pattern"
+        assert pattern.tags == ["valid_tag"]
+
+    async def test_validate_data_valid(self, mock_db_connection) -> None:
+        # Setup mock return value
+        mock_db_connection.return_value.__aenter__.return_value = AsyncMock()
+        data = RhythmPatternData(
+            notes=[RhythmNote(position=0, duration=1.0)],
+            time_signature="4/4",
+            default_duration=1.0,
+            groove_type="straight",
+            style="jazz",
+            duration=4.0
+        )
+        pattern = RhythmPattern(
+            id="1",
+            name="Test Pattern",
+            data=data,
+            pattern="4 4 4 4",
+            complexity=1.0,
+            tags=["valid_tag"]
+        )
+        assert pattern.data == data
+
+    async def test_rhythm_pattern_initialization_valid(self, mock_db_connection) -> None:
+        # Setup mock return value
+        mock_db_connection.return_value.__aenter__.return_value = AsyncMock()
+        data = RhythmPatternData(
+            notes=[RhythmNote(position=0, duration=1.0)],
+            time_signature="4/4",
+            default_duration=1.0,
+            groove_type="straight",
+            style="jazz",
+            duration=4.0
+        )
+        pattern = RhythmPattern(
+            id="1",
+            name="Test Pattern",
+            data=data,
+            pattern="4 4 4 4",
+            complexity=1.0,
+            tags=["valid_tag"]
+        )
+        assert pattern.name == "Test Pattern"
+        assert pattern.data is not None
+        assert len(pattern.tags) == 1
+        assert pattern.complexity == 1.0

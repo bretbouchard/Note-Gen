@@ -90,12 +90,28 @@ class ChordProgression(BaseModel):
         valid_qualities = set(ChordQuality.__members__.values())
         
         for chord in v:
-            # Ensure that chord.quality is a ChordQuality enum
-            if isinstance(chord.quality, str):
+            # Handle dictionary quality
+            if isinstance(chord.quality, dict):
                 try:
-                    chord.quality = ChordQuality[chord.quality]  # Convert string to ChordQuality enum
-                except KeyError:
-                    raise ValueError(f"Invalid chord quality: {chord.quality}")
+                    if 'name' in chord.quality:
+                        chord.quality = ChordQuality.from_string(chord.quality['name'])
+                    elif 'quality_type' in chord.quality:
+                        chord.quality = ChordQuality.from_string(chord.quality['quality_type'])
+                    else:
+                        raise ValueError("Quality dictionary must contain 'name' or 'quality_type'")
+                except (KeyError, TypeError, ValueError) as e:
+                    raise ValueError(f"Invalid chord quality format: {chord.quality}") from e
+            
+            # Handle string quality
+            elif isinstance(chord.quality, str):
+                try:
+                    chord.quality = ChordQuality.from_string(chord.quality)
+                except ValueError as e:
+                    raise ValueError(f"Invalid chord quality: {chord.quality}") from e
+            
+            # Handle ChordQuality enum directly
+            elif not isinstance(chord.quality, ChordQuality):
+                raise TypeError(f"Chord quality must be a string, dict, or ChordQuality enum, got {type(chord.quality)}")
             
             if chord.quality not in valid_qualities:
                 raise ValueError(f"Invalid chord quality: {chord.quality}")
@@ -696,13 +712,29 @@ class ChordProgressionCreate(BaseModel):
             raise ValueError("Chords list cannot be empty")
         
         for chord in v:
-            # Ensure that chord.quality is a ChordQuality enum
-            if isinstance(chord.quality, str):
+            # Handle dictionary quality
+            if isinstance(chord.quality, dict):
                 try:
-                    chord.quality = ChordQuality[chord.quality]  # Convert string to ChordQuality enum
-                except KeyError:
-                    raise ValueError(f"Invalid chord quality: {chord.quality}")
-        
+                    if 'name' in chord.quality:
+                        chord.quality = ChordQuality.from_string(chord.quality['name'])
+                    elif 'quality_type' in chord.quality:
+                        chord.quality = ChordQuality.from_string(chord.quality['quality_type'])
+                    else:
+                        raise ValueError("Quality dictionary must contain 'name' or 'quality_type'")
+                except (KeyError, TypeError, ValueError) as e:
+                    raise ValueError(f"Invalid chord quality format: {chord.quality}") from e
+            
+            # Handle string quality
+            elif isinstance(chord.quality, str):
+                try:
+                    chord.quality = ChordQuality.from_string(chord.quality)
+                except ValueError as e:
+                    raise ValueError(f"Invalid chord quality: {chord.quality}") from e
+            
+            # Handle ChordQuality enum directly
+            elif not isinstance(chord.quality, ChordQuality):
+                raise TypeError(f"Chord quality must be a string, dict, or ChordQuality enum, got {type(chord.quality)}")
+            
             if chord.quality not in valid_qualities:
                 raise ValueError(f"Invalid chord quality: {chord.quality}")
         

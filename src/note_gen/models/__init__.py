@@ -1,6 +1,8 @@
-from .scale import ScaleType
+from .note import Note
+from .scale import Scale, ScaleType
+from .chord import Chord
 from .roman_numeral import RomanNumeral
-from .rhythm_pattern import RhythmPattern
+from .patterns import RhythmPattern, Patterns, NotePattern, ChordProgressionPattern, RhythmPatternData, ChordProgression
 
 __all__ = [
     'Note',
@@ -9,5 +11,9 @@ __all__ = [
     'Chord',
     'RomanNumeral',
     'RhythmPattern',
+    'RhythmPatternData',
+    'NotePattern',
+    'ChordProgressionPattern',
+    'ChordProgression',
     'Patterns'
 ]

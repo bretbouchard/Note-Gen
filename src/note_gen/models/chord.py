@@ -1,6 +1,6 @@
+from typing import Annotated, List, Dict, Any, Union, Optional, ClassVar, Type, Tuple, Literal
 from pydantic import BaseModel, ConfigDict, model_validator, field_validator, Field, validator
 import logging
-from typing import List, Dict, Any, Union, Optional, ClassVar, Type, Tuple, Literal
 from enum import Enum
 import random
 import warnings
@@ -138,9 +138,10 @@ class ChordQuality(Enum):
             ChordQuality.MAJOR: [0, 4, 7],
             ChordQuality.MINOR: [0, 3, 7],
             ChordQuality.DIMINISHED: [0, 3, 6],
-            ChordQuality.DIMINISHED_SEVENTH: [0, 3, 6, 10],
+            ChordQuality.DIMINISHED_SEVENTH: [0, 3, 6, 9],
             ChordQuality.AUGMENTED: [0, 4, 8],
             ChordQuality.DOMINANT: [0, 4, 7],
+            ChordQuality.DOMINANT_SEVENTH: [0, 4, 7, 10],
             ChordQuality.HALF_DIMINISHED: [0, 3, 6, 10],
             ChordQuality.MINOR_SEVENTH: [0, 3, 7, 10],
             ChordQuality.MAJOR_SEVENTH: [0, 4, 7, 11],
@@ -171,11 +172,11 @@ class Chord(BaseModel):
     """
     Represents a musical chord with a root note, quality, and optional notes.
     """
-    root: Optional[Note] = None  # Can be null for placeholder chords
-    quality: Union[Dict[str, Any], ChordQuality] = ChordQuality.MAJOR
-    inversion: Optional[int] = Field(None, ge=0, le=3, description="Chord inversion (0-3)")
-    duration: Optional[float] = Field(None, gt=0, description="Duration in beats")
-    notes: List[Note] = []
+    root: Annotated[Note, Field(description="The root note of the chord")]
+    quality: Annotated[ChordQuality, Field(description="The quality/type of the chord")]
+    inversion: Annotated[Optional[int], Field(None, ge=0, le=3, description="Chord inversion (0-3)")]
+    duration: Annotated[Optional[float], Field(None, gt=0, description="Duration in beats")]
+    notes: Annotated[List[Note], Field(default_factory=list, description="List of notes in the chord")]
 
     # Add class-level quality constants for backward compatibility
     MAJOR: ClassVar[ChordQuality] = ChordQuality.MAJOR
@@ -203,151 +204,43 @@ class Chord(BaseModel):
         }
     )
 
-    @model_validator(mode='before')
-    @classmethod
-    def validate_quality(cls, data: Dict[str, Any]) -> Dict[str, Any]:
-        if 'quality' in data and isinstance(data['quality'], ChordQuality):
-            data['quality'] = {
-                'name': data['quality'].name,
-                'symbol': data['quality'].value,
-                'intervals': data['quality'].get_intervals(),
-                'description': str(data['quality'])
-            }
-        return data
-
     @field_validator('quality')
     @classmethod
-    def validate_quality_dict(cls, v: Dict[str, Any]) -> Dict[str, Any]:
-        required_keys = ['name', 'symbol', 'intervals']
-        if not all(key in v for key in required_keys):
-            raise ValueError("Quality dictionary must contain %s", required_keys)
+    def validate_quality(cls, v: ChordQuality) -> ChordQuality:
+        if not isinstance(v, ChordQuality):
+            raise ValueError("Invalid chord quality")
         return v
 
-    def __init__(self, **data: Dict[str, Any]) -> None:
-        # Ensure quality is processed correctly
-        if 'quality' in data:
-            quality = data['quality']
-            logger.debug('Processing chord quality parameter: %s (type: %s)', quality, type(quality))
-            
-            if isinstance(quality, str):
-                try:
-                    # Try to handle common shortened notation
-                    if quality == "MAJOR7":
-                        quality = "MAJOR_SEVENTH"
-                        logger.debug('Converted MAJOR7 to MAJOR_SEVENTH')
-                    elif quality == "MINOR7":
-                        quality = "MINOR_SEVENTH"
-                        logger.debug('Converted MINOR7 to MINOR_SEVENTH')
-                    elif quality == "DOMINANT7":
-                        quality = "DOMINANT_SEVENTH"
-                        logger.debug('Converted DOMINANT7 to DOMINANT_SEVENTH')
-                    
-                    data['quality'] = ChordQuality.from_string(quality)  # Convert string to enum
-                    logger.debug('Converted string quality %s to %s', quality, data['quality'])
-                except ValueError as e:
-                    logger.error('Error converting quality string %s: %s', quality, e)
-                    # Provide a detailed error message showing available values
-                    available_values = [q.name for q in ChordQuality]
-                    logger.error('Available ChordQuality values: %s', available_values)
-                    raise
-            elif isinstance(quality, ChordQuality):
-                data['quality'] = quality  # Already a ChordQuality instance
-                logger.debug('Using ChordQuality instance %s', quality)
-            elif isinstance(quality, type(self).quality_enum):
-                # Convert from Chord.Quality to ChordQuality
-                try:
-                    quality_value = quality.value
-                    data['quality'] = ChordQuality(quality_value)
-                    logger.debug('Converted Chord.Quality %s to ChordQuality %s', quality, data['quality'])
-                except (ValueError, TypeError) as e:
-                    logger.error('Error converting Chord.Quality %s: %s', quality, e)
-                    raise TypeError('Failed to convert Chord.Quality to ChordQuality: %s', e)
-            else:
-                logger.error('Invalid quality type: %s, value: %s', type(quality), quality)
-                raise TypeError("Quality must be a string, a ChordQuality instance, or a Chord.Quality instance")
-        
-        # Convert root to Note instance if it's a dictionary
-        if isinstance(data['root'], dict):
-            try:
-                data['root'] = Note(**data['root'])
-            except (TypeError, ValueError) as e:
-                raise ValueError('Invalid root note: %s', e)
-        elif not isinstance(data['root'], Note):
-            raise TypeError("root must be a Note instance or a valid note name")
+    @field_validator('root')
+    @classmethod
+    def validate_root(cls, v: Note) -> Note:
+        if not isinstance(v, Note):
+            raise ValueError("Invalid root note")
+        return v
 
-        # Validate notes
-        if 'notes' in data and data['notes'] is not None:
-            notes = []
-            for note in data['notes']:
-                if isinstance(note, dict):
-                    try:
-                        notes.append(Note(**note))
-                    except (TypeError, ValueError) as e:
-                        raise ValueError('Invalid note in notes list: %s', e)
-                elif isinstance(note, Note):
-                    notes.append(note)
-                else:
-                    raise TypeError("notes must be a list of Note instances or dictionaries")
-            data['notes'] = notes
+    def __init__(self, root: Union[Note, Dict[str, Any]], quality: Union[ChordQuality, str], **kwargs) -> None:
+        # Convert root if it's a dict
+        if isinstance(root, dict):
+            root = Note(**root)
         
-        # Convert inversion value but let Pydantic handle the validation
-        if 'inversion' in data and data['inversion'] is not None:
-            try:
-                data['inversion'] = int(data['inversion'])
-            except (TypeError, ValueError):
-                raise ValueError("Inversion must be a valid integer")
+        # Convert quality if it's a string
+        if isinstance(quality, str):
+            quality = ChordQuality.from_string(quality)
         
-        # Validate duration
-        if 'duration' in data and data['duration'] is not None:
-            try:
-                duration = float(data['duration'])
-                if duration <= 0:
-                    raise ValueError("Duration must be a positive number")
-                data['duration'] = duration
-            except ValueError:
-                raise ValueError("Duration must be a valid number")
-        
-        # Call Pydantic's initializer with the processed data
-        super().__init__(**data)  
+        super().__init__(root=root, quality=quality, **kwargs)
         logger.debug('Initialized Chord with root: %s, quality: %s', self.root.note_name, self.quality)
         self.notes = self.generate_notes()  # Generate notes upon initialization
 
     def generate_notes(self) -> List[Note]:
-        logger.debug('Generating notes for chord with root: %s and quality: %s', self.root.note_name, self.quality)
-        notes = []
-
-        if self.quality == ChordQuality.MAJOR:
-            notes = [self.root, self.root.transpose(4), self.root.transpose(7)]
-        elif self.quality == ChordQuality.MINOR:
-            notes = [self.root, self.root.transpose(3), self.root.transpose(7)]
-        elif self.quality == ChordQuality.MAJOR_SEVENTH:
-            notes = [self.root, self.root.transpose(4), self.root.transpose(7), self.root.transpose(11)]
-        elif self.quality == ChordQuality.MINOR_SEVENTH:
-            notes = [self.root, self.root.transpose(3), self.root.transpose(7), self.root.transpose(10)]
-        elif self.quality == ChordQuality.DOMINANT_SEVENTH:
-            notes = [self.root, self.root.transpose(4), self.root.transpose(7), self.root.transpose(10)]
-            logger.debug('Generated notes for DOMINANT_SEVENTH: %s', [note.note_name for note in notes])
-        elif self.quality == ChordQuality.DOMINANT:
-            notes = [self.root, self.root.transpose(4), self.root.transpose(7)]
-        elif self.quality == ChordQuality.DIMINISHED:
-            notes = [self.root, self.root.transpose(3), self.root.transpose(6)]
-        elif self.quality == ChordQuality.AUGMENTED:
-            notes = [self.root, self.root.transpose(4), self.root.transpose(8)]
-
-        # Handle inversion
-        if self.inversion == 1:
-            notes = [notes[1]] + notes[2:] + [notes[0]]  # Move the second note (E) to the front
-        elif self.inversion == 2:
-            notes = [notes[2]] + notes[:2]  # Move the third note (G) to the front
-
-        # Add detailed logging with full note information
-        note_details = []
-        for i, note in enumerate(notes):
-            note_details.append('%s%s (MIDI: %s)' % (note.note_name, note.octave, note.midi_number))
+        """Generate notes for this chord with proper inversion handling."""
+        intervals = self.quality.get_intervals()
+        notes = [self.root.transpose(interval) for interval in intervals]
+        
+        # Apply inversion if specified
+        if self.inversion is not None and 0 < self.inversion < len(notes):
+            notes = notes[self.inversion:] + notes[:self.inversion]
+            logger.debug('Applied inversion %s, resulting notes: %s', self.inversion, [note.note_name for note in notes])
             
-        logger.debug('Generated notes: %s', [note.note_name for note in notes])
-        logger.debug('Note details: %s', note_details)
-        logger.debug('Total notes in chord: %s', len(notes))
         return notes
 
     def calculate_notes(self) -> List[Note]:
@@ -360,7 +253,7 @@ class Chord(BaseModel):
         logger.debug('Quality type: %s, Value: %s', type(self.quality), self.quality)
         
         try:
-            intervals = self.quality.get('intervals', [])
+            intervals = self.quality.get_intervals()
             logger.debug('Retrieved intervals for %s: %s', self.quality, intervals)
             
             notes = []
@@ -401,13 +294,14 @@ class Chord(BaseModel):
             self.notes = self.generate_notes()
         return self.notes
 
-    def to_dict(self) -> Dict[str, Any]:
+    def json(self) -> Dict[str, Any]:
+        """Convert the chord to a JSON-compatible dictionary."""
         return {
-            "root": self.root.json() if self.root else None,
-            "quality": self.quality,
-            "notes": [note.json() for note in self.notes] if self.notes else [],
-            "inversion": self.inversion,
-            "duration": self.duration
+            'root': self.root.json(),
+            'quality': str(self.quality),
+            'inversion': self.inversion,
+            'duration': self.duration,
+            'notes': [note.json() for note in self.notes]
         }
 
     def model_dump(self, *, mode: Literal['json', 'python'] | str = 'json', include: Any | None = ..., exclude: Any | None = ..., context: Any | None = ..., by_alias: bool = ..., exclude_unset: bool = ..., exclude_defaults: bool = ..., exclude_none: bool = ..., round_trip: bool = ..., warnings: Literal['none', 'warn', 'error'] | bool = ..., serialize_as_any: bool = ...) -> dict[str, Any]:
@@ -419,11 +313,6 @@ class Chord(BaseModel):
             "duration": self.duration,
             "notes": [note.json() for note in self.notes],
         }
-
-    def json(self, *, include: Optional[Dict[str, Any]] = None, exclude: Optional[Dict[str, Any]] = None, by_alias: bool = False, exclude_unset: bool = False, exclude_defaults: bool = False, exclude_none: bool = False, round_trip: bool = False, warnings: Literal['none', 'warn', 'error'] | bool = False, serialize_as_any: bool = False) -> Dict[str, Any]:
-        """Override json method to ensure proper serialization of root."""
-        data = super().model_dump(include=include, exclude=exclude, by_alias=by_alias, exclude_unset=exclude_unset, exclude_defaults=exclude_defaults, exclude_none=exclude_none, round_trip=round_trip, warnings=warnings, serialize_as_any=serialize_as_any)
-        return data
 
     @classmethod
     def parse_chord_str(cls, chord_str: str) -> 'Chord':

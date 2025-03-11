@@ -1,0 +1,27 @@
+[MASTER]
+load-plugins=pylint_flask
+
+[FORMAT]
+max-line-length=100
+
+[MESSAGES CONTROL]
+disable=missing-module-docstring,missing-class-docstring,missing-function-docstring
+
+[MASTER]
+ignore=tests
+
+[REPORTS]
+output-format=colorized
+
+[DESIGN]
+max-args=5
+max-locals=15
+max-returns=6
+max-branches=12
+max-statements=50
+
+[TYPECHECK]
+generated-members=flask_sqlalchemy.SQLAlchemy.model,flask_sqlalchemy.SQLAlchemy.Model
+
+[FORMAT]
+indent-string='    '
