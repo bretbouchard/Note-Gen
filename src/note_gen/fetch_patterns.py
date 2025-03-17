@@ -11,8 +11,7 @@ import sys
 from pydantic import ValidationError, Field
 from bson import ObjectId
 
-from src.note_gen.models.chord_progression import ChordProgression
-from src.note_gen.models.patterns import RhythmPattern, RhythmNote
+from src.note_gen.models.patterns import RhythmPattern, RhythmNote ,ChordProgression
 from src.note_gen.models.chord import Chord, ChordQuality
 from src.note_gen.models.note import Note
 from src.note_gen.models.enums import ScaleType

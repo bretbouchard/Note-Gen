@@ -3,8 +3,7 @@ from fastapi.testclient import TestClient
 from main import app
 from src.note_gen.models.presets import Patterns
 from src.note_gen.database.db import init_db, get_db_conn
-from src.note_gen.models.chord_progression import ChordProgression
-from src.note_gen.models.patterns import NotePattern, RhythmPattern, NOTE_PATTERNS, RHYTHM_PATTERNS
+from src.note_gen.models.patterns import ChordProgression , NotePattern, RhythmPattern, NOTE_PATTERNS, RHYTHM_PATTERNS
 from src.note_gen.models.roman_numeral import RomanNumeral
 import os
 

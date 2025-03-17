@@ -13,8 +13,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import ValidationError
 from src.note_gen.models.note import Note
 from src.note_gen.models.chord import Chord, ChordQuality  # Import ChordQuality directly
-from src.note_gen.models.chord_progression import ChordProgression
-from src.note_gen.models.patterns import RhythmPattern, RhythmPatternData, RhythmNote
+from src.note_gen.models.patterns import ChordProgression, RhythmPattern, RhythmPatternData, RhythmNote
 import asyncio
 import logging
 import uuid

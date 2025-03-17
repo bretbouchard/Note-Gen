@@ -7,9 +7,7 @@ from src.note_gen.fetch_patterns import (
     fetch_note_pattern_by_id,
     fetch_rhythm_pattern_by_id,
 )
-from src.note_gen.models.chord_progression import ChordProgression
-from src.note_gen.models.patterns import NotePattern, NotePatternData
-from src.note_gen.models.patterns import RhythmPattern, RhythmPatternData, RhythmNote
+from src.note_gen.models.patterns import ChordProgression, NotePattern, NotePatternData, RhythmPattern, RhythmPatternData, RhythmNote
 from pymongo.database import Database
 from typing import Any, List, Optional
 from src.note_gen.models.fake_scale_info import FakeScaleInfo

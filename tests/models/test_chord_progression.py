@@ -1,12 +1,11 @@
 import unittest
 from typing import List, Optional
-from src.note_gen.models.chord_progression import ChordProgression
 from src.note_gen.models.scale_info import ScaleInfo
 from src.note_gen.models.chord import Chord, ChordQuality
 from src.note_gen.models.enums import ScaleType
 from src.note_gen.models.note import Note
 from src.note_gen.models.fake_scale_info import FakeScaleInfo
-from src.note_gen.models.patterns import NotePattern
+from src.note_gen.models.patterns import NotePattern, NotePatternData, ChordProgression
 from pydantic import ValidationError
 import logging
 
@@ -373,32 +372,49 @@ class TestChordProgression(unittest.TestCase):
 
     def test_generate_progression_from_pattern(self) -> None:
         """Test generating a progression from a note pattern."""
+        from src.note_gen.models.patterns import ChordProgression, NotePattern, NotePatternData
+        from src.note_gen.models.scale import Scale
+        from src.note_gen.models.enums import ScaleType
+        from src.note_gen.models.scale_info import ScaleInfo
+        from src.note_gen.models.note import Note
+        from src.note_gen.models.chord import Chord, ChordQuality
+        
+        # Create test notes
+        c_note = Note(note_name='C', octave=4, duration=1.0, velocity=100)
+        e_note = Note(note_name='E', octave=4, duration=1.0, velocity=100)
+        g_note = Note(note_name='G', octave=4, duration=1.0, velocity=100)
+        
+        # Create a note pattern with valid data
         note_pattern = NotePattern(
             name="Test Pattern",
-            pattern=[0, 2, 4],
+            intervals=[0, 4, 7],  # C major triad intervals
             description="A test pattern for progression generation",
             tags=['test_pattern'],
-            complexity=0.5
+            complexity=0.5,
+            data=NotePatternData(
+                intervals=[0, 4, 7],  # C major triad intervals
+                notes=[c_note, e_note, g_note]  # C major triad notes
+            )
         )
     
         scale_info = ScaleInfo(
-            root=Note(note_name='C', octave=4, duration=1.0, velocity=100),
+            root=c_note,
             key='C',
             scale_type=ScaleType.MAJOR
         )
     
         # Create initial chords for the progression
         initial_chords = [
-            Chord(root=Note(note_name="C", octave=4, duration=1.0, velocity=100), quality=ChordQuality.MAJOR),
-            Chord(root=Note(note_name="G", octave=4, duration=1.0, velocity=100), quality=ChordQuality.MAJOR)
+            Chord(root=c_note, quality=ChordQuality.MAJOR),
+            Chord(root=g_note, quality=ChordQuality.MAJOR)
         ]
     
-        # Create an instance of ChordProgression first
+        # Create an instance of ChordProgression
         chord_progression = ChordProgression(
             name="Test Progression",
             chords=initial_chords,
             key="C",
-            scale_type=ScaleType.MAJOR,
+            scale_type=ScaleType.MAJOR.value,  # Use the string value
             scale_info=scale_info,
             complexity=0.5
         )
@@ -409,11 +425,11 @@ class TestChordProgression(unittest.TestCase):
             scale_info=scale_info,
             progression_length=4
         )
-
+    
         self.assertIsInstance(progression, ChordProgression)
         self.assertTrue(len(progression.chords) > 0)
         self.assertEqual(progression.key, "C")
-        self.assertEqual(progression.scale_type, ScaleType.MAJOR)
+        self.assertEqual(progression.scale_type, ScaleType.MAJOR.value)  # Compare with string value
 
 if __name__ == "__main__":
     unittest.main()

@@ -10,7 +10,7 @@ from pymongo.errors import DuplicateKeyError
 from bson import ObjectId
 
 from src.note_gen.dependencies import get_db_conn
-from src.note_gen.models.chord_progression import ChordProgressionResponse
+from src.note_gen.models.chord_progression_extras import ChordProgressionResponse
 from src.note_gen.models.patterns import ChordProgression
 from src.note_gen.models.chord import Chord, ChordQuality
 from src.note_gen.models.note import Note  # Import the Note model

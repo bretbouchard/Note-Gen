@@ -8,10 +8,9 @@ from src.note_gen.models.scale_info import ScaleInfo
 from src.note_gen.models.fake_scale_info import FakeScaleInfo
 from src.note_gen.models.chord import Chord, ChordQuality
 from src.note_gen.models.note import Note
-from src.note_gen.models.chord_progression import ChordProgression
 from src.note_gen.models.roman_numeral import RomanNumeral
 from src.note_gen.models.enums import ScaleType
-from src.note_gen.models.patterns import ChordProgressionPattern, ChordPatternItem
+from src.note_gen.models.patterns import ChordProgression, ChordProgressionPattern, ChordPatternItem
 
 # Initialize module-level logger
 logger = logging.getLogger(__name__)

@@ -9,8 +9,12 @@ import sys
 logger = logging.getLogger(__name__)
 
 from src.note_gen.models.note import Note
-from src.note_gen.models.patterns import Patterns
-from src.note_gen.models.patterns import RhythmPattern
+from src.note_gen.models.patterns import (
+    RhythmPattern,
+    NOTE_PATTERNS,
+    NotePattern,
+    RHYTHM_PATTERNS
+)
 from src.note_gen.models.note_sequence import NoteSequence
 from src.note_gen.models.note_event import NoteEvent
 from src.note_gen.models.chord import Chord
@@ -33,7 +37,7 @@ async def generate_sequence_from_presets(
     sequence = []
     for chord in chord_progression['chords']:
         # Generate all notes in the chord (not just the root)
-        chord_notes = [Note(note_name=note) for note in chord['notes']]
+        chord_notes = [Note(note_name=note.note_name, octave=chord.root.octave) for note in chord.notes]
         sequence.extend(chord_notes)
     logger.debug(f"Generated sequence: {sequence}")
     logger.info(f"Generated notes: {[note.note_name for note in sequence]}")
@@ -46,7 +50,7 @@ class NoteSequenceGenerator(BaseModel):
     """Generator for creating note sequences from chord progressions and rhythm patterns."""
     
     chord_progression: ChordProgression = Field(...)
-    note_pattern: Patterns = Field(...)
+    note_pattern: NotePattern = Field(...)
     rhythm_pattern: RhythmPattern = Field(...)
 
     @staticmethod
@@ -74,7 +78,7 @@ class NoteSequenceGenerator(BaseModel):
         sequence = []
         for chord in chord_progression['chords']:
             # Generate all notes in the chord (not just the root)
-            chord_notes = [Note(note_name=note) for note in chord['notes']]
+            chord_notes = [Note(note_name=note.note_name, octave=chord.root.octave) for note in chord.notes]
             sequence.extend(chord_notes)
         
         logger.debug(f"Generated sequence: {sequence}")

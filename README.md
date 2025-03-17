@@ -74,7 +74,6 @@ requirements.txt       # Project dependencies
 - **Testing:** Pytest
 - **Logging:** Python's built-in logging module
 
-
 ## Installation
 
 Clone the repository:

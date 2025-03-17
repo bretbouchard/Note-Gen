@@ -1,5 +1,5 @@
-from typing import Optional, Dict, ClassVar, List
-from pydantic import BaseModel, ConfigDict, Field
+from typing import Optional, Dict, ClassVar, List, Any
+from pydantic import BaseModel, ConfigDict, Field, validator, model_validator
 import logging
 
 from src.note_gen.models.note import Note
@@ -13,28 +13,40 @@ logger = logging.getLogger(__name__)
 class ScaleInfo(BaseModel):
     """Information about a musical scale."""
     root: Note
-    key: str = Field(default='C')
-    scale_type: Optional[str] = 'MAJOR'
-    _scale_notes: Optional[List[Note]] = None  # Private field to cache scale notes
+    scale_type: str
+
+    @validator('scale_type')
+    def validate_scale_type(cls, v: str) -> str:
+        valid_types = ['MAJOR', 'MINOR', 'HARMONIC_MINOR', 'MELODIC_MINOR']
+        if v.upper() not in valid_types:
+            raise ValueError(f"Scale type must be one of {valid_types}")
+        return v.upper()
+
+    @model_validator(mode='before')
+    @classmethod
+    def validate_root(cls, data: Any) -> Any:
+        if isinstance(data, dict) and isinstance(data.get('root'), str):
+            data['root'] = Note(note_name=data['root'])
+        return data
 
     MAJOR_SCALE_QUALITIES: ClassVar[Dict[int, Chord]] = {
-        1: Chord(root=Note(note_name='C', octave=4), quality=ChordQuality.MAJOR),
-        2: Chord(root=Note(note_name='D', octave=4), quality=ChordQuality.MINOR),
-        3: Chord(root=Note(note_name='E', octave=4), quality=ChordQuality.MINOR),
-        4: Chord(root=Note(note_name='F', octave=4), quality=ChordQuality.MAJOR),
-        5: Chord(root=Note(note_name='G', octave=4), quality=ChordQuality.MAJOR),
-        6: Chord(root=Note(note_name='A', octave=4), quality=ChordQuality.MINOR),
-        7: Chord(root=Note(note_name='B', octave=4), quality=ChordQuality.DIMINISHED)
+        1: Chord(root=Note(note_name='C'), quality=ChordQuality.MAJOR),
+        2: Chord(root=Note(note_name='D'), quality=ChordQuality.MINOR),
+        3: Chord(root=Note(note_name='E'), quality=ChordQuality.MINOR),
+        4: Chord(root=Note(note_name='F'), quality=ChordQuality.MAJOR),
+        5: Chord(root=Note(note_name='G'), quality=ChordQuality.MAJOR),
+        6: Chord(root=Note(note_name='A'), quality=ChordQuality.MINOR),
+        7: Chord(root=Note(note_name='B'), quality=ChordQuality.DIMINISHED)
     }
 
     MINOR_SCALE_QUALITIES: ClassVar[Dict[int, Chord]] = {
-        1: Chord(root=Note(note_name='C', octave=4), quality=ChordQuality.MINOR),
-        2: Chord(root=Note(note_name='D', octave=4), quality=ChordQuality.DIMINISHED),
-        3: Chord(root=Note(note_name='E', octave=4), quality=ChordQuality.MAJOR),
-        4: Chord(root=Note(note_name='F', octave=4), quality=ChordQuality.MINOR),
-        5: Chord(root=Note(note_name='G', octave=4), quality=ChordQuality.MINOR),
-        6: Chord(root=Note(note_name='A', octave=4), quality=ChordQuality.MAJOR),
-        7: Chord(root=Note(note_name='B', octave=4), quality=ChordQuality.MAJOR)
+        1: Chord(root=Note(note_name='C'), quality=ChordQuality.MINOR),
+        2: Chord(root=Note(note_name='D'), quality=ChordQuality.DIMINISHED),
+        3: Chord(root=Note(note_name='E'), quality=ChordQuality.MAJOR),
+        4: Chord(root=Note(note_name='F'), quality=ChordQuality.MINOR),
+        5: Chord(root=Note(note_name='G'), quality=ChordQuality.MINOR),
+        6: Chord(root=Note(note_name='A'), quality=ChordQuality.MAJOR),
+        7: Chord(root=Note(note_name='B'), quality=ChordQuality.MAJOR)
     }
 
     model_config = ConfigDict(
@@ -48,18 +60,20 @@ class ScaleInfo(BaseModel):
     def get_scale_note_at_degree(self, degree: int) -> Note:
         """Get the note at a given scale degree."""
         scale: Scale = Scale(root=self.root, scale_type=self.scale_type)
-        return scale.get_note_at_degree(degree)
+        return scale.get_note_by_degree(degree)
 
     def get_chord_quality_for_degree(self, degree: int) -> Chord:
         """Get the chord quality for a given scale degree."""
         if degree < 1 or degree > 7:
             raise ValueError("Degree must be between 1 and 7")
         logger.debug(f"Getting chord quality for degree: {degree}")
-        quality_dict = self.MAJOR_SCALE_QUALITIES[degree] if self.scale_type == 'MAJOR' else self.MINOR_SCALE_QUALITIES[degree]
-        quality = quality_dict['quality']
-        logger.debug(f"Degree: {degree}, Chord Quality: {quality.quality}")
-        logger.debug(f"Returning chord quality: {quality}")
-        return quality
+        if self.scale_type == ScaleType.MAJOR:
+            quality = self.MAJOR_SCALE_QUALITIES[degree]
+        else:
+            quality = self.MINOR_SCALE_QUALITIES[degree]
+
+        root_note = self.get_scale_note_at_degree(degree)
+        return Chord(root=root_note, quality=quality.quality)
 
     def compute_scale_degrees(self) -> List[int]:
         """Compute the scale degrees based on the root and scale type."""
@@ -82,6 +96,6 @@ class ScaleInfo(BaseModel):
             
         logger.debug(f"Generating scale notes for {self.scale_type} scale with root {self.root.note_name}{self.root.octave}")
         scale = Scale(root=self.root, scale_type=self.scale_type)
-        self._scale_notes = scale._generate_scale_notes()
+        self._scale_notes: list[Note] = scale._generate_scale_notes()
         logger.debug(f"Generated {len(self._scale_notes)} scale notes: {[note.note_name + str(note.octave) for note in self._scale_notes]}")
         return self._scale_notes

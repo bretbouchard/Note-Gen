@@ -22,9 +22,7 @@ from src.note_gen.fetch_patterns import (
 )
 from src.note_gen.models.enums import ScaleType
 from src.note_gen.models.chord import Chord, ChordQuality
-from src.note_gen.models.chord_progression import ChordProgression
-from src.note_gen.models.patterns import RhythmPattern, RhythmNote, RhythmPatternData
-from src.note_gen.models.patterns import NotePattern, NotePatternData, ChordProgressionPattern, ChordPatternItem
+from src.note_gen.models.patterns import ChordProgression, RhythmPattern, RhythmNote, RhythmPatternData, NotePattern, NotePatternData, ChordProgressionPattern, ChordPatternItem
 from src.note_gen.models.note import Note
 from src.note_gen.database.db import get_db_conn, MONGODB_URI
 import motor.motor_asyncio
@@ -33,7 +31,7 @@ import uuid
 from pydantic import BaseModel, ValidationError
 from typing import AsyncGenerator, Optional, List, Union
 
-from tests.generators.test_data_generator import generate_test_data
+from tests.generators.test_pattern_data_generator import generate_test_data
 
 # Configure logging
 # logging.basicConfig(level=logging.DEBUG)
@@ -1549,7 +1547,7 @@ async def test_extract_patterns_from_chord_progressions(test_db):
         fetch_chord_progression_patterns
     )
     from src.note_gen.models.chord import Chord, ChordQuality
-    from src.note_gen.models.chord_progression import ChordProgression
+    from src.note_gen.models.patterns import ChordProgression
     from src.note_gen.models.note import Note
     from src.note_gen.models.scale_info import ScaleInfo
     from src.note_gen.models.enums import ScaleType

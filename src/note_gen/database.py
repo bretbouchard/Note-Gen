@@ -2,9 +2,8 @@
 
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 from motor import motor_asyncio
-from src.note_gen.models.chord_progression import ChordProgression
-from src.note_gen.models.patterns import NotePattern, RhythmPattern
-from typing import Any, AsyncGenerator, Dict, List, Optional
+from src.note_gen.models.patterns import NotePattern, RhythmPattern, ChordProgression
+from typing import Any, AsyncGenerator, Dict, List, Optional, TypeVar
 import logging
 from contextlib import asynccontextmanager
 import atexit
@@ -34,9 +33,35 @@ MONGO_SETTINGS = {
     'serverSelectionTimeoutMS': 5000  # Ensure this is an integer (5 seconds)
 }
 
+T = TypeVar('T')
+
+class Database:
+    client: AsyncIOMotorClient
+    db: AsyncIOMotorDatabase
+
+    def __init__(self, uri: str, db_name: str) -> None:
+        self.client = AsyncIOMotorClient(uri)
+        self.db = self.client[db_name]
+
+    async def insert_one(self, collection: str, document: Dict[str, Any]) -> Dict[str, Any]:
+        result = await self.db[collection].insert_one(document)
+        return {'inserted_id': str(result.inserted_id)}
+
+    async def find_one(self, collection: str, query: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        return await self.db[collection].find_one(query)
+
+    async def update_one(self, collection: str, query: Dict[str, Any], update: Dict[str, Any]) -> Dict[str, Any]:
+        result = await self.db[collection].update_one(query, update)
+        return {'matched_count': result.matched_count, 'modified_count': result.modified_count}
+
+    async def delete_one(self, collection: str, query: Dict[str, Any]) -> Dict[str, Any]:
+        result = await self.db[collection].delete_one(query)
+        return {'deleted_count': result.deleted_count}
+
 # Global variables
 _client: Optional[AsyncIOMotorClient[Any]] = None
 _db: Optional[AsyncIOMotorDatabase[Any]] = None
+_database: Optional[Database] = None
 
 
 async def get_client() -> AsyncIOMotorClient[Any]:
@@ -63,8 +88,16 @@ async def get_db() -> AsyncIOMotorDatabase[Any]:
         logger.info(f"Successfully connected to database: {db_name}")
     return _db
 
+async def get_database() -> Database:
+    global _database
+    if _database is None:
+        client = await get_client()
+        db_name = TEST_DB_NAME if os.getenv("TESTING") else DB_NAME
+        _database = Database(MONGO_URL, db_name)
+    return _database
+
 async def close_mongo_connection() -> None:
-    global _client, _db
+    global _client, _db, _database
     if _client:
         try:
             _client.close()
@@ -74,6 +107,7 @@ async def close_mongo_connection() -> None:
         finally:
             _client = None
             _db = None
+            _database = None
 
 async def init_database() -> None:
     """Initialize the database with collections if they don't exist."""
@@ -108,7 +142,7 @@ async def init_database() -> None:
 
 async def init_db():
     """Initialize database connection."""
-    global _client, _db
+    global _client, _db, _database
     try:
         await get_client()
         db = await get_db()
@@ -121,14 +155,15 @@ async def init_db():
 
 async def close_db():
     """Close database connection."""
-    global _client, _db
+    global _client, _db, _database
     if _client:
         await close_mongo_connection()
         _client = None
         _db = None
+        _database = None
         logger.info("Database connection closed")
 
-async def create_chord_progression(db: AsyncIOMotorDatabase, progression: ChordProgression) -> Dict[str, Any]:
+async def create_chord_progression(db: Database, progression: ChordProgression) -> Dict[str, Any]:
     logger.debug("Attempting to create chord progression...")
     try:
         # Convert complex model to dictionary, handling nested models
@@ -157,11 +192,11 @@ async def create_chord_progression(db: AsyncIOMotorDatabase, progression: ChordP
             }
         
         logger.debug(f"Chord progression data to insert: {prog_dict}")
-        result = await db.chord_progressions.insert_one(prog_dict)
+        result = await db.insert_one("chord_progressions", prog_dict)
         logger.debug(f"Insert result: {result}")
         
-        if result.inserted_id:
-            created_progression = await db.chord_progressions.find_one({"_id": result.inserted_id})
+        if result.get('inserted_id'):
+            created_progression = await db.find_one("chord_progressions", {"_id": result['inserted_id']})
             if created_progression:
                 created_progression["id"] = str(created_progression.pop("_id"))
                 logger.info(f"Successfully created chord progression: {created_progression}")
@@ -174,7 +209,7 @@ async def create_chord_progression(db: AsyncIOMotorDatabase, progression: ChordP
         logger.error(f"Progression data: {prog_dict}")
         raise HTTPException(status_code=500, detail=str(e))
 
-async def create_note_pattern(db: AsyncIOMotorDatabase, note_pattern: NotePattern) -> Dict[str, Any]:
+async def create_note_pattern(db: Database, note_pattern: NotePattern) -> Dict[str, Any]:
     logger.debug("Attempting to create note pattern...")
     try:
         # Convert complex model to dictionary
@@ -195,11 +230,11 @@ async def create_note_pattern(db: AsyncIOMotorDatabase, note_pattern: NotePatter
             ]
         
         logger.debug(f"Note pattern data to insert: {pattern_dict}")
-        result = await db.note_patterns.insert_one(pattern_dict)
+        result = await db.insert_one("note_patterns", pattern_dict)
         logger.debug(f"Insert result: {result}")
         
-        if result.inserted_id:
-            created_pattern = await db.note_patterns.find_one({"_id": result.inserted_id})
+        if result.get('inserted_id'):
+            created_pattern = await db.find_one("note_patterns", {"_id": result['inserted_id']})
             if created_pattern:
                 created_pattern["id"] = str(created_pattern.pop("_id"))
                 logger.info(f"Successfully created note pattern: {created_pattern}")
@@ -212,7 +247,7 @@ async def create_note_pattern(db: AsyncIOMotorDatabase, note_pattern: NotePatter
         logger.error(f"Note pattern data: {pattern_dict}")
         raise HTTPException(status_code=500, detail=str(e))
 
-async def create_rhythm_pattern(db: AsyncIOMotorDatabase, rhythm_pattern: RhythmPattern) -> Dict[str, Any]:
+async def create_rhythm_pattern(db: Database, rhythm_pattern: RhythmPattern) -> Dict[str, Any]:
     logger.debug("Attempting to create rhythm pattern...")
     try:
         # Convert complex model to dictionary
@@ -239,11 +274,11 @@ async def create_rhythm_pattern(db: AsyncIOMotorDatabase, rhythm_pattern: Rhythm
             }
         
         logger.debug(f"Rhythm pattern data to insert: {pattern_dict}")
-        result = await db.rhythm_patterns.insert_one(pattern_dict)
+        result = await db.insert_one("rhythm_patterns", pattern_dict)
         logger.debug(f"Insert result: {result}")
         
-        if result.inserted_id:
-            created_pattern = await db.rhythm_patterns.find_one({"_id": result.inserted_id})
+        if result.get('inserted_id'):
+            created_pattern = await db.find_one("rhythm_patterns", {"_id": result['inserted_id']})
             if created_pattern:
                 created_pattern["id"] = str(created_pattern.pop("_id"))
                 logger.info(f"Successfully created rhythm pattern: {created_pattern}")
@@ -256,9 +291,9 @@ async def create_rhythm_pattern(db: AsyncIOMotorDatabase, rhythm_pattern: Rhythm
         logger.error(f"Rhythm pattern data: {pattern_dict}")
         raise HTTPException(status_code=500, detail=str(e))
 
-async def get_chord_progressions(db: AsyncIOMotorDatabase) -> List[Dict[str, Any]]:
+async def get_chord_progressions(db: Database) -> List[Dict[str, Any]]:
     try:
-        cursor = db.chord_progressions.find({})
+        cursor = db.db.chord_progressions.find({})
         progressions = []
         async for doc in cursor:
             doc["id"] = str(doc.pop("_id"))
@@ -268,14 +303,14 @@ async def get_chord_progressions(db: AsyncIOMotorDatabase) -> List[Dict[str, Any
         logger.error(f"Error fetching chord progressions: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-async def get_chord_progression_by_name(name: str, db: motor_asyncio.AsyncIOMotorDatabase) -> Optional[ChordProgression]:
-    chord_progression = await db.chord_progressions.find_one({"name": name})
+async def get_chord_progression_by_name(name: str, db: Database) -> Optional[ChordProgression]:
+    chord_progression = await db.find_one("chord_progressions", {"name": name})
     return chord_progression
 
-async def get_note_pattern_by_name(name: str, db: motor_asyncio.AsyncIOMotorDatabase) -> Optional[NotePattern]:
-    note_pattern = await db.note_patterns.find_one({"name": name})
+async def get_note_pattern_by_name(name: str, db: Database) -> Optional[NotePattern]:
+    note_pattern = await db.find_one("note_patterns", {"name": name})
     return note_pattern
 
-async def get_rhythm_pattern_by_name(name: str, db: motor_asyncio.AsyncIOMotorDatabase) -> Optional[RhythmPattern]:
-    rhythm_pattern = await db.rhythm_patterns.find_one({"name": name})
+async def get_rhythm_pattern_by_name(name: str, db: Database) -> Optional[RhythmPattern]:
+    rhythm_pattern = await db.find_one("rhythm_patterns", {"name": name})
     return rhythm_pattern
