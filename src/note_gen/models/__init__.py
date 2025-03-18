@@ -1,18 +1,21 @@
 from .note import Note
-from .scale import Scale, ScaleType
+from .scale_info import ScaleInfo
+from .chord_quality import ChordQuality
 from .chord import Chord
-from .roman_numeral import RomanNumeral
-from .patterns import RhythmPattern, NotePattern, ChordProgressionPattern, RhythmPatternData, ChordProgression
+from .scale import Scale
+from .enums import ScaleType
+from .chord_progression import ChordProgression
+from .patterns import Patterns, NotePattern, RhythmPattern
 
 __all__ = [
-    "Note",
-    "Scale",
-    "ScaleType",
-    "Chord",
-    "RomanNumeral",
-    "RhythmPattern",
-    "RhythmPatternData",
-    "NotePattern",
-    "ChordProgressionPattern",
-    "ChordProgression",
+    'Note',
+    'ScaleInfo',
+    'ChordQuality',
+    'Chord',
+    'Scale',
+    'ScaleType',
+    'ChordProgression',
+    'Patterns',
+    'NotePattern',
+    'RhythmPattern'
 ]

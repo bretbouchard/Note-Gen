@@ -23,6 +23,14 @@ class Note(BaseModel):
         scale_degree: The scale degree of the note (0-6)
     """
     
+    note_name: str = Field(default="C", min_length=1, max_length=2, description="Note name (e.g. C, D#, Bb)")
+    octave: int = Field(default=4, ge=0, le=8, description="Octave number (0-8)")
+    duration: int = Field(default=1, gt=0, description="Duration in ticks")
+    position: float = Field(default=0.0, ge=0, description="Position of the note in time")
+    velocity: int = Field(default=64, ge=0, le=127, description="Velocity (0-127)")
+    stored_midi_number: Optional[int] = Field(default=None, ge=0, le=127, description="The MIDI number of the note")
+    scale_degree: Optional[int] = Field(default=None, ge=0, le=12, description="Scale degree (0-12)")
+
     model_config = {
         "validate_assignment": True,
         "arbitrary_types_allowed": True,
@@ -77,19 +85,6 @@ class Note(BaseModel):
     
     NOTE_NAMES: ClassVar[set[str]] = set(NOTE_TO_SEMITONE.keys())
     
-    note_name: str = Field(..., min_length=1, max_length=2, description="Note name (e.g. C, D#, Bb)")
-    octave: int = Field(4, ge=0, le=8, description="Octave number (0-8)")
-    duration: int = Field(1, gt=0, description="Duration in ticks")
-    position: float = Field(0.0, ge=0, description="Position of the note in time")
-    velocity: int = Field(64, ge=0, le=127, description="Velocity (0-127)")
-    stored_midi_number: Optional[int] = Field(None, ge=0, le=127, description="The MIDI number of the note")
-    scale_degree: Optional[int] = Field(None, ge=0, description="The scale degree of the note")
-
-    def __init__(self, **data: Any) -> None:
-        if isinstance(data.get('note_name'), dict):
-            data = data['note_name']
-        super().__init__(**data)
-
     @field_validator('note_name', 'octave', mode='before')
     @classmethod
     def validate_name(cls, v: Any) -> str:
@@ -400,6 +395,28 @@ class Note(BaseModel):
             raise ValueError(f"Invalid note name: {note_name}")
         return Note(note_name=match.group(1), octave=int(match.group(2)))
 
+    @classmethod
+    def from_note_name(cls, note_name: str) -> "Note":
+        """Create a Note from just a note name (e.g., 'C', 'D#').
+        Uses default octave 4.
+        
+        Args:
+            note_name: Note name without octave (e.g., 'C', 'D#')
+            
+        Returns:
+            Note: A new Note object
+            
+        Raises:
+            ValueError: If the note name is invalid
+        """
+        if not cls._is_valid_note_name(note_name):
+            raise ValueError(f"Invalid note name: {note_name}")
+            
+        return cls(
+            note_name=note_name,
+            octave=4  # Default octave
+        )
+
     @staticmethod
     def _midi_to_note_octave(midi_number: int) -> tuple[str, int]:
         """Convert a MIDI number to a note name and octave.
@@ -426,6 +443,18 @@ class Note(BaseModel):
             octave = 0  # Lowest MIDI note should be octave 0
 
         return note_name, octave
+
+    @classmethod
+    def from_midi_number(cls, midi_number: int) -> 'Note':
+        """Create a Note from a MIDI number."""
+        octave = (midi_number // 12) - 1
+        note_index = midi_number % 12
+        note_name = cls.SEMITONE_TO_NOTE[note_index]
+        return cls(
+            note_name=note_name,
+            octave=octave,
+            stored_midi_number=midi_number
+        )
 
     @field_validator("stored_midi_number")
     @classmethod

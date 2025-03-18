@@ -9,7 +9,7 @@ import httpx
 from fastapi.testclient import TestClient
 from httpx import ASGITransport
 from typing import Any, AsyncGenerator, Generator, List, Dict
-from motor.motor_asyncio import AsyncIOMotorDatabase
+from motor.motor_asyncio import AsyncIOMotorDatabase, AsyncIOMotorClient
 from dotenv import load_dotenv
 
 # Configure logging
@@ -69,11 +69,16 @@ from src.note_gen.models.note import Note
 from src.note_gen.models.chord import Chord, ChordQuality
 from src.note_gen.models.patterns import NotePattern, NotePatternData, RhythmPattern, RhythmPatternData
 
-# Override pytest-asyncio's event_loop with proper session scope
 @pytest.fixture(scope="session")
-def event_loop():
+def event_loop_policy():
+    """Create and set a new event loop policy for the test session."""
     policy = asyncio.get_event_loop_policy()
-    loop = policy.new_event_loop()
+    return policy
+
+@pytest.fixture
+async def event_loop(event_loop_policy):
+    """Create and yield a new event loop for each test."""
+    loop = event_loop_policy.new_event_loop()
     yield loop
     loop.close()
 
@@ -82,11 +87,13 @@ def event_loop():
 # -------------------------------
 
 @pytest_asyncio.fixture(scope="session")
-async def test_db(event_loop):
-    await init_db()
-    db = get_db_conn()
+async def test_db():
+    """Create a test database connection."""
+    client = AsyncIOMotorClient(os.getenv('MONGODB_URI'))
+    db = client['test_note_gen']
     yield db
-    await close_mongo_connection()
+    await client.drop_database('test_note_gen')
+    client.close()
 
 @pytest.fixture(scope="session")
 def sync_client():
@@ -101,3 +108,10 @@ async def async_client(test_db):
 async def global_cleanup(test_db):
     yield
     await test_db.client.drop_database("test_note_gen")
+
+@pytest.fixture(scope="session")
+def mongodb():
+    # Use test database configuration
+    MONGODB_TEST_URL = os.getenv("MONGODB_TEST_URL", "mongodb://localhost:27017")
+    client = AsyncIOMotorClient(MONGODB_TEST_URL, serverSelectionTimeoutMS=5000)
+    return client

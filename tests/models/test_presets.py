@@ -24,23 +24,22 @@ def test_preset_initialization(mock_load) -> None:
     assert note_pattern.intervals == [0, 4, 7]
     assert note_pattern.data.notes[0].note_name == 'C'
     
-    # Test invalid pattern
+    # Test invalid pattern - should fail validation
     with pytest.raises(ValidationError):
         RhythmPattern(
             name='invalid',
-            pattern='invalid pattern',
+            pattern='invalid pattern',  # This should trigger validation error
             data=RhythmPatternData(
-                pattern=[1.0, 1.0, 1.0, 1.0],
+                pattern="4 4 4 4",  # Valid pattern string
                 duration=1.0,
                 position=0.0,
                 velocity=100,
-                direction='up',
-                use_chord_tones=False,
-                use_scale_mode=False,
-                arpeggio_mode=False,
-                restart_on_chord=False,
-                octave_range=[4, 5],
-                default_duration=1.0
+                style="basic",
+                groove_type="straight",
+                time_signature="4/4",  # Added required field
+                default_duration=1.0,
+                notes=[],  # Added required field
+                accent_pattern=[1.0, 1.0, 1.0, 1.0]  # Added required field
             )
         )
 

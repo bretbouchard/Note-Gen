@@ -39,16 +39,29 @@ def test_name_validation() -> None:
         data=pattern_data
     )
 
-    # Test invalid names
-    with pytest.raises(ValidationError, match="String should have at least 2 characters"):
+    # Test invalid names - too short
+    with pytest.raises(ValidationError) as exc_info:
         NotePattern(
-            name="A",
+            name="A",  # Too short
             description="Invalid pattern description",
             tags=['valid_tag'],
             complexity=0.5,
             intervals=[0, 2, 4],
             data=pattern_data
         )
+    assert "String should have at least 4 characters" in str(exc_info.value)
+
+    # Test invalid characters
+    with pytest.raises(ValidationError) as exc_info:
+        NotePattern(
+            name="Invalid@Pattern",  # Contains invalid character
+            description="Invalid pattern description",
+            tags=['valid_tag'],
+            complexity=0.5,
+            intervals=[0, 2, 4],
+            data=pattern_data
+        )
+    assert "String should match pattern" in str(exc_info.value)
 
 def test_pattern_validation() -> None:
     """Test pattern validation rules."""
@@ -66,13 +79,13 @@ def test_pattern_validation() -> None:
     )
 
     # Test invalid pattern
-    with pytest.raises(ValidationError, match="Either intervals or notes must be provided"):
+    with pytest.raises(ValidationError, match="List should have at least 1 item"):
         # Create a pattern with empty intervals and no notes
         empty_notes: list[Note] = []
         empty_data = NotePatternData(notes=empty_notes, intervals=[])
         NotePattern(
             name="Invalid Pattern",
-            description="Invalid pattern description",
+            description="Invalid pattern",
             tags=['valid_tag'],
             complexity=0.5,
             intervals=[],

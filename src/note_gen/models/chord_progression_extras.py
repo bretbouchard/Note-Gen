@@ -1,6 +1,7 @@
 from src.note_gen.models.note import Note
 from src.note_gen.models.scale import Scale
-from src.note_gen.models.chord import Chord, ChordQuality
+from src.note_gen.models.chord import Chord
+from src.note_gen.models.enums import ChordQuality
 from src.note_gen.models.scale_info import ScaleInfo
 from src.note_gen.models.roman_numeral import RomanNumeral
 from src.note_gen.models.fake_scale_info import FakeScaleInfo
@@ -21,6 +22,8 @@ MAX_CHORDS = 10  # Maximum number of chords allowed in a progression
 
 VALID_KEYS = {'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'}
 
+valid_qualities = set(ChordQuality.__members__.values())
+
 class ChordProgressionResponse(BaseModel):
     """Response model for chord progressions."""
     name: str
@@ -28,17 +31,18 @@ class ChordProgressionResponse(BaseModel):
     scale_info: dict
     key: str
     scale_type: str
-    complexity: Optional[float] = None
+    complexity: Optional[float] = Field(None, ge=0.0, le=1.0)
     duration: Optional[float] = None
     
     model_config = ConfigDict(
         from_attributes=True,
         json_encoders={
-            Note: lambda v: jsonable_encoder(v),
-            Chord: lambda v: jsonable_encoder(v),
-            ScaleInfo: lambda v: jsonable_encoder(v),
-            FakeScaleInfo: lambda v: jsonable_encoder(v),
-            ObjectId: lambda v: str(v)
+            Note: lambda v: v.model_dump(),
+            Chord: lambda v: v.model_dump(),
+            ScaleInfo: lambda v: v.model_dump(),
+            FakeScaleInfo: lambda v: v.model_dump(),
+            ObjectId: str,
+            ChordQuality: str
         }
     )
 
@@ -51,13 +55,10 @@ class ChordProgressionResponse(BaseModel):
         normalized_chords = []
         for chord in v:
             if isinstance(chord, str):
-                # Convert string chord to proper chord dict
-                logger.debug(f"Converting string chord: {chord}")
                 try:
-                    # Create a simple chord dict with the string as the note name
                     normalized_chord = {
                         "root": {"note_name": chord, "octave": 4, "duration": 1.0, "velocity": 64},
-                        "quality": "MAJOR",
+                        "quality": ChordQuality.MAJOR,
                         "notes": []
                     }
                     normalized_chords.append(normalized_chord)
@@ -65,8 +66,13 @@ class ChordProgressionResponse(BaseModel):
                     logger.error(f"Error converting string chord '{chord}': {e}")
                     raise ValueError(f"Invalid chord format: {chord}")
             elif isinstance(chord, dict):
+                if 'quality' in chord and isinstance(chord['quality'], str):
+                    try:
+                        chord['quality'] = ChordQuality[chord['quality'].upper()]
+                    except KeyError:
+                        raise ValueError(f"Invalid chord quality: {chord['quality']}")
                 normalized_chords.append(chord)
-            elif isinstance(chord, Chord) or isinstance(chord, Note):
+            elif isinstance(chord, (Chord, Note)):
                 normalized_chords.append(chord)
             else:
                 logger.error(f"Invalid chord type: {type(chord)}, value: {chord}")
@@ -116,7 +122,7 @@ class ChordProgressionCreate(BaseModel):
     chords: List[Chord]
     key: str
     scale_type: str
-    complexity: Optional[float] = None
+    complexity: Optional[float] = Field(None, ge=0.0, le=1.0)
     scale_info: str
 
     @field_validator('chords')
@@ -130,9 +136,9 @@ class ChordProgressionCreate(BaseModel):
             if isinstance(chord.quality, dict):
                 try:
                     if 'name' in chord.quality:
-                        chord.quality = ChordQuality.from_string(chord.quality['name'])
+                        chord.quality = ChordQuality[chord.quality['name'].upper()]
                     elif 'quality_type' in chord.quality:
-                        chord.quality = ChordQuality.from_string(chord.quality['quality_type'])
+                        chord.quality = ChordQuality[chord.quality['quality_type'].upper()]
                     else:
                         raise ValueError("Quality dictionary must contain 'name' or 'quality_type'")
                 except (KeyError, TypeError, ValueError) as e:
@@ -141,8 +147,8 @@ class ChordProgressionCreate(BaseModel):
             # Handle string quality
             elif isinstance(chord.quality, str):
                 try:
-                    chord.quality = ChordQuality.from_string(chord.quality)
-                except ValueError as e:
+                    chord.quality = ChordQuality[chord.quality.upper()]
+                except KeyError as e:
                     raise ValueError(f"Invalid chord quality: {chord.quality}") from e
             
             # Handle ChordQuality enum directly
@@ -153,6 +159,21 @@ class ChordProgressionCreate(BaseModel):
                 raise ValueError(f"Invalid chord quality: {chord.quality}")
         
         return v
+
+    @field_validator('key')
+    def validate_key(cls, v: str) -> str:
+        """Validate the key."""
+        if v not in VALID_KEYS:
+            raise ValueError(f"Invalid key: {v}. Must be one of {VALID_KEYS}")
+        return v
+
+    @field_validator('scale_type')
+    def validate_scale_type(cls, v: str) -> str:
+        """Validate the scale type."""
+        valid_types = {'MAJOR', 'MINOR', 'HARMONIC_MINOR', 'MELODIC_MINOR'}
+        if v.upper() not in valid_types:
+            raise ValueError(f"Invalid scale type: {v}. Must be one of {valid_types}")
+        return v.upper()
 
 from fastapi import FastAPI, HTTPException, status
 from fastapi.responses import JSONResponse

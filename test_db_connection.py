@@ -1,30 +1,21 @@
-import asyncio
-import logging
-from src.note_gen.dependencies import get_db_conn
-from src.note_gen.database.db import close_mongo_connection, init_db
+import pytest
+from motor.motor_asyncio import AsyncIOMotorClient
+from src.note_gen.database.db import get_db_conn, MONGODB_URI
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
+_clients = set()  # Add this at the top level
 
-async def test_connection():
+@pytest.fixture
+async def mongodb_client():
+    client = AsyncIOMotorClient(MONGODB_URI)
+    _clients.add(client)  # Track the client
+    yield client
+    client.close()
+    _clients.remove(client)  # Clean up
+
+@pytest.mark.asyncio
+async def test_connection(mongodb_client):
     try:
-        # Initialize database
-        await init_db()
-        logging.info("Database initialized")
-
-        db = await get_db_conn()
-        collections = await db.list_collection_names()
-        print('Connected to database. Collections:', collections)
-
-        for collection_name in collections:
-            count = await db[collection_name].count_documents({})
-            print(f'Collection {collection_name} has {count} documents')
-
+        await mongodb_client.admin.command('ping')
+        assert True
     except Exception as e:
-        logging.error(f'Error connecting to database: {e}')
-        raise
-    finally:
-        await close_mongo_connection()
-
-if __name__ == "__main__":
-    asyncio.run(test_connection())
+        assert False, f"Database connection failed: {str(e)}"

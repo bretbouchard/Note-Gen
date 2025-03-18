@@ -5,10 +5,14 @@ from src.note_gen.models.note_event import NoteEvent
 from src.note_gen.models.scale_degree import ScaleDegree
 from src.note_gen.models.scale import Scale
 
-from typing import Any, Dict, Sequence, Union, List
+from typing import Any, Dict, Sequence, Union, List, Optional
 import logging
 
 logger = logging.getLogger(__name__)
+
+from .patterns import NotePattern, RhythmPatternData
+from .chord_progression import ChordProgression
+from .note_sequence import NoteSequence
 
 
 class PatternInterpreter(BaseModel):
@@ -214,6 +218,32 @@ class ScalePatternInterpreter(PatternInterpreter):
             pattern (Sequence[Union[int, str, Note, ScaleDegree, Dict[str, Any]]]): The pattern to interpret.
         """
         super().__init__(scale=scale, pattern=pattern)
+
+    @classmethod
+    async def generate_note_sequence(
+        cls,
+        scale: Scale,
+        note_pattern: NotePattern,
+        rhythm_pattern: RhythmPatternData,
+        chord_progression: Optional[ChordProgression] = None
+    ) -> NoteSequence:
+        """Generate a note sequence using the given scale, patterns and optional chord progression."""
+        # Initialize the sequence with empty notes list
+        sequence = NoteSequence(notes=[])
+        
+        # Get the base note from the pattern
+        base_note = note_pattern.notes[0]
+        
+        # Create single note from rhythm pattern base duration
+        note = Note(
+            note_name=base_note.note_name,
+            octave=base_note.octave,
+            duration=rhythm_pattern.default_duration,
+            velocity=100  # Use default velocity
+        )
+        sequence.notes.append(note)
+        
+        return sequence
 
 
 class ArpeggioPatternInterpreter(PatternInterpreter):

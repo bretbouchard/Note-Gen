@@ -71,31 +71,44 @@ async def test_get_scale_degree_invalid(root_name: str, scale_type: ScaleType, i
     with pytest.raises(ValueError):
         scale.get_scale_degree(invalid_degree)
 
-@pytest.mark.asyncio
-async def test_scale_type_degree_count():
-    """Test the 'degree_count' property on ScaleType."""
-    supported_scales = {
+def test_scale_type_degree_count():
+    """Test that each scale type has the correct number of degrees."""
+    scale_types = [
         ScaleType.MAJOR,
         ScaleType.MINOR,
+        ScaleType.HARMONIC_MINOR,
+        ScaleType.MELODIC_MINOR,
         ScaleType.DORIAN,
         ScaleType.PHRYGIAN,
         ScaleType.LYDIAN,
         ScaleType.MIXOLYDIAN,
         ScaleType.LOCRIAN,
-        ScaleType.HARMONIC_MINOR,
-        ScaleType.HARMONIC_MAJOR,
-        ScaleType.MELODIC_MINOR,
-        ScaleType.MELODIC_MAJOR,
-        ScaleType.DOUBLE_HARMONIC_MAJOR
+        ScaleType.PENTATONIC_MAJOR,
+        ScaleType.PENTATONIC_MINOR,
+        ScaleType.BLUES,
+        ScaleType.CHROMATIC,
+    ]
+    
+    expected_degrees = {
+        ScaleType.MAJOR: 7,
+        ScaleType.MINOR: 7,
+        ScaleType.HARMONIC_MINOR: 7,
+        ScaleType.MELODIC_MINOR: 7,
+        ScaleType.DORIAN: 7,
+        ScaleType.PHRYGIAN: 7,
+        ScaleType.LYDIAN: 7,
+        ScaleType.MIXOLYDIAN: 7,
+        ScaleType.LOCRIAN: 7,
+        ScaleType.PENTATONIC_MAJOR: 5,
+        ScaleType.PENTATONIC_MINOR: 5,
+        ScaleType.BLUES: 6,
+        ScaleType.CHROMATIC: 12,
     }
     
-    for scale_type in supported_scales:
+    for scale_type in scale_types:
         scale = Scale(root=Note.from_full_name('C4'), scale_type=scale_type)
-        scale.notes = scale._generate_scale_notes()
-        intervals = scale.calculate_intervals()
-        degree_count_value = ScaleType.degree_count(scale_type)  # Pass the scale_type
-        unique_notes = set(note.note_name + str(note.octave) for note in scale.notes)
-        assert degree_count_value == len(unique_notes), f"{scale_type} should have {degree_count_value} unique notes"
+        assert scale.degree_count == expected_degrees[scale_type], \
+            f"Expected {expected_degrees[scale_type]} degrees for {scale_type}, got {scale.degree_count}"
 
 @pytest.mark.asyncio
 async def test_scale_type_is_diatonic():

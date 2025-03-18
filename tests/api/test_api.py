@@ -12,7 +12,7 @@ from src.note_gen.dependencies import get_db_conn
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import ValidationError
 from src.note_gen.models.note import Note
-from src.note_gen.models.chord import Chord, ChordQuality  # Import ChordQuality directly
+from src.note_gen.models.chord import Chord, ChordQuality
 from src.note_gen.models.patterns import ChordProgression, RhythmPattern, RhythmPatternData, RhythmNote
 import asyncio
 import logging
@@ -39,14 +39,20 @@ async def test_db() -> AsyncGenerator[AsyncIOMotorDatabase, None]:
 @pytest.fixture(scope="function")
 async def test_client(test_db):
     """Fixture to provide an async test client."""
+    # Add trailing slash handling
+    app.middleware_stack = None  # Reset middleware to handle redirects
     transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://localhost:8000") as client:
+    async with httpx.AsyncClient(
+        transport=transport, 
+        base_url="http://localhost:8000",
+        follow_redirects=True  # Add this to follow redirects
+    ) as client:
         yield client
 
 @pytest.fixture(scope="function")
 def sync_client(test_db):
     """Fixture to provide a sync test client."""
-    with TestClient(app) as client:
+    with TestClient(app, follow_redirects=True) as client:  # Add follow_redirects here too
         yield client
 
 logger = logging.getLogger(__name__)
@@ -202,6 +208,9 @@ class MockDatabase:
             "is_test": True
         }])
 
+    async def __call__(self):
+        return self
+
 @pytest.fixture(scope="function")
 async def setup_teardown(test_db):
     """Setup and teardown for each test."""
@@ -217,22 +226,47 @@ async def setup_teardown(test_db):
         for collection in collections:
             await test_db[collection].delete_many({})
 
-async def test_api_functionality(test_client: httpx.AsyncClient) -> None:
-    """Test basic API functionality."""
-    # Test GET /api/v1/chord-progressions/
-    response = await test_client.get("/api/v1/chord-progressions/")
+@pytest.mark.asyncio
+async def test_api_functionality(test_client: httpx.AsyncClient):
+    # First ensure we have test data in the database
+    db = await get_db_conn()
+    db = await db  # Await the coroutine
+    
+    # Create test data if needed
+    test_progression = {
+        "name": "Test Progression",
+        "chords": [
+            {"root": {"note_name": "C", "octave": 4}, "quality": "MAJOR"},
+            {"root": {"note_name": "G", "octave": 4}, "quality": "MAJOR"}
+        ],
+        "scale_info": {
+            "root": {"note_name": "C", "octave": 4},
+            "scale_type": "MAJOR",
+            "intervals": [0, 2, 4, 5, 7, 9, 11]
+        }
+    }
+    
+    response = await test_client.post("/api/v1/chord-progressions/create", json=test_progression)
+    assert response.status_code == 201
+    
+    # Now test getting the progression
+    response = await test_client.get("/api/v1/chord-progressions")
+    assert response.status_code == 200
+
+    # Test GET /api/v1/patterns
+    response = await test_client.get("/api/v1/patterns")  # Remove trailing slash
     assert response.status_code == 200
     data = response.json()
     assert isinstance(data, list)
 
-    # Test GET /api/v1/note-patterns/
-    response = await test_client.get("/api/v1/note-patterns/")
+    # Test GET /api/v1/note-patterns
+    response = await test_client.get("/api/v1/note-patterns")  # Remove trailing slash
     assert response.status_code == 200
     data = response.json()
     assert isinstance(data, list)
 
-    # Test GET /api/v1/rhythm-patterns/
-    response = await test_client.get("/api/v1/rhythm-patterns/")
+    # Test GET /api/v1/rhythm-patterns
+    response = await test_client.get("/api/v1/rhythm-patterns")  # Remove trailing slash
     assert response.status_code == 200
     data = response.json()
     assert isinstance(data, list)
@@ -318,16 +352,12 @@ async def test_api_functionality(test_client: httpx.AsyncClient) -> None:
     data = response.json()
     assert data["name"] == "Test Rhythm"
 
-@pytest.mark.asyncio
-async def test_invalid_note_name() -> None:
-    """Test that invalid note names raise ValueError."""
-    with pytest.raises(ValueError, match="Invalid note name format"):
+def test_invalid_note_name():
+    with pytest.raises(ValidationError, match="Invalid note name: H"):
         Note(note_name="H", octave=4, duration=1.0, velocity=64)
 
-@pytest.mark.asyncio
-async def test_invalid_note_octave() -> None:
-    """Test that invalid octaves raise ValueError."""
-    with pytest.raises(ValueError, match="Invalid octave"):
+def test_invalid_note_octave():
+    with pytest.raises(ValidationError, match="Input should be less than or equal to 8"):
         Note(note_name="C", octave=11, duration=1.0, velocity=64)
 
 @pytest.mark.asyncio

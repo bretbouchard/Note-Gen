@@ -18,41 +18,37 @@ logger = logging.getLogger(__name__)
 async def setup_database():
     """Setup test database and cleanup after tests."""
     db = await get_db_conn()
-    if os.getenv("CLEAR_DB_AFTER_TESTS", "1") == "1":
-        await db.chord_progressions.delete_many({})
-    try:
-        # Setup test data
-        progression = {
-            "_id": ObjectId(),
-            "name": "Test Base Progression",
-            "chords": [
-                {"root": {"note_name": "C", "octave": 4}, "quality": "MAJOR"},
-                {"root": {"note_name": "G", "octave": 4}, "quality": "MAJOR"},
-                {"root": {"note_name": "A", "octave": 4}, "quality": "MINOR"},
-                {"root": {"note_name": "F", "octave": 4}, "quality": "MAJOR"}
-            ],
+    
+    # Clear existing data
+    await db.chord_progressions.delete_many({})
+    
+    # Setup test data
+    progression = {
+        "_id": ObjectId(),
+        "name": "Test Base Progression",
+        "chords": [
+            {"root": {"note_name": "C", "octave": 4}, "quality": "MAJOR"},
+            {"root": {"note_name": "G", "octave": 4}, "quality": "MAJOR"},
+            {"root": {"note_name": "A", "octave": 4}, "quality": "MINOR"},
+            {"root": {"note_name": "F", "octave": 4}, "quality": "MAJOR"}
+        ],
+        'key': 'C',
+        'scale_type': 'MAJOR',
+        'complexity': 0.5,
+        'scale_info': {
+            'root': {'note_name': 'C', 'octave': 4},
             'key': 'C',
             'scale_type': 'MAJOR',
-            'complexity': 0.5,
-            'scale_info': {
-                'root': {'note_name': 'C', 'octave': 4},
-                'key': 'C',
-                'scale_type': 'MAJOR',
-                'notes': ['C', 'D', 'E', 'F', 'G', 'A', 'B']
-            }
+            'notes': ['C', 'D', 'E', 'F', 'G', 'A', 'B']
         }
-        await db.chord_progressions.insert_one(progression)
-        yield db
-    finally:
-        # Cleanup after tests
-        if os.getenv("CLEAR_DB_AFTER_TESTS", "1") == "1":
-            await db.chord_progressions.delete_many({})
+    }
+    
+    await db.chord_progressions.insert_one(progression)
+    return db
 
 @pytest.mark.asyncio
-async def test_chord_progression_functionality(app_client, setup_database):
-    """Test the chord progression creation, retrieval, and deletion functionality."""
-    db = setup_database  # No need to await, fixture already returns the DB
-    
+async def test_chord_progression_functionality(app_client):
+    db = await get_db_conn()
     # Test data
     chord_progression_data = {
         "name": "Test Progression",

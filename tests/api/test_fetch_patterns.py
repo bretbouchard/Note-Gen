@@ -259,15 +259,14 @@ async def test_fetch_rhythm_pattern_by_id(test_db) -> None:
     await test_db.rhythm_pattern_collection.delete_many({"id": "rhythm_pattern_1"})
     await test_db.rhythm_patterns.delete_many({"id": "rhythm_pattern_1"})
     
-    # Insert a test rhythm pattern
     test_pattern = {
         "_id": "rhythm_pattern_1",
         "id": "rhythm_pattern_1",
         "name": "Test Rhythm Pattern",
-        "pattern": [1.0, 1.0],  # Add pattern at root level which is required
+        "pattern": [1.0, 1.0],
         "data": {
-            "pattern": [1.0, 1.0],  # Simple rhythm pattern
-            "accents": [1.0, 0.9],  # Accent pattern matching the original notes
+            "pattern": [1.0, 1.0],
+            "accents": [1.0, 0.9],
             "time_signature": "4/4",
             "swing_enabled": False,
             "total_duration": 4.0,
@@ -1654,3 +1653,57 @@ async def test_fetch_chord_progression_pattern_by_id(test_db):
 @pytest.fixture(scope="module")
 def test_client():
     return TestClient(app)
+
+@pytest.fixture(autouse=True)
+async def setup_test_data(test_db):
+    # Insert test rhythm patterns
+    await test_db.rhythm_patterns.insert_one({
+        "id": str(uuid.uuid4()),
+        "name": "Test Rhythm Pattern",
+        "data": {
+            "notes": [
+                {"duration": 1.0, "is_rest": False},
+                {"duration": 0.5, "is_rest": True}
+            ]
+        }
+    })
+
+    await test_db.rhythm_patterns.insert_one({
+        "name": "Test Rhythm",
+        "pattern": "1 1 1 1",
+        "time_signature": "4/4",
+        "data": {
+            "notes": [{"position": 0, "duration": 1.0, "velocity": 100, "is_rest": False}],
+            "time_signature": "4/4"
+        }
+    })
+
+    # Insert test note patterns
+    await test_db.note_patterns.insert_one({
+        "name": "Test Notes",
+        "intervals": [1, 3, 5],
+        "data": {
+            "intervals": [1, 3, 5],
+            "duration": 1.0,
+            "velocity": 100
+        }
+    })
+
+from httpx import AsyncClient
+import pytest
+
+@pytest.fixture
+async def async_client():
+    async with AsyncClient(app=app, base_url="http://test") as client:
+        yield client
+
+@pytest.mark.asyncio
+async def test_fetch_patterns_api(async_client):
+    response = await async_client.get("/patterns/")
+    assert response.status_code == 200
+
+    yield
+
+    # Cleanup
+    await test_db.rhythm_patterns.delete_many({})
+    await test_db.note_patterns.delete_many({})

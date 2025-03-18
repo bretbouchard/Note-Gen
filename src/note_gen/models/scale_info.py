@@ -1,101 +1,19 @@
-from typing import Optional, Dict, ClassVar, List, Any
-from pydantic import BaseModel, ConfigDict, Field, validator, model_validator
-import logging
-
-from src.note_gen.models.note import Note
-from src.note_gen.models.scale import Scale
-from src.note_gen.models.chord import Chord, ChordQuality
-
-from src.note_gen.models.enums import ScaleDegree, ScaleType
-
-logger = logging.getLogger(__name__)
+from pydantic import BaseModel, Field, ConfigDict
+from typing import Optional
+from .note import Note
+from .enums import ScaleType
 
 class ScaleInfo(BaseModel):
     """Information about a musical scale."""
-    root: Note
-    scale_type: str
-
-    @validator('scale_type')
-    def validate_scale_type(cls, v: str) -> str:
-        valid_types = ['MAJOR', 'MINOR', 'HARMONIC_MINOR', 'MELODIC_MINOR']
-        if v.upper() not in valid_types:
-            raise ValueError(f"Scale type must be one of {valid_types}")
-        return v.upper()
-
-    @model_validator(mode='before')
-    @classmethod
-    def validate_root(cls, data: Any) -> Any:
-        if isinstance(data, dict) and isinstance(data.get('root'), str):
-            data['root'] = Note(note_name=data['root'])
-        return data
-
-    MAJOR_SCALE_QUALITIES: ClassVar[Dict[int, Chord]] = {
-        1: Chord(root=Note(note_name='C'), quality=ChordQuality.MAJOR),
-        2: Chord(root=Note(note_name='D'), quality=ChordQuality.MINOR),
-        3: Chord(root=Note(note_name='E'), quality=ChordQuality.MINOR),
-        4: Chord(root=Note(note_name='F'), quality=ChordQuality.MAJOR),
-        5: Chord(root=Note(note_name='G'), quality=ChordQuality.MAJOR),
-        6: Chord(root=Note(note_name='A'), quality=ChordQuality.MINOR),
-        7: Chord(root=Note(note_name='B'), quality=ChordQuality.DIMINISHED)
-    }
-
-    MINOR_SCALE_QUALITIES: ClassVar[Dict[int, Chord]] = {
-        1: Chord(root=Note(note_name='C'), quality=ChordQuality.MINOR),
-        2: Chord(root=Note(note_name='D'), quality=ChordQuality.DIMINISHED),
-        3: Chord(root=Note(note_name='E'), quality=ChordQuality.MAJOR),
-        4: Chord(root=Note(note_name='F'), quality=ChordQuality.MINOR),
-        5: Chord(root=Note(note_name='G'), quality=ChordQuality.MINOR),
-        6: Chord(root=Note(note_name='A'), quality=ChordQuality.MAJOR),
-        7: Chord(root=Note(note_name='B'), quality=ChordQuality.MAJOR)
-    }
-
+    key: str = Field(..., description="The key of the scale")
+    scale_type: ScaleType = Field(default=ScaleType.MAJOR, description="The type of scale")
+    
     model_config = ConfigDict(
-        arbitrary_types_allowed=True
+        validate_assignment=True,
+        str_strip_whitespace=True
     )
+    
+    def __str__(self) -> str:
+        return f"{self.key} {self.scale_type.value}"
 
-    def get_note_for_degree(self, degree: int) -> Note:
-        """Get the note for a given scale degree."""
-        return self.root
 
-    def get_scale_note_at_degree(self, degree: int) -> Note:
-        """Get the note at a given scale degree."""
-        scale: Scale = Scale(root=self.root, scale_type=self.scale_type)
-        return scale.get_note_by_degree(degree)
-
-    def get_chord_quality_for_degree(self, degree: int) -> Chord:
-        """Get the chord quality for a given scale degree."""
-        if degree < 1 or degree > 7:
-            raise ValueError("Degree must be between 1 and 7")
-        logger.debug(f"Getting chord quality for degree: {degree}")
-        if self.scale_type == ScaleType.MAJOR:
-            quality = self.MAJOR_SCALE_QUALITIES[degree]
-        else:
-            quality = self.MINOR_SCALE_QUALITIES[degree]
-
-        root_note = self.get_scale_note_at_degree(degree)
-        return Chord(root=root_note, quality=quality.quality)
-
-    def compute_scale_degrees(self) -> List[int]:
-        """Compute the scale degrees based on the root and scale type."""
-        scale = Scale(root=self.root, scale_type=self.scale_type)
-        return scale.calculate_intervals()
-
-    def get_scale_notes(self) -> List[Note]:
-        """
-        Generate and return all notes in the scale.
-        
-        This method caches the scale notes to avoid redundant calculation.
-        
-        Returns:
-            List[Note]: List of all notes in the scale
-        """
-        # Return cached notes if available
-        if hasattr(self, '_scale_notes') and self._scale_notes is not None:
-            logger.debug(f"Returning cached scale notes: {[note.note_name + str(note.octave) for note in self._scale_notes]}")
-            return self._scale_notes
-            
-        logger.debug(f"Generating scale notes for {self.scale_type} scale with root {self.root.note_name}{self.root.octave}")
-        scale = Scale(root=self.root, scale_type=self.scale_type)
-        self._scale_notes: list[Note] = scale._generate_scale_notes()
-        logger.debug(f"Generated {len(self._scale_notes)} scale notes: {[note.note_name + str(note.octave) for note in self._scale_notes]}")
-        return self._scale_notes

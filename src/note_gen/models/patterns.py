@@ -1,9 +1,13 @@
-from typing import Any, List, Optional, Dict, Union, Tuple, ClassVar, Annotated, Callable, Sequence, Literal, Union
+from typing import Any, List, Optional, Dict, Union, Tuple, ClassVar, Annotated, Callable, Sequence, Literal
 from pydantic import BaseModel, Field, model_validator, root_validator, ConfigDict, field_validator, PrivateAttr, ValidationInfo, ValidationError
-from src.note_gen.models.note import Note
-from src.note_gen.models.scale_degree import ScaleDegree
-from src.note_gen.models.chord import Chord, ChordQuality
-from src.note_gen.models.scale_info import ScaleInfo
+from .note import Note
+from .scale_degree import ScaleDegree
+from .chord import Chord
+from .chord_quality import ChordQuality
+from .scale_info import ScaleInfo
+from .enums import ScaleType
+from .scale import Scale
+from .chord_progression import ChordProgression  # Import from chord_progression.py
 import uuid
 import logging
 import re
@@ -12,8 +16,7 @@ import math
 logger = logging.getLogger(__name__)
 
 NoteType = Union[Note, ScaleDegree]
-from src.note_gen.models.scale import Scale
-
+# Remove the Scale import from here
 __all__ = ['COMMON_PROGRESSIONS', 'NOTE_PATTERNS', 'RHYTHM_PATTERNS', 'Patterns']
 
 COMMON_PROGRESSIONS: Dict[str, List[str]] = {
@@ -204,138 +207,30 @@ RHYTHM_PATTERNS: Dict[str, Dict[str, Any]] = {
 }
 
 class NotePatternData(BaseModel):
-    """Data structure for note pattern parameters.
-    
-    IMPORTANT: In musical notation, negative values often represent rests.
-    Throughout this class and related models, we follow this convention:
-    - Positive durations represent regular notes
-    - Negative durations represent rests, with the absolute value as the duration
-    - Zero durations are not allowed and will raise a ValueError during validation
-    """
-    intervals: List[int]
-    notes: List[Note]
+    """Data for a note pattern."""
+    intervals: List[int] = Field(..., min_items=1)
+    notes: List[Note] = Field(..., min_items=1)  # Changed from str to Note
 
-    @model_validator(mode='before')
-    def validate_data(cls, data: Dict[str, Any]) -> Dict[str, Any]:
-        if not data.get('intervals') and not data.get('notes'):
-            raise ValueError('Either intervals or notes must be provided')
-        return data
-
-    model_config = ConfigDict(
-        arbitrary_types_allowed=True,
-        validate_assignment=True,
-        str_strip_whitespace=True,
-        validate_default=True,
-        extra="allow"
-    )
-
-    @classmethod
-    @field_validator('notes')
-    def validate_notes(cls, v: Optional[list[Union[str, dict[str, Any], Note, int, float]]]) -> list[Union[str, dict[str, Any], Note, int, float]]:
-        if v is None:
-            return []
-        return [cls._convert_note(note) for note in v]
-
-    @staticmethod
-    def _convert_note(note: Union[str, dict[str, Any], Note, int, float]) -> Union[str, dict[str, Any], Note, int, float]:
-        if isinstance(note, str):
-            return note
-        elif isinstance(note, dict):
-            return note
-        elif isinstance(note, (int, float)):
-            return float(note)
-        return note
-
-    @classmethod
-    @field_validator('intervals')
-    def validate_intervals(cls, v: Optional[list[Union[str, dict[str, Any], int, float]]]) -> list[Union[str, dict[str, Any], int, float]]:
-        if v is None:
-            return []
-        return [cls._convert_interval(interval) for interval in v]
-
-    @staticmethod
-    def _convert_interval(interval: Union[str, dict[str, Any], int, float, None]) -> Union[str, dict[str, Any], int, float, None]:
-        if isinstance(interval, str):
-            return interval
-        elif isinstance(interval, dict):
-            return interval
-        elif isinstance(interval, (int, float)):
-            return float(interval)
-        # Handle None or other types
-        return interval
-
-    @classmethod
-    @field_validator('duration')
-    def validate_duration(cls, v: Optional[Union[int, float]]) -> Union[int, float]:
-        if v is None:
-            return 1.0
-        if v <= 0:
-            raise ValueError('Duration must be greater than 0')
-        return float(v)
-
-    @classmethod
-    @field_validator('direction')
-    def validate_direction(cls, v: Optional[str]) -> str:
-        """Validate direction value."""
-        if not v:
-            return "up"
-        v = v.lower().strip()
-        if v not in ["up", "down", "random"]:
-            raise ValueError("Direction must be 'up', 'down', or 'random'")
-        return v
-
-    @classmethod
-    @field_validator('octave_range')
-    def validate_octave_range(cls, v: Optional[tuple[int, int]]) -> tuple[int, int]:
-        if v is None:
-            return (0, 0)
-        if len(v) != 2 or v[0] > v[1]:
-            raise ValueError("Octave range must be a tuple of two integers where the first is less than or equal to the second")
-        return v
-
-    @classmethod
-    @field_validator('default_duration')
-    def validate_default_duration(cls, v: Optional[Union[int, float]]) -> Union[int, float]:
-        if v is None:
-            return 1.0
-        if v <= 0:
-            raise ValueError('Default duration must be greater than 0')
-        return float(v)
-
-    def model_dump(self, **kwargs: Any) -> Dict[str, Any]:
-        """Convert model to dictionary with proper handling of Note objects."""
-        data = super().model_dump(**kwargs)
-        
-        # Convert Note objects to dictionaries
-        if data.get('notes'):
-            notes_list = []
-            for note in data['notes']:
-                if hasattr(note, 'model_dump'):
-                    notes_list.append(note.model_dump())
-                else:
-                    notes_list.append(note)
-            data['notes'] = notes_list
-            
-        return data
+    model_config = ConfigDict(arbitrary_types_allowed=True)  # Allow Note type
 
 class NotePattern(BaseModel):
-    """
-    A pattern of musical notes.
-    
-    IMPORTANT: In musical notation, negative values often represent rests.
-    Throughout this class and related models, we follow this convention:
-    - Positive durations represent regular notes
-    - Negative durations represent rests, with the absolute value as the duration
-    """
-    id: Optional[str] = Field(None, description="ID of the note pattern")
-    name: str = Field(min_length=2, description="Name must be at least 2 characters long")
-    description: str = Field(default="", description="Pattern description")
-    tags: list[str] = Field(default_factory=lambda: ["default"], description="Pattern tags")
-    complexity: Optional[float] = Field(None, ge=0.0, le=1.0, description="Complexity must be between 0 and 1")
-    intervals: List[int]
-    data: Optional[Union[NotePatternData, Dict[str, Any]]] = Field(default=None, description="Additional pattern data")
-    style: Optional[str] = Field(default=None, description="Pattern style")
-    is_test: Optional[bool] = Field(default=False, description="Test flag")
+    name: str = Field(
+        ..., 
+        min_length=4,
+        pattern=r'^[a-zA-Z0-9\s_-]+$',
+        description="Name must be at least 4 characters and contain only letters, numbers, spaces, underscores, and hyphens"
+    )
+    intervals: List[int] = Field(..., min_items=1)
+    description: str = Field(default="")
+    tags: List[str] = Field(default_factory=list)
+    complexity: float = Field(default=0.5, ge=0.0, le=1.0)
+    data: NotePatternData = Field(default_factory=NotePatternData)
+
+    @model_validator(mode='before')
+    def validate_notes_or_intervals(cls, values: Dict[str, Any]) -> Dict[str, Any]:
+        if not values.get('intervals'):
+            raise ValueError('Intervals are required')
+        return values
 
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
@@ -344,17 +239,6 @@ class NotePattern(BaseModel):
         validate_default=True,
         extra="allow"
     )
-
-    @classmethod
-    @field_validator('name')
-    def validate_name(cls, v: str) -> str:
-        """Validate that name is not empty or whitespace-only."""
-        v = v.strip()
-        if not v:
-            raise ValueError("Name cannot be empty or whitespace-only")
-        if len(v) < 2:
-            raise ValueError("Name must be at least 2 characters long")
-        return v
 
     @classmethod
     @field_validator('intervals')
@@ -510,15 +394,13 @@ class NotePattern(BaseModel):
 
 
 class ChordPatternItem(BaseModel):
-    """
-    Represents a single chord in a chord progression pattern.
-    
-    This model is used to define the structure of each chord in a 
-    chord progression pattern without tying it to a specific key/scale.
-    """
-    degree: int = Field(ge=1, le=7, description='Scale degree (1-7)')
-    quality: str = Field(pattern='^(MAJOR|MINOR|DIMINISHED|AUGMENTED)$')
-    duration: float = Field(gt=0, description='Duration in beats')
+    """Represents a single chord in a chord pattern."""
+    degree: int = Field(..., ge=1, le=7)
+    quality: str = Field(...)
+    duration: float = Field(..., gt=0)  # Make duration required with validation
+    position: float = Field(default=0.0, ge=0.0)
+    velocity: int = Field(default=100, ge=0, le=127)
+    inversion: Optional[int] = None
 
     model_config = ConfigDict(
         validate_assignment=True,
@@ -527,52 +409,31 @@ class ChordPatternItem(BaseModel):
     )
 
 class ChordProgressionPattern(BaseModel):
-    """
-    A reusable pattern for chord progressions.
-    
-    This allows defining patterns like "I-IV-V-I" that can be applied to any key/scale.
-    """
-    id: Optional[str] = Field(
-        default_factory=lambda: str(uuid.uuid4()),
-        description="ID of the chord progression pattern"
-    )
-    name: str = Field(
-        ..., 
-        min_length=2,
-        description="Name of the chord progression pattern"
-    )
-    description: str = Field(
-        default="",
-        description="Description of the pattern"
-    )
-    tags: list[str] = Field(
-        default_factory=lambda: ["default"],
-        description="Tags for categorization"
-    )
-    complexity: Optional[float] = Field(
-        default=0.5,
-        ge=0.0,
-        le=1.0,
-        description="Complexity score (0.0-1.0)"
-    )
-    genre: Optional[str] = Field(
-        default=None,
-        description="Musical genre"
-    )
-    pattern: list[ChordPatternItem] = Field(
-        ...,
-        min_length=1,
-        description="List of chord pattern items"
-    )
-    is_test: Optional[bool] = Field(
-        default=None,
-        description="Test flag"
-    )
-    
-    model_config = ConfigDict(
-        validate_assignment=True,
-        str_strip_whitespace=True
-    )
+    """Represents a chord progression pattern."""
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str = Field(..., min_length=1)
+    chords: List[ChordPatternItem] = Field(..., min_items=1)
+    description: str = Field(default="")
+    tags: List[str] = Field(default_factory=list)
+    time_signature: str = Field(default="4/4")
+    total_duration: float = Field(default=0.0)
+
+    @model_validator(mode='after')
+    def calculate_total_duration(self) -> 'ChordProgressionPattern':
+        """Calculate the total duration of the chord progression."""
+        self.total_duration = sum(chord.duration for chord in self.chords)
+        return self
+
+    def generate_progression_from_pattern(self, scale: Scale) -> List[Chord]:
+        """Generate a chord progression based on the pattern and given scale"""
+        chords = []
+        for item in self.chords:
+            chord = scale.get_chord_by_degree(
+                degree=item.degree,
+                quality=item.quality
+            )
+            chords.append(chord)
+        return chords
 
     @classmethod
     @field_validator('name')
@@ -606,11 +467,11 @@ class ChordProgressionPattern(BaseModel):
     @model_validator(mode='after')
     def validate_pattern_not_empty(self) -> 'ChordProgressionPattern':
         """Validate that pattern is not empty and all items are valid."""
-        if not self.pattern:
+        if not self.chords:
             raise ValueError("Pattern cannot be empty")
             
         # Validate that all pattern items have valid durations
-        for i, item in enumerate(self.pattern):
+        for i, item in enumerate(self.chords):
             if item.duration is not None and item.duration <= 0:
                 raise ValueError(f"Pattern item at index {i} has invalid duration: {item.duration}. Duration must be greater than 0.")
                 
@@ -620,7 +481,7 @@ class ChordProgressionPattern(BaseModel):
         """Get the chord progression as Roman numerals."""
         roman_map: Dict[int, str] = {1: 'I', 2: 'II', 3: 'III', 4: 'IV', 5: 'V', 6: 'VI', 7: 'VII'}
         result = []
-        for item in self.pattern:
+        for item in self.chords:
             if isinstance(item.degree, int) and item.degree in roman_map:
                 result.append(roman_map[item.degree])
             else:
@@ -630,7 +491,7 @@ class ChordProgressionPattern(BaseModel):
 
     def total_duration(self) -> float:
         """Calculate the total duration of the chord progression pattern."""
-        return sum(float(item.duration) for item in self.pattern if item.duration is not None)
+        return sum(float(item.duration) for item in self.chords if item.duration is not None)
 
     @classmethod
     def from_degrees_and_qualities(cls, name: str, degrees: list[int], 
@@ -692,7 +553,7 @@ class ChordProgressionPattern(BaseModel):
             tags=tags or ["default"],
             complexity=complexity,
             genre=genre,
-            pattern=pattern
+            chords=pattern
         )
 
     @classmethod
@@ -764,7 +625,7 @@ class ChordProgressionPattern(BaseModel):
             tags=tags or ["default"],
             complexity=complexity,
             genre=genre,
-            pattern=pattern
+            chords=pattern
         )
 
     @classmethod
@@ -813,21 +674,112 @@ class ChordProgressionPattern(BaseModel):
             tags=tags or getattr(progression, 'tags', ["default"]),
             complexity=getattr(progression, 'complexity', 0.5),
             genre=getattr(progression, 'genre', None),
-            pattern=pattern
+            chords=pattern
+        )
+
+    def create_progression(self, key: Note, scale_type: str) -> 'ChordProgression':
+        """Create a chord progression from this pattern.
+        
+        Args:
+            key (Note): The key note for the progression
+            scale_type (str): The type of scale to use
+            
+        Returns:
+            A new ChordProgression instance
+        """
+        # Move the Scale import here
+        from src.note_gen.models.scale import Scale
+        from src.note_gen.models.note import Note
+        from src.note_gen.models.chord import Chord
+        
+        # Create a Scale object for the given key and scale type
+        scale = Scale(root=key, scale_type=scale_type)
+        
+        # Create chords based on the pattern and scale
+        chords = []
+        for item in self.chords:
+            # Get the scale degree and chord quality
+            degree = item.degree
+            quality = item.quality
+            
+            # Get the root note of the chord
+            root_note = scale.get_note_by_degree(int(degree) if isinstance(degree, (int, str)) else 0)
+            
+            # Create a Chord object
+            chord = Chord(root=root_note, quality=quality, duration=item.duration)
+            
+            # Add the chord to the list
+            chords.append(chord)
+        
+        # Create the ChordProgression object
+        return ChordProgression(
+            name=self.name,
+            key=key,
+            scale_type=scale_type,
+            scale_info=scale.info,
+            chords=chords
         )
 
 class ChordProgression(BaseModel):
-    """
-    A progression of chords.
-    
-    This class represents a sequence of chords that can be used in a musical composition.
-    """
+    """Represents a sequence of chords that can be used in a musical composition."""
     id: Optional[str] = Field(default=None, description="Unique identifier for the chord progression")
     name: str = Field(..., min_length=2, description="Name of the chord progression")
-    key: str = Field(..., min_length=1, max_length=2, pattern=r"^[A-G][#b]?$")
+    key: str = Field(..., min_length=1, max_length=2, pattern=r"^[A-Ga-g][#b]?$")  # Modified pattern to be case-insensitive
     scale_type: str = Field(..., description="Scale type")
     scale_info: Union[str, ScaleInfo] = Field(..., description="Scale info")
-    chords: List[Chord] = Field(..., min_length=1, description="List of chords in the progression")
+    chords: List[Chord] = Field(..., min_length=1, max_length=32, description="List of chords in the progression")
+    complexity: float = Field(default=0.5, ge=0.0, le=1.0, description="Complexity score (0.0-1.0)")
+    genre: Optional[str] = Field(default=None, description="Musical genre")
+    tags: List[str] = Field(default_factory=lambda: ["default"], description="Tags for categorization")
+    description: str = Field(default="", description="Description of the progression")
+
+    @field_validator('key')
+    @classmethod
+    def validate_key(cls, v: str) -> str:
+        """Validate and normalize the key."""
+        v = v.upper()  # Convert to uppercase first
+        if not re.match(r'^[A-G][#b]?$', v):
+            raise ValueError("Key must be a valid note name (A-G) with optional sharp (#) or flat (b)")
+        return v
+
+    def generate_progression_from_pattern(
+        self,
+        pattern: List[str],
+        scale_info: ScaleInfo,
+        progression_length: int
+    ) -> 'ChordProgression':
+        """Generate chord progression from a pattern string."""
+        if not pattern:
+            raise ValueError("Pattern cannot be empty")
+        
+        from src.note_gen.models.scale import Scale
+        from src.note_gen.models.roman_numeral import RomanNumeral
+        
+        scale = Scale.from_scale_info(scale_info)
+        new_chords = []
+        
+        for numeral in pattern[:progression_length]:
+            roman = RomanNumeral.from_roman_numeral(numeral)
+            scale_degree = roman.to_scale_degree()
+            root_note = scale.get_note_from_degree(scale_degree)
+            new_chord = Chord(root=root_note, quality=roman.quality, inversion=roman.inversion)
+            new_chords.append(new_chord)
+        
+        return ChordProgression(
+            name=self.name,
+            key=self.key,
+            scale_type=self.scale_type,
+            scale_info=scale_info,
+            chords=new_chords,
+            complexity=self.complexity,
+            genre=self.genre
+        )
+
+    def model_dump(self, **kwargs) -> Dict[str, Any]:
+        data = super().model_dump(**kwargs)
+        if hasattr(self, 'complexity'):
+            data['complexity'] = self.complexity
+        return data
 
     @model_validator(mode='before')
     @classmethod
@@ -835,7 +787,8 @@ class ChordProgression(BaseModel):
         if isinstance(v, ScaleInfo):
             return {
                 'root': v.root,
-                'scale_type': v.scale_type
+                'scale_type': v.scale_type,
+                'complexity': v.complexity  # Add the missing complexity field
             }
         return v
 
@@ -912,7 +865,7 @@ class ChordProgression(BaseModel):
         
         # Create chords based on the pattern and scale
         chords = []
-        for item in pattern.pattern:
+        for item in pattern.chords:
             # Get the scale degree and chord quality
             degree = item.degree
             quality = item.quality
@@ -947,10 +900,10 @@ class ChordProgression(BaseModel):
             raise ValueError("Key cannot be empty")
         if len(v) < 1 or len(v) > 2:
             raise ValueError("Key must be a single character or a character followed by '#' or 'b'")
-        if v[0].upper() not in 'ABCDEFG':
-            raise ValueError("Key must start with a letter from A to G")
-        if len(v) == 2 and v[1] not in '#b':
-            raise ValueError("Key must end with '#' or 'b' if it's two characters long")
+        if v[0].upper() not in 'ABCDEFG!':
+            raise ValueError("Key must start with a letter from A to G or '!' for no key")
+        if len(v) == 2 and v[1] not in '#!b!':
+            raise ValueError("Key must end with '#' or 'b' if it's two characters long, or '!' for no key")
         return v
 
     @classmethod
@@ -1021,12 +974,10 @@ class RhythmNote(BaseModel):
         return self
 
 class RhythmPatternData(BaseModel):
-    """
-    Data for a rhythm pattern.
-    """
+    """Data for a rhythm pattern."""
     name: Annotated[str, Field(default="Default Pattern", min_length=1)]
     notes: Annotated[List[RhythmNote], Field(default_factory=lambda: [RhythmNote(position=0, duration=1.0)], min_length=1)]
-    time_signature: Annotated[str, Field(default="4/4", pattern=r'^[1-9]\d*\/[1-9]\d*$')]
+    time_signature: Annotated[str, Field(default="4/4")]
     default_duration: Annotated[float, Field(default=1.0, gt=0)]
     groove_type: Literal['straight', 'swing', 'shuffle'] = Field(default="straight")
     style: str = Field(default="basic", min_length=1)
@@ -1037,8 +988,19 @@ class RhythmPatternData(BaseModel):
     swing_ratio: float = Field(default=0.67, ge=0.5, le=0.75)
     humanize_amount: float = Field(default=0.1, ge=0.0, le=1.0)
     variation_probability: float = Field(default=0.1, ge=0.0, le=1.0)
-    total_duration: float = Field(default=0.0, description="Total duration of the rhythm pattern")
-    _total_duration: float = PrivateAttr(default=0.0)
+    total_duration: float = Field(default=0.0)
+
+    @field_validator('time_signature')
+    def validate_time_signature(cls, v: str) -> str:
+        """Validate time signature format and value."""
+        if not re.match(r'^[1-9]\d*\/[1-9]\d*$', v):
+            raise ValueError("Time signature must be in format 'x/y' with positive numbers")
+        numerator, denominator = map(int, v.split('/'))
+        if numerator <= 0 or denominator <= 0:
+            raise ValueError("Time signature components must be greater than 0")
+        if denominator not in {1, 2, 4, 8, 16, 32, 64}:
+            raise ValueError("Time signature denominator must be a power of 2")
+        return v
 
     @model_validator(mode='after')
     def calculate_total_duration(self) -> 'RhythmPatternData':
@@ -1098,17 +1060,6 @@ class RhythmPatternData(BaseModel):
         
         return value
 
-    @field_validator('time_signature', mode='after')
-    @classmethod
-    def validate_time_signature(cls, v: str) -> str:
-        """Validate time signature format and denominator."""
-        if not re.match(r'^\d+/\d+$', v):
-            raise ValueError("Time signature must be in format 'x/y'")
-        numerator, denominator = map(int, v.split('/'))
-        if denominator not in {1, 2, 4, 8, 16, 32, 64}:  # Valid denominators
-            raise ValueError("Time signature denominator must be a power of 2")
-        return v
-
     def model_dump(self, *args, **kwargs) -> Dict[str, Any]:
         # Create a dictionary with the exact structure expected by tests
         # The order of keys matters for the test comparison
@@ -1121,77 +1072,67 @@ class RhythmPatternData(BaseModel):
         }
 
 class RhythmPattern(BaseModel):
-    """
-    Object for rhythm patterns.
-    """
-    id: Optional[str] = Field(None, description="Unique identifier")
-    name: str = Field(..., min_length=1, description="Name of the rhythm pattern")
-    pattern: str = Field(..., description="Sequence of durations")
-    description: str = Field(..., description="Description of the rhythm pattern")
-    tags: List[str] = Field(default_factory=list, description="Tags for categorization")
-    complexity: int = Field(..., ge=1, le=10, description="Complexity rating")
-    is_test: bool = Field(False, description="Indicates if this is a test pattern")
-    time_signature: str = Field(
-        pattern='^\\d+/\\d+$',
-        description='Time signature in format X/Y (e.g., 4/4)'
-    )
-    data: dict
-
-    model_config = ConfigDict(
-        arbitrary_types_allowed=True,
-    )
+    """Object for rhythm patterns."""
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str = Field(..., min_length=1)
+    pattern: str = Field(..., min_length=1)  # Make pattern required
+    description: str = Field(default="")
+    tags: List[str] = Field(default_factory=list)
+    complexity: float = Field(default=0.5, ge=0.0, le=1.0)
+    time_signature: str = Field(default="4/4")
+    data: Optional[RhythmPatternData] = None
 
     @field_validator('pattern')
-    def validate_pattern(cls, value: str) -> str:
-        if not value:
-            raise ValueError('Pattern cannot be empty')
-        if not re.match(r'^[0-9\-]+$', value):
-            raise ValueError('Pattern must contain only numbers and hyphens for rests')
-        return value
+    @classmethod
+    def validate_pattern(cls, v: str) -> str:
+        if not isinstance(v, str):
+            raise ValueError("Pattern must be a string")
+        
+        # Allow patterns with dashes
+        pattern_parts = v.replace('-', ' ').strip().split()
+        if not pattern_parts:
+            raise ValueError("Pattern must contain at least one value")
+        
+        # Validate each part is a number
+        try:
+            [float(part) for part in pattern_parts]
+        except ValueError as e:
+            raise ValueError(f"Invalid pattern format: {str(e)}")
+        
+        return v
+
+    @model_validator(mode='after')
+    def validate_duration(self) -> 'RhythmPattern':
+        pattern_parts = self.pattern.replace('-', ' ').strip().split()
+        total_duration = sum(float(x) for x in pattern_parts)
+        
+        time_sig_parts = self.time_signature.split('/')
+        expected_duration = (float(time_sig_parts[0]) / float(time_sig_parts[1])) * 4
+        
+        if abs(total_duration - expected_duration) > 0.001:
+            raise ValueError(f"Pattern duration {total_duration} does not match time signature duration {expected_duration}")
+        
+        return self
 
     @field_validator('time_signature')
-    def validate_time_signature(cls, value: str) -> str:
-        if not re.match(r'^\d+/\d+$', value):
-            raise ValueError('Time signature must be in format X/Y where X and Y are positive integers')
-        numerator, denominator = value.split('/')
-        if int(denominator) not in {2, 4, 8, 16}:
-            raise ValueError('Denominator must be 2, 4, 8, or 16')
-        return value
-
-    @field_validator('name')
-    def validate_name(cls, v: str) -> str:
-        if not v or not v.strip():
-            raise ValueError("Name cannot be empty")
+    def validate_time_signature(cls, v: str) -> str:
+        """Validate time signature format."""
+        if not re.match(r'^[1-9]\d*\/[1-9]\d*$', v):
+            raise ValueError("Time signature must be in format 'x/y' with positive numbers")
+        numerator, denominator = map(int, v.split('/'))
+        if denominator not in {1, 2, 4, 8, 16, 32, 64}:
+            raise ValueError("Time signature denominator must be a power of 2")
         return v
 
-    @model_validator(mode='before')
-    def validate_pattern_input(cls, data: Any) -> Any:
-        # Handle direct field inputs (non-dictionary)
-        if not isinstance(data, dict):
-            return data
-        
-        # Handle dictionary input
-        if 'pattern' not in data:
-            raise ValueError("Pattern must be provided as a dictionary with a 'pattern' key")
-        
-        # Handle None pattern value
-        if data['pattern'] is None:
-            raise ValueError("Pattern must be a non-null string containing numbers separated by spaces")
-        
-        return data
-    
-    @field_validator('data')
-    def validate_data(cls, v: Union[RhythmPatternData, Dict[str, Any]], info: ValidationInfo) -> RhythmPatternData:
-        """Special validator that allows data to be initialized from a dict"""
-        if isinstance(v, dict):
-            return RhythmPatternData(**v)
-        return v
-        
-    def model_dump(self, *args, **kwargs) -> Dict[str, Any]:
-        result = super().model_dump(*args, **kwargs)
-        if 'data' in result and isinstance(self.data, RhythmPatternData):
-            result['data'] = self.data.model_dump(*args, **kwargs)
-        return result
+    @property
+    def durations(self) -> List[float]:
+        """Get the durations as a list of floats."""
+        return [float(x) for x in self.pattern.split()]
+
+    @property
+    def total_duration(self) -> float:
+        """Calculate total duration of the pattern."""
+        return sum(abs(x) for x in self.durations)
 
 class Patterns(BaseModel):
     """Container class for all pattern types"""

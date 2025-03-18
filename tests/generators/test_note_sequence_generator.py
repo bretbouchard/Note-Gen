@@ -14,15 +14,16 @@ logger = logging.getLogger(__name__)
 def rhythm_pattern() -> RhythmPattern:
     return RhythmPattern(
         name="Default Rhythm Pattern",
-        data=RhythmPatternData(
-            notes=[RhythmNote(position=0, duration=1.0, velocity=100, is_rest=False)],
-            time_signature="4/4"
-        ),
+        pattern="1 1 -1",
+        time_signature="4/4",
+        data={
+            "notes": [{"position": 0, "duration": 1.0, "velocity": 100, "is_rest": False}],
+            "time_signature": "4/4"
+        },
         description="A default rhythm pattern for testing.",
         tags=["test"],
         complexity=1.0,
-        style="basic",
-        pattern=[1, 1, -1]
+        style="basic"
     )
 
 @pytest.fixture
@@ -72,8 +73,8 @@ def setup_note_sequence_generator() -> NoteSequenceGenerator:
         scale_type="MAJOR",
         scale_info=ScaleInfo(root=Note(note_name="C", octave=4), scale_type="MAJOR"),
         chords=[
-            Chord(root=Note(note_name="C", octave=4), quality=ChordQuality.MAJOR),
-            Chord(root=Note(note_name="F", octave=4), quality=ChordQuality.MAJOR)
+            Chord(root=Note(note_name="C", octave=4), quality="MAJOR"),
+            Chord(root=Note(note_name="F", octave=4), quality="MAJOR")
         ]
     ),
      NotePattern(
@@ -99,8 +100,8 @@ def setup_note_sequence_generator() -> NoteSequenceGenerator:
         scale_type="MINOR",
         scale_info=ScaleInfo(root=Note(note_name="A", octave=4), scale_type="MINOR"),
         chords=[
-            Chord(root=Note(note_name="A", octave=4), quality=ChordQuality.MINOR),
-            Chord(root=Note(note_name="D", octave=4), quality=ChordQuality.MAJOR)
+            Chord(root=Note(note_name="A", octave=4), quality="MINOR"),
+            Chord(root=Note(note_name="D", octave=4), quality="MAJOR")
         ]
     ),
      NotePattern(

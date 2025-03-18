@@ -306,3 +306,44 @@ def test_invalid_note_initialization() -> None:
     assert error['type'] == 'greater_than_equal'
     assert error['loc'] == ('velocity',)
     assert 'Input should be greater than or equal to 0' in error['msg']
+    def test_from_note_name_valid():
+        """Test creating Note from valid note names."""
+        note = Note.from_note_name("C")
+        assert note.note_name == "C"
+        assert note.octave == 4  # Default octave
+        
+        note = Note.from_note_name("F#")
+        assert note.note_name == "F#"
+        assert note.octave == 4
+        
+        note = Note.from_note_name("Bb")
+        assert note.note_name == "Bb"
+        assert note.octave == 4
+
+    def test_from_note_name_invalid():
+        """Test creating Note from invalid note names."""
+        with pytest.raises(ValueError, match="Invalid note name: H"):
+            Note.from_note_name("H")
+            
+        with pytest.raises(ValueError, match="Invalid note name: C##"):
+            Note.from_note_name("C##")
+            
+        with pytest.raises(ValueError, match="Invalid note name: X"):
+            Note.from_note_name("X")
+
+    def test_from_note_name_properties():
+        """Test Note properties when created from note name."""
+        note = Note.from_note_name("C")
+        assert note.midi_number == 60  # C4 = MIDI 60
+        assert note.duration == 1
+        assert note.position == 0.0
+        assert note.velocity == 64
+        assert note.stored_midi_number is None
+        assert note.scale_degree is None
+
+    def test_from_note_name_immutable():
+        """Test that from_note_name creates independent Note instances."""
+        note1 = Note.from_note_name("C")
+        note2 = Note.from_note_name("C")
+        assert note1 is not note2
+        assert note1 == note2

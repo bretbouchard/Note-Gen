@@ -1,16 +1,25 @@
 import pytest
 from unittest.mock import AsyncMock
-from src.note_gen.models.patterns import RhythmPatternData, RhythmNote, NotePattern
+from src.note_gen.models.patterns import (
+    RhythmPatternData, 
+    RhythmNote, 
+    NotePattern,
+    NotePatternData  # Add this import
+)
 from src.note_gen.models.pattern_interpreter import ScalePatternInterpreter
 from src.note_gen.models.note import Note
+from src.note_gen.models.scale import Scale, ScaleType
 
 @pytest.fixture
 def mock_db_connection() -> AsyncMock:
     return AsyncMock()
 
-class FakeScale:
-    def get_notes(self):
-        return [Note(note_name="C", octave=4)]
+class FakeScale(Scale):
+    def __init__(self):
+        super().__init__(
+            root=Note(note_name="C", octave=4, duration=1.0, velocity=100),
+            scale_type=ScaleType.MAJOR
+        )
 
 class TestRhythmPatternInterpreter:
     async def test_pattern_interpreter_get_next_note(self, mock_db_connection: AsyncMock) -> None:
@@ -31,11 +40,13 @@ class TestRhythmPatternInterpreter:
             name="Test Pattern",
             notes=rhythm_notes,
             time_signature="4/4",
+            pattern="4 4 4 4",
             default_duration=1.0,
             style="rock",
             groove_type="straight",
-            pattern="4 4 4 4"
+            accent_pattern=[1.0, 1.0, 1.0, 1.0]
         )
+        
         note_pattern = NotePattern(
             name="Test Note Pattern",
             notes=[Note(note_name="C", octave=4)],
@@ -43,7 +54,11 @@ class TestRhythmPatternInterpreter:
             description="Test pattern",
             tags=["test"],
             complexity=1.0,
-            data=[0]
+            intervals=[0, 4, 7],
+            data=NotePatternData(
+                intervals=[0, 4, 7],
+                notes=[Note(note_name="C", octave=4)]
+            )
         )
         
         sequence = await ScalePatternInterpreter.generate_note_sequence(

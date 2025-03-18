@@ -4,7 +4,9 @@ Database connection and dependency injection for MongoDB.
 import os
 import asyncio
 import logging
+from contextlib import asynccontextmanager
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
+from typing import AsyncGenerator
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -21,6 +23,12 @@ if os.getenv("TESTING") == "1":
 # Global connection instance - made per event loop
 _clients = {}
 _dbs = {}
+
+MONGODB_SETTINGS = {
+    'serverSelectionTimeoutMS': 5000,  # 5 seconds timeout
+    'connectTimeoutMS': 5000,
+    'socketTimeoutMS': 5000,
+}
 
 class AsyncDBConnection:
     """Async database connection manager that ensures we use the correct event loop."""
@@ -65,20 +73,20 @@ class AsyncDBConnection:
         """Context manager exit - keep connection alive."""
         pass
 
+@asynccontextmanager
+async def get_db() -> AsyncGenerator[AsyncIOMotorDatabase, None]:
+    client = AsyncIOMotorClient(
+        MONGODB_URI,
+        **MONGODB_SETTINGS
+    )
+    try:
+        yield client[DATABASE_NAME]
+    finally:
+        client.close()
+
 async def get_db_conn() -> AsyncIOMotorDatabase:
-    """Get database connection for the current event loop."""
-    # Get current event loop
-    current_loop = asyncio.get_running_loop()
-    loop_id = id(current_loop)
-    
-    # Check if we already have a connection for this loop
-    if loop_id in _dbs and _dbs[loop_id] is not None:
-        logger.debug(f"Returning existing database connection for loop {loop_id}")
-        return _dbs[loop_id]
-    
-    # Create a new connection
-    logger.debug(f"Creating new database connection for loop {loop_id}")
-    async with AsyncDBConnection() as db:
+    """Get database connection."""
+    async with get_db() as db:
         return db
 
 async def init_db() -> None:
