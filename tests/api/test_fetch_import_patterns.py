@@ -11,7 +11,7 @@ from src.note_gen.models.patterns import ChordProgression, NotePattern, NotePatt
 from pymongo.database import Database
 from typing import Any, List, Optional
 from src.note_gen.models.fake_scale_info import FakeScaleInfo
-from src.note_gen.models.enums import ScaleType
+from src.note_gen.core.enums import ScaleType
 from src.note_gen.models.note import Note
 from src.note_gen.models.chord import Chord, ChordQuality
 from src.note_gen.database.db import get_db_conn, MONGODB_URI

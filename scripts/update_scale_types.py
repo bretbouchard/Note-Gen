@@ -1,5 +1,9 @@
 import asyncio
 from motor.motor_asyncio import AsyncIOMotorClient
+import logging
+from src.note_gen.core.enums import ScaleType, ChordQuality
+
+logger = logging.getLogger(__name__)
 
 # Database connection details
 MONGO_URI = 'mongodb://localhost:27017'
@@ -11,25 +15,19 @@ async def update_scale_types():
     db = client[DB_NAME]
     collection = db[COLLECTION_NAME]
 
-    # Update scale types to uppercase
-    await collection.update_many(
-        {'scale_type': 'major'},
-        {'$set': {'scale_type': 'MAJOR'}}
-    )
-    await collection.update_many(
-        {'scale_type': 'MINOR'},
-        {'$set': {'scale_type': 'MINOR'}}
-    )
+    # Update scale types to enum values
+    for scale_type in ScaleType:
+        await collection.update_many(
+            {'scale_type': scale_type.value.lower()},
+            {'$set': {'scale_type': scale_type.value}}
+        )
 
-    # Update chord qualities to uppercase without array filters
-    await collection.update_many(
-        {'chords.quality': 'major'},
-        {'$set': {'chords.$[].quality': 'MAJOR'}}
-    )
-    await collection.update_many(
-        {'chords.quality': 'MINOR'},
-        {'$set': {'chords.$[].quality': 'MINOR'}}
-    )
+    # Update chord qualities to enum values
+    for quality in ChordQuality:
+        await collection.update_many(
+            {'chords.quality': quality.value.lower()},
+            {'$set': {'chords.$[].quality': quality.value}}
+        )
 
     print('Update complete.')
 

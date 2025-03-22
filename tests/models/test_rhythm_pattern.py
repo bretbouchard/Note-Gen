@@ -1,6 +1,7 @@
 import unittest
 from pydantic import ValidationError
-from src.note_gen.models.patterns import RhythmPattern, ChordPatternItem, ChordProgressionPattern
+from src.note_gen.models.rhythm import RhythmPattern
+from src.note_gen.models.patterns import ChordPatternItem, ChordProgressionPattern
 
 class TestRhythmPattern(unittest.TestCase):
     def test_validate_pattern_required(self):

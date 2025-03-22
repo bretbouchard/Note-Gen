@@ -19,7 +19,7 @@ from src.note_gen.models.note_sequence import NoteSequence
 from src.note_gen.models.note_event import NoteEvent
 from src.note_gen.models.chord import Chord
 from src.note_gen.models.scale_info import ScaleInfo
-from src.note_gen.models.enums import ScaleType
+from src.note_gen.core.enums import ScaleType
 from src.note_gen.models.scale import Scale
 from src.note_gen.models.scale_degree import ScaleDegree
 

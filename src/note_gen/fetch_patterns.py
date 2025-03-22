@@ -14,7 +14,7 @@ from bson import ObjectId
 from src.note_gen.models.patterns import RhythmPattern, RhythmNote ,ChordProgression
 from src.note_gen.models.chord import Chord, ChordQuality
 from src.note_gen.models.note import Note
-from src.note_gen.models.enums import ScaleType
+from src.note_gen.core.enums import ScaleType
 from src.note_gen.models.patterns import NotePattern, NotePatternData
 from src.note_gen.models.scale_info import ScaleInfo
 from src.note_gen.database.db import get_db_conn
@@ -186,7 +186,7 @@ def _normalize_chord_progression_document(document: Dict[str, Any]) -> Dict[str,
     # Ensure scale_info
     if "scale_info" not in normalized_doc or not normalized_doc["scale_info"]:
         from src.note_gen.models.fake_scale_info import FakeScaleInfo
-        from src.note_gen.models.enums import ScaleType
+        from src.note_gen.core.enums import ScaleType
         
         try:
             root = Note(note_name=normalized_doc["key"], octave=4)
@@ -221,7 +221,7 @@ def _create_default_chord_progression(id: Optional[str] = None, name: Optional[s
         A valid minimal ChordProgression
     """
     from src.note_gen.models.fake_scale_info import FakeScaleInfo
-    from src.note_gen.models.enums import ScaleType
+    from src.note_gen.core.enums import ScaleType
     
     progression_id = id or str(uuid.uuid4())
     progression_name = name or f"Default Progression {progression_id[:8]}"

@@ -1,5 +1,3 @@
-# src/note_gen/models/presets.py
-
 """Presets for chord progressions, note patterns, and rhythm patterns."""
 
 from typing import Dict, List, Any, Optional
@@ -9,44 +7,117 @@ import logging
 
 from src.note_gen.models.chord import Chord, ChordQuality
 from src.note_gen.models.note import Note
-from src.note_gen.models.patterns import NotePattern, NotePatternData, RhythmNote, ChordProgressionPattern, RhythmPattern, RhythmPatternData, ChordProgression
+from src.note_gen.models.patterns import (
+    NotePattern,
+    NotePatternData,
+    RhythmNote,
+    RhythmPatternData,
+    ChordProgression
+)
 from src.note_gen.models.scale import Scale
-from src.note_gen.models.enums import ScaleType
+from src.note_gen.core.enums import ScaleType
 from src.note_gen.models.scale_info import ScaleInfo 
 from src.note_gen.models.roman_numeral import RomanNumeral
+from src.note_gen.models.rhythm import RhythmPattern
 
-from src.note_gen.models.patterns import COMMON_PROGRESSIONS, NOTE_PATTERNS, RHYTHM_PATTERNS
-
-COMMON_PROGRESSIONS_ROMAN = {
-    "I-IV-V": ["I", "IV", "V"],
-    "ii-V-I": ["ii", "V", "I"],
-    "I-V-vi-IV": ["I", "V", "vi", "IV"],
-    "I-vi-IV-V": ["I", "vi", "IV", "V"],
-    "I-IV-V-IV": ["I", "IV", "V", "IV"],
-    "I-IV-I-V": ["I", "IV", "I", "V"],
-    "vi-IV-I-V": ["vi", "IV", "I", "V"],
-    "I-ii-iii-IV": ["I", "ii", "iii", "IV"],
-    "I-ii-IV-V": ["I", "ii", "IV", "V"],
-    "I-iii-vi-IV": ["I", "iii", "vi", "IV"],
-    "I-vi-ii-V": ["I", "vi", "ii", "V"],
-    "I-iii-IV-V": ["I", "iii", "IV", "V"],
-    "vi-V-IV-iii": ["vi", "V", "IV", "iii"],
-    "I-V-vi-iii-IV-I-IV-V": ["I", "V", "vi", "iii", "IV", "I", "IV", "V"],
-    "I-vi-ii-V (Classic)": ["I", "vi", "ii", "V"],
-    "I-vi-IV-V (Pop)": ["I", "vi", "IV", "V"],
-    "I-V-vi-IV (Sensitive)": ["I", "V", "vi", "IV"],
-    "I-IV-V-vi (Pop Punk)": ["I", "IV", "V", "vi"],
-    "I-V-IV": ["I", "V", "IV"],
-    "ii-V-I-IV": ["ii", "V", "I", "IV"],
-}
-
-# Default values for musical components
+# Default values
 DEFAULT_KEY = "C"
 DEFAULT_SCALE_TYPE = ScaleType.MAJOR
 DEFAULT_CHORD_PROGRESSION = "I-IV-V"
 DEFAULT_NOTE_PATTERN = "Simple Triad"
-DEFAULT_RHYTHM_PATTERN = "Basic Rhythm"
-DEFAULT_RHYTHM_PATTERN_NAME = "Basic"
+DEFAULT_RHYTHM_PATTERN = "basic_4_4"
+DEFAULT_RHYTHM_PATTERN_NAME = "basic_4_4"
+
+# All pattern definitions consolidated here
+COMMON_PROGRESSIONS: Dict[str, List[str]] = {
+    "I-IV-V": ["I", "IV", "V"],
+    "I-V-vi-IV": ["I", "V", "vi", "IV"],
+    "ii-V-I": ["ii", "V", "I"],
+    "I-vi-IV-V": ["I", "vi", "IV", "V"],
+    "I-V-IV": ["I", "V", "IV"],
+    "ii-V-I-IV": ["ii", "V", "I", "IV"],
+}
+
+NOTE_PATTERNS: Dict[str, Dict[str, Any]] = {
+    'Simple Triad': {
+        'name': 'Simple Triad',
+        'intervals': [0, 4, 7],
+        'data': {
+            'notes': [
+                {'note_name': 'C', 'octave': 4},
+                {'note_name': 'E', 'octave': 4},
+                {'note_name': 'G', 'octave': 4}
+            ],
+            'intervals': [4, 3],
+            'duration': 1.0,
+            'position': 0.0,
+            'velocity': 100,
+            'direction': 'up',
+            'use_chord_tones': False,
+            'use_scale_mode': False,
+            'arpeggio_mode': False,
+            'restart_on_chord': False,
+            'octave_range': [4, 5],
+            'default_duration': 1.0
+        },
+        'complexity': 0.5,
+        'tags': ['default']
+    }
+}
+
+RHYTHM_PATTERNS: Dict[str, Dict[str, Any]] = {
+    'basic_4_4': {
+        'name': 'basic_4_4',
+        'description': "Basic 4/4 rhythm pattern with quarter notes",
+        'tags': ["default", "basic"],
+        'pattern': [1.0, 1.0, 1.0, 1.0],
+        'data': {
+            'time_signature': '4/4',
+            'default_duration': 1.0,
+            'groove_type': "straight",
+            'swing_enabled': False,
+            'swing_ratio': 0.67,
+            'humanize_amount': 0.1,
+            'variation_probability': 0.2,
+            'style': "basic",
+            'duration': 4.0,
+            'total_duration': 4.0,
+            'notes': [
+                {
+                    'position': 0.0,
+                    'duration': 1.0,
+                    'velocity': 100,
+                    'is_rest': False
+                },
+                {
+                    'position': 1.0,
+                    'duration': 1.0,
+                    'velocity': 100,
+                    'is_rest': False
+                },
+                {
+                    'position': 2.0,
+                    'duration': 1.0,
+                    'velocity': 100,
+                    'is_rest': False
+                },
+                {
+                    'position': 3.0,
+                    'duration': 1.0,
+                    'velocity': 100,
+                    'is_rest': False
+                }
+            ]
+        }
+    }
+}
+
+# Count the number of patterns
+chord_progressions_count = len(COMMON_PROGRESSIONS)
+note_patterns_count = len(NOTE_PATTERNS)
+rhythm_patterns_count = len(RHYTHM_PATTERNS)
+
+print(f"Chord Progressions: {chord_progressions_count}, Note Patterns: {note_patterns_count}, Rhythm Patterns: {rhythm_patterns_count}")
 
 class ChordProgressionPreset(BaseModel):
     """Represents a preset chord progression pattern with proper Roman numeral handling."""
@@ -95,29 +166,21 @@ class ChordProgressionPreset(BaseModel):
             raise ValueError("All durations must be positive")
         return v
 
-    def to_pattern(self) -> ChordProgressionPattern:
-        """Convert to a ChordProgressionPattern."""
-        from src.note_gen.models.patterns import ChordProgressionPattern, ChordPatternItem
-        
-        pattern_items = []
-        for i, numeral in enumerate(self.numerals):
-            roman = RomanNumeral.from_string(numeral)
-            quality = self.qualities[i] if self.qualities and i < len(self.qualities) else "DEFAULT"
-            duration = self.durations[i] if self.durations and i < len(self.durations) else 4.0
-            
-            pattern_items.append(ChordPatternItem(
-                degree=roman.to_scale_degree(numeral=numeral),
-                quality=quality,
-                duration=duration
-            ))
-        
-        return ChordProgressionPattern(
+    def to_pattern(self) -> ChordProgression:
+        """Convert preset to a ChordProgression pattern."""
+        return ChordProgression(
             name=self.name,
+            chords=self.numerals,
+            key=DEFAULT_KEY,
+            mode=DEFAULT_SCALE_TYPE.value,
             description=self.description,
             tags=self.tags,
             complexity=self.complexity,
-            genre=self.genre,
-            pattern=pattern_items
+            data={
+                "qualities": self.qualities,
+                "durations": self.durations,
+                "genre": self.genre
+            }
         )
 
 class Patterns(BaseModel):
@@ -132,7 +195,7 @@ class Patterns(BaseModel):
                 tags=["default"],
                 complexity=0.5
             )
-            for name, numerals in COMMON_PROGRESSIONS_ROMAN.items()
+            for name, numerals in COMMON_PROGRESSIONS.items()
         },
         description='Common chord progression patterns with Roman numeral support'
     )
@@ -225,11 +288,17 @@ class Patterns(BaseModel):
                 )
         return self
 
-    def get_chord_progression(self, name: str) -> Optional[ChordProgressionPattern]:
-        """Get a chord progression pattern by name."""
-        if name not in self.chord_progressions:
-            return None
-        return self.chord_progressions[name].to_pattern()
+    def get_chord_progression(self, name: str) -> Optional[ChordProgression]:
+        """Get a chord progression by name."""
+        progression_data = COMMON_PROGRESSIONS.get(name)
+        if progression_data:
+            return ChordProgression(
+                name=name,
+                chords=progression_data,
+                key=DEFAULT_KEY,
+                mode=DEFAULT_SCALE_TYPE.value
+            )
+        return None
 
     def add_chord_progression(self, name: str, numerals: List[str], 
                             qualities: Optional[List[str]] = None,
@@ -255,12 +324,15 @@ class Presets(BaseModel):
     common_progressions: Dict[str, List[str]] = Field(
         default_factory=lambda: dict(COMMON_PROGRESSIONS)
     )
-    default_key: str = DEFAULT_KEY
-    default_scale_type: ScaleType = DEFAULT_SCALE_TYPE
+    default_key: str = Field(DEFAULT_KEY, description="Default key")
+    default_scale_type: ScaleType = Field(DEFAULT_SCALE_TYPE, description="Default scale type")
+    scale_info: Optional[ScaleInfo] = Field(default=None, description="Scale information")
+    style: Optional[str] = Field(default=None, description="Style")
 
     @classmethod
-    def load(cls) -> List['Presets']:
-        return [cls()]
+    def load(cls, default_key: str = DEFAULT_KEY, default_scale_type: ScaleType = DEFAULT_SCALE_TYPE, 
+             scale_info: Optional[ScaleInfo] = None, style: Optional[str] = None) -> List['Presets']:
+        return [cls(default_key=default_key, default_scale_type=default_scale_type, scale_info=scale_info, style=style)]
 
     def get_default_chord_progression(self, root_note: Note, scale: Scale) -> ChordProgression:
         return ChordProgression.from_chord_progression_pattern(
@@ -325,7 +397,7 @@ class Presets(BaseModel):
 
 def get_default_chord_progression(root_note: Note, scale: Scale) -> ChordProgression:
     """Get the default chord progression."""
-    from .chord_progression_generator import ChordProgressionGenerator
+    from src.note_gen.generators.chord_progression_generator import ChordProgressionGenerator
     
     # Ensure scale_type is of type ScaleType
     scale_info = ScaleInfo(
@@ -341,7 +413,8 @@ def get_default_chord_progression(root_note: Note, scale: Scale) -> ChordProgres
         name="Default Progression",
         chords=[],
         key=scale_info.root.note_name, 
-        scale_type=ScaleType(scale.scale_type) if isinstance(scale.scale_type, str) and scale.scale_type in [ScaleType.MAJOR, ScaleType.MINOR] else ScaleType.MAJOR
+        scale_type=str(ScaleType(scale.scale_type)) if isinstance(scale.scale_type, str) and scale.scale_type in [ScaleType.MAJOR, ScaleType.MINOR] else str(ScaleType.MAJOR),
+        complexity=0.5
     )
 
     numerals = COMMON_PROGRESSIONS[DEFAULT_CHORD_PROGRESSION]
@@ -351,15 +424,18 @@ def get_default_chord_progression(root_note: Note, scale: Scale) -> ChordProgres
         chord = generator.generate_chord(note, quality=ChordQuality.MAJOR)  # Updated to use imported ChordQuality
         chords.append(chord)
     
-    return ChordProgression(
-        name="Default Progression",
-        root=root_note,
-        scale=scale,
-        progression=DEFAULT_CHORD_PROGRESSION,
-        chords=chords,
-        complexity=0.5,
-        scale_info=scale_info
+    # Convert Chord objects to their string representations for ChordProgression
+    chord_strings = [str(chord) for chord in chords]
+    progression = ChordProgression(
+        name="Default", 
+        chords=chord_strings,
+        key=root_note.note_name,
+        scale_type=str(scale.scale_type),
+        scale_info=str(scale_info),
+        complexity=0.5
     )
+    
+    return progression
 
 def get_available_chord_progressions() -> List[str]:
     """Get a list of available chord progression names."""
@@ -373,26 +449,7 @@ def get_available_rhythm_patterns() -> List[str]:
     """Get a list of available rhythm pattern names."""
     return list(RHYTHM_PATTERNS.keys())
 
-RHYTHM_PATTERNS = {
-    'basic_4_4': {
-        'pattern': [1.0, 1.0, 1.0, 1.0],
-        'description': 'Basic 4/4 rhythm pattern',
-        'complexity': 0.5,
-        'tags': ['default', 'basic'],
-        'duration': 1.0,
-        'position': 0.0,
-        'velocity': 100,
-        'direction': 'up',
-        'use_chord_tones': False,
-        'use_scale_mode': False,
-        'arpeggio_mode': False,
-        'restart_on_chord': False,
-        'octave_range': [4, 5],
-        'default_duration': 1.0
-    }
-}
-
-# Count the number of chord progressions, note patterns, and rhythm patterns
+# Count the number of patterns
 chord_progressions_count = len(COMMON_PROGRESSIONS)
 note_patterns_count = len(NOTE_PATTERNS)
 rhythm_patterns_count = len(RHYTHM_PATTERNS)

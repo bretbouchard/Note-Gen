@@ -151,3 +151,5 @@ cython_debug/
 
 # MongoDB files
 data/db/
+
+.env

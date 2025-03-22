@@ -2,6 +2,12 @@ Metadata-Version: 2.2
 Name: note_gen
 Version: 0.2.0
 Summary: Note Generation API
-Requires-Python: >=3.8
+Requires-Python: >=3.12
 License-File: LICENSE
+Requires-Dist: fastapi>=0.110.0
+Requires-Dist: uvicorn>=0.27.1
+Requires-Dist: pydantic>=2.6.1
+Requires-Dist: motor>=3.3.2
+Requires-Dist: pymongo>=4.6.1
+Requires-Dist: python-dotenv>=1.0.1
 Dynamic: requires-python

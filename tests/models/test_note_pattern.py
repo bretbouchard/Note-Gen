@@ -1,229 +1,211 @@
 import pytest
-from typing import Optional
+import logging
 from pydantic import ValidationError
-from src.note_gen.models.patterns import NotePattern, NotePatternData
+from src.note_gen.models.patterns import NotePattern, NotePatternValidationError, ScaleType, NotePatternData
 from src.note_gen.models.note import Note
 
-def test_create_note_pattern() -> None:
-    """Test creating a valid note pattern."""
-    notes = [
-        Note(note_name="C", octave=4),
-        Note(note_name="E", octave=4),
-        Note(note_name="G", octave=4)
-    ]
-    pattern_data = NotePatternData(notes=notes, intervals=[0, 2, 4])
-    
-    pattern = NotePattern(
-        name='TestPattern',
-        description='Test pattern description',
-        tags=['valid_tag'],
-        complexity=0.5,
-        intervals=[0, 2, 4],
-        data=pattern_data
-    )
-    assert pattern.name == 'TestPattern'
-    assert pattern.intervals == [0, 2, 4]
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
-def test_name_validation() -> None:
-    """Test name validation rules."""
-    # Test valid names
-    notes = [Note(note_name="C", octave=4)]
-    pattern_data = NotePatternData(notes=notes, intervals=[0, 2, 4])
-    
-    NotePattern(
-        name="Valid Pattern",
-        description="Valid pattern description",
-        tags=['valid_tag'],
-        complexity=0.5,
-        intervals=[0, 2, 4],
-        data=pattern_data
-    )
+@pytest.fixture
+def valid_pattern_data():
+    """Fixture for valid pattern data."""
+    return {
+        "name": "Test Pattern",
+        "pattern": [
+            Note(note_name="C", octave=4),
+            Note(note_name="E", octave=4),
+            Note(note_name="G", octave=4)
+        ],
+        "data": {
+            "scale_type": ScaleType.MAJOR,
+            "intervals": [0, 4, 7],
+            "root_note": "C",
+            "max_interval_jump": 12,
+            "allow_chromatic": False
+        }
+    }
 
-    # Test invalid names - too short
-    with pytest.raises(ValidationError) as exc_info:
-        NotePattern(
-            name="A",  # Too short
-            description="Invalid pattern description",
-            tags=['valid_tag'],
-            complexity=0.5,
-            intervals=[0, 2, 4],
-            data=pattern_data
+class TestNotePatternValidation:
+    def test_valid_pattern(self, valid_pattern_data):
+        """Test creation of valid pattern."""
+        note_pattern = NotePattern(
+            name=valid_pattern_data['name'],
+            pattern=valid_pattern_data['pattern'],
+            data=NotePatternData(**valid_pattern_data['data'])
         )
-    assert "String should have at least 4 characters" in str(exc_info.value)
+        assert note_pattern.name == valid_pattern_data['name']
+        assert note_pattern.pattern == valid_pattern_data['pattern']
+        assert note_pattern.data.scale_type == valid_pattern_data['data']['scale_type']
+        assert note_pattern.data.allow_chromatic == valid_pattern_data['data']['allow_chromatic']
+        assert note_pattern.data.intervals == valid_pattern_data['data']['intervals']
+        assert note_pattern.data.root_note == valid_pattern_data['data']['root_note']
+        assert note_pattern.data.max_interval_jump == valid_pattern_data['data']['max_interval_jump']
 
-    # Test invalid characters
-    with pytest.raises(ValidationError) as exc_info:
-        NotePattern(
-            name="Invalid@Pattern",  # Contains invalid character
-            description="Invalid pattern description",
-            tags=['valid_tag'],
-            complexity=0.5,
-            intervals=[0, 2, 4],
-            data=pattern_data
+    def test_pattern_structure(self, valid_pattern_data):
+        """Test pattern structure validation."""
+        invalid_data = valid_pattern_data.copy()
+        invalid_data['pattern'] = [Note(note_name="C", octave=4), 2, 3, 4]
+        invalid_data['data'] = {
+            "scale_type": ScaleType.MAJOR,
+            "intervals": [0, 2, 3, 4],
+            "root_note": "C",
+            "allow_chromatic": False,
+            "max_interval_jump": 12
+        }
+        with pytest.raises(ValidationError, match="Pattern must contain only Note objects"):
+            NotePattern(
+                name=invalid_data['name'],
+                pattern=invalid_data['pattern'],
+                data=NotePatternData(**invalid_data['data'])
+            )
+
+    def test_scale_compatibility(self, valid_pattern_data):
+        """Test scale compatibility."""
+        invalid_data = valid_pattern_data.copy()
+        invalid_data['pattern'] = [Note(note_name="C", octave=4), Note(note_name="C#", octave=4)]
+        invalid_data['data'] = {
+            "scale_type": ScaleType.MAJOR,
+            "intervals": [0, 1],
+            "root_note": "C",
+            "allow_chromatic": False,
+            "max_interval_jump": 12
+        }
+        with pytest.raises(ValidationError, match="Note C# is not in scale"):
+            NotePattern(
+                name=invalid_data['name'],
+                pattern=invalid_data['pattern'],
+                data=NotePatternData(**invalid_data['data'])
+            )
+
+    def test_voice_leading(self):
+        """Test voice leading rules."""
+        pattern = NotePattern(
+            name="Test Pattern",
+            pattern=[
+                Note(note_name="C", octave=4, duration=1.0),
+                Note(note_name="C", octave=5, duration=1.0)  # Jump of 12 semitones
+            ],
+            data=NotePatternData(
+                scale_type=ScaleType.MAJOR,
+                intervals=[0, 12],
+                root_note="C",
+                allow_chromatic=False,
+                max_interval_jump=11
+            )
         )
-    assert "String should match pattern" in str(exc_info.value)
+        with pytest.raises(ValidationError, match="Interval jump of 12 semitones exceeds maximum allowed"):
+            pattern.validate_all()
 
-def test_pattern_validation() -> None:
-    """Test pattern validation rules."""
-    # Test valid pattern
-    notes = [Note(note_name="C", octave=4)]
-    pattern_data = NotePatternData(notes=notes, intervals=[0, 2, 4])
-    
-    NotePattern(
-        name="Valid Pattern",
-        description="Valid pattern description",
-        tags=['valid_tag'],
-        complexity=0.5,
-        intervals=[0, 2, 4],
-        data=pattern_data
-    )
-
-    # Test invalid pattern
-    with pytest.raises(ValidationError, match="List should have at least 1 item"):
-        # Create a pattern with empty intervals and no notes
-        empty_notes: list[Note] = []
-        empty_data = NotePatternData(notes=empty_notes, intervals=[])
-        NotePattern(
-            name="Invalid Pattern",
-            description="Invalid pattern",
-            tags=['valid_tag'],
-            complexity=0.5,
-            intervals=[],
-            data=empty_data
+    def test_parallel_motion(self):
+        """Test parallel perfect intervals."""
+        pattern = NotePattern(
+            name="Test Pattern",
+            pattern=[
+                Note(note_name="C", octave=4, duration=1.0),
+                Note(note_name="C", octave=5, duration=1.0)  # Same note in different octaves
+            ],
+            data=NotePatternData(
+                scale_type=ScaleType.MAJOR,
+                intervals=[0, 12],
+                root_note="C",
+                allow_chromatic=False,
+                max_interval_jump=12
+            )
         )
+        with pytest.raises(ValidationError, match="Parallel perfect intervals are not allowed"):
+            pattern.validate_all()
 
-def test_complexity_validation() -> None:
-    """Test complexity validation rules."""
-    # Test valid complexity
-    notes = [Note(note_name="C", octave=4)]
-    pattern_data = NotePatternData(notes=notes, intervals=[0, 2, 4])
-    
-    NotePattern(
-        name="Valid Pattern",
-        description="Valid pattern description",
-        tags=['valid_tag'],
-        complexity=0.5,
-        intervals=[0, 2, 4],
-        data=pattern_data
-    )
-
-    # Test invalid complexity
-    with pytest.raises(ValidationError, match="Input should be less than or equal to 1"):
-        NotePattern(
-            name="Invalid Pattern",
-            description="Invalid pattern description",
-            tags=['valid_tag'],
-            complexity=1.5,
-            intervals=[0, 2, 4],
-            data=pattern_data
+    def test_consonance(self):
+        """Test dissonant intervals."""
+        pattern = NotePattern(
+            name="Test Pattern",
+            pattern=[
+                Note(note_name="C", octave=4, duration=1.0),
+                Note(note_name="C#", octave=4, duration=1.0)
+            ],
+            data=NotePatternData(
+                scale_type=ScaleType.MAJOR,
+                intervals=[0, 1],
+                root_note="C",
+                allow_chromatic=True,  # Allow chromatic notes for this test
+                max_interval_jump=12
+            )
         )
+        with pytest.raises(ValidationError, match="Dissonant interval of 1 semitones"):
+            pattern.validate_all()
 
-def test_tags_validation() -> None:
-    """Test tags validation rules."""
-    # Test valid tags
-    notes = [Note(note_name="C", octave=4)]
-    pattern_data = NotePatternData(notes=notes, intervals=[0, 2, 4])
-    
-    NotePattern(
-        name="Valid Pattern",
-        description="Valid pattern description",
-        tags=['valid_tag', 'another_tag'],
-        complexity=0.5,
-        intervals=[0, 2, 4],
-        data=pattern_data
-    )
+    def test_missing_scale_type(self, valid_pattern_data):
+        """Test that missing scale_type raises a validation error."""
+        invalid_data = valid_pattern_data.copy()
+        invalid_data['data'] = {
+            "intervals": [0, 2, 4],
+            "root_note": "C",
+            "allow_chromatic": False,
+            "max_interval_jump": 12
+        }
+        with pytest.raises(ValidationError, match="Field required"):
+            NotePattern(
+                name=invalid_data['name'],
+                pattern=invalid_data['pattern'],
+                data=NotePatternData(**invalid_data['data'])
+            )
 
-    # Test invalid tags - using None which should be caught by validation
-    with pytest.raises(ValidationError, match="Input should be a valid list"):
-        NotePattern(
-            name="Invalid Pattern",
-            description="Invalid pattern description",
-            tags=None,  # None should trigger validation error
-            complexity=0.5,
-            intervals=[0, 2, 4],
-            data=pattern_data
-        )
+    def test_invalid_scale_type(self, valid_pattern_data):
+        """Test that invalid scale_type raises a validation error."""
+        invalid_data = valid_pattern_data.copy()
+        invalid_data['data'] = {
+            "scale_type": "invalid_scale",
+            "intervals": [0, 2, 4],
+            "root_note": "C",
+            "allow_chromatic": False,
+            "max_interval_jump": 12
+        }
+        with pytest.raises(ValidationError, match="Input should be"):
+            NotePattern(
+                name=invalid_data['name'],
+                pattern=invalid_data['pattern'],
+                data=NotePatternData(**invalid_data['data'])
+            )
 
-def test_add_remove_tag() -> None:
-    """Test add_tag and remove_tag methods."""
-    notes = [Note(note_name="C", octave=4)]
-    pattern_data = NotePatternData(notes=notes, intervals=[0, 2, 4])
-    
-    pattern = NotePattern(
-        name="Test Pattern",
-        description="Test pattern description",
-        tags=['initial_tag'],
-        complexity=0.5,
-        intervals=[0, 2, 4],
-        data=pattern_data
-    )
+    def test_empty_pattern(self, valid_pattern_data):
+        """Test that empty pattern raises a validation error."""
+        invalid_data = valid_pattern_data.copy()
+        invalid_data['pattern'] = []
+        invalid_data['data'] = {
+            "scale_type": ScaleType.MAJOR,
+            "intervals": [0, 2, 4],
+            "root_note": "C",
+            "allow_chromatic": False,
+            "max_interval_jump": 12
+        }
+        with pytest.raises(ValidationError, match="Pattern cannot be empty"):
+            NotePattern(
+                name=invalid_data['name'],
+                pattern=invalid_data['pattern'],
+                data=NotePatternData(**invalid_data['data'])
+            )
 
-    pattern.add_tag('new_tag')
-    assert 'new_tag' in pattern.tags
-
-    pattern.remove_tag('initial_tag')
-    assert 'initial_tag' not in pattern.tags
-
-def test_invalid_data() -> None:
-    """Test that creating a NotePattern with invalid data raises an error."""
-    notes = [Note(note_name="C", octave=4)]
-    pattern_data = NotePatternData(notes=notes, intervals=[0, 2, 4])
-    
-    with pytest.raises(ValidationError, match="Input should be less than or equal to 1"):
-        NotePattern(
-            name="Invalid Pattern",
-            description="Test invalid pattern",
-            tags=["test"],
-            complexity=1.5,
-            intervals=[0, 2, 4],
-            data=pattern_data
-        )
-
-def test_note_pattern_empty_data() -> None:
-    """Test creating a NotePattern with empty data."""
-    notes = [Note(note_name="C", octave=4)]
-    pattern_data = NotePatternData(notes=notes, intervals=[0, 2, 4])
-    
-    pattern = NotePattern(
-        name="Empty Data Pattern",
-        description="Test empty data pattern",
-        tags=["test"],
-        complexity=0.5,
-        intervals=[0, 2, 4],
-        data=pattern_data
-    )
-    assert pattern.data is not None
-
-def test_note_pattern_with_notes() -> None:
-    """Test creating a NotePattern with notes."""
-    notes = [
-        Note(note_name="C", octave=4),
-        Note(note_name="E", octave=4),
-        Note(note_name="G", octave=4)
-    ]
-    pattern_data = NotePatternData(notes=notes, intervals=[0, 4, 7])
-    pattern = NotePattern(
-        name="Note Pattern",
-        description="Test note pattern",
-        tags=["test"],
-        complexity=0.5,
-        intervals=[0, 4, 7],
-        data=pattern_data
-    )
-    assert len(pattern.get_notes()) == 3
-    assert pattern.get_notes()[0].note_name == "C"
-
-def test_note_pattern_with_invalid_intervals() -> None:
-    """Test creating a NotePattern with invalid intervals."""
-    notes = [Note(note_name="C", octave=4)]
-    
-    with pytest.raises(ValidationError, match="Input should be a valid integer"):
-        invalid_data = {"notes": notes, "intervals": [0, "X", 4]}
-        NotePattern(
-            name="Invalid Intervals Pattern",
-            description="Test invalid intervals pattern",
-            tags=["test"],
-            complexity=0.5,
-            intervals=[0, "X", 4],
-            data=invalid_data
-        )
+    @pytest.mark.parametrize("invalid_name", [
+        "A",  # Too short
+        "Test@Pattern",  # Invalid character
+        "123",  # Too short and no letters
+        "    ",  # Just spaces
+    ])
+    def test_invalid_names(self, valid_pattern_data, invalid_name):
+        """Test name validation with various invalid names."""
+        invalid_data = valid_pattern_data.copy()
+        invalid_data['name'] = invalid_name
+        invalid_data['data'] = {
+            "scale_type": ScaleType.MAJOR,
+            "intervals": [0, 2, 4],
+            "root_note": "C",
+            "allow_chromatic": False,
+            "max_interval_jump": 12
+        }
+        with pytest.raises(ValidationError, match="Name.*"):
+            NotePattern(
+                name=invalid_data['name'],
+                pattern=invalid_data['pattern'],
+                data=NotePatternData(**invalid_data['data'])
+            )

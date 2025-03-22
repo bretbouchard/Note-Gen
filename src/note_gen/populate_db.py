@@ -3,33 +3,16 @@ from motor.motor_asyncio import AsyncIOMotorClient
 import uuid
 import os
 from typing import List, Dict, Any, Tuple, Optional
-from enum import Enum
 
-# from src.note_gen.models.presets import (
-#     COMMON_PROGRESSIONS,
-#     NOTE_PATTERNS,
-#     RHYTHM_PATTERNS,
-#     DEFAULT_KEY,
-#     DEFAULT_SCALE_TYPE
-# )
-
+from src.note_gen.core.constants import (
+    COMMON_PROGRESSIONS,
+    NOTE_PATTERNS,
+    RHYTHM_PATTERNS,
+    DEFAULT_KEY,
+    DEFAULT_SCALE_TYPE
+)
 
 from src.note_gen.models.roman_numeral import RomanNumeral
-from src.note_gen.models.presets import Patterns, DEFAULT_KEY, DEFAULT_SCALE_TYPE
-from src.note_gen.models.patterns import NOTE_PATTERNS, RHYTHM_PATTERNS
-RHYTHM_PATTERNS = RHYTHM_PATTERNS
-
-
-
-# Import the actual presets
-
-
-class ChordQuality(Enum):
-    MAJOR = 1
-    MINOR = 2
-    DIMINISHED = 3
-    AUGMENTED = 4
-
 
 async def clear_existing_data(db: motor_asyncio.AsyncIOMotorDatabase) -> None:
     await db.chord_progressions.delete_many({})

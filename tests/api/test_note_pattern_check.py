@@ -36,7 +36,7 @@ async def client():
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(
         transport=transport, 
-        base_url="http://localhost:8000",
+        base_url="http://localhost:8080",
         follow_redirects=True  # Follow redirects automatically
     ) as client:
         yield client

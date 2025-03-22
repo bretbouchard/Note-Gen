@@ -1,12 +1,19 @@
-import asyncio
-from src.note_gen.database.db import get_db_conn
+from motor.motor_asyncio import AsyncIOMotorClient
+from src.note_gen.core.constants import (
+    DEFAULT_MONGODB_URI,
+    DEFAULT_DB_NAME,
+    COLLECTION_NAMES
+)
 
 async def count_documents():
-    db = await get_db_conn()
-    chord_count = await db.chord_progressions.count_documents({})
-    note_count = await db.note_patterns.count_documents({})
-    rhythm_count = await db.rhythm_patterns.count_documents({})
-    print(f"Chord Progressions: {chord_count}, Note Patterns: {note_count}, Rhythm Patterns: {rhythm_count}")
+    client = AsyncIOMotorClient(DEFAULT_MONGODB_URI)
+    db = client[DEFAULT_DB_NAME]
+    
+    counts = {
+        name: await db[coll_name].count_documents({})
+        for name, coll_name in COLLECTION_NAMES.items()
+    }
+    return counts
 
 if __name__ == '__main__':
     asyncio.run(count_documents())

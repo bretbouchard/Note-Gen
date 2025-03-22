@@ -26,9 +26,10 @@ class PatternInterpreter(BaseModel):
         _current_index (int): The current index in the pattern. Defaults to 0.
     """
 
-    class Config:
-        arbitrary_types_allowed = True
-        from_attributes = True
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        from_attributes=True
+    )
     scale: Scale
     pattern: List[Union[int, str, Note, ScaleDegree, Dict[str, Any]]]
     _current_index: int = 0
@@ -200,11 +201,19 @@ class PatternInterpreter(BaseModel):
         return result
 
 
-class ScalePatternInterpreter(PatternInterpreter):
+class ScalePatternInterpreter(BaseModel):
     """Interpreter for scale patterns.
 
     This class interprets scale patterns and generates musical sequences based on the provided scale information.
     """
+
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        from_attributes=True
+    )
+    scale: Scale
+    pattern: List[Union[int, str, Note, ScaleDegree, Dict[str, Any]]]
+    _current_index: int = 0
 
     def __init__(
         self,

@@ -4,9 +4,11 @@ os.environ["TESTING"] = "1"  # Set testing environment before imports
 import pytest
 import asyncio
 import logging
-import time
+import uuid
+from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 from fastapi.testclient import TestClient
 from main import app
+from src.note_gen.database import get_database as get_db_conn
 
 from src.note_gen.fetch_patterns import (
     fetch_chord_progressions,
@@ -20,47 +22,34 @@ from src.note_gen.fetch_patterns import (
     fetch_chord_progression_pattern_by_id,
     extract_patterns_from_chord_progressions
 )
-from src.note_gen.models.enums import ScaleType
-from src.note_gen.models.chord import Chord, ChordQuality
-from src.note_gen.models.patterns import ChordProgression, RhythmPattern, RhythmNote, RhythmPatternData, NotePattern, NotePatternData, ChordProgressionPattern, ChordPatternItem
-from src.note_gen.models.note import Note
-from src.note_gen.database.db import get_db_conn, MONGODB_URI
-import motor.motor_asyncio
-from motor.motor_asyncio import AsyncIOMotorClient
-import uuid 
-from pydantic import BaseModel, ValidationError
-from typing import AsyncGenerator, Optional, List, Union
+from src.note_gen.core.enums import ScaleType, ChordQuality
+from src.note_gen.models.patterns import (
+    ChordProgressionPattern,
+    RhythmPattern,
+    NotePattern,
+    ChordPatternItem
+)
+from src.note_gen.core.constants import (
+    DEFAULT_MONGODB_URI,
+    DEFAULT_DB_NAME,
+    DEFAULT_VELOCITY,
+    DEFAULT_DURATION
+)
 
-from tests.generators.test_pattern_data_generator import generate_test_data
-
-# Configure logging
-# logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-# Log environment variable values
-logger.debug(f'MONGODB_URI: {os.getenv("MONGODB_URI")}')
-logger.debug(f'MONGODB_TEST_URI: {os.getenv("MONGODB_TEST_URI")}')
-logger.debug(f'DATABASE_NAME: {os.getenv("DATABASE_NAME")}')
-
-
-# Fixture to manage event loop
 @pytest.fixture(scope="session")
 def event_loop():
     """Create an instance of the event loop for the entire test session."""
     policy = asyncio.get_event_loop_policy()
     loop = policy.new_event_loop()
     asyncio.set_event_loop(loop)
-    
-    # Keep the loop open during the entire session
     yield loop
-    
-    # Only close the loop when the session is done
-    # Not closing it here prevents 'Event loop is closed' errors during tests
     if not loop.is_closed():
         loop.close()
 
 @pytest.fixture
-async def clean_test_db() -> motor.motor_asyncio.AsyncIOMotorDatabase:
+async def clean_test_db() -> AsyncIOMotorDatabase:
     """Clean and initialize test database."""
     logger.debug("Initializing MongoDB client.")
     try:
@@ -84,13 +73,18 @@ def client() -> TestClient:
     with TestClient(app) as client:
         yield client
 
-import pytest_asyncio
-
-@pytest_asyncio.fixture(scope="session")
-async def test_db():
-    db = AsyncIOMotorClient(os.getenv('MONGODB_URI'))['test_note_gen']
+@pytest.fixture
+async def test_db() -> AsyncIOMotorDatabase:
+    client = AsyncIOMotorClient(DEFAULT_MONGODB_URI)
+    db = client[DEFAULT_DB_NAME]
     yield db
-    await db.client.drop_database('test_note_gen')
+    await client.close()
+
+def log_validation_details(pattern):
+    """Helper function to log pattern validation details"""
+    logger.debug(f"Pattern ID: {pattern.id}")
+    logger.debug(f"Pattern Type: {type(pattern)}")
+    logger.debug(f"Pattern Attributes: {pattern.model_dump()}")
 
 @pytest.mark.asyncio
 async def test_fetch_chord_progressions(test_db):
@@ -109,7 +103,7 @@ async def test_fetch_chord_progressions(test_db):
         from src.note_gen.models.chord import Chord, ChordQuality
         from src.note_gen.models.note import Note
         from src.note_gen.models.fake_scale_info import FakeScaleInfo
-        from src.note_gen.models.enums import ScaleType
+        from src.note_gen.core.enums import ScaleType
         
         sample_progression = {
             'id': 'progression_1',
@@ -155,7 +149,7 @@ async def test_fetch_chord_progression_by_id_v1(test_db) -> None:
     
     # Create a test chord progression with all required fields including scale_info
     from src.note_gen.models.fake_scale_info import FakeScaleInfo
-    from src.note_gen.models.enums import ScaleType
+    from src.note_gen.core.enums import ScaleType
     from src.note_gen.models.note import Note
     from src.note_gen.models.chord import Chord, ChordQuality
     
@@ -1549,7 +1543,7 @@ async def test_extract_patterns_from_chord_progressions(test_db):
     from src.note_gen.models.patterns import ChordProgression
     from src.note_gen.models.note import Note
     from src.note_gen.models.scale_info import ScaleInfo
-    from src.note_gen.models.enums import ScaleType
+    from src.note_gen.core.enums import ScaleType
     
     # Create a scale info
     scale_info = ScaleInfo(root=Note(note_name="C", octave=4), scale_type=ScaleType.MAJOR)
@@ -1702,8 +1696,5 @@ async def test_fetch_patterns_api(async_client):
     response = await async_client.get("/patterns/")
     assert response.status_code == 200
 
-    yield
-
-    # Cleanup
-    await test_db.rhythm_patterns.delete_many({})
-    await test_db.note_patterns.delete_many({})
+    # Move cleanup to a fixture instead of using yield
+    return response

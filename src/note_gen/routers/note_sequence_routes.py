@@ -9,7 +9,7 @@ from src.note_gen.dependencies import get_db_conn
 
 from src.note_gen.models.request_models import GenerateSequenceRequest
 from src.note_gen.models.scale_info import ScaleInfo
-from src.note_gen.models.patterns import ChordProgression
+from src.note_gen.models.patterns import ChordProgression  # Update this line to import ChordProgression directly
 from src.note_gen.models.note_sequence import NoteSequence, NoteSequenceCreate
 from src.note_gen.models.note import Note
 from pydantic import ValidationError

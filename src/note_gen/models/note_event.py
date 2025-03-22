@@ -1,8 +1,8 @@
 """Module for note event models."""
 
 import logging
-from pydantic import BaseModel, field_validator, Field, validator, ConfigDict
-from typing import Union, Any, Dict, Optional
+from pydantic import BaseModel, field_validator, Field, ConfigDict
+from typing import Union, Any, Dict
 
 from src.note_gen.models.note import Note
 from src.note_gen.models.chord import Chord

@@ -15,7 +15,7 @@ from src.note_gen.models.note import Note
 from src.note_gen.models.presets import COMMON_PROGRESSIONS, NOTE_PATTERNS, RHYTHM_PATTERNS
 from src.note_gen.models.patterns import RhythmPatternData
 from src.note_gen.models.scale_info import ScaleInfo 
-from src.note_gen.models.enums import ScaleType
+from src.note_gen.core.enums import ScaleType
 from src.note_gen.models.patterns import NotePattern , ChordProgression
 from typing import Any, Optional, Dict
 

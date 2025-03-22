@@ -1,8 +1,11 @@
 import pytest
 from unittest.mock import patch
+from src.note_gen.models.rhythm import RhythmPattern
 from src.note_gen.models.presets import Presets, Patterns
 from src.note_gen.models.roman_numeral import RomanNumeral
-from src.note_gen.models.patterns import COMMON_PROGRESSIONS, NOTE_PATTERNS, RhythmPattern, RhythmPatternData, ValidationError
+from src.note_gen.models.patterns import COMMON_PROGRESSIONS, NOTE_PATTERNS, ValidationError, RhythmPatternData
+from src.note_gen.core.enums import ScaleType
+from pydantic import BaseModel, ConfigDict
 
 @patch('src.note_gen.models.presets.Presets.load')
 def test_preset_initialization(mock_load) -> None:
@@ -22,30 +25,30 @@ def test_preset_initialization(mock_load) -> None:
     # Verify NotePattern initialization
     note_pattern = presets.patterns.note_patterns['Simple Triad']
     assert note_pattern.intervals == [0, 4, 7]
-    assert note_pattern.data.notes[0].note_name == 'C'
+    assert note_pattern.data.scale_type == ScaleType.MAJOR
+    assert note_pattern.data.root_note == "C"
+    assert note_pattern.data.octave_range == [4, 5]
+    assert note_pattern.data.max_interval_jump == 12
+    assert note_pattern.data.allow_chromatic == False
+    assert note_pattern.data.direction == "up"
     
     # Test invalid pattern - should fail validation
     with pytest.raises(ValidationError):
         RhythmPattern(
             name='invalid',
-            pattern='invalid pattern',  # This should trigger validation error
-            data=RhythmPatternData(
-                pattern="4 4 4 4",  # Valid pattern string
-                duration=1.0,
-                position=0.0,
-                velocity=100,
-                style="basic",
-                groove_type="straight",
-                time_signature="4/4",  # Added required field
-                default_duration=1.0,
-                notes=[],  # Added required field
-                accent_pattern=[1.0, 1.0, 1.0, 1.0]  # Added required field
-            )
+            pattern=[],  # Empty list should trigger validation error
+            time_signature="4/4",
+            description='Test description',
+            complexity=0.5,
+            data={}
         )
 
 @patch('src.note_gen.models.presets.Presets.load')
 def test_load_presets(mock_load) -> None:
-    mock_load.return_value = [Presets()]
+    mock_load.return_value = Presets(
+        default_key='C',
+        default_scale_type=ScaleType.MAJOR
+    )
     presets = Presets.load()
     assert len(presets) > 0
     for preset in presets:

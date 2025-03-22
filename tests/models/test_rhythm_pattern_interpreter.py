@@ -1,5 +1,6 @@
 import pytest
 from unittest.mock import AsyncMock
+from pydantic import BaseModel, ConfigDict
 from src.note_gen.models.patterns import (
     RhythmPatternData, 
     RhythmNote, 

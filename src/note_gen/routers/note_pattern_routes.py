@@ -5,149 +5,81 @@ from fastapi import APIRouter, HTTPException, Depends, status, Response
 from typing import List, Dict, Optional, Any, Union
 from bson import ObjectId
 from bson.errors import InvalidId
-import logging
 from fastapi.encoders import jsonable_encoder
 from pymongo.errors import DuplicateKeyError
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import ValidationError
-import uuid
 
 from src.note_gen.dependencies import get_db_conn
 from src.note_gen.models import patterns
 from src.note_gen.models.patterns import NotePattern
+from src.note_gen.utils.logging_utils import setup_logger, log_endpoint
 
 # Configure logging
-logger = logging.getLogger(__name__)
+logger = setup_logger(__name__)
 
-# Create a router with explicit tags
 router = APIRouter(
-    prefix="",  # Empty prefix since it's added at the application level
-    tags=["note patterns"]
+    prefix="/api/v1/note-patterns",
+    tags=["note-patterns"]
 )
 
-def _normalize_response_doc(doc: Dict[str, Any]) -> Dict[str, Any]:
+@router.get("/", response_model=List[NotePattern])
+@log_endpoint
+async def get_note_patterns(
+    db: AsyncIOMotorDatabase = Depends(get_db_conn)
+) -> List[NotePattern]:
     """
-    Normalize a document for NotePatternResponse validation.
-    
-    Ensures that required fields like duration, position, and velocity
-    are present in the top level document, copying from data if needed.
-    
-    Args:
-        doc: The document to normalize
-        
-    Returns:
-        A normalized document ready for validation
+    Retrieve all note patterns.
     """
-    normalized_doc = doc.copy()
-    
-    # Ensure ID is a string
-    if "_id" in normalized_doc:
-        if "id" not in normalized_doc or not normalized_doc["id"]:
-            normalized_doc["id"] = str(normalized_doc["_id"])
-    
-    # Get data field if it exists
-    data = normalized_doc.get('data', {})
-    if not isinstance(data, dict):
-        # Try to convert to dict if it's a model with model_dump method
-        if hasattr(data, 'model_dump'):
-            data = data.model_dump()
-        else:
-            data = {}
-    
-    # Ensure required fields have valid values, taking from data if necessary
-    for field in ['duration', 'position', 'velocity', 'direction', 'pattern']:
-        if field not in normalized_doc or normalized_doc[field] is None:
-            # Try to get from data field
-            if field in data:
-                normalized_doc[field] = data[field]
-                logger.debug(f"Copied {field} from data to top level")
-            elif field == 'pattern' and 'intervals' in data:
-                normalized_doc[field] = data['intervals']
-                logger.debug(f"Copied intervals from data to pattern")
-    
-    # Set defaults for essential fields if still missing
-    if 'duration' not in normalized_doc or normalized_doc['duration'] is None:
-        normalized_doc['duration'] = 1.0
-        logger.debug("Set default duration: 1.0")
-        
-    if 'position' not in normalized_doc or normalized_doc['position'] is None:
-        normalized_doc['position'] = 0.0
-        logger.debug("Set default position: 0.0")
-        
-    if 'velocity' not in normalized_doc or normalized_doc['velocity'] is None:
-        normalized_doc['velocity'] = 64
-        logger.debug("Set default velocity: 64")
-        
-    # Ensure pattern exists
-    if 'pattern' not in normalized_doc or not normalized_doc['pattern']:
-        normalized_doc['pattern'] = [0, 2, 4]  # Default to major triad
-        logger.debug("Set default pattern: [0, 2, 4]")
-    
-    return normalized_doc
-
-async def get_note_pattern_by_name(db: AsyncIOMotorDatabase, name: str):
-    """Get a note pattern by name."""
-    logger.info(f"Getting note pattern by name: {name}")
     try:
-        pattern = await db.note_patterns.find_one({"name": name})
-        if not pattern:
-            pattern = await db.note_pattern_collection.find_one({"name": name})
-        return pattern
+        patterns = await db.note_patterns.find().to_list(None)
+        logger.debug(f"Retrieved {len(patterns)} note patterns")
+        return [NotePattern(**pattern) for pattern in patterns]
     except Exception as e:
-        logger.error(f"Error retrieving note pattern by name: {str(e)}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        logger.error(f"Failed to retrieve note patterns: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve note patterns"
+        )
 
-@router.post("", status_code=status.HTTP_201_CREATED, response_model=patterns.NotePattern)
+@router.post("/", response_model=NotePattern, status_code=status.HTTP_201_CREATED)
+@log_endpoint
 async def create_note_pattern(
-    note_pattern: patterns.NotePattern,
+    pattern: NotePattern,
     db: AsyncIOMotorDatabase = Depends(get_db_conn)
-):
-    """Create a note pattern."""
-    logger.info(f"Creating note pattern: {note_pattern.name}")
-    logger.debug(f"Received request data for creating note pattern: {note_pattern}")
-    
+) -> NotePattern:
+    """
+    Create a new note pattern.
+    """
     try:
-        note_pattern_dict = note_pattern.model_dump()
+        pattern_dict = jsonable_encoder(pattern)
+        logger.info(f"Creating new note pattern: {pattern.name}")
+        logger.debug(f"Pattern details: {pattern_dict}")
         
-        # Check for existing note pattern with the same name
-        existing_pattern = await get_note_pattern_by_name(db, note_pattern_dict["name"])
-        if existing_pattern:
-            raise HTTPException(status_code=409, detail="Note pattern with this name already exists")
+        result = await db.note_patterns.insert_one(pattern_dict)
+        pattern_dict["id"] = str(result.inserted_id)
         
-        # Check if a pattern with the same name already exists
-        existing_pattern = await db.note_patterns.find_one({"name": note_pattern_dict["name"]})
-        if existing_pattern:
-            logger.warning(f"Note pattern with name '{note_pattern_dict['name']}' already exists")
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail=f"Note pattern with name '{note_pattern_dict['name']}' already exists"
-            )
+        logger.info(f"Successfully created note pattern with ID: {pattern_dict['id']}")
+        return NotePattern(**pattern_dict)
         
-        # Generate a unique id if not provided
-        if not note_pattern_dict.get('id'):
-            note_pattern_dict['id'] = str(uuid.uuid4())
-            
-        # Insert into the database
-        await db.note_patterns.insert_one(note_pattern_dict)
-        
-        logger.debug(f"Returning created pattern with id: {note_pattern_dict['id']}")
-        return note_pattern_dict
-    except HTTPException:
-        # Re-raise HTTP exceptions without modification
-        raise
+    except DuplicateKeyError:
+        logger.warning(f"Attempted to create duplicate note pattern: {pattern.name}")
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Pattern with this name already exists"
+        )
+    except ValidationError as e:
+        logger.error(f"Validation error creating note pattern: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(e)
+        )
     except Exception as e:
-        logger.error(f"Error creating note pattern: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-# Add a duplicate route at /create to handle potential legacy requests
-@router.post("/create", status_code=status.HTTP_201_CREATED, response_model=patterns.NotePattern)
-async def create_note_pattern_alt(
-    note_pattern: patterns.NotePattern,
-    db: AsyncIOMotorDatabase = Depends(get_db_conn)
-):
-    """Alternative endpoint for creating a note pattern (for backward compatibility)."""
-    logger.info(f"Creating note pattern (alt): {note_pattern.name}")
-    return await create_note_pattern(note_pattern, db)
+        logger.error(f"Error creating note pattern: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to create note pattern"
+        )
 
 @router.post("/generate-note-pattern", response_model=NotePattern)
 async def generate_note_pattern(
@@ -163,80 +95,6 @@ async def generate_note_pattern(
     # Ensure chord root is a dictionary
     chord = {'note_name': 'C', 'octave': 4}
     return note_pattern
-
-@router.get("", response_model=List[NotePattern])
-async def get_note_patterns(
-    db: AsyncIOMotorDatabase = Depends(get_db_conn)
-) -> List[NotePattern]:
-    """Get all note patterns."""
-    logger.info("Getting all note patterns")
-    try:
-        patterns = []
-        
-        # Try primary collection first
-        cursor = db.note_patterns.find({})
-        primary_patterns = await cursor.to_list(length=None)
-        if primary_patterns:
-            logger.debug(f"Found {len(primary_patterns)} patterns in primary collection")
-            patterns.extend(primary_patterns)
-        
-        # Check legacy collection as well
-        cursor = db.note_pattern_collection.find({})
-        legacy_patterns = await cursor.to_list(length=None)
-        if legacy_patterns:
-            logger.debug(f"Found {len(legacy_patterns)} patterns in legacy collection")
-            patterns.extend(legacy_patterns)
-            
-        if not patterns:
-            logger.warning("No note patterns found in any collection")
-            return []
-            
-        # Process patterns with proper normalization and validation
-        result = []
-        successful_patterns = 0
-        
-        for pattern in patterns:
-            try:
-                # Normalize the document structure
-                normalized_doc = _normalize_response_doc(pattern)
-                
-                # Try to validate and convert to response model
-                response_pattern = NotePattern(**normalized_doc)
-                result.append(response_pattern)
-                successful_patterns += 1
-            except ValidationError as e:
-                logger.error(f"Validation error for pattern {pattern.get('name', 'unnamed')}: {e}")
-                # Log the detailed errors
-                if hasattr(e, 'errors'):
-                    for error in e.errors():
-                        logger.error(f"  - {error['loc']}: {error['msg']}")
-                # Try with a more aggressive fallback
-                try:
-                    # Set minimum required fields directly
-                    fallback_doc = {
-                        'id': pattern.get('id', pattern.get('_id', str(uuid.uuid4()))),
-                        'name': pattern.get('name', 'Unnamed Pattern'),
-                        'pattern': pattern.get('pattern', [0, 2, 4]),
-                        'duration': 1.0,
-                        'position': 0.0,
-                        'velocity': 64,
-                        'description': pattern.get('description', 'No description'),
-                        'tags': pattern.get('tags', ['default'])
-                    }
-                    response_pattern = NotePattern(**fallback_doc)
-                    result.append(response_pattern)
-                    logger.debug(f"Used fallback for pattern {fallback_doc['name']}")
-                    successful_patterns += 1
-                except Exception as inner_e:
-                    logger.error(f"Failed to create fallback for pattern: {inner_e}")
-            except Exception as e:
-                logger.error(f"Unexpected error processing pattern {pattern.get('name', 'unnamed')}: {e}")
-                
-        logger.info(f"Successfully processed {successful_patterns} out of {len(patterns)} patterns")
-        return result
-    except Exception as e:
-        logger.error(f"Error retrieving note patterns: {str(e)}")
-        raise HTTPException(status_code=500, detail="Internal server error")
 
 @router.get("/{pattern_id}", response_model=NotePattern)
 async def get_note_pattern(

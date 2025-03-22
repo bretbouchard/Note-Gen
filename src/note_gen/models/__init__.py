@@ -1,21 +1,13 @@
+"""Models package initialization."""
+
 from .note import Note
-from .scale_info import ScaleInfo
-from .chord_quality import ChordQuality
-from .chord import Chord
-from .scale import Scale
-from .enums import ScaleType
+from .rhythm_note import RhythmNote
 from .chord_progression import ChordProgression
-from .patterns import Patterns, NotePattern, RhythmPattern
+from .base import BaseModelWithConfig
 
 __all__ = [
     'Note',
-    'ScaleInfo',
-    'ChordQuality',
-    'Chord',
-    'Scale',
-    'ScaleType',
+    'RhythmNote',
     'ChordProgression',
-    'Patterns',
-    'NotePattern',
-    'RhythmPattern'
+    'BaseModelWithConfig',
 ]

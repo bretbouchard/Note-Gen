@@ -1,11 +1,17 @@
 from src.note_gen.models.note import Note
 from src.note_gen.models.scale import Scale
 from src.note_gen.models.chord import Chord
-from src.note_gen.models.enums import ChordQuality
+from src.note_gen.core.enums import (
+    ChordQuality,
+    ScaleType,
+    VoiceLeadingRule,
+    PatternComplexity
+)
 from src.note_gen.models.scale_info import ScaleInfo
 from src.note_gen.models.roman_numeral import RomanNumeral
 from src.note_gen.models.fake_scale_info import FakeScaleInfo
 from src.note_gen.models.patterns import ChordProgression
+from src.note_gen.core.constants import MAX_CHORDS, VALID_KEYS
 from pydantic import BaseModel, Field, ConfigDict, field_validator, validator, ValidationError
 from typing import List, Optional, Union, Dict, Any, Callable, Set, ForwardRef, TypeVar, Type, Literal
 import logging
@@ -17,10 +23,6 @@ import warnings
 import re
 
 logger = logging.getLogger(__name__)
-
-MAX_CHORDS = 10  # Maximum number of chords allowed in a progression
-
-VALID_KEYS = {'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'}
 
 valid_qualities = set(ChordQuality.__members__.values())
 

@@ -1,136 +1,137 @@
-from typing import List, Dict, Any, Union, Optional
-from pydantic import BaseModel, Field, ConfigDict, model_validator, field_validator
-import re
-from .note import Note
-from .chord_quality import ChordQuality
-from .scale_info import ScaleInfo
+from typing import List, Optional, Union, Dict, Any
+from pydantic import BaseModel, Field, model_validator, field_validator, ConfigDict
+from src.note_gen.core.enums import ChordQuality, ScaleType
+from src.note_gen.models.note import Note
 
 class Chord(BaseModel):
-    """Represents a musical chord."""
     root: Note
     quality: ChordQuality
-    inversion: int = Field(default=0, ge=0, le=3)
     notes: List[Note] = Field(default_factory=list)
+    inversion: int = Field(0, ge=0)  # Must be non-negative
     
     model_config = ConfigDict(
         validate_assignment=True,
-        arbitrary_types_allowed=True
+        arbitrary_types_allowed=True,
+        from_attributes=True
     )
-    
-    @field_validator('quality', mode='before')
-    @classmethod
-    def validate_quality(cls, v):
-        """Validate the chord quality."""
-        if isinstance(v, str):
-            if not v:  # Handle empty string
-                return ChordQuality.MAJOR
-            try:
-                return ChordQuality[v.upper()]
-            except KeyError:
-                raise ValueError(f"Invalid chord quality: {v}")
-        return v
-    
-    def __init__(self, **data):
-        super().__init__(**data)
-        if not self.notes:
-            self._generate_notes()
 
     @staticmethod
     def _enharmonic_note_name(note_name: str) -> str:
-        """Convert sharp notes to their flat equivalents."""
+        """Convert to enharmonic equivalent for consistent comparisons."""
         enharmonic_map = {
-            'C#': 'Db',
-            'D#': 'Eb',
-            'F#': 'Gb',
-            'G#': 'Ab',
-            'A#': 'Bb',
+            "C#": "Db", "Db": "C#",
+            "D#": "Eb", "Eb": "D#",
+            "F#": "Gb", "Gb": "F#",
+            "G#": "Ab", "Ab": "G#",
+            "A#": "Bb", "Bb": "A#"
         }
-        # Remove any octave number if present
-        base_note = note_name.split('/')[0]
-        # Check if the note is in our map
-        if base_note in enharmonic_map:
-            return enharmonic_map[base_note]
-        return base_note
-    
-    def _generate_notes(self):
-        """Generate the notes for this chord based on root, quality and inversion."""
-        intervals = self.quality.get_intervals()
-        base_notes = [self.root.transpose(interval) for interval in intervals]
-        
-        # Apply inversion
-        if self.inversion > 0:
-            self.notes = base_notes[self.inversion:] + [note.transpose(12) for note in base_notes[:self.inversion]]
-        else:
-            self.notes = base_notes
+        return enharmonic_map.get(note_name, note_name)
 
-    def transpose(self, semitones: int) -> 'Chord':
-        """Transpose the chord by the specified number of semitones."""
-        new_root = self.root.transpose(semitones)
-        return Chord(root=new_root, quality=self.quality, inversion=self.inversion)
-
-class ChordProgression(BaseModel):
-    id: Optional[str] = Field(default=None)
-    name: str = Field(..., min_length=2)
-    key: str = Field(..., pattern=r"^[A-G][#b]?$")
-    scale_type: str = Field(...)
-    scale_info: Union[str, ScaleInfo] = Field(...)
-    chords: List[Chord] = Field(..., min_length=1, max_length=32)  # Changed from max_items to max_length
-    complexity: float = Field(default=0.5, ge=0.0, le=1.0)
-    genre: Optional[str] = Field(default=None)
-
-    @field_validator('key')
+    @field_validator('root', mode='before')
     @classmethod
-    def validate_key(cls, v: str) -> str:
-        """Validate and normalize the key."""
-        v = v.upper()  # Convert to uppercase first
-        if not re.match(r'^[A-G][#b]?$', v):
-            raise ValueError("Key must be a valid note name (A-G) with optional sharp (#) or flat (b)")
+    def validate_root(cls, v: Any) -> Note:
+        """Convert string to Note object if possible."""
+        if isinstance(v, str):
+            try:
+                return Note.from_note_name(v)
+            except ValueError as e:
+                raise ValueError(f"Invalid root note: {v}. {str(e)}")
         return v
 
-    def generate_progression_from_pattern(
-        self,
-        pattern: List[str],
-        scale_info: ScaleInfo,
-        progression_length: int
-    ) -> 'ChordProgression':
-        """Generate chord progression from a pattern string.
+    @field_validator('quality', mode='before')
+    @classmethod
+    def validate_quality(cls, v: Any) -> ChordQuality:
+        """Convert string to ChordQuality enum if possible."""
+        if isinstance(v, str):
+            if v == '':  # Default to MAJOR for empty string
+                return ChordQuality.MAJOR
+            try:
+                return ChordQuality(v)
+            except ValueError:
+                raise ValueError(f"Invalid chord quality: {v}")
+        return v
+
+    @field_validator('inversion')
+    @classmethod
+    def validate_inversion(cls, v: int) -> int:
+        """Validate that inversion is non-negative."""
+        if v < 0:
+            raise ValueError(f"Inversion must be non-negative, got {v}")
+        return v
+
+    @model_validator(mode='after')
+    def generate_notes(self) -> 'Chord':
+        """Generate chord notes based on root and quality if not provided."""
+        if not self.notes:
+            # Define intervals for different chord qualities
+            interval_map = {
+                ChordQuality.MAJOR: [0, 4, 7],
+                ChordQuality.MINOR: [0, 3, 7],
+                ChordQuality.DIMINISHED: [0, 3, 6],
+                ChordQuality.AUGMENTED: [0, 4, 8],
+                ChordQuality.DOMINANT7: [0, 4, 7, 10],
+                ChordQuality.DOMINANT_SEVENTH: [0, 4, 7, 10],
+                ChordQuality.MAJOR7: [0, 4, 7, 11],
+                ChordQuality.MAJOR_SEVENTH: [0, 4, 7, 11],
+                ChordQuality.MINOR7: [0, 3, 7, 10],
+                ChordQuality.MINOR_SEVENTH: [0, 3, 7, 10],
+                ChordQuality.DIMINISHED7: [0, 3, 6, 9],
+                ChordQuality.HALF_DIMINISHED7: [0, 3, 6, 10],
+                ChordQuality.MAJOR9: [0, 4, 7, 11, 14],
+                ChordQuality.MINOR9: [0, 3, 7, 10, 14]
+            }
+            
+            # Get intervals for the chord quality
+            intervals = interval_map.get(self.quality, [0, 4, 7])  # Default to major if not found
+            
+            # Generate notes based on intervals
+            self.notes = [self.root.clone()]  # Start with the root note
+            
+            # Add the rest of the notes
+            for interval in intervals[1:]:
+                new_note = self.root.transpose(interval)
+                self.notes.append(new_note)
+            
+            # Apply inversion if specified
+            for _ in range(self.inversion):
+                if self.notes:
+                    # Move the lowest note up an octave
+                    lowest_note = self.notes.pop(0)
+                    transposed_note = lowest_note.transpose(12)  # Up an octave
+                    self.notes.append(transposed_note)
         
-        Args:
-            pattern: List of Roman numerals representing the chord progression
-            scale_info: Scale information for the progression
-            progression_length: Desired length of the progression
+        return self
+    
+    def to_string(self) -> str:
+        """
+        Convert the chord to a string representation.
         
         Returns:
-            A new ChordProgression instance with the generated chords
+            String representation of the chord (e.g., "C", "Dm", "G7")
         """
-        if not pattern:
-            raise ValueError("Pattern cannot be empty")
+        quality_symbols = {
+            ChordQuality.MAJOR: "",
+            ChordQuality.MINOR: "m",
+            ChordQuality.DIMINISHED: "dim",
+            ChordQuality.AUGMENTED: "aug",
+            ChordQuality.DOMINANT7: "7",
+            ChordQuality.DOMINANT_SEVENTH: "7",
+            ChordQuality.MAJOR7: "M7",
+            ChordQuality.MAJOR_SEVENTH: "M7",
+            ChordQuality.MINOR7: "m7",
+            ChordQuality.MINOR_SEVENTH: "m7",
+            ChordQuality.DIMINISHED7: "dim7",
+            ChordQuality.HALF_DIMINISHED7: "m7b5",
+            ChordQuality.MAJOR9: "M9",
+            ChordQuality.MINOR9: "m9"
+        }
         
-        scale = Scale.from_scale_info(scale_info)
-        new_chords = []
+        # Get the symbol for the chord quality
+        symbol = quality_symbols.get(self.quality, "")
         
-        for numeral in pattern[:progression_length]:
-            roman = RomanNumeral.from_roman_numeral(numeral)
-            scale_degree = roman.to_scale_degree()
-            root_note = scale.get_note_from_degree(scale_degree)
-            new_chord = Chord(root=root_note, quality=roman.quality, inversion=roman.inversion)
-            new_chords.append(new_chord)
-        
-        return ChordProgression(
-            name=self.name,
-            key=self.key,
-            scale_type=self.scale_type,
-            scale_info=scale_info,
-            chords=new_chords,
-            complexity=self.complexity,
-            genre=self.genre
-        )
-
-class MockDatabase:
-    data: List[Any] = []
-
-    def __init__(self) -> None:
-        self.data = []
-
-    async def insert(self, pattern: Any) -> None:
-        self.data.append(pattern)
+        # Combine root and quality symbol
+        return f"{self.root.note_name}{symbol}"
+    
+    def __str__(self) -> str:
+        """String representation of the chord."""
+        return self.to_string()

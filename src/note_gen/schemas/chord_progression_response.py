@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from bson import ObjectId
 from typing import List
 
@@ -10,8 +10,9 @@ class ChordProgressionResponse(BaseModel):
     scale_type: str
     complexity: float
 
-    class Config:
-        from_attributes = True
-        json_encoders = {
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_encoders={
             ObjectId: lambda v: str(v)
         }
+    )

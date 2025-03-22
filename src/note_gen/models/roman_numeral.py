@@ -1,13 +1,14 @@
 from pydantic import BaseModel, Field
 from typing import Dict, Optional, ClassVar, Pattern
 import re
-from .chord_quality import ChordQuality
-from .scale import Scale
+from src.note_gen.core.enums import ChordQuality  # Updated import
+from src.note_gen.models.scale import Scale
 
 class RomanNumeral(BaseModel):
     numeral: str = Field(...)
     quality: ChordQuality = Field(default=ChordQuality.MAJOR)
     inversion: int = Field(default=0)
+    degree: int
 
     # Class variables 
     ROMAN_PATTERN: ClassVar[str] = r'^(b|#)?([ivIV]+)(°|\+|dim|aug|ø7|°7|maj7|m7|7|m)?(\d)?$'
@@ -20,32 +21,33 @@ class RomanNumeral(BaseModel):
         """Create a Roman numeral from a scale degree."""
         if not 1 <= degree <= 7:
             raise ValueError(f"Scale degree must be between 1 and 7, got {degree}")
-            
+        
         numeral = cls.INT_TO_ROMAN[degree]
+        
         # Uppercase for major-based qualities
         if quality in [ChordQuality.MAJOR, ChordQuality.DOMINANT_SEVENTH, 
                       ChordQuality.MAJOR_SEVENTH, ChordQuality.AUGMENTED]:
             numeral = numeral.upper()
+        else:
+            numeral = numeral.lower()
         
-        # Modify the quality symbol handling
-        symbol = ""
+        # Add quality symbols
         if quality == ChordQuality.DIMINISHED:
-            symbol = "°"
+            numeral = f"{numeral}°"
         elif quality == ChordQuality.AUGMENTED:
-            symbol = "+"
+            numeral = f"{numeral}+"
         elif quality == ChordQuality.MINOR_SEVENTH:
-            symbol = "7"  # Changed from "m7" to "7" for minor seventh chords
+            numeral = f"{numeral}7"
         elif quality == ChordQuality.MAJOR_SEVENTH:
-            symbol = "maj7"
+            numeral = f"{numeral}maj7"
         elif quality == ChordQuality.DOMINANT_SEVENTH:
-            symbol = "7"
-        
-        final_numeral = f"{numeral}{symbol}"
+            numeral = f"{numeral}7"
         
         return cls(
-            numeral=final_numeral,
+            numeral=numeral,
             quality=quality,
-            inversion=inversion
+            inversion=inversion,
+            degree=degree
         )
 
     @classmethod
@@ -64,7 +66,9 @@ class RomanNumeral(BaseModel):
             
         inv = int(inversion) if inversion else 0
         
-        return cls(numeral=numeral, quality=quality, inversion=inv)
+        degree = cls.ROMAN_TO_INT[base.lower()]
+        
+        return cls(numeral=numeral, quality=quality, inversion=inv, degree=degree)
 
     @classmethod
     def from_string(cls, numeral: str) -> "RomanNumeral":
@@ -85,10 +89,13 @@ class RomanNumeral(BaseModel):
                 
         inv = int(inversion) if inversion else 0
         
+        degree = cls.ROMAN_TO_INT[base.lower()]
+        
         return cls(
             numeral=numeral,
             quality=quality,
-            inversion=inv
+            inversion=inv,
+            degree=degree
         )
 
     def to_scale_degree(self) -> int:
@@ -110,6 +117,18 @@ class RomanNumeral(BaseModel):
             raise ValueError(f"Unsupported Roman numeral: {self.numeral}")
         
         return self.ROMAN_TO_INT[base]
+
+    def is_minor(self) -> bool:
+        """Check if the Roman numeral represents a minor chord."""
+        return self.quality in [ChordQuality.MINOR, ChordQuality.MINOR_SEVENTH]
+    
+    def is_diminished(self) -> bool:
+        """Check if the Roman numeral represents a diminished chord."""
+        return self.quality in [ChordQuality.DIMINISHED, ChordQuality.DIMINISHED_SEVENTH, ChordQuality.HALF_DIMINISHED_SEVENTH]
+    
+    def is_augmented(self) -> bool:
+        """Check if the Roman numeral represents an augmented chord."""
+        return self.quality in [ChordQuality.AUGMENTED, ChordQuality.AUGMENTED_SEVENTH, ChordQuality.AUGMENTED_MAJOR_SEVENTH]
 
     @classmethod
     def get_roman_numeral_from_chord(cls, chord, scale) -> 'RomanNumeral':

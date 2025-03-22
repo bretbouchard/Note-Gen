@@ -1,7 +1,7 @@
 import pytest
 import httpx
 from src.note_gen.models.note import Note
-from src.note_gen.models.enums import ScaleType
+from src.note_gen.core.enums import ScaleType
 
 @pytest.mark.asyncio
 async def test_note_sequence(app_client: httpx.AsyncClient, test_presets):

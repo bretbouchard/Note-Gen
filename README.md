@@ -168,6 +168,16 @@ POST /generate/progression/random
 }
 ```
 
+## Testing
+
+pytest
+mypy src
+black --check src
+
+
+## Contest Priming
+Read README.md, .windsurfrules, and run git ls-files to understand the codebase
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request. For MAJOR changes, please open an issue first to discuss what you would like to change.
