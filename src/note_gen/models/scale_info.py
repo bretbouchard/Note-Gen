@@ -18,13 +18,16 @@ class ScaleInfo(BaseModel):
     model_config = ConfigDict(
         validate_assignment=True,
         arbitrary_types_allowed=True,
-        from_attributes=True
+        from_attributes=True,
+        validate_default=True
     )
     
     @field_validator('root', mode='before')
     @classmethod
     def validate_root(cls, v: Any) -> Note:
         """Convert string to Note."""
+        if v is None:
+            raise ValueError("Root note cannot be None")
         if isinstance(v, str):
             # Handle empty string
             if not v:

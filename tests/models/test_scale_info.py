@@ -69,19 +69,21 @@ def test_valid_root_note() -> None:
     assert scale.root.octave == 4
 
 def test_invalid_root_note() -> None:
-    with pytest.raises(ValidationError):
+    with pytest.raises(ValidationError) as excinfo:
         ScaleInfo(
             root="invalid_note",
             scale_type=ScaleType.MAJOR
         )
+    assert "Root must be a string or Note object" in str(excinfo.value)
 
-    with pytest.raises(ValidationError):
+    with pytest.raises(ValidationError) as excinfo:
         ScaleInfo(
             root=123,
             scale_type=ScaleType.MAJOR
         )
+    assert "Root must be a string or Note object" in str(excinfo.value)
 
-    with pytest.raises(ValidationError):
+    with pytest.raises(ValidationError) as excinfo:
         ScaleInfo(
             root=Note(
                 note_name="invalid",
@@ -95,26 +97,30 @@ def test_invalid_root_note() -> None:
             ),
             scale_type=ScaleType.MAJOR
         )
+    assert "Invalid note name" in str(excinfo.value)
 
-    with pytest.raises(ValidationError):
+    with pytest.raises(ValidationError) as excinfo:
         ScaleInfo(
             root=None,
             scale_type=ScaleType.MAJOR
         )
+    assert "Root note cannot be None" in str(excinfo.value)
 
-    with pytest.raises(ValidationError):
+    with pytest.raises(ValidationError) as excinfo:
         ScaleInfo(
             root="",
             scale_type=ScaleType.MAJOR
         )
+    assert "Root note cannot be empty" in str(excinfo.value)
 
-    with pytest.raises(ValidationError):
+    with pytest.raises(ValidationError) as excinfo:
         ScaleInfo(
             root="C",
             scale_type="invalid_type"
         )
+    assert "Invalid scale type" in str(excinfo.value)
 
-    with pytest.raises(ValidationError):
+    with pytest.raises(ValidationError) as excinfo:
         ScaleInfo(
             root=Note(
                 note_name="C",
@@ -128,6 +134,7 @@ def test_invalid_root_note() -> None:
             ),
             scale_type=ScaleType.MAJOR
         )
+    assert "Invalid octave" in str(excinfo.value)
 
 # Test validation of scale type
 def test_valid_scale_type() -> None:
@@ -172,9 +179,9 @@ def test_invalid_scale_type() -> None:
                 duration=1.0,
                 position=0.0,
                 velocity=64,
-                stored_midi_number=None,
-                scale_degree=None,
-                prefer_flats=False
+            stored_midi_number=None,
+            scale_degree=None,
+            prefer_flats=False
             ),
             scale_type="invalid_type"
         )
@@ -188,8 +195,8 @@ def test_invalid_scale_type() -> None:
                 position=0.0,
                 velocity=64,
                 stored_midi_number=None,
-            scale_degree=None,
-            prefer_flats=False
+                scale_degree=None,
+                prefer_flats=False
             ),
             scale_type=123
         )
