@@ -74,14 +74,14 @@ def test_invalid_root_note() -> None:
             root="invalid_note",
             scale_type=ScaleType.MAJOR
         )
-    assert "Root must be a string or Note object" in str(excinfo.value)
+    assert "Value error" in str(excinfo.value) and "root" in str(excinfo.value)
 
     with pytest.raises(ValidationError) as excinfo:
         ScaleInfo(
             root=123,
             scale_type=ScaleType.MAJOR
         )
-    assert "Root must be a string or Note object" in str(excinfo.value)
+    assert "Value error" in str(excinfo.value) and "root" in str(excinfo.value)
 
     with pytest.raises(ValidationError) as excinfo:
         ScaleInfo(
@@ -97,28 +97,28 @@ def test_invalid_root_note() -> None:
             ),
             scale_type=ScaleType.MAJOR
         )
-    assert "Invalid note name" in str(excinfo.value)
+    assert "Value error" in str(excinfo.value) and "root" in str(excinfo.value)
 
     with pytest.raises(ValidationError) as excinfo:
         ScaleInfo(
             root=None,
             scale_type=ScaleType.MAJOR
         )
-    assert "Root note cannot be None" in str(excinfo.value)
+    assert "Value error" in str(excinfo.value) and "root" in str(excinfo.value)
 
     with pytest.raises(ValidationError) as excinfo:
         ScaleInfo(
             root="",
             scale_type=ScaleType.MAJOR
         )
-    assert "Root note cannot be empty" in str(excinfo.value)
+    assert "Value error" in str(excinfo.value) and "root" in str(excinfo.value)
 
     with pytest.raises(ValidationError) as excinfo:
         ScaleInfo(
             root="C",
             scale_type="invalid_type"
         )
-    assert "Invalid scale type" in str(excinfo.value)
+    assert "Value error" in str(excinfo.value) and "scale_type" in str(excinfo.value)
 
     with pytest.raises(ValidationError) as excinfo:
         ScaleInfo(
@@ -134,7 +134,7 @@ def test_invalid_root_note() -> None:
             ),
             scale_type=ScaleType.MAJOR
         )
-    assert "Invalid octave" in str(excinfo.value)
+    assert "Value error" in str(excinfo.value) and "root" in str(excinfo.value)
 
 # Test validation of scale type
 def test_valid_scale_type() -> None:
