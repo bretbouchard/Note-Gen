@@ -8,6 +8,7 @@ class Chord(BaseModel):
     quality: ChordQuality
     notes: List[Note] = Field(default_factory=list)
     inversion: int = Field(0, ge=0)  # Must be non-negative
+    name: str = Field("", description="The name of the chord in standard notation")
     
     model_config = ConfigDict(
         validate_assignment=True,

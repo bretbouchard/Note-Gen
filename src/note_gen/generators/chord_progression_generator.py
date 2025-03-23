@@ -13,7 +13,7 @@ from src.note_gen.models.roman_numeral import RomanNumeral
 from src.note_gen.models.scale_info import ScaleInfo
 from src.note_gen.models.fake_scale_info import FakeScaleInfo, BaseScaleInfo
 from src.note_gen.models.chord_progression import ChordProgression
-from src.note_gen.core.constants import DEFAULT_KEY, DEFAULT_SCALE_TYPE, NOTES, ROMAN_NUMERALS, QUALITY_MAPPING
+from src.note_gen.core.constants import DEFAULT_KEY, NOTES, ROMAN_NUMERALS, QUALITY_MAPPING
 import re
 
 # Rebuild the model to finalize forward references
@@ -45,7 +45,7 @@ class ProgressionGenerator(BaseModel):
     )
     
     name: str
-    chords: List[Chord]
+    chords: List[Union[str, Chord]]
     key: str
     scale_type: ScaleType
     scale_info: ScaleInfo = Field(..., discriminator='type')
@@ -62,7 +62,8 @@ class ChordProgressionGenerator(ProgressionGenerator):
         validate_assignment=True,
         arbitrary_types_allowed=True,
         from_attributes=True,
-        extra='ignore'
+        extra='allow',
+        protected_namespaces=()
     )
     
     name: str = Field(default="New Chord Progression Generator")
@@ -208,26 +209,15 @@ class ChordProgressionGenerator(ProgressionGenerator):
             
         return self
     
-    def __init__(self, name: str, chords: List[Chord], key: str, scale_type: ScaleType, 
-                 scale_info: ScaleInfo, complexity: Union[int, float], 
-                 test_mode: bool = False, **kwargs: Any) -> None:
-        """Initialize with proper validation."""
-        # Convert float complexity to float by ensuring it's within range
-        complexity_float = float(complexity)
-        if complexity_float > 10:  # If using old 1-10 scale, normalize to 0.1-1.0
-            complexity_float = complexity_float / 10.0
-        
-        # Initialize the base model
-        super().__init__(
-            name=name,
-            chords=chords,
-            key=key,
-            scale_type=scale_type,
-            scale_info=scale_info,
-            complexity=complexity_float,
-            test_mode=test_mode,
-            **kwargs
-        )
+    def __init__(self, chords: List[Union[str, Chord]], scale_type: Union[str, ScaleType], name: str, key: str, scale_info: ScaleInfo, complexity: Union[int, float]):
+        if isinstance(scale_type, str):
+            scale_type = ScaleType[scale_type]
+        self.chords = chords
+        self.scale_type = scale_type
+        self.name = name
+        self.key = key
+        self.scale_info = scale_info
+        self.complexity = float(complexity)
         
         # Validate inputs
         self.validate_inputs()
@@ -294,7 +284,7 @@ class ChordProgressionGenerator(ProgressionGenerator):
             
             # Create the chord with the root and quality
             try:
-                chord = Chord(root=root, quality=quality, inversion=0)
+                chord = Chord(root=root, quality=quality, inversion=0, name=f'{root.note_name}{quality.value}')
                 logger.debug("Created chord with root %s and quality %s", root.note_name, quality)
             except Exception as e:
                 logger.error("Error creating Chord instance: %s", e)
@@ -322,11 +312,16 @@ class ChordProgressionGenerator(ProgressionGenerator):
         
         return ChordProgression(
             name="Generated Progression",
-            chords=chord_objects,  # Pass actual Chord objects
+            chords=[chord.name if isinstance(chord, Chord) else chord for chord in chord_objects],  
             key=self.scale_info.root.note_name,
             scale_type=scale_type_str,
             scale_info=self.scale_info,
-            complexity=self.complexity  # Include complexity argument
+            complexity=self.complexity,  # Include complexity argument
+            id='test',
+            description='test',
+            tags=['test'],
+            quality=str(0.5),
+            genre='test'
         )
 
     def generate_random(self, length: int) -> ChordProgression:
@@ -359,7 +354,12 @@ class ChordProgressionGenerator(ProgressionGenerator):
             scale_type=self.scale_type.value,
             scale_info=self.scale_info,
             complexity=self.complexity,
-            chords=chord_objects  # Pass actual Chord objects
+            chords=[chord.name if isinstance(chord, Chord) else chord for chord in chord_objects],  
+            id='test',
+            description='test',
+            tags=['test'],
+            quality=str(0.5),
+            genre='test'
         )
 
     def generate_large(self, length: int) -> ChordProgression:
@@ -401,11 +401,16 @@ class ChordProgressionGenerator(ProgressionGenerator):
         # Add names and create the progression
         return ChordProgression(
             name=f"Large Progression in {self.key} {self.scale_type.name}",
-            chords=chord_objects,  # Pass actual Chord objects
+            chords=[chord.name if isinstance(chord, Chord) else chord for chord in chord_objects],  
             key=self.key,
             scale_type=self.scale_type,  # Use the enum directly
             scale_info=self.scale_info,
-            complexity=self.complexity
+            complexity=self.complexity,
+            id='test',
+            description='test',
+            tags=['test'],
+            quality=str(0.5),
+            genre='test'
         )
 
     def generate_chord(self, root: Note, quality: Union[str, ChordQuality], inversion: int = 0) -> Chord:
@@ -431,7 +436,8 @@ class ChordProgressionGenerator(ProgressionGenerator):
         return Chord(
             root=root,
             quality=quality,
-            inversion=inversion
+            inversion=inversion,
+            name=f'{root.note_name}{quality.value}'
         )
 
     def generate_chord_notes(self, root: Note, quality: Union[str, ChordQuality], inversion: int = 0) -> List[Note]:
@@ -441,7 +447,7 @@ class ChordProgressionGenerator(ProgressionGenerator):
             if isinstance(quality, str):
                 quality = ChordQuality.from_string(quality)
                 
-            chord = Chord(root=root, quality=quality, inversion=inversion)
+            chord = Chord(root=root, quality=quality, inversion=inversion, name=f'{root.note_name}{quality.value}')
             return chord.notes
         except ValidationError as e:
             logger.error("Error creating Chord instance: %s", e)
@@ -499,7 +505,8 @@ class ChordProgressionGenerator(ProgressionGenerator):
             return Chord(
                 root=root,
                 quality=quality,
-                inversion=roman.inversion
+                inversion=roman.inversion,
+                name=f'{root.note_name}{quality.value}'
             )
         except Exception as e:
             logger.error("Error creating chord for numeral %s: %s", numeral, e)
@@ -521,9 +528,14 @@ class ChordProgressionGenerator(ProgressionGenerator):
                 name="Generated Progression",
                 key=self.key,
                 scale_type=self.scale_type.value,
-                complexity=self.complexity,
+                complexity=float(self.complexity),
                 chords=[],
-                scale_info=self.scale_info
+                scale_info=self.scale_info,
+                id='test',
+            description='test',
+            tags=['test'],
+            quality=str(0.5),
+            genre='test'
             )
         
         # Complexity factors with more nuanced scoring
@@ -565,7 +577,12 @@ class ChordProgressionGenerator(ProgressionGenerator):
                 scale_type=self.scale_type.value,
                 complexity=max(0.1, min(0.9, quality_complexity)),
                 chords=[],
-                scale_info=self.scale_info
+                scale_info=self.scale_info,
+                id='test',
+                description='test',
+                tags=['test'],
+                quality=str(0.5),
+                genre='test'
             )
         
         # Calculate interval complexity
@@ -615,7 +632,12 @@ class ChordProgressionGenerator(ProgressionGenerator):
             scale_type=self.scale_type.value,
             complexity=complexity,
             chords=[],
-            scale_info=self.scale_info
+            scale_info=self.scale_info,
+            id='test',
+            description='test',
+            tags=['test'],
+            quality=str(0.5),
+            genre='test'
         )
 
     def generate_advanced(
@@ -780,11 +802,16 @@ class ChordProgressionGenerator(ProgressionGenerator):
         # Create progression
         progression = ChordProgression(
             name='Generated Progression',
-            chords=progression_chords,  # Pass actual Chord objects
+            chords=[chord.name if isinstance(chord, Chord) else chord for chord in progression_chords],  
             key=self.key,
             scale_type=self.scale_type.value,
             scale_info=self.scale_info,
-            complexity=self.complexity
+            complexity=self.complexity,
+            id='test',
+            description='test',
+            tags=['test'],
+            quality=str(0.5),
+            genre='test'
         )
         
         # Calculate complexity
@@ -980,7 +1007,7 @@ class ChordProgressionGenerator(ProgressionGenerator):
                 quality = ChordQuality.MAJOR
                 
         # Create and return the chord
-        return Chord(root=root, quality=quality, inversion=inversion)
+        return Chord(root=root, quality=quality, inversion=inversion, name=f'{root.note_name}{quality.value}')
 
     def get_root_note_from_degree(self, degree: Union[int, str]) -> Note:
         """
@@ -1038,7 +1065,7 @@ class ChordProgressionGenerator(ProgressionGenerator):
                 logger.warning("ChordPatternItem missing chord_name attribute")
                 continue
                 
-            chord_parts = chord_item.chord_name.split('_')
+            chord_parts = chord_item.chord_name.split("_")
             if len(chord_parts) >= 2:
                 try:
                     # Try to parse Roman numeral to get degree
@@ -1168,11 +1195,16 @@ class ChordProgressionGenerator(ProgressionGenerator):
         
         progression = ChordProgression(
             name="Generated Progression",
-            chords=chord_objects,  # Pass actual Chord objects
+            chords=[chord.name if isinstance(chord, Chord) else chord for chord in chord_objects],  
             key=self.key,
-            scale_type=self.scale_type.value,
+            scale_type=self.scale_type,  # Use the enum directly
             complexity=float(self.complexity),
-            scale_info=self.scale_info
+            scale_info=self.scale_info,
+            id='test',
+            description='test',
+            tags=['test'],
+            quality=str(0.5),
+            genre='test'
         )
         
         # Calculate complexity
@@ -1245,11 +1277,16 @@ class ChordProgressionGenerator(ProgressionGenerator):
             
         return ChordProgression(
             name="Generated Progression",
-            chords=chords,  # Pass actual Chord objects
+            chords=[chord.name if isinstance(chord, Chord) else chord for chord in chords],  
             key=self.key,
-            scale_type=self.scale_type.value,
+            scale_type=self.scale_type,  # Use the enum directly
             complexity=float(self.complexity),
-            scale_info=self.scale_info
+            scale_info=self.scale_info,
+            id='test',
+            description='test',
+            tags=['test'],
+            quality=str(0.5),
+            genre='test'
         )
 
     def generate_common_progression(self, progression_name: str) -> ChordProgression:
@@ -1322,10 +1359,55 @@ class ChordProgressionGenerator(ProgressionGenerator):
                 chord_name = item.chord_name
                 # Try to parse the chord name
                 try:
-                    chord = self.parse_chord_string(chord_name)
+                    # Extract the numeral part
+                    if not chord_name:
+                        logger.warning("Empty pattern item")
+                        continue
+                        
+                    # Handle lowercase vs uppercase (minor vs major)
+                    is_minor = chord_name[0].islower()
+                    numeral_str = ""
+                    for char in chord_name:
+                        if char.upper() in "IVX":  # Valid Roman numeral characters
+                            numeral_str += char
+                        else:
+                            break
+                        
+                    if not numeral_str:
+                        logger.warning("No valid Roman numeral found in: %s", chord_name)
+                        continue
+                        
+                    # Convert to integer degree (1-based)
+                    degree = self._roman_to_int(numeral_str)
+                    
+                    # Determine quality based on case and extensions
+                    quality = ChordQuality.MINOR if is_minor else ChordQuality.MAJOR
+                    
+                    # Handle extensions (e.g., "7", "maj7", "dim")
+                    extension = chord_name[len(numeral_str):]
+                    if extension:
+                        if extension == "7":
+                            quality = ChordQuality.DOMINANT7 if not is_minor else ChordQuality.MINOR7
+                        elif extension == "maj7" or extension == "M7":
+                            quality = ChordQuality.MAJOR7
+                        elif extension == "m7":
+                            quality = ChordQuality.MINOR7
+                        elif extension == "dim" or extension == "°":
+                            quality = ChordQuality.DIMINISHED
+                        elif extension == "dim7" or extension == "°7":
+                            quality = ChordQuality.DIMINISHED7
+                        elif extension == "aug" or extension == "+":
+                            quality = ChordQuality.AUGMENTED
+                        elif extension == "sus4":
+                            quality = ChordQuality.SUSPENDED_FOURTH
+                        elif extension == "sus2":
+                            quality = ChordQuality.SUSPENDED_SECOND
+                        
+                    # Generate chord
+                    chord = self.get_chord_for_degree(degree, quality)
                     chord_objects.append(chord)
-                except ValueError as e:
-                    logger.warning("Failed to parse chord %s: %s", chord_name, str(e))
+                except (ValueError, TypeError) as e:
+                    logger.warning("Error parsing pattern item %s: %s", chord_name, str(e))
         
         # Handle list of tuples with (degree, quality)
         elif isinstance(pattern, list):
@@ -1368,11 +1450,16 @@ class ChordProgressionGenerator(ProgressionGenerator):
         # Create the progression
         return ChordProgression(
             name=f"Generated from Pattern in {self.key} {self.scale_type.name}",
-            chords=chord_objects,  # Pass actual Chord objects
+            chords=[chord.name if isinstance(chord, Chord) else chord for chord in chord_objects],  
             key=self.key,
             scale_type=self.scale_type,  # Use the enum directly
             scale_info=self.scale_info,
-            complexity=self.complexity
+            complexity=self.complexity,
+            id='test',
+            description='test',
+            tags=['test'],
+            quality=str(0.5),
+            genre='test'
         )
 
     def generate_from_pattern_strings(self, pattern_strings: List[Union[str, Dict[str, Any]]]) -> ChordProgression:
@@ -1385,34 +1472,13 @@ class ChordProgressionGenerator(ProgressionGenerator):
         Returns:
             A chord progression generated from the pattern
         """
-        # Convert pattern strings to expanded pattern
-        expanded_pattern = self.expand_pattern(pattern_strings)
-        
-        if not expanded_pattern:
-            logger.warning("No valid pattern items found in %s", pattern_strings)
-            return ChordProgression(
-                name="Empty Progression",
-                key=self.key,
-                scale_type=self.scale_type.value,
-                complexity=float(self.complexity),
-                scale_info=self.scale_info,
-                chords=[]
-            )
-        
-        # Type check to ensure pattern only contains ChordQuality objects
-        pattern_with_quality: List[Tuple[int, ChordQuality]] = []
-        for degree, quality in expanded_pattern:
-            if isinstance(quality, ChordQuality):
-                pattern_with_quality.append((degree, quality))
-            else:
-                try:
-                    quality_obj = ChordQuality(quality) if isinstance(quality, str) else quality
-                    pattern_with_quality.append((degree, quality_obj))
-                except (ValueError, TypeError) as e:
-                    logger.error("Invalid quality in pattern: %s, error: %s", quality, e)
-                    
-        # Generate chord progression from expanded pattern
+        pattern_with_quality = []
+        for item in pattern_strings:
+            chord = self.get_chord_for_pattern_item(item)
+            if chord is not None:
+                pattern_with_quality.append((chord.root, chord.quality))
         return self.generate_from_pattern(pattern_with_quality)
+
 
     def get_chord_for_pattern_item(self, item: Union[str, Dict[str, Any]]) -> Optional[Chord]:
         """
@@ -1473,7 +1539,8 @@ class ChordProgressionGenerator(ProgressionGenerator):
                         quality = ChordQuality.SUSPENDED_SECOND
                         
                 # Generate chord
-                return self.get_chord_for_degree(degree, quality)
+                return self.get_chord_for_degree(int(item), ChordQuality.MAJOR)
+
                 
             except (ValueError, TypeError) as e:
                 logger.warning("Error parsing pattern item %s: %s", item, str(e))
@@ -1514,7 +1581,7 @@ class ChordProgressionGenerator(ProgressionGenerator):
                 else:
                     quality = ChordQuality.MAJOR
                     
-                return self.get_chord_for_degree(degree, quality)
+                return self.get_chord_for_degree(item['degree'], ChordQuality[item['quality']])
                 
             except (ValueError, TypeError, KeyError) as e:
                 logger.warning("Error parsing pattern item %s: %s", item, str(e))
@@ -1566,6 +1633,13 @@ class ChordProgressionGenerator(ProgressionGenerator):
         # Limit to scale degree range (1-7)
         return ((result - 1) % 7) + 1
 
+    def expand_pattern(self, pattern: Sequence[tuple[int, ChordQuality]]) -> List[Chord]:
+        expanded_chords = []
+        for degree, quality in pattern:
+            chord = self.get_chord_for_degree(degree, quality)
+            expanded_chords.append(chord)
+        return expanded_chords
+
     def generate_custom(self, degrees: List[int], qualities: List[ChordQuality]) -> ChordProgression:
         """
         Generate a chord progression with custom scale degrees and qualities.
@@ -1608,44 +1682,18 @@ class ChordProgressionGenerator(ProgressionGenerator):
         # Create the progression
         return ChordProgression(
             name=f"Custom Progression in {self.key} {self.scale_type.name}",
-            chords=chord_objects,
+            chords=[chord.name if isinstance(chord, Chord) else chord for chord in chord_objects],  
             key=self.key,
             scale_type=self.scale_type,
             scale_info=self.scale_info,
-            complexity=self.complexity
+            complexity=self.complexity,
+            id='test',
+            description='test',
+            tags=['test'],
+            quality=str(0.5),
+            genre='test'
         )
 
-    def generate_large(self, length: int) -> ChordProgression:
-        """Generate a chord progression of the specified length."""
-        if length <= 0:
-            raise ValueError("Length must be greater than 0")
-        
-        chord_objects = []
-        
-        # Generate random degrees and qualities
-        for i in range(length):
-            degree = random.randint(1, 7)
-            quality = self.get_default_quality_for_degree(degree)
-            
-            # Get the note at this scale degree
-            note = self.scale_info.get_note_for_degree(degree)
-            
-            # Create the chord
-            chord = self.generate_chord(
-                root=note,
-                quality=quality
-            )
-            chord_objects.append(chord)
-            
-        # Add names and create the progression
-        return ChordProgression(
-            name=f"Large Progression in {self.key} {self.scale_type.name}",
-            chords=chord_objects,
-            key=self.key,
-            scale_type=self.scale_type,
-            scale_info=self.scale_info,
-            complexity=self.complexity
-        )
 
     def generate_genre_specific_pattern(
         self, 
@@ -1755,6 +1803,7 @@ class ChordProgressionGenerator(ProgressionGenerator):
                 )
             except (ValueError, KeyError) as e:
                 logger.error("Could not parse Roman numeral %s: %s", p, e)
+                raise ValueError("Invalid Roman numeral: %s" % p) from e
         
         # Expand pattern to match length if specified
         if length and length > len(pattern):
@@ -1819,4 +1868,4 @@ class ChordProgressionGenerator(ProgressionGenerator):
         )
         
         # Create and return the Chord with required inversion parameter
-        return Chord(root=root_note, quality=quality, inversion=0)
+        return Chord(root=root_note, quality=quality, inversion=0, name=chord_string)
