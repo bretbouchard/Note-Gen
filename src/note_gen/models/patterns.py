@@ -119,17 +119,53 @@ class Pattern(BaseModel):
 class NotePattern(Pattern):
     """Model for note patterns."""
     model_config = ConfigDict(
-        validate_assignment=False,  # Disable automatic validation on assignment
+        validate_assignment=False,
         arbitrary_types_allowed=True,
         from_attributes=True,
         validate_default=False,
     )
 
     name: str = Field(default="")
-    pattern: List[Note] = Field(default_factory=list)
-    data: Optional[NotePatternData] = None
+    pattern: List[Union[str, Note]] = Field(
+        default_factory=list,
+        description="List of notes in the pattern"
+    )
+    data: NotePatternData = Field(
+        default_factory=NotePatternData,
+        description="Pattern configuration data"
+    )
     scale_info: Optional[ScaleInfo] = None
     skip_validation: bool = Field(default=True)
+
+    def __init__(self, **data):
+        super().__init__(**data)
+        if 'pattern' in data:
+            self.pattern = self._convert_pattern(data['pattern'])
+
+    def _convert_pattern(self, pattern_data: List[Union[str, Note]]) -> List[Note]:
+        """Convert pattern data to Note objects."""
+        result = []
+        for item in pattern_data:
+            if isinstance(item, str):
+                note = Note.from_name(item)
+                if note is None:
+                    raise ValueError(f"Invalid note string: {item}")
+                result.append(note)
+            elif isinstance(item, Note):
+                result.append(item)
+            else:
+                raise ValueError(f"Invalid note type: {type(item)}")
+        return result
+
+    def validate(self, level: ValidationLevel = ValidationLevel.NORMAL) -> ValidationResult:
+        """Validate the pattern using ValidationManager."""
+        return ValidationManager.validate_model(
+            model_class=self.__class__,
+            data=self.model_dump(),
+            level=level
+        )
+
+    # Remove the Config class entirely
 
     def enable_validation(self) -> None:
         """Enable validation and run initial validation."""
@@ -661,7 +697,7 @@ class RhythmNote(BaseModel):
     """Model representing a rhythmic note."""
     position: float = Field(ge=0.0, description="Position in beats from start")
     duration: float = Field(gt=0.0, description="Duration in beats")
-    velocity: float = Field(default=64.0, ge=0.0, le=127.0, description="MIDI velocity")  # Changed to float
+    velocity: float = Field(default=64, ge=0, le=127, description="MIDI velocity")
     accent: bool = Field(default=False, description="Whether the note is accented")
 
     def get_velocity_int(self) -> int:
@@ -697,29 +733,21 @@ class RhythmPatternData(BaseModel):
     duration: float = Field(default=4.0)
     style: str = Field(default="basic")
 
-class RhythmPattern(BaseModelWithConfig):
+class RhythmPattern(BaseModel):
     """Model for rhythm patterns."""
-    
-    pattern: List[RhythmNote] = Field(
-        default_factory=list,
-        description="List of rhythm notes"
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        from_attributes=True
     )
+
+    id: str = Field(default="")
+    name: str = Field(default="")
+    pattern: List[RhythmNote] = Field(default_factory=list)
     time_signature: Tuple[int, int] = Field(default=(4, 4))
-    swing_enabled: bool = Field(default=False)
-    humanize_enabled: bool = Field(default=False)
-    swing_ratio: float = Field(
-        default=0.67,
-        ge=0.5,
-        le=0.75,
-        description="Swing ratio (0.5-0.75)"
-    )
-    humanize_amount: float = Field(
-        default=0.0,
-        ge=0.0,
-        le=0.1,
-        description="Humanization amount (0.0-0.1)"
-    )
-    
+    total_duration: float = Field(default=4.0)
+    style: str = Field(default="basic")
+    description: Optional[str] = Field(default=None)
+
     @model_validator(mode='after')
     def validate_pattern(self) -> 'RhythmPattern':
         """Validate the rhythm pattern."""

@@ -2,9 +2,17 @@
 from typing import List, Optional, Dict, Any, Tuple
 from uuid import uuid4
 import logging
-from src.note_gen.models.patterns import Pattern, NotePattern, RhythmPattern
+from pydantic import ConfigDict, BaseModel, Field, field_validator
+
+# Import models
+from src.note_gen.models.patterns import Pattern, NotePattern
+from src.note_gen.models.rhythm import RhythmPattern, RhythmNote
 from src.note_gen.models.note import Note
 from src.note_gen.models.scale_info import ScaleInfo
+from src.note_gen.models.chord_progression import ChordProgression
+from src.note_gen.models.sequence import NoteSequence
+
+# Import enums and other utilities
 from src.note_gen.core.enums import PatternDirection, ValidationLevel, ScaleType
 from src.note_gen.validation.pattern_pipeline import PatternValidationPipeline
 from src.note_gen.validation.validation_manager import ValidationManager
@@ -109,7 +117,43 @@ class PatternGenerator(Generator):
             return self.rhythm_generator.generate_pattern(**config, validation_level=validation_level)
         return None
 
-async def generate_sequence_from_presets(  # Updated function name to match import
+class NoteSequenceGenerator(BaseModel):
+    """Generator for creating note sequences."""
+    
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        from_attributes=True,
+        validate_assignment=True
+    )
+    
+    chord_progression: ChordProgression
+    note_pattern: NotePattern
+    rhythm_pattern: RhythmPattern
+    durations: List[float] = Field(default_factory=list)
+
+    @field_validator('rhythm_pattern')
+    @classmethod
+    def validate_rhythm_pattern(cls, v):
+        if isinstance(v, RhythmPattern):
+            return v
+        elif isinstance(v, dict):
+            return RhythmPattern(**v)
+        raise ValueError("Invalid rhythm pattern")
+
+    def generate_sequence(self) -> NoteSequence:
+        """Generate a note sequence from the patterns."""
+        sequence = NoteSequence(
+            id=str(uuid4())[:8],
+            name=f"Generated Sequence {self.note_pattern.name}",
+            notes=[],
+            duration=self.rhythm_pattern.total_duration,
+            tempo=120,
+            time_signature=self.rhythm_pattern.time_signature
+        )
+        
+        return sequence
+
+async def generate_sequence_from_presets(
     progression_name: str,
     scale_info: ScaleInfo,
     time_signature: Tuple[int, int],
@@ -144,13 +188,3 @@ async def generate_sequence_from_presets(  # Updated function name to match impo
         note_pattern=note_pattern,
         rhythm_pattern=rhythm_pattern
     )
-
-class SequenceGenerator:
-    def __init__(self, 
-                 note_pattern: Optional[NotePattern] = None,
-                 rhythm_pattern: Optional[RhythmPattern] = None,
-                 durations: Optional[List[float]] = None,
-                 **kwargs):
-        self.note_pattern = note_pattern
-        self.rhythm_pattern = rhythm_pattern
-        self.durations = durations or []

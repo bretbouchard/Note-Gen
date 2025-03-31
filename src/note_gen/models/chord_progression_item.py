@@ -29,7 +29,7 @@ class ChordProgressionItem(BaseModelWithConfig):
         return self
 
     @classmethod
-    def create(cls, chord_symbol: str, duration: float, position: float) -> 'ChordProgressionItem':
+    def create(cls, chord_symbol: str, duration: float = 1.0, position: float = 0.0) -> 'ChordProgressionItem':
         """
         Create a new ChordProgressionItem.
         
@@ -45,6 +45,25 @@ class ChordProgressionItem(BaseModelWithConfig):
             chord_symbol=chord_symbol,
             duration=duration,
             position=position
+        )
+
+    def from_chord(cls, chord: Chord, duration: float = 1.0, position: float = 0.0) -> 'ChordProgressionItem':
+        """
+        Create a new ChordProgressionItem from a Chord object.
+        
+        Args:
+            chord: The Chord object
+            duration: Duration of the chord in beats
+            position: Position of the chord in beats from start
+            
+        Returns:
+            ChordProgressionItem: A new chord progression item
+        """
+        return cls(
+            chord_symbol=chord.to_symbol(),
+            duration=duration,
+            position=position,
+            chord=chord
         )
 
     def transpose(self, semitones: int) -> 'ChordProgressionItem':

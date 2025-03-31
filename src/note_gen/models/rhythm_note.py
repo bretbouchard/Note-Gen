@@ -1,28 +1,23 @@
 """RhythmNote model definition."""
-from typing import Dict, Any, Tuple, Optional, Set, Union, Literal, Callable
+from typing import Tuple, Optional, Dict, Any, Union, Literal
 from pydantic import BaseModel, Field, ConfigDict
-from pydantic.main import IncEx
+from pydantic.type_adapter import IncEx
 
 class RhythmNote(BaseModel):
     """Model representing a rhythmic note."""
+    model_config = ConfigDict(
+        from_attributes=True,
+        validate_assignment=True
+    )
+    
     position: float = Field(ge=0.0, description="Position in beats from start")
     duration: float = Field(gt=0.0, description="Duration in beats")
     velocity: float = Field(default=64.0, ge=0.0, le=127.0, description="MIDI velocity")
     accent: bool = Field(default=False, description="Whether the note is accented")
-    tuplet_ratio: Tuple[int, int] = Field(default=(1, 1), description="Tuplet ratio (numerator, denominator)")
-    swing_ratio: float = Field(default=0.5, ge=0.0, le=1.0, description="Swing ratio for this note")
-    humanize_amount: float = Field(default=0.0, ge=0.0, le=1.0, description="Humanization amount")
-    groove_offset: float = Field(
-        default=0.0,
-        ge=-1.0,
-        le=1.0,
-        description="Timing offset for groove patterns (-1.0 to 1.0)"
-    )
-
-    model_config = ConfigDict(
-        extra='allow',
-        validate_assignment=True
-    )
+    tuplet_ratio: Tuple[int, int] = Field(default=(1, 1), description="Tuplet ratio")
+    swing_ratio: float = Field(default=0.5, ge=0.0, le=1.0, description="Swing ratio")
+    humanize_amount: float = Field(default=0.0, ge=0.0, le=1.0, description="Humanization")
+    groove_offset: float = Field(default=0.0, ge=-1.0, le=1.0, description="Groove offset")
 
     def get_actual_duration(self) -> float:
         """Calculate actual duration considering tuplets."""

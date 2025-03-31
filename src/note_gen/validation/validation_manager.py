@@ -1,15 +1,29 @@
 
 """Validation manager for musical patterns and structures."""
-from typing import List, Type, Dict, Any, Union, TYPE_CHECKING
-from ..core.enums import ValidationLevel
+from typing import Dict, Any, Type, List, Union
+from src.note_gen.core.enums import ValidationLevel
 from ..schemas.validation_response import ValidationResult, ValidationViolation
+from ..models.note import Note
 from pydantic import BaseModel
 
-if TYPE_CHECKING:
-    from ..models.patterns import Pattern, NotePattern, RhythmPattern
-
 class ValidationManager:
-    """Manages validation of musical patterns."""
+    """Manages validation of musical objects."""
+    
+    @staticmethod
+    def validate_config(config: Dict[str, Any], config_type: str) -> bool:
+        """Validate a configuration dictionary."""
+        if config_type == "note_sequence":
+            required_keys = {"chord_progression", "note_pattern", "rhythm_pattern", "scale_info"}
+            return all(key in config for key in required_keys)
+        
+        return True  # Add more validation types as needed
+
+    @staticmethod
+    def validate_model(model: Any, level: ValidationLevel = ValidationLevel.NORMAL) -> bool:
+        """Validate a model instance."""
+        if hasattr(model, "validate"):
+            return model.validate(level)
+        return True
 
     @staticmethod
     def validate_pattern(pattern: 'Pattern', level: ValidationLevel) -> ValidationResult:
@@ -123,23 +137,22 @@ class ValidationManager:
             violations=violations
         )
 
-    @classmethod
-    def validate_sequence(cls, sequence: Any) -> ValidationResult:
-        """Validate a musical sequence."""
-        violations: List[ValidationViolation] = []
+    @staticmethod
+    def validate_sequence(sequence: List[Note], voice_leading_rules: List[Any]) -> ValidationResult:
+        """Validate a sequence of notes."""
+        result = ValidationResult()
         
+        # Basic validation
         if not sequence:
-            violations.append(
-                ValidationViolation(
-                    message="Sequence cannot be empty",
-                    code="EMPTY_SEQUENCE"
-                )
-            )
-            
-        return ValidationResult(
-            is_valid=len(violations) == 0,
-            violations=violations
-        )
+            result.add_error("sequence", "Sequence cannot be empty")
+            return result
+        
+        # Apply voice leading rules
+        for rule in voice_leading_rules:
+            rule_result = rule.validate(sequence)
+            result.merge(rule_result)
+        
+        return result
 
     def validate_empty(self) -> ValidationResult:
         """Validate empty data."""

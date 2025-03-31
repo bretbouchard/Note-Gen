@@ -3,36 +3,53 @@ Note sequence generator with enhanced validation and pattern support.
 """
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, ConfigDict, Field
+from uuid import uuid4
 from src.note_gen.models.note import Note
 from src.note_gen.models.chord import Chord
-from src.note_gen.models.chord_progression import ChordProgression, ChordProgressionItem
+from src.note_gen.models.chord_progression import ChordProgression
 from src.note_gen.models.scale_info import ScaleInfo
-from src.note_gen.models.patterns import NotePattern, RhythmPattern
+from src.note_gen.models.patterns import NotePattern
+from src.note_gen.models.rhythm import RhythmPattern
+from src.note_gen.models.note_sequence import NoteSequence
 from src.note_gen.core.enums import ValidationLevel, VoiceLeadingRule, ChordQuality
-from src.note_gen.validation.validation_manager import ValidationManager, ValidationResult
+from src.note_gen.validation.validation_manager import ValidationManager
+from src.note_gen.validation.base_validation import ValidationResult
 
 import logging
 
 logger = logging.getLogger(__name__)
 
 class NoteSequenceGenerator(BaseModel):
+    """Generator for creating note sequences from chord progressions and patterns."""
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
         from_attributes=True
     )
-    """Generator for creating note sequences from chord progressions and patterns."""
-    
+
     chord_progression: ChordProgression = Field(...)
     note_pattern: NotePattern = Field(...)
     rhythm_pattern: RhythmPattern = Field(...)
     validation_level: ValidationLevel = Field(default=ValidationLevel.NORMAL)
     voice_leading_rules: List[VoiceLeadingRule] = Field(default_factory=list)
 
+    async def generate(
+        self,
+        scale_info: Optional[ScaleInfo] = None,
+        transpose: Optional[int] = None
+    ) -> NoteSequence:
+        """Generate a note sequence."""
+        if scale_info is None:
+            scale_info = self.chord_progression.scale_info
+        if scale_info is None:
+            raise ValueError("scale_info must be provided either in constructor or generate method")
+            
+        return await self.generate_sequence_async(scale_info, transpose)
+
     async def generate_sequence_async(
         self,
         scale_info: ScaleInfo,
         transpose: Optional[int] = None
-    ) -> List[Note]:
+    ) -> NoteSequence:
         """Generate note sequence asynchronously with validation."""
         try:
             # Validate inputs
@@ -48,20 +65,34 @@ class NoteSequenceGenerator(BaseModel):
             # Apply note pattern
             sequence = self._apply_note_pattern(sequence, scale_info)
 
+            # Create NoteSequence instance
+            note_sequence = NoteSequence(
+                id=str(uuid4())[:8],
+                name=f"Generated Sequence {self.note_pattern.name}",
+                notes=sequence,
+                duration=sum(note.duration for note in sequence),
+                tempo=120,  # Default tempo
+                time_signature=self.rhythm_pattern.time_signature,
+                scale_info=scale_info,
+                progression_name=self.chord_progression.name,
+                note_pattern_name=self.note_pattern.name,
+                rhythm_pattern_name=self.rhythm_pattern.name
+            )
+
             # Transpose if needed
             if transpose:
-                sequence = self._transpose_sequence(sequence, transpose)
+                note_sequence = note_sequence.transpose(transpose)
 
-            # Validate the generated sequence
-            validation_result = self._validate_sequence(sequence)
-            if not validation_result.is_valid and self.validation_level == ValidationLevel.STRICT:
-                raise ValueError(f"Sequence validation failed: {validation_result.errors}")
+            # Validate the sequence before returning
+            validation_result = self._validate_sequence(note_sequence.notes)
+            if not validation_result.is_valid:
+                raise ValueError(f"Generated sequence validation failed: {validation_result.violations}")
 
-            return sequence
+            return note_sequence
 
         except Exception as e:
-            logger.error(f"Error generating sequence: {str(e)}", exc_info=True)
-            raise
+            logger.error(f"Failed to generate sequence: {str(e)}")
+            raise ValueError(f"Failed to generate sequence: {str(e)}")
 
     def _generate_basic_sequence(self) -> List[Note]:
         """Generate basic sequence from chord progression."""
@@ -168,10 +199,8 @@ class NoteSequenceGenerator(BaseModel):
         """Validate the generated sequence."""
         validation_params = {
             'sequence': sequence,
-            'chord_progression': self.chord_progression,
             'voice_leading_rules': self.voice_leading_rules
         }
-        
         return ValidationManager.validate_sequence(**validation_params)
 
     def to_dict(self) -> Dict[str, Any]:

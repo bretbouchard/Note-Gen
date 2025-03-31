@@ -21,16 +21,11 @@ class Chord(BaseModelWithConfig):
     velocity: int = Field(default=64, ge=0, le=127, description="MIDI velocity (0-127)")
     octave: Optional[int] = Field(default=None, ge=0, le=8, description="Octave number")
 
-    @field_validator('root', mode='before')
+    @field_validator('root')
     @classmethod
-    def validate_root(cls, v: Union[str, Note]) -> str:
-        """Validate root note."""
-        if isinstance(v, Note):
-            return v.pitch
-        try:
-            return Note.normalize_pitch(v)
-        except ValueError as e:
-            raise ValueError(f"Invalid root note: {v}") from e
+    def validate_root(cls, v: str) -> str:
+        """Validate and normalize the root note."""
+        return Note.normalize_pitch(v)
 
     @model_validator(mode='after')
     def validate_chord(self) -> 'Chord':

@@ -1,5 +1,7 @@
 """Core constants for the application."""
 
+from .enums import ScaleType, ChordQuality, PatternDirection
+
 # Note Constants
 NOTES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
 VALID_KEYS = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
@@ -170,12 +172,19 @@ RATE_LIMIT = {
 }
 
 # Common Chord Progressions
-COMMON_PROGRESSIONS = [
-    ['I', 'IV', 'V'],
-    ['I', 'V', 'vi', 'IV'],
-    ['ii', 'V', 'I'],
-    ['I', 'vi', 'IV', 'V']
-]
+COMMON_PROGRESSIONS = {
+    "pop": {
+        "name": "Pop Progression",
+        "description": "Common pop progression I-vi-IV-V",
+        "chords": [
+            {"root": "C", "quality": "MAJOR"},
+            {"root": "Am", "quality": "MINOR"},
+            {"root": "F", "quality": "MAJOR"},
+            {"root": "G", "quality": "MAJOR"}
+        ]
+    }
+    # Add other progressions as needed
+}
 
 # Pattern Constants
 NOTE_PATTERNS = {
@@ -183,6 +192,7 @@ NOTE_PATTERNS = {
         "intervals": [0, 2, 4, 5, 7, 9, 11, 12],
         "pattern": [1, 2, 3, 4, 5, 6, 7, 8],
         "description": "Basic ascending scale pattern",
+        "direction": PatternDirection.UP,
         "tags": ["scale", "basic"],
         "complexity": 0.3,
         "index": 0
@@ -191,6 +201,7 @@ NOTE_PATTERNS = {
         "intervals": [0, 4, 7],
         "pattern": [1, 3, 5],
         "description": "Simple triad arpeggio",
+        "direction": PatternDirection.UP,
         "tags": ["arpeggio", "basic"],
         "complexity": 0.2,
         "index": 1
@@ -198,24 +209,94 @@ NOTE_PATTERNS = {
 }
 
 RHYTHM_PATTERNS = {
-    "default": ["4n", "8n", "16n"],
-    "basic_4_4": ["4n", "4n", "4n", "4n"],
-    "basic_waltz": ["2n", "4n", "4n"],
-    "syncopated": ["8n", "8n", "4n", "8n", "8n"]
+    "default": {
+        "notes": ["4n", "8n", "16n"],
+        "total_duration": 1.75,  # 1.0 + 0.5 + 0.25
+        "description": "Default rhythm pattern with quarter, eighth, and sixteenth notes"
+    },
+    "basic_4_4": {
+        "notes": ["4n", "4n", "4n", "4n"],
+        "total_duration": 4.0,
+        "description": "Basic 4/4 rhythm with quarter notes"
+    },
+    "basic_waltz": {
+        "notes": ["2n", "4n", "4n"],
+        "total_duration": 3.0,
+        "description": "Basic 3/4 waltz rhythm"
+    },
+    "syncopated": {
+        "notes": ["8n", "8n", "4n", "8n", "8n"],
+        "total_duration": 2.0,
+        "description": "Syncopated rhythm pattern"
+    }
+}
+
+# Chord Intervals
+CHORD_INTERVALS = {
+    ChordQuality.MAJOR: (0, 4, 7),
+    ChordQuality.MINOR: (0, 3, 7),
+    ChordQuality.DIMINISHED: (0, 3, 6),
+    ChordQuality.AUGMENTED: (0, 4, 8),
+    ChordQuality.MAJOR_SEVENTH: (0, 4, 7, 11),
+    ChordQuality.MINOR_SEVENTH: (0, 3, 7, 10),
+    ChordQuality.DOMINANT_SEVENTH: (0, 4, 7, 10),
+    ChordQuality.DIMINISHED_SEVENTH: (0, 3, 6, 9),
+    ChordQuality.HALF_DIMINISHED_SEVENTH: (0, 3, 6, 10)
 }
 
 def validate_constants():
     """Validate that all required constants are present and properly formatted."""
-    required_constants = [
-        'DATABASE', 'DB_NAME', 'COLLECTION_NAMES', 'RATE_LIMIT',
-        'ROMAN_TO_INT', 'INT_TO_ROMAN', 'SCALE_DEGREE_QUALITIES',
-        'COMMON_PROGRESSIONS', 'NOTE_PATTERNS', 'RHYTHM_PATTERNS'
-    ]
-    
-    for const in required_constants:
-        if not globals().get(const):
-            raise ValueError(f"Missing required constant: {const}")
-    
+    # Validate scale intervals
+    for scale_type, intervals in SCALE_INTERVALS.items():
+        # Check type is tuple
+        assert isinstance(intervals, tuple), f"Scale intervals for {scale_type} must be a tuple"
+        
+        # Check all elements are integers
+        assert all(isinstance(i, int) for i in intervals), f"Scale intervals for {scale_type} must be integers"
+        
+        # Check range
+        assert all(0 <= i <= 11 for i in intervals), f"Scale intervals for {scale_type} must be between 0 and 11"
+        
+        # Check length
+        if scale_type == ScaleType.CHROMATIC:
+            assert len(intervals) == 12, "Chromatic scale must have 12 notes"
+        else:
+            assert len(intervals) == 7, f"Diatonic scale {scale_type} must have 7 notes"
+
+    # Validate common progressions
+    for prog_name, prog_data in COMMON_PROGRESSIONS.items():
+        assert isinstance(prog_data, dict), f"Progression {prog_name} must be a dictionary"
+        
+        # Check required keys
+        required_keys = {'name', 'description', 'chords'}
+        assert all(key in prog_data for key in required_keys), f"Progression {prog_name} missing required keys: {required_keys}"
+        
+        # Validate chords list
+        assert isinstance(prog_data['chords'], list), f"Progression {prog_name} chords must be a list"
+        
+        # Validate each chord
+        for chord in prog_data['chords']:
+            assert isinstance(chord, dict), f"Invalid chord format in progression {prog_name}"
+            assert 'root' in chord and 'quality' in chord, f"Invalid chord format in progression {prog_name}"
+
+    # Validate note patterns
+    for pattern_name, pattern_data in NOTE_PATTERNS.items():
+        assert isinstance(pattern_data, dict), f"Note pattern {pattern_name} must be a dictionary"
+        required_keys = {'direction', 'intervals', 'description'}
+        assert all(key in pattern_data for key in required_keys), f"Note pattern {pattern_name} missing required keys"
+
+    # Validate rhythm patterns
+    for pattern_name, pattern_data in RHYTHM_PATTERNS.items():
+        assert isinstance(pattern_data, dict), f"Rhythm pattern {pattern_name} must be a dictionary"
+        required_keys = {'notes', 'total_duration', 'description'}
+        assert all(key in pattern_data for key in required_keys), f"Rhythm pattern {pattern_name} missing required keys"
+
+    # Validate chord intervals
+    for quality, intervals in CHORD_INTERVALS.items():
+        assert isinstance(intervals, tuple), f"Chord intervals for {quality} must be a tuple"
+        assert all(isinstance(i, int) for i in intervals), f"Chord intervals for {quality} must be integers"
+        assert all(0 <= i <= 11 for i in intervals), f"Chord intervals for {quality} must be between 0 and 11"
+
     return True
 
 def validate_scale_intervals():
@@ -224,3 +305,15 @@ def validate_scale_intervals():
     if missing_scales:
         raise ValueError(f"Missing intervals for scale types: {missing_scales}")
     return True
+
+MIDI_NOTE_NUMBERS = {
+    'C': 0, 'C#': 1, 'Db': 1,
+    'D': 2, 'D#': 3, 'Eb': 3,
+    'E': 4,
+    'F': 5, 'F#': 6, 'Gb': 6,
+    'G': 7, 'G#': 8, 'Ab': 8,
+    'A': 9, 'A#': 10, 'Bb': 10,
+    'B': 11
+}
+
+NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']

@@ -13,8 +13,7 @@ def test_format_chord_progression_valid() -> None:
     """Test formatting valid chord progressions"""
     # Create scale info
     scale_info = ScaleInfo(key="C", scale_type=ScaleType.MAJOR).model_dump()
-    
-    # Create chord progression items
+
     progression = ChordProgression(
         name="I-IV-V",
         key="C",
@@ -22,6 +21,7 @@ def test_format_chord_progression_valid() -> None:
         scale_info=scale_info,
         items=[
             {
+                "chord_symbol": "C",  # Added chord_symbol
                 "chord": {
                     "root": "C",
                     "quality": ChordQuality.MAJOR,
@@ -32,6 +32,7 @@ def test_format_chord_progression_valid() -> None:
                 "position": 0.0
             },
             {
+                "chord_symbol": "F",  # Added chord_symbol
                 "chord": {
                     "root": "F",
                     "quality": ChordQuality.MAJOR,
@@ -42,6 +43,7 @@ def test_format_chord_progression_valid() -> None:
                 "position": 1.0
             },
             {
+                "chord_symbol": "G",  # Added chord_symbol
                 "chord": {
                     "root": "G",
                     "quality": ChordQuality.MAJOR,

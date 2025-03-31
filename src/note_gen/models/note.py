@@ -65,24 +65,28 @@ class Note(BaseModel):
         return pitch
 
     @classmethod
-    def from_name(cls, name: str, duration: float = 1.0, velocity: int = 64, 
-                 position: float = 0.0) -> 'Note':
+    def from_name(cls, name: str, duration: float = 1.0, velocity: int = 64,
+                 position: float = 0.0, default_octave: int = 4) -> 'Note':
         """Create a Note from a name string with optional parameters."""
-        # Preserve 'b' in the regex
-        match = re.match(r'^([A-G][#b]?)(\d)$', name.strip())
-        if not match:
-            raise ValueError(f"Invalid note name: {name}")
+        name = name.strip()
         
-        pitch, octave = match.groups()
-        # Normalize pitch while preserving 'b'
-        if pitch.endswith('b'):
-            pitch = pitch[:-1].upper() + 'b'
+        # First try matching with octave
+        match = re.match(r'^([A-G][#b]?)(\d)$', name)
+        
+        if match:
+            pitch, octave = match.groups()
+            octave = int(octave)
         else:
-            pitch = pitch.upper()
+            # Try matching without octave
+            match = re.match(r'^([A-G][#b]?)$', name)
+            if not match:
+                raise ValueError(f"Invalid note name: {name}")
+            pitch = match.group(1)
+            octave = default_octave
         
         return cls(
             pitch=pitch,
-            octave=int(octave),
+            octave=octave,
             duration=duration,
             velocity=velocity,
             position=position

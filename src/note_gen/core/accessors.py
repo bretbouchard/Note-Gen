@@ -104,19 +104,7 @@ class ScaleAccessor:
         """Get intervals for a scale type."""
         return SCALE_INTERVALS[scale_type]
 
-    @staticmethod
-    def get_scale_notes(root: str, scale_type: ScaleType) -> List[str]:
-        """Get notes in a scale."""
-        intervals = SCALE_INTERVALS[scale_type]
-        root_semitone = NOTE_TO_SEMITONE[root]
-        scale_notes = []
-        
-        for interval in intervals:
-            semitone = (root_semitone + interval) % 12
-            note = [n for n, s in NOTE_TO_SEMITONE.items() if s == semitone][0]
-            scale_notes.append(note)
-            
-        return scale_notes
+    # Remove  as it belongs in Scale/ScaleInfo classes
 
 class MusicTheoryAccessor:
     """Accessor for general music theory operations."""

@@ -1,40 +1,31 @@
 """Chord progression model."""
-from typing import List, Optional, ClassVar
+from typing import List, Optional, Tuple
 from pydantic import BaseModel, Field, ConfigDict
 from .base import BaseModelWithConfig
 from .chord import Chord
 from .scale_info import ScaleInfo
 from ..core.enums import ScaleType, ChordQuality
-from ..core.constants import ROMAN_TO_INT
-
-class ChordProgressionItem(BaseModelWithConfig):
-    """Model for a single chord in a progression."""
-    chord: Chord
-    duration: float = Field(default=1.0, ge=0.0)
-    position: float = Field(default=0.0, ge=0.0)
-    is_primary: bool = Field(default=False)
-
-    @classmethod
-    def create(cls, root: str, quality: ChordQuality, duration: float = 1.0, position: float = 0.0):
-        """Factory method to create a ChordProgressionItem."""
-        return cls(
-            chord=Chord(root=root, quality=quality),
-            duration=duration,
-            position=position
-        )
+from .chord_progression_item import ChordProgressionItem  # Import the correct model
 
 class ChordProgression(BaseModelWithConfig):
     """Model for chord progressions."""
     name: str = Field(default="")
     key: str = Field(default="C")
+    root_note: Optional[str] = Field(default=None)
     scale_type: ScaleType = Field(default=ScaleType.MAJOR)
     scale_info: Optional[ScaleInfo] = None
+    chords: List[Chord] = Field(default_factory=list)
     items: List[ChordProgressionItem] = Field(default_factory=list)
     pattern: List[str] = Field(default_factory=list)
     total_duration: float = Field(default=4.0, ge=0.0)
+    time_signature: Tuple[int, int] = Field(default=(4, 4))
+    description: Optional[str] = None
+    tags: Optional[List[str]] = None
+    quality: Optional[str] = None
     
     model_config = ConfigDict(
-        arbitrary_types_allowed=True
+        arbitrary_types_allowed=True,
+        from_attributes=True
     )
 
     @classmethod
@@ -50,7 +41,7 @@ class ChordProgression(BaseModelWithConfig):
         if scale_info is None:
             scale_info = ScaleInfo(key=key, scale_type=scale_type)
         
-        progression = cls(
+        return cls(
             name=name,
             key=key,
             scale_type=scale_type,
@@ -58,45 +49,17 @@ class ChordProgression(BaseModelWithConfig):
             pattern=pattern,
             items=[]
         )
-        
-        # Convert pattern to chords
-        position = 0.0
-        for degree in pattern:
-            # Convert roman numeral to chord
-            scale_degree = ROMAN_TO_INT.get(degree.upper())
-            if scale_degree is None:
-                continue
-            
-            # Get the chord root based on scale degree
-            root = scale_info.get_scale_notes()[scale_degree - 1]
-            
-            # Create chord based on scale degree
-            chord = Chord(root=root, quality=ChordQuality.MAJOR)  # Simplified for now
-            
-            # Add to progression
-            progression.add_chord(chord=chord, position=position)
-            position += 1.0
-        
-        return progression
 
     @classmethod
     def from_pattern(cls, pattern: List[str], scale_info: ScaleInfo) -> "ChordProgression":
-        """Create a chord progression from a pattern and scale info.
-        
-        Args:
-            pattern: List of roman numerals (e.g., ["I", "IV", "V", "vi"])
-            scale_info: Scale information for the progression
-        
-        Returns:
-            A new ChordProgression instance
-        """
+        """Create a chord progression from a pattern and scale info."""
         return cls(
-            name="",  # Default name
+            name="",
             key=scale_info.key,
             scale_type=scale_info.scale_type,
             scale_info=scale_info,
             pattern=pattern,
-            items=[]  # Items will be generated later
+            items=[]
         )
 
     def add_chord(self, chord: Chord, duration: float = 1.0, position: Optional[float] = None) -> None:

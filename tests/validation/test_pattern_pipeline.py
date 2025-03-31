@@ -11,7 +11,7 @@ def validation_pipeline():
 def valid_note_pattern():
     factory = PatternFactory()
     return factory.create_note_pattern(
-        root_note="C",
+        root_note="C4",  # Changed from "C" to "C4"
         scale_type=ScaleType.MAJOR,
         intervals=[0, 2, 4, 5, 7]
     )

@@ -1,86 +1,35 @@
 """Base validation classes and types."""
-from typing import List, Dict, Any, Optional, Protocol, TypeVar, Generic
-from typing_extensions import Literal
-from pydantic import BaseModel
-from ..core.enums import ValidationLevel
+from typing import List, Optional, Protocol, Dict, Any, TypeVar
+from pydantic import BaseModel, Field
+from src.note_gen.core.enums import ValidationLevel
 
-# Use TypeVar with contravariant=True for input types
-Input = TypeVar('Input', bound=Any, contravariant=True)
-
-class ValidationError(BaseModel):
-    """Model for validation errors."""
-    field: str
-    message: str
-    code: str = "VALIDATION_ERROR"
-    details: Dict[str, Any] = {}
+Input = TypeVar('Input')
 
 class ValidationViolation(BaseModel):
-    """Model for validation violations."""
-    code: str
+    """Represents a single validation violation."""
+    field: str = Field(default="")
     message: str
-    path: str = ""
-    details: Dict[str, Any] = {}
-    severity: str = "error"  # error, warning, info
+    level: ValidationLevel = Field(default=ValidationLevel.NORMAL)
+    code: Optional[str] = None
 
 class ValidationResult(BaseModel):
-    """Model for validation results."""
-    is_valid: bool
-    errors: List[ValidationError] = []
-    violations: List[ValidationViolation] = []
-    warnings: List[str] = []
-    details: Dict[str, Any] = {}
-    metadata: Dict[str, Any] = {}
+    """Result of a validation operation."""
+    is_valid: bool = Field(default=True)
+    violations: List[str] = Field(default_factory=list)
+    field_errors: dict[str, List[str]] = Field(default_factory=dict)
 
-    def add_error(self, field: str, message: str, code: str = "VALIDATION_ERROR", details: Dict[str, Any] = {}) -> None:
-        """Add an error to the validation result."""
-        self.errors.append(ValidationError(
-            field=field,
-            message=message,
-            code=code,
-            details=details
-        ))
+    def add_error(self, field: str, message: str) -> None:
+        """Add an error message for a specific field."""
         self.is_valid = False
+        if field not in self.field_errors:
+            self.field_errors[field] = []
+        self.field_errors[field].append(message)
+        self.violations.append(f"{field}: {message}")
 
-    def add_violation(self, code: str, message: str, path: str = "", details: Dict[str, Any] = {}, 
-                     severity: str = "error") -> None:
-        """Add a violation to the validation result."""
-        self.violations.append(ValidationViolation(
-            code=code,
-            message=message,
-            path=path,
-            details=details,
-            severity=severity
-        ))
-        if severity == "error":
-            self.is_valid = False
-
-    def add_warning(self, message: str) -> None:
-        """Add a warning to the validation result."""
-        self.warnings.append(message)
-
-    def add_detail(self, key: str, value: Any) -> None:
-        """Add a detail to the validation result."""
-        self.details[key] = value
-
-    def merge(self, other: 'ValidationResult') -> None:
-        """Merge another validation result into this one."""
-        self.is_valid = self.is_valid and other.is_valid
-        self.errors.extend(other.errors)
-        self.violations.extend(other.violations)
-        self.warnings.extend(other.warnings)
-        self.details.update(other.details)
-        self.metadata.update(other.metadata)
-
-    @property
-    def has_warnings(self) -> bool:
-        """Check if there are any warnings."""
-        return len(self.warnings) > 0 or any(v.severity == "warning" for v in self.violations)
-
-    @property
-    def error_messages(self) -> List[str]:
-        """Get all error messages."""
-        return [error.message for error in self.errors] + \
-               [v.message for v in self.violations if v.severity == "error"]
+    def add_violation(self, message: str) -> None:
+        """Add a general validation violation."""
+        self.is_valid = False
+        self.violations.append(message)
 
 class BaseValidator(Protocol[Input]):
     """Base validator protocol."""

@@ -5,6 +5,7 @@ from .pattern_types import PatternValidatable
 from ..core.enums import ValidationLevel
 from ..core.constants import DURATION_LIMITS
 from ..models.patterns import NotePattern, NotePatternData
+from ..models.rhythm import RhythmPattern
 from .validation_manager import ValidationManager
 
 T = TypeVar('T')
@@ -25,16 +26,35 @@ class PatternValidation:
         )
 
     @staticmethod
-    def validate_rhythm_pattern(pattern_data: Dict[str, Any]) -> ValidationResult:
+    def validate_rhythm_pattern(pattern: RhythmPattern) -> ValidationResult:
         """Validate a rhythm pattern."""
-        violations: List[ValidationViolation] = []
+        violations = []
         
-        # Validate pattern notes exist
-        if not pattern_data.get('pattern'):
+        if not pattern.pattern:
             violations.append(
                 ValidationViolation(
-                    message="Pattern must contain at least one note",
-                    code="EMPTY_PATTERN"
+                    code="EMPTY_PATTERN",
+                    message="Pattern cannot be empty"
+                )
+            )
+            
+        # Validate time signature
+        numerator, denominator = pattern.time_signature
+        if denominator not in [1, 2, 4, 8, 16, 32, 64]:
+            violations.append(
+                ValidationViolation(
+                    code="INVALID_TIME_SIGNATURE",
+                    message="Time signature denominator must be a power of 2"
+                )
+            )
+            
+        # Validate note positions are ordered
+        positions = [note.position for note in pattern.pattern]
+        if positions != sorted(positions):
+            violations.append(
+                ValidationViolation(
+                    code="UNORDERED_POSITIONS",
+                    message="Notes must be ordered by position"
                 )
             )
             
@@ -68,10 +88,10 @@ class PatternValidator:
     @staticmethod
     def validate(pattern: Any, level: ValidationLevel = ValidationLevel.NORMAL) -> ValidationResult:
         """Validate pattern data."""
-        if isinstance(pattern, PatternValidatable):
+        if isinstance(pattern, RhythmPattern):
+            return PatternValidation.validate_rhythm_pattern(pattern)
+        elif isinstance(pattern, PatternValidatable):
             return PatternValidator._validate_note_pattern(pattern, level)
-        elif hasattr(pattern, 'pattern') and hasattr(pattern, 'time_signature'):
-            return PatternValidator._validate_rhythm_pattern(pattern, level)
         else:
             return PatternValidation.validate_unknown_pattern()
 
