@@ -31,15 +31,16 @@ class ScaleInfo(BaseModel):
     def get_scale_notes(self, octave: int = 4) -> List[Note]:
         """Get all notes in the scale for a given octave."""
         root_semitone = NOTE_TO_SEMITONE[self.key]
-        intervals = SCALE_INTERVALS[self.scale_type]  # Use the enum directly
+        intervals = SCALE_INTERVALS[self.scale_type.value]  # Use the enum's value
         
-        scale_notes = []
+        notes = []
         for interval in intervals:
-            semitone = (root_semitone + interval) % 12
-            note_name = SEMITONE_TO_NOTE[semitone]
-            scale_notes.append(Note(pitch=note_name, octave=octave))
+            # Calculate the semitone for this scale degree
+            note_semitone = (root_semitone + interval) % 12
+            note_name = SEMITONE_TO_NOTE[note_semitone]
+            notes.append(Note(pitch=note_name, octave=octave))
         
-        return scale_notes
+        return notes
 
     def is_note_in_scale(self, note: Note) -> bool:
         """Check if a note is in the scale."""

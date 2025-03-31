@@ -20,13 +20,13 @@ async def mongodb_client():
         pytest.skip(f"MongoDB not available: {e}")
     finally:
         if client:
-            await client.drop_database("test_db")
+            await client.drop_database("note_gen_db_dev")
             client.close()
 
 @pytest.fixture
 async def mongodb_collection(mongodb_client):
     """Create a test collection."""
-    db = mongodb_client["test_db"]
+    db = mongodb_client["note_gen_db_dev_db"]
     collection = db["test_collection"]
     await collection.delete_many({})  # Clean up before test
     return collection

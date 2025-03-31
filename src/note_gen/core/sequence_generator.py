@@ -1,190 +1,221 @@
-"""Generator classes for creating musical sequences."""
-from typing import List, Optional, Dict, Any, Tuple
-from uuid import uuid4
-import logging
-from pydantic import ConfigDict, BaseModel, Field, field_validator
-
-# Import models
-from src.note_gen.models.patterns import Pattern, NotePattern
+"""Pattern generator module."""
+from typing import Dict, Any, List, Optional
+from src.note_gen.core.enums import PatternType, PatternDirection, ValidationLevel, ScaleType
 from src.note_gen.models.rhythm import RhythmPattern, RhythmNote
 from src.note_gen.models.note import Note
 from src.note_gen.models.scale_info import ScaleInfo
-from src.note_gen.models.chord_progression import ChordProgression
-from src.note_gen.models.sequence import NoteSequence
-
-# Import enums and other utilities
-from src.note_gen.core.enums import PatternDirection, ValidationLevel, ScaleType
-from src.note_gen.validation.pattern_pipeline import PatternValidationPipeline
-from src.note_gen.validation.validation_manager import ValidationManager
-
-logger = logging.getLogger(__name__)
-
-class Generator:
-    """Base generator class with common functionality."""
-    
-    def __init__(self):
-        self.validator = PatternValidationPipeline()
-        
-    def _generate_id(self) -> str:
-        """Generate a unique pattern ID."""
-        return str(uuid4())[:8]
-        
-    def validate_pattern(self, pattern: Pattern, level: ValidationLevel) -> bool:
-        """Validate a generated pattern."""
-        return ValidationManager.validate_model(
-            model_class=pattern.__class__,
-            data=pattern.model_dump(),
-            level=level
-        ).is_valid
-
-class NoteGenerator(Generator):
-    """Generator for note patterns."""
-
-    def generate_pattern(
-        self,
-        root_note: str,
-        scale_type: ScaleType,
-        pattern_config: Dict[str, Any],
-        validation_level: ValidationLevel = ValidationLevel.NORMAL
-    ) -> Optional[NotePattern]:
-        """Generate a validated note pattern."""
-        try:
-            pattern = NotePattern(
-                id=self._generate_id(),
-                name=f"Generated Note Pattern {self._generate_id()}",
-                pattern=[],  # Will be populated based on config
-                data={
-                    "root_note": root_note,
-                    "scale_type": scale_type,
-                    "intervals": pattern_config.get('intervals', [0, 2, 4]),
-                    "direction": pattern_config.get('direction', PatternDirection.UP),
-                    "octave_range": pattern_config.get('octave_range', (4, 5))
-                }
-            )
-            
-            if self.validate_pattern(pattern, validation_level):
-                return pattern
-            return None
-            
-        except Exception as e:
-            logger.error(f"Note pattern generation failed: {e}")
-            return None
-
-class RhythmGenerator(Generator):
-    """Generator for rhythm patterns."""
-
-    def generate_pattern(
-        self,
-        durations: List[float],
-        time_signature: Tuple[int, int] = (4, 4),
-        validation_level: ValidationLevel = ValidationLevel.NORMAL
-    ) -> Optional[RhythmPattern]:
-        """Generate a validated rhythm pattern."""
-        try:
-            pattern = RhythmPattern(
-                id=self._generate_id(),
-                name=f"Generated Rhythm Pattern {self._generate_id()}",
-                durations=durations,
-                time_signature=time_signature
-            )
-            
-            if self.validate_pattern(pattern, validation_level):
-                return pattern
-            return None
-            
-        except Exception as e:
-            logger.error(f"Rhythm pattern generation failed: {e}")
-            return None
-
-class PatternGenerator(Generator):
-    """Base pattern generator class."""
-    
-    def __init__(self):
-        super().__init__()
-        self.note_generator = NoteGenerator()
-        self.rhythm_generator = RhythmGenerator()
-
-    async def generate_pattern(
-        self,
-        pattern_type: str,
-        config: Dict[str, Any],
-        validation_level: ValidationLevel = ValidationLevel.NORMAL
-    ) -> Optional[Pattern]:
-        """Generate a pattern based on type and config."""
-        if pattern_type == "note":
-            return self.note_generator.generate_pattern(**config, validation_level=validation_level)
-        elif pattern_type == "rhythm":
-            return self.rhythm_generator.generate_pattern(**config, validation_level=validation_level)
-        return None
-
-class NoteSequenceGenerator(BaseModel):
-    """Generator for creating note sequences."""
-    
-    model_config = ConfigDict(
-        arbitrary_types_allowed=True,
-        from_attributes=True,
-        validate_assignment=True
-    )
-    
-    chord_progression: ChordProgression
-    note_pattern: NotePattern
-    rhythm_pattern: RhythmPattern
-    durations: List[float] = Field(default_factory=list)
-
-    @field_validator('rhythm_pattern')
-    @classmethod
-    def validate_rhythm_pattern(cls, v):
-        if isinstance(v, RhythmPattern):
-            return v
-        elif isinstance(v, dict):
-            return RhythmPattern(**v)
-        raise ValueError("Invalid rhythm pattern")
-
-    def generate_sequence(self) -> NoteSequence:
-        """Generate a note sequence from the patterns."""
-        sequence = NoteSequence(
-            id=str(uuid4())[:8],
-            name=f"Generated Sequence {self.note_pattern.name}",
-            notes=[],
-            duration=self.rhythm_pattern.total_duration,
-            tempo=120,
-            time_signature=self.rhythm_pattern.time_signature
-        )
-        
-        return sequence
+from src.note_gen.models.note_sequence import NoteSequence
+from src.note_gen.validation.pattern_validation import PatternValidator
+from src.note_gen.core.constants import PATTERN_PRESETS, PROGRESSION_PRESETS
 
 async def generate_sequence_from_presets(
+    note_pattern_name: str,
+    rhythm_pattern_name: str,
     progression_name: str,
-    scale_info: ScaleInfo,
-    time_signature: Tuple[int, int],
-    tempo: int,
-    key: str
-) -> Pattern:
-    """Generate a sequence from preset parameters."""
-    note_gen = NoteGenerator()
-    rhythm_gen = RhythmGenerator()
-    
-    # Generate both patterns
-    note_pattern = note_gen.generate_pattern(
-        root_note=key,
-        scale_type=scale_info.scale_type,
-        pattern_config={"intervals": [0, 2, 4]}  # Basic triad pattern
+    scale_info: Dict[str, Any]
+) -> NoteSequence:
+    """
+    Generate a note sequence from preset patterns.
+
+    Args:
+        note_pattern_name: Name of the note pattern preset
+        rhythm_pattern_name: Name of the rhythm pattern preset
+        progression_name: Name of the chord progression preset
+        scale_info: Dictionary containing scale information
+
+    Returns:
+        Generated note sequence
+
+    Raises:
+        ValueError: If any preset names are invalid or if generation fails
+    """
+    # Validate preset names
+    if note_pattern_name not in PATTERN_PRESETS.get("note_patterns", {}):
+        raise ValueError(f"Invalid note pattern name: {note_pattern_name}")
+    if rhythm_pattern_name not in PATTERN_PRESETS.get("rhythm_patterns", {}):
+        raise ValueError(f"Invalid rhythm pattern name: {rhythm_pattern_name}")
+    if progression_name not in PROGRESSION_PRESETS:
+        raise ValueError(f"Invalid progression name: {progression_name}")
+
+    # Create scale info object
+    scale = ScaleInfo(**scale_info)
+
+    # Get preset configurations
+    note_pattern_config = PATTERN_PRESETS["note_patterns"][note_pattern_name]
+    rhythm_pattern_config = PATTERN_PRESETS["rhythm_patterns"][rhythm_pattern_name]
+    progression = PROGRESSION_PRESETS[progression_name]
+
+    # Initialize pattern generator
+    generator = PatternGenerator()
+
+    # Generate patterns
+    note_pattern = generator.generate_pattern(
+        pattern_type=PatternType.MELODIC,
+        config={
+            "root_note": scale.key,
+            "scale_type": scale.scale_type,
+            **note_pattern_config
+        }
     )
-    
-    rhythm_pattern = rhythm_gen.generate_pattern(
-        durations=[1.0, 1.0, 1.0, 1.0],  # Basic quarter note pattern
-        time_signature=time_signature
+
+    rhythm_pattern = generator.generate_pattern(
+        pattern_type=PatternType.RHYTHMIC,
+        config=rhythm_pattern_config
     )
-    
-    if not note_pattern or not rhythm_pattern:
-        raise ValueError("Failed to generate valid patterns")
-        
-    # Combine patterns into final sequence
-    return Pattern(
-        id=note_gen._generate_id(),
-        name=f"Generated Sequence {note_gen._generate_id()}",
-        duration=4.0,  # Default to one bar
-        time_signature=time_signature,
-        note_pattern=note_pattern,
-        rhythm_pattern=rhythm_pattern
+
+    # Combine patterns into a sequence
+    notes = []
+    current_position = 0.0
+
+    for chord in progression:
+        for rhythm_note in rhythm_pattern.pattern:
+            if rhythm_note.note:
+                note = rhythm_note.note.clone()
+                note.position = current_position + rhythm_note.position
+                note.duration = rhythm_note.duration
+                notes.append(note)
+
+        current_position += rhythm_pattern.total_duration
+
+    # Create and return the sequence
+    return NoteSequence(
+        notes=notes,
+        duration=current_position,
+        scale_info=scale,
+        progression_name=progression_name,
+        note_pattern_name=note_pattern_name,
+        rhythm_pattern_name=rhythm_pattern_name
     )
+
+class PatternGenerator:
+    """Generator for musical patterns."""
+
+    def generate_pattern(
+        self,
+        pattern_type: PatternType,
+        config: Dict[str, Any],
+        validation_level: ValidationLevel = ValidationLevel.NORMAL
+    ) -> RhythmPattern:
+        """
+        Generate a musical pattern based on the provided configuration.
+
+        Args:
+            pattern_type: Type of pattern to generate (MELODIC or RHYTHMIC)
+            config: Configuration dictionary containing pattern parameters
+            validation_level: Level of validation to apply
+
+        Returns:
+            Generated pattern
+
+        Raises:
+            ValueError: If the configuration is invalid
+        """
+        if pattern_type == PatternType.MELODIC:
+            return self._generate_melodic_pattern(config, validation_level)
+        elif pattern_type == PatternType.RHYTHMIC:
+            return self._generate_rhythm_pattern(config, validation_level)
+        else:
+            raise ValueError(f"Unsupported pattern type: {pattern_type}")
+
+    def _generate_melodic_pattern(
+        self,
+        config: Dict[str, Any],
+        validation_level: ValidationLevel
+    ) -> RhythmPattern:
+        """Generate a melodic pattern."""
+        # Extract configuration
+        root_note = config.get('root_note')
+        scale_type = config.get('scale_type')
+        intervals = config.get('intervals', [])
+        direction = config.get('direction', PatternDirection.UP)
+        octave_range = config.get('octave_range', (4, 4))
+
+        if not root_note or not scale_type:
+            raise ValueError("Root note and scale type are required for melodic patterns")
+
+        # Create scale info
+        scale_info = ScaleInfo(key=root_note, scale_type=scale_type)
+        scale_notes = scale_info.get_scale_notes(octave_range[0])
+
+        # Generate notes based on intervals
+        pattern_notes: List[RhythmNote] = []
+        current_position = 0.0
+
+        for interval in intervals:
+            if not (0 <= interval < len(scale_notes)):
+                raise ValueError(f"Invalid interval: {interval}")
+
+            note_idx = interval if direction == PatternDirection.UP else (len(scale_notes) - 1 - interval)
+            scale_note = scale_notes[note_idx]
+
+            rhythm_note = RhythmNote(
+                note=scale_note,
+                position=current_position,
+                duration=1.0  # Default duration
+            )
+            pattern_notes.append(rhythm_note)
+            current_position += 1.0
+
+        # Create and validate the pattern
+        pattern = RhythmPattern(
+            pattern=pattern_notes,
+            pattern_type=PatternType.MELODIC,
+            total_duration=float(len(pattern_notes)),
+            scale_type=scale_type
+        )
+
+        validation_result = PatternValidator.validate(pattern, validation_level)
+        if not validation_result.is_valid:
+            raise ValueError(f"Invalid pattern: {validation_result.violations}")
+
+        return pattern
+
+    def _generate_rhythm_pattern(
+        self,
+        config: Dict[str, Any],
+        validation_level: ValidationLevel
+    ) -> RhythmPattern:
+        """Generate a rhythm pattern."""
+        # Extract configuration
+        durations = config.get('durations', [])
+        time_signature = config.get('time_signature', (4, 4))
+
+        if not durations:
+            raise ValueError("Durations are required for rhythm patterns")
+
+        # Generate rhythm notes
+        pattern_notes: List[RhythmNote] = []
+        current_position = 0.0
+
+        for duration in durations:
+            if duration <= 0:
+                raise ValueError(f"Invalid duration: {duration}")
+
+            rhythm_note = RhythmNote(
+                position=current_position,
+                duration=duration
+            )
+            pattern_notes.append(rhythm_note)
+            current_position += duration
+
+        # Validate total duration against time signature
+        total_duration = sum(note.duration for note in pattern_notes)
+        expected_duration = time_signature[0] * (4.0 / time_signature[1])
+        if total_duration > expected_duration:
+            raise ValueError(
+                f"Total duration ({total_duration}) exceeds time signature duration ({expected_duration})"
+            )
+
+        # Create and validate the pattern
+        pattern = RhythmPattern(
+            pattern=pattern_notes,
+            pattern_type=PatternType.RHYTHMIC,
+            time_signature=time_signature,
+            total_duration=total_duration
+        )
+
+        validation_result = PatternValidator.validate(pattern, validation_level)
+        if not validation_result.is_valid:
+            raise ValueError(f"Invalid pattern: {validation_result.violations}")
+
+        return pattern

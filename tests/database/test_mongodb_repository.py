@@ -27,7 +27,7 @@ async def repo(mongodb_client):
     """Create a repository instance with the test collection."""
     return MongoDBRepository(
         client=mongodb_client,
-        database="test_db",
+        database="note_gen_db_dev_db",
         collection="test_collection"
     )
 

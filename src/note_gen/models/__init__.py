@@ -3,7 +3,7 @@ from .base import BaseModelWithConfig
 from .chord import Chord
 from .note import Note
 from .patterns import Pattern, NotePattern, ChordProgressionPattern
-from .rhythm_note import RhythmNote
+from .rhythm import RhythmNote
 from .rhythm import RhythmPattern
 from .scale_info import ScaleInfo
 

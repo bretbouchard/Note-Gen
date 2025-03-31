@@ -2,9 +2,10 @@
 """Validation manager for musical patterns and structures."""
 from typing import Dict, Any, Type, List, Union
 from src.note_gen.core.enums import ValidationLevel
-from ..schemas.validation_response import ValidationResult, ValidationViolation
+from .base_validation import ValidationResult, ValidationViolation
 from ..models.note import Note
 from pydantic import BaseModel
+from .pattern_validation import PatternValidator
 
 class ValidationManager:
     """Manages validation of musical objects."""
@@ -26,73 +27,9 @@ class ValidationManager:
         return True
 
     @staticmethod
-    def validate_pattern(pattern: 'Pattern', level: ValidationLevel) -> ValidationResult:
-        """
-        Validate a pattern instance.
-        
-        Args:
-            pattern: Pattern instance to validate
-            level: Validation level to apply
-            
-        Returns:
-            ValidationResult containing validation status and violations
-        """
-        from ..models.patterns import NotePattern, RhythmPattern  # Import here to avoid circular import
-        
-        violations: List[ValidationViolation] = []
-        
-        try:
-            # Basic validation based on pattern type
-            if isinstance(pattern, NotePattern):
-                # Note pattern specific validation
-                if level >= ValidationLevel.NORMAL:
-                    note_range_result = pattern.validate_note_range()
-                    violations.extend(note_range_result.violations)
-                
-                if level == ValidationLevel.STRICT:
-                    pattern.validate_voice_leading()
-                    pattern.validate_consonance()
-                    pattern.validate_parallel_motion()
-                    
-            elif isinstance(pattern, RhythmPattern):
-                # Rhythm pattern specific validation
-                if not pattern.pattern:
-                    violations.append(
-                        ValidationViolation(
-                            message="Pattern must contain at least one note",
-                            code="EMPTY_PATTERN"
-                        )
-                    )
-                    
-                # Validate time signature
-                numerator, denominator = pattern.time_signature
-                if denominator not in [2, 4, 8, 16]:
-                    violations.append(
-                        ValidationViolation(
-                            message="Invalid time signature denominator",
-                            code="INVALID_TIME_SIGNATURE"
-                        )
-                    )
-            else:
-                violations.append(
-                    ValidationViolation(
-                        message="Unknown pattern type",
-                        code="UNKNOWN_PATTERN_TYPE"
-                    )
-                )
-                
-        except Exception as e:
-            violations.append(
-                ValidationViolation(
-                    message=str(e),
-                    code="VALIDATION_ERROR"
-                )
-            )
-
-        return ValidationResult(
-            is_valid=len(violations) == 0,
-            violations=violations
-        )
+    def validate_pattern(pattern: Any, level: ValidationLevel = ValidationLevel.NORMAL) -> ValidationResult:
+        """Validate a pattern."""
+        return PatternValidator.validate(pattern, level)
 
     @staticmethod
     def validate_model(

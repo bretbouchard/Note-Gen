@@ -36,9 +36,9 @@ from src.note_gen.models.patterns import (
     ChordPatternItem,
     NotePattern,
     NotePatternData,
-    RhythmPattern,
-    RhythmPatternData,
-    RhythmNote,
+)
+from src.note_gen.models.rhythm import RhythmPattern, RhythmNote  # Updated import
+from src.note_gen.core.constants import (
     COMMON_PROGRESSIONS,
     NOTE_PATTERNS,
     RHYTHM_PATTERNS

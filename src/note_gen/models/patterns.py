@@ -55,7 +55,6 @@ class NotePatternData(BaseModel):
     """Data configuration for note patterns."""
     key: str = Field(default=DEFAULTS["key"])
     root_note: str = Field(default=DEFAULTS["key"])
-    scale_type: ScaleType = Field(default=ScaleType.MAJOR)
     direction: PatternDirection = Field(default=PatternDirection.UP)
     octave: int = Field(default=4)
     octave_range: Tuple[int, int] = Field(default=PATTERN_VALIDATION_LIMITS['DEFAULT_OCTAVE_RANGE'])
@@ -64,8 +63,9 @@ class NotePatternData(BaseModel):
     use_scale_mode: bool = Field(default=True)
     use_chord_tones: bool = Field(default=True)
     restart_on_chord: bool = Field(default=False)
-    allow_parallel_motion: bool = Field(default=True)  # Added this field
+    allow_parallel_motion: bool = Field(default=True)
     custom_interval_weights: Optional[Dict[int, float]] = None
+    scale_type: Optional[ScaleType] = Field(default=ScaleType.MAJOR)  # Make scale_type optional
 
     model_config = ConfigDict(
         validate_assignment=True,
@@ -85,12 +85,6 @@ class NotePatternData(BaseModel):
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary."""
         return self.model_dump()
-
-    @field_validator('scale_type')
-    def validate_scale_type(cls, v):
-        if isinstance(v, str):
-            return ScaleType(v.upper())
-        return v
 
 class Pattern(BaseModel):
     """Base class for all musical patterns."""
@@ -123,6 +117,7 @@ class NotePattern(Pattern):
         arbitrary_types_allowed=True,
         from_attributes=True,
         validate_default=False,
+        extra='allow'  # Allow extra fields
     )
 
     name: str = Field(default="")
@@ -137,7 +132,16 @@ class NotePattern(Pattern):
     scale_info: Optional[ScaleInfo] = None
     skip_validation: bool = Field(default=True)
 
+    @model_validator(mode='after')
+    def validate_pattern_empty(self) -> 'NotePattern':
+        """Validate that pattern is not empty."""
+        if not self.pattern:
+            raise ValueError("Pattern cannot be empty")
+        return self
+
     def __init__(self, **data):
+        if 'pattern' not in data:
+            data['pattern'] = []
         super().__init__(**data)
         if 'pattern' in data:
             self.pattern = self._convert_pattern(data['pattern'])

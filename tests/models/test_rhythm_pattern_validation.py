@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import AsyncMock
 from pydantic import ValidationError
 from src.note_gen.models.patterns import RhythmPattern
-from src.note_gen.models.rhythm_note import RhythmNote
+from src.note_gen.models.rhythm import RhythmNote
 
 @pytest.fixture
 def mock_db_connection() -> AsyncMock:

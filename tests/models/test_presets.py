@@ -7,7 +7,7 @@ from src.note_gen.core.enums import PatternDirection, ScaleType
 class TestPresets(unittest.TestCase):
     def setUp(self):
         self.test_patterns = NOTE_PATTERNS
-        self.test_pattern_name = "basic_scale"
+        self.test_pattern_name = "minor_triad"
         
     def test_pattern_structure(self):
         """Test that pattern presets have the required structure."""

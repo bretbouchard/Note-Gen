@@ -3,18 +3,18 @@
 from typing import List, Dict, Any, Optional, Union, Sequence
 from pydantic import BaseModel, Field
 
-from src.note_gen.models.rhythm import RhythmPattern, RhythmNote
-from src.note_gen.models.roman_numeral import RomanNumeral
-from src.note_gen.models.chord import Chord
-from src.note_gen.models.chord_progression import (
+from .rhythm import RhythmPattern, RhythmNote  # Updated import
+from .roman_numeral import RomanNumeral
+from .chord import Chord
+from .chord_progression import (
     ChordProgression,
     ChordProgressionItem
 )
-from src.note_gen.models.scale_info import ScaleInfo
-from src.note_gen.models.note import Note
-from src.note_gen.models.patterns import NotePattern, NotePatternData
-from src.note_gen.core.enums import ScaleType, ChordQuality
-from src.note_gen.core.constants import COMMON_PROGRESSIONS, DEFAULTS
+from .scale_info import ScaleInfo
+from .note import Note
+from .patterns import NotePattern, NotePatternData
+from .core.enums import ScaleType, ChordQuality
+from .core.constants import COMMON_PROGRESSIONS, DEFAULTS
 
 # Default values
 DEFAULT_KEY = "C"
@@ -94,7 +94,7 @@ def create_default_rhythm_pattern() -> RhythmPattern:
     """Create default rhythm pattern."""
     return RhythmPattern(
         name=DEFAULT_RHYTHM_PATTERN,
-        notes=[
+        pattern=[
             RhythmNote(
                 position=float(i),
                 duration=1.0,

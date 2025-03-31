@@ -14,7 +14,7 @@ client = TestClient(app)
 
 # Create a test database client
 test_client = AsyncIOMotorClient("mongodb://localhost:27017")
-test_db = test_client["test_db"]
+test_db = test_client["note_gen_db_dev"]
 
 # Override database dependency for testing
 async def override_get_db():

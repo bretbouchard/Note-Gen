@@ -119,8 +119,7 @@ def test_pattern_data_validation() -> None:
 def test_invalid_pattern_data() -> None:
     data = {
         "name": "Invalid Pattern",
-        # Missing required fields
     }
-    
-    with pytest.raises(ValueError, match="Field required: scale_type"):
+
+    with pytest.raises(ValidationError, match="Pattern cannot be empty"):
         NotePattern(**data)

@@ -4,24 +4,12 @@ from typing import Dict, Any
 import asyncio
 from src.note_gen.services.pattern_validator import PatternValidator
 from src.note_gen.models.patterns import NotePattern
+from src.note_gen.models.rhythm import RhythmPattern, RhythmNote  # Updated import
 from src.note_gen.core.enums import ValidationLevel
 from pydantic import ValidationError
 
 
-# [Note and RhythmNote classes remain unchanged]
-class Note:
-    def __init__(self, octave: int, note_name: str, duration: float):
-        self.octave = octave
-        self.note_name = note_name
-        self.duration = duration
-
-class RhythmNote:
-    def __init__(self, position: float, duration: float, velocity: int):
-        self.position = position
-        self.duration = duration
-        self.velocity = velocity
-
-# [All validation functions remain unchanged]
+# Remove duplicate Note and RhythmNote classes
 def validate_note(note: Note) -> bool:
     """Validate a note object."""
     valid_note_names = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']

@@ -7,7 +7,7 @@ class DatabaseConfig(BaseModel):
     """Database configuration settings."""
     host: str = "localhost"
     port: int = 27017
-    database: str = "test_db"
+    database: str = "note_gen_db_dev"  # Changed from "test_db"
     username: Optional[str] = None
     password: Optional[str] = None
 

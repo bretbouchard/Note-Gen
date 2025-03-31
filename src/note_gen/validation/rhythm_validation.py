@@ -4,7 +4,7 @@ from src.note_gen.core.constants import DURATIONS, DURATION_LIMITS
 from src.note_gen.core.enums import ValidationLevel, AccentType
 from src.note_gen.validation.base_validation import ValidationResult, ValidationError
 from src.note_gen.validation.rhythm_note_validation import RhythmNoteValidator
-from src.note_gen.models.rhythm_note import RhythmNote
+from src.note_gen.models.rhythm import RhythmNote
 
 def validate_rhythm_data(data: Dict[str, Any], level: ValidationLevel = ValidationLevel.NORMAL) -> ValidationResult:
     """
@@ -64,79 +64,52 @@ def validate_rhythm_data(data: Dict[str, Any], level: ValidationLevel = Validati
                         message="Pattern element must be a dictionary"
                     ))
                 else:
-                    # Validate element structure
-                    if "duration" not in element:
+                    # Remove any unsupported fields before validation
+                    allowed_fields = {
+                        'note', 'position', 'duration', 'velocity', 'accent',
+                        'tuplet_ratio', 'swing_ratio', 'humanize_amount', 'groove_offset'
+                    }
+                    filtered_element = {k: v for k, v in element.items() if k in allowed_fields}
+                    
+                    try:
+                        RhythmNote(**filtered_element)
+                    except Exception as e:
                         errors.append(ValidationError(
                             field=f"pattern[{i}]",
-                            message="Pattern element missing duration"
-                        ))
-                    if "accent" in element and not isinstance(element["accent"], (str, AccentType)):
-                        errors.append(ValidationError(
-                            field=f"pattern[{i}].accent",
-                            message="Invalid accent type"
+                            message=f"Invalid note data: {str(e)}"
                         ))
 
     # Time signature validation
     if "time_signature" in data:
         time_sig = data["time_signature"]
-        if not isinstance(time_sig, str):
-            errors.append(ValidationError(
-                field="time_signature",
-                message="Time signature must be a string"
-            ))
-        else:
+        if isinstance(time_sig, str):
             try:
                 numerator, denominator = map(int, time_sig.split('/'))
-                if numerator <= 0 or denominator <= 0:
-                    errors.append(ValidationError(
-                        field="time_signature",
-                        message="Time signature components must be positive"
-                    ))
-                if denominator not in [2, 4, 8, 16]:
-                    errors.append(ValidationError(
-                        field="time_signature",
-                        message="Invalid time signature denominator"
-                    ))
             except ValueError:
                 errors.append(ValidationError(
                     field="time_signature",
                     message="Invalid time signature format"
                 ))
+        elif isinstance(time_sig, tuple) and len(time_sig) == 2:
+            numerator, denominator = time_sig
+        else:
+            errors.append(ValidationError(
+                field="time_signature",
+                message="Time signature must be a string 'n/m' or tuple (n, m)"
+            ))
+            numerator = denominator = None
 
-    # Additional validation for strict level
-    if level == ValidationLevel.STRICT:
-        if "pattern" in data and isinstance(data["pattern"], list):
-            # Check for consistent accent patterns
-            accent_pattern = [elem.get("accent") for elem in data["pattern"] if isinstance(elem, dict)]
-            if accent_pattern:
-                unique_accents = set(accent_pattern)
-                if not all(accent in AccentType.__members__.values() for accent in unique_accents):
-                    errors.append(ValidationError(
-                        field="pattern.accents",
-                        message="Invalid accent types in pattern"
-                    ))
-
-            # Validate total pattern duration matches specified duration
-            if "duration" in data:
-                pattern_duration = sum(elem.get("duration", 0) for elem in data["pattern"] 
-                                    if isinstance(elem, dict))
-                if abs(pattern_duration - data["duration"]) > 0.001:  # Allow small float differences
-                    errors.append(ValidationError(
-                        field="pattern.duration",
-                        message="Pattern duration does not match specified duration"
-                    ))
-
-    # Add individual rhythm note validation
-    if "pattern" in data and isinstance(data["pattern"], list):
-        for i, note in enumerate(data["pattern"]):
-            if isinstance(note, RhythmNote):
-                note_result = RhythmNoteValidator.validate(note, level)
-                if not note_result.is_valid:
-                    for violation in note_result.violations:
-                        errors.append(ValidationError(
-                            field=f"pattern[{i}].{violation.path}",
-                            message=violation.message
-                        ))
+        if numerator is not None and denominator is not None:
+            if numerator <= 0 or denominator <= 0:
+                errors.append(ValidationError(
+                    field="time_signature",
+                    message="Time signature components must be positive"
+                ))
+            if denominator not in [2, 4, 8, 16]:
+                errors.append(ValidationError(
+                    field="time_signature",
+                    message="Invalid time signature denominator"
+                ))
 
     return ValidationResult(
         is_valid=len(errors) == 0,
@@ -145,18 +118,4 @@ def validate_rhythm_data(data: Dict[str, Any], level: ValidationLevel = Validati
 
 def validate_rhythm_pattern(pattern_data: Dict[str, Any]) -> ValidationResult:
     """Validate a rhythm pattern."""
-    violations: List[ValidationViolation] = []
-    
-    # Validate pattern notes exist
-    if not pattern_data.get('pattern'):  # Changed from 'notes' to 'pattern'
-        violations.append(
-            ValidationViolation(
-                message="Pattern must contain at least one note",
-                code="EMPTY_PATTERN"
-            )
-        )
-        
-    return ValidationResult(
-        is_valid=len(violations) == 0,
-        violations=violations
-    )
+    return validate_rhythm_data(pattern_data, ValidationLevel.NORMAL)

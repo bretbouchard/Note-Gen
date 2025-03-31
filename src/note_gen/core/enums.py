@@ -40,8 +40,10 @@ class ScaleType(str, Enum):
 
     @property
     def intervals(self) -> Tuple[int, ...]:
+        """Get the intervals for this scale type as a tuple."""
         from .constants import SCALE_INTERVALS
-        return SCALE_INTERVALS[self]
+        # Convert the list from SCALE_INTERVALS to a tuple
+        return tuple(SCALE_INTERVALS[self.value])
 
 class ChordQuality(str, Enum):
     """Chord quality enumeration."""

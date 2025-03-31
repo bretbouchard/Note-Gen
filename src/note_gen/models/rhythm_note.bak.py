@@ -4,20 +4,21 @@ from pydantic import BaseModel, Field, ConfigDict
 from pydantic.type_adapter import IncEx
 
 class RhythmNote(BaseModel):
-    """Model representing a rhythmic note."""
+    """A note in a rhythm pattern."""
     model_config = ConfigDict(
         from_attributes=True,
         validate_assignment=True
     )
     
-    position: float = Field(ge=0.0, description="Position in beats from start")
-    duration: float = Field(gt=0.0, description="Duration in beats")
-    velocity: float = Field(default=64.0, ge=0.0, le=127.0, description="MIDI velocity")
+    position: float = Field(default=0.0, description="Position in beats")
+    duration: float = Field(default=1.0, description="Duration in beats")
+    velocity: float = Field(default=64.0, description="Velocity (0-127)")
+    note: Optional[Note] = Field(default=None, description="Optional note information")
     accent: bool = Field(default=False, description="Whether the note is accented")
     tuplet_ratio: Tuple[int, int] = Field(default=(1, 1), description="Tuplet ratio")
-    swing_ratio: float = Field(default=0.5, ge=0.0, le=1.0, description="Swing ratio")
-    humanize_amount: float = Field(default=0.0, ge=0.0, le=1.0, description="Humanization")
-    groove_offset: float = Field(default=0.0, ge=-1.0, le=1.0, description="Groove offset")
+    swing_ratio: float = Field(default=0.5, description="Swing ratio")
+    humanize_amount: float = Field(default=0.0, description="Humanization amount")
+    groove_offset: float = Field(default=0.0, description="Groove timing offset")
 
     def get_actual_duration(self) -> float:
         """Calculate actual duration considering tuplets."""
