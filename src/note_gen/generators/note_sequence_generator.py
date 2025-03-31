@@ -1,305 +1,185 @@
-from __future__ import annotations
+"""
+Note sequence generator with enhanced validation and pattern support.
+"""
 from typing import List, Optional, Dict, Any
-from pydantic import BaseModel, Field, field_validator, validator
-import logging
-import os
-import sys
+from pydantic import BaseModel, ConfigDict, Field
+from src.note_gen.models.note import Note
+from src.note_gen.models.chord import Chord
+from src.note_gen.models.chord_progression import ChordProgression, ChordProgressionItem
+from src.note_gen.models.scale_info import ScaleInfo
+from src.note_gen.models.patterns import NotePattern, RhythmPattern
+from src.note_gen.core.enums import ValidationLevel, VoiceLeadingRule, ChordQuality
+from src.note_gen.validation.validation_manager import ValidationManager, ValidationResult
 
-# Set up logging configuration
+import logging
+
 logger = logging.getLogger(__name__)
 
-from src.note_gen.models.note import Note
-from src.note_gen.models.patterns import (
-    RhythmPattern,
-    NOTE_PATTERNS,
-    NotePattern,
-    RHYTHM_PATTERNS
-)
-from src.note_gen.models.note_sequence import NoteSequence
-from src.note_gen.models.note_event import NoteEvent
-from src.note_gen.models.chord import Chord
-from src.note_gen.models.scale_info import ScaleInfo
-from src.note_gen.core.enums import ScaleType
-from src.note_gen.models.scale import Scale
-from src.note_gen.models.scale_degree import ScaleDegree
-
-async def generate_sequence_from_presets(
-    progression_name: str,
-    note_pattern_name: str,
-    rhythm_pattern_name: str,
-    scale_info: ScaleInfo,
-    chord_progression: Dict[str, Any],
-    note_pattern: Dict[str, Any],
-    rhythm_pattern: Dict[str, Any]
-) -> NoteSequence:
-    logger.debug("Generating sequence from presets...")
-    # Placeholder logic for generating a sequence from presets
-    sequence = []
-    for chord in chord_progression['chords']:
-        # Generate all notes in the chord (not just the root)
-        chord_notes = [Note(note_name=note.note_name, octave=chord.root.octave) for note in chord.notes]
-        sequence.extend(chord_notes)
-    logger.debug(f"Generated sequence: {sequence}")
-    logger.info(f"Generated notes: {[note.note_name for note in sequence]}")
-    logger.debug(f"Generated notes before returning: {[note.note_name for note in sequence]}")
-    logger.debug(f"Generated notes before returning: {[note.note_name for note in sequence]}")  
-    logger.debug(f"Generated notes before returning: {[note.note_name for note in sequence]}")
-    return NoteSequence(notes=sequence)
-
 class NoteSequenceGenerator(BaseModel):
-    """Generator for creating note sequences from chord progressions and rhythm patterns."""
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        from_attributes=True
+    )
+    """Generator for creating note sequences from chord progressions and patterns."""
     
     chord_progression: ChordProgression = Field(...)
     note_pattern: NotePattern = Field(...)
     rhythm_pattern: RhythmPattern = Field(...)
-
-    @staticmethod
-    async def generate_sequence_from_presets(
-        progression_name: str,
-        note_pattern_name: str,
-        rhythm_pattern_name: str,
-        scale_info: ScaleInfo,
-        chord_progression: Dict[str, Any],
-        note_pattern: Dict[str, Any],
-        rhythm_pattern: Dict[str, Any]
-    ) -> NoteSequence:
-        logger.debug("Generating sequence from presets...")
-        
-        # Retrieve the rhythm pattern
-        logger.debug(f"Retrieving rhythm pattern for: {rhythm_pattern_name}")
-        rhythm_pattern_instance = await NoteSequenceGenerator.get_rhythm_pattern(rhythm_pattern_name)
-        if rhythm_pattern_instance is None:
-            logger.error(f"Rhythm pattern '{rhythm_pattern_name}' not found.")
-            raise ValueError(f"Rhythm pattern '{rhythm_pattern_name}' not found.")
-    
-        # Convert the rhythm pattern to a dictionary using model_dump
-        rhythm_pattern_data = rhythm_pattern_instance.model_dump()
-    
-        sequence = []
-        for chord in chord_progression['chords']:
-            # Generate all notes in the chord (not just the root)
-            chord_notes = [Note(note_name=note.note_name, octave=chord.root.octave) for note in chord.notes]
-            sequence.extend(chord_notes)
-        
-        logger.debug(f"Generated sequence: {sequence}")
-        logger.info(f"Generated notes: {[note.note_name for note in sequence]}")
-        logger.debug(f"Generated notes before returning: {[note.note_name for note in sequence]}")
-        
-        return NoteSequence(notes=sequence)
-
-    async def get_note_pattern(self, note_pattern_name: str) -> Patterns:
-        # Placeholder logic to simulate retrieving a note pattern
-        logger.debug(f"Retrieving note pattern for: {note_pattern_name}")
-        return Patterns(pattern=[0, 2, 4])  # Example pattern
-
-    async def get_rhythm_pattern(self, rhythm_pattern_name: str) -> RhythmPattern:
-        # Placeholder logic to simulate retrieving a rhythm pattern
-        logger.debug(f"Retrieving rhythm pattern for: {rhythm_pattern_name}")
-        return RhythmPattern(pattern=[1, 0, 1, 0])  # Example rhythm pattern
+    validation_level: ValidationLevel = Field(default=ValidationLevel.NORMAL)
+    voice_leading_rules: List[VoiceLeadingRule] = Field(default_factory=list)
 
     async def generate_sequence_async(
         self,
-        chord_progression: ChordProgression,
-        note_pattern: Patterns,
-        rhythm_pattern: RhythmPattern,
-        scale_info: ScaleInfo
-    ) -> NoteSequence:
+        scale_info: ScaleInfo,
+        transpose: Optional[int] = None
+    ) -> List[Note]:
+        """Generate note sequence asynchronously with validation."""
         try:
-            logger.debug("Generating sequence asynchronously...")        
+            # Validate inputs
+            if not self.chord_progression.chords:
+                raise ValueError("Chord progression cannot be empty")
 
-            try:
-                print(f"Rhythm pattern before processing: {rhythm_pattern}")
-                print(f"Chord progression: {chord_progression.chords}")
+            # Generate basic sequence
+            sequence = self._generate_basic_sequence()
 
-                if isinstance(rhythm_pattern, str):
-                    print(f"Converting rhythm_pattern from string to RhythmPattern using from_str.")
-                    rhythm_pattern = RhythmPattern.from_str(rhythm_pattern)
+            # Apply rhythm pattern
+            sequence = self._apply_rhythm_pattern(sequence)
 
-                logger.debug(f"Rhythm pattern before validation: {rhythm_pattern}")  # Log the rhythm pattern being validated
-                logger.debug(f"Type of rhythm pattern: {type(rhythm_pattern)}")  # Log the type of rhythm pattern
-                logger.debug(f"Rhythm pattern attributes before validation: {rhythm_pattern.pattern}")
-                logger.debug(f"Rhythm pattern data: {rhythm_pattern.data}")
-                logger.debug(f"Rhythm pattern attributes: {rhythm_pattern.pattern}")  # Log the pattern attribute
-                logger.debug(f"Rhythm pattern pattern length: {len(rhythm_pattern.pattern)}")  # Log the length of the pattern
-                logger.debug(f"Rhythm pattern pattern type: {type(rhythm_pattern.pattern)}")  # Log the type of the pattern
+            # Apply note pattern
+            sequence = self._apply_note_pattern(sequence, scale_info)
 
-                if rhythm_pattern is None:
-                    raise ValueError("Rhythm pattern cannot be None")
-                if rhythm_pattern.pattern is None:
-                    raise ValueError("Rhythm pattern must have a valid pattern")
+            # Transpose if needed
+            if transpose:
+                sequence = self._transpose_sequence(sequence, transpose)
 
-                print(f"Number of notes to generate: {len(rhythm_pattern.pattern)}")
-                print(f"Chord progression details: {chord_progression}")
+            # Validate the generated sequence
+            validation_result = self._validate_sequence(sequence)
+            if not validation_result.is_valid and self.validation_level == ValidationLevel.STRICT:
+                raise ValueError(f"Sequence validation failed: {validation_result.errors}")
 
-                sequence = []  # Initialize the sequence
-                generated_notes = []
-                for chord in chord_progression.chords:
-                    # Ensure we use the scale from the chord progression
-                    scale = Scale(root=chord_progression.scale_info.root, scale_type=chord_progression.scale_type)  # Use scale from chord progression
-                    scaleNotes = scale.notes  # Get the notes from the scale
-                    logger.debug(f"Scale notes: {scaleNotes}")  # Log the generated scale notes
-                    rootIndex = next((i for i, note in enumerate(scaleNotes) if note.note_name == chord.root.note_name), None)
-                    if rootIndex is None:
-                        raise ValueError(f"Chord root {chord.root} not found in scale notes.")  # Current chord root index
-                    logger.debug(f"Root index: {rootIndex}")
+            return sequence
 
-                    # If chord duration is None, use a default value of 4.0 seconds
-                    chordDuration = chord.duration if chord.duration is not None else 4.0
-                    print(f"Chord Duration: {chordDuration} seconds")
-                    logger.debug(f"Chord Duration: {chordDuration}")  # Log the chord duration
-
-                    patternNoteCount = len(rhythm_pattern.pattern)  
-                    print(f"Number of rhythm notes: {patternNoteCount}")
-
-                    patternDuration = rhythm_pattern.pattern[0]  # Use the first value of the rhythm pattern as duration
-                    if patternDuration == 0:
-                        raise ValueError("Pattern duration cannot be zero.")  # Raise an error if patternDuration is zero
-                    print(f"Pattern Duration: {patternDuration}")
-                    logger.debug(f"Pattern Duration: {patternDuration}")  # Log the pattern duration
-
-                    howManyNotes = int(chordDuration / patternDuration)
-                    print(f"Number of howManyNotes: {howManyNotes}")
-
-                    current_index = 0  # Initialize the index for the note pattern
-                    logger.debug(f"Note pattern content: {note_pattern.pattern}")
-                    for _ in range(howManyNotes):
-                        print(f"how many notes current note: {_}")
-                        
-                        offset = note_pattern.pattern[current_index]  # Offset from note pattern
-                        logger.debug(f"Note pattern offset eeeee: {offset}")
-                        new_index = (rootIndex + offset) % len(scaleNotes)  # Calculate new index based on offset
-                        logger.debug(f"New index after applying offset fffff: {new_index}")
-                        logger.debug(f"Scale notes hhhhh: {scaleNotes}")  # Log the generated scale notes
-                        note = scaleNotes[new_index]  # Retrieve note from scale
-                        note.octave = chord.root.octave  # Adjust the octave based on the chord's octave
-                        logger.debug(f"Adjusted note: {note.note_name} with octave: {note.octave}")
-                   
-                        logger.debug(f"new note = scaleNotes[new_index] {new_index} ?? ggggg: {note}")
-                        
-                        if note:
-                            sequence.append(note)
-                            generated_notes.append(note)
-                        else:
-                            logger.warning(f"No note found for offset {offset} at index {new_index}.")
-                        
-                        logger.debug(f"Chord root: {chord.root.note_name}, Index in scale: {rootIndex}")
-                        logger.debug(f"Offset from note pattern: {offset}")
-                        logger.debug(f"New index after applying offset: {new_index}")
-                        logger.debug(f"Generated note: {note.note_name} at index {new_index}")
-                        
-                        current_index += 1  # Move to the next note in the pattern
-                        if current_index >= len(note_pattern.pattern):  # Reset if at the end of the pattern
-                            current_index = 0
-
-
-                for note in generated_notes:
-                    if note.note_name not in [scale_note.note_name for scale_note in scaleNotes]:
-                        raise ValueError(f"Note {note} not found in scale notes.")
-                for note in generated_notes:
-                    if note.note_name.split('-')[0] not in [scale_note.note_name.split('-')[0] for scale_note in scaleNotes]:
-                        raise ValueError(f"Note {note} not found in scale notes.")
-
-                logger.info(f"Generated sequence: {NoteSequence(notes=sequence).model_dump_json()}")
-                logger.info(f"Generated notes: {[note.note_name for note in sequence]}")
-                logger.debug(f"Generated notes: {[note.note_name for note in sequence]}")  
-                logger.info(f"Generated notes before returning: {[note.note_name for note in sequence]}")
-                logger.debug(f"Generated notes before returning: {[note.note_name for note in sequence]}")
-                logger.info(f"Generated notes before returning: {[note.note_name for note in sequence]}") 
-                logger.info(f"Generated notes before returning: {[note.note_name for note in sequence]}") 
-                logger.debug(f"Generated notes: {[note.note_name for note in generated_notes]}")
-                logger.debug(f"Generated notes: {[note.note_name for note in generated_notes]}") 
-                print(f"Generated notes: {[note.note_name for note in generated_notes]}") 
-                print(f"Generated notes: {[note.note_name for note in generated_notes]}") 
-                logger.debug(f"Generated notes structure: {[{'name': note.note_name, 'octave': note.octave} for note in generated_notes]}")
-                logger.debug(f"Generated notes: {[note.note_name for note in generated_notes]}")
-                return NoteSequence(notes=generated_notes, is_test=False)
-            except Exception as e:
-                logger.error(f"Error in generate_sequence_async inner try: {str(e)}", exc_info=True)
-                raise
         except Exception as e:
-            logger.error(f"Error in generate_sequence_async: {str(e)}", exc_info=True)
+            logger.error(f"Error generating sequence: {str(e)}", exc_info=True)
             raise
-        finally:
-            logger.debug("generate_sequence_async function execution completed.")
-
-    async def generate_sequence(self, chord_progression: ChordProgression, note_pattern: Patterns, rhythm_pattern: RhythmPattern, scale_info: ScaleInfo) -> List[Note]:
-        logger.debug("Generating sequence asynchronously...")
-        note_sequence = await self.generate_sequence_async(
-            chord_progression,
-            note_pattern,
-            rhythm_pattern,
-            scale_info
-        )
-        return NoteSequence(notes=note_sequence.notes)  # Return the list of notes from the NoteSequence
 
     def _generate_basic_sequence(self) -> List[Note]:
-        """Generate a basic sequence without rhythm pattern."""
-        logger.debug("Generating basic sequence...")
-        sequence = []  # Initialize an empty sequence
-        for chord in self.chord_progression.chords:
-            # Generate all notes in the chord (not just the root)
-            chord_notes = [Note(note_name=note.note_name, octave=chord.root.octave) for note in chord.notes]
+        """Generate basic sequence from chord progression."""
+        sequence = []
+        for chord_item in self.chord_progression.chords:
+            # Create root note
+            root_note = Note(
+                pitch=chord_item.root,
+                octave=4,
+                duration=1.0,
+                velocity=64
+            )
+            chord_notes = [root_note]
+            
+            # Add chord notes based on intervals
+            root_midi = root_note.to_midi_number()
+            for interval in ChordQuality.get_intervals(chord_item.quality):
+                new_midi = root_midi + interval
+                new_note = Note.from_midi_number(
+                    midi_number=new_midi,
+                    duration=1.0,
+                    velocity=64
+                )
+                chord_notes.append(new_note)
+            
             sequence.extend(chord_notes)
-        logger.debug(f"Generated basic sequence: {sequence}")
         return sequence
 
-    def _generate_rhythmic_sequence(self) -> List[Note]:
-        """Generate a sequence using the rhythm pattern."""
-        logger.debug("Generating rhythmic sequence...")
-        sequence = []  # Initialize an empty sequence
-        for chord in self.chord_progression.chords:
-            # Ensure we use the scale from the chord progression
-            scale = Scale(root=self.chord_progression.scale_info.root, scale_type=self.chord_progression.scale_type)  # Use scale from chord progression
-            scaleNotes = scale.notes  # Get the notes from the scale
+    def _apply_rhythm_pattern(self, sequence: List[Note]) -> List[Note]:
+        """Apply rhythm pattern to the sequence."""
+        if not self.rhythm_pattern.pattern:  # Changed from notes to pattern
+            return sequence
 
-            # Generate notes based on the rhythm pattern
-            for rhythm_note in self.rhythm_pattern.data.notes:
-                # Calculate the index based on the chord root and rhythm pattern
-                rootIndex = next((i for i, note in enumerate(scaleNotes) if note.note_name == chord.root.note_name), None)
-                if rootIndex is None:
-                    raise ValueError(f"Chord root {chord.root} not found in scale notes.")
-                new_index = (rootIndex + rhythm_note.pitch) % len(scaleNotes)  
+        rhythmic_sequence = []
+        pattern_durations = [note.duration for note in self.rhythm_pattern.pattern]
+        pattern_positions = [note.position for note in self.rhythm_pattern.pattern]
+        pattern_accents = [note.accent for note in self.rhythm_pattern.pattern]
+        pattern_length = len(pattern_durations)
+        
+        current_position = 0.0
+        for i, note in enumerate(sequence):
+            pattern_idx = i % pattern_length
+            duration = pattern_durations[pattern_idx]
+            position = pattern_positions[pattern_idx]
+            accent = pattern_accents[pattern_idx]
+            
+            # Update note properties
+            note.duration = duration
+            note.position = current_position + position
+            if accent:
+                note.velocity = min(note.velocity + 16, 127)  # Increase velocity for accented notes
+            
+            rhythmic_sequence.append(note)
+            current_position += duration
 
-                note = scaleNotes[new_index]  # Retrieve note from scale
-                sequence.append(note)  # Append the note to the sequence
+        return rhythmic_sequence
 
-        logger.debug(f"Generated rhythmic sequence: {sequence}")
-        return sequence
+    def _apply_note_pattern(self, sequence: List[Note], scale_info: ScaleInfo) -> List[Note]:
+        """Apply note pattern to the sequence."""
+        if not self.note_pattern.pattern:
+            return sequence
 
-    def get_root_note_from_chord(self, chord: Chord) -> Optional[Note]:
-        """Get the root note from a chord."""
-        try:
-            if hasattr(chord, 'root') and isinstance(chord.root, Note):
-                return chord.root
-            logger.debug("No root note found")
-            return None
-        except Exception as e:
-            logger.error(f"Error getting root note from chord: {str(e)}", exc_info=True)
-            raise
-    
-    def set_rhythm_pattern(self, pattern: RhythmPattern) -> None:
-        """Set a new rhythm pattern."""
-        try:
-            logger.info(f"Setting rhythm pattern: {pattern.model_dump_json()}")
-            self.rhythm_pattern = pattern
-        except Exception as e:
-            logger.error(f"Error setting rhythm pattern: {str(e)}", exc_info=True)
-            raise
-    
-    def set_chord_progression(self, progression: ChordProgression) -> None:
-        """Set a new chord progression."""
-        try:
-            logger.info(f"Setting chord progression: {progression.model_dump_json()}")
-            self.chord_progression = progression
-        except Exception as e:
-            logger.error(f"Error setting chord progression: {str(e)}", exc_info=True)
-            raise
+        # Create scale notes as Note objects from the scale note strings
+        scale_notes = []
+        scale_note_strings = scale_info.get_scale_notes()  # Assuming this returns List[Note]
+        for scale_note in scale_note_strings:
+            scale_notes.append(Note(
+                pitch=scale_note.pitch,  # Use the pitch string from the Note object
+                octave=4
+            ))
+        
+        pattern_sequence = []
+        pattern_length = len(self.note_pattern.pattern)
 
-class ChordProgression(BaseModel):
-    name: str
-    key: str
-    scale_type: ScaleType
-    scale_info: ScaleInfo
-    chords: List[Chord]
-    complexity: float = 0.0
-    description: str = ''
+        for i, note in enumerate(sequence):
+            pattern_idx = i % pattern_length
+            pattern_note = self.note_pattern.pattern[pattern_idx]
+            
+            # Find the index of the current note in the scale using the pitch string
+            scale_idx = next(i for i, n in enumerate(scale_notes) if n.pitch == note.pitch)
+            
+            # Calculate interval from pattern note to current note
+            interval = pattern_note.to_midi_number() - note.to_midi_number()
+            
+            new_idx = (scale_idx + interval) % len(scale_notes)
+            scale_note = scale_notes[new_idx]
+            
+            # Use the pitch string from the scale note
+            new_note = Note(
+                pitch=scale_note.pitch,
+                octave=note.octave,
+                duration=note.duration,
+                velocity=note.velocity
+            )
+            pattern_sequence.append(new_note)
+
+        return pattern_sequence
+
+    def _transpose_sequence(self, sequence: List[Note], semitones: int) -> List[Note]:
+        """Transpose the sequence by given number of semitones."""
+        return [note.transpose(semitones) for note in sequence]
+
+    def _validate_sequence(self, sequence: List[Note]) -> ValidationResult:
+        """Validate the generated sequence."""
+        validation_params = {
+            'sequence': sequence,
+            'chord_progression': self.chord_progression,
+            'voice_leading_rules': self.voice_leading_rules
+        }
+        
+        return ValidationManager.validate_sequence(**validation_params)
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert generator settings to dictionary."""
+        return {
+            "chord_progression": self.chord_progression.model_dump(),
+            "note_pattern": self.note_pattern.model_dump(),
+            "rhythm_pattern": self.rhythm_pattern.model_dump(),
+            "validation_level": self.validation_level.value,
+            "voice_leading_rules": [rule.value for rule in self.voice_leading_rules]
+        }

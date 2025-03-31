@@ -4,8 +4,9 @@ import os
 import pytest
 import pytest_asyncio
 from fastapi.testclient import TestClient
-from src.note_gen import app    
-from src.note_gen.models.patterns import RhythmPattern, RhythmPatternData, RhythmNote
+from src.note_gen import app
+from src.note_gen.models.rhythm import RhythmPattern
+from src.note_gen.models.patterns import RhythmPatternData, RhythmNote
 from src.note_gen.database.db import get_db_conn, init_db, close_mongo_connection
 from motor.motor_asyncio import AsyncIOMotorClient
 from bson import ObjectId

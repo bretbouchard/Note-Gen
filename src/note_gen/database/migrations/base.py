@@ -6,7 +6,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 class Migration(ABC):
     """Base class for database migrations."""
     
-    def __init__(self, database: AsyncIOMotorDatabase):
+    def __init__(self, database: AsyncIOMotorDatabase[Any]) -> None:
         self.db = database
         self.version: str = self.__class__.__name__
     

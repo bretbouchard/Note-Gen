@@ -7,9 +7,10 @@ types-requests>=2.31.0
 types-python-dateutil>=2.8.19.20240311
 
 # Testing
-pytest>=8.0.1
-pytest-asyncio>=0.23.5
-pytest-cov>=4.1.0
+pytest==8.3.5
+pytest-asyncio>=0.25.0
+pytest-cov==4.1.0
+httpx>=0.24.0  # Required for TestClient
 pytest-mypy>=0.10.3
 pytest-mock>=3.12.0
 coverage>=7.4.1

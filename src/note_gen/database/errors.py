@@ -1,4 +1,4 @@
-from typing import Type, TypeVar
+from typing import Dict, Any, Union
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pymongo.errors import (
     ConnectionFailure, 
@@ -10,10 +10,8 @@ from pymongo.errors import (
 """Database-related exceptions."""
 
 class DatabaseError(Exception):
-    """Base class for database-related errors."""
-    def __init__(self, message: str):
-        self.message = message
-        super().__init__(self.message)
+    """Base class for database errors."""
+    pass
 
 class ConnectionError(DatabaseError):
     """Raised when a database connection fails."""
@@ -33,7 +31,7 @@ class DocumentNotFoundError(DatabaseError):
 
 class ValidationError(DatabaseError):
     """Raised when document validation fails."""
-    def __init__(self, errors: dict):
-        self.errors = errors
-        message = "Document validation failed"
+    def __init__(self, errors: Union[str, Dict[str, Any]]):
+        self.errors = errors if isinstance(errors, dict) else {"message": str(errors)}
+        message = str(errors) if isinstance(errors, str) else str(self.errors)
         super().__init__(message)

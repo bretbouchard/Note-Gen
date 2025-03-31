@@ -1,11 +1,11 @@
 import pytest
 from motor.motor_asyncio import AsyncIOMotorClient
 import httpx
-from main import app
+from src.note_gen.main import app
 from src.note_gen.models.note import Note
-from src.note_gen.models.patterns import NotePattern
+from src.note_gen.models.rhythm import RhythmPattern
 from src.note_gen.models.patterns import (
-    RhythmPattern,
+    NotePattern,
     RhythmPatternData,
     RhythmNote
 )

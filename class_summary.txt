@@ -53,7 +53,7 @@
   - `MAJOR_7 = "maj7"`
   - `MINOR_7 = "m7"`
   - `DIMINISHED_7 = "dim7"`
-  - `HALF_DIMINISHED_7 = "m7b5"`
+  - `HALF_DIMINISHED_SEVENTH = "m7b5"`
   - `AUGMENTED_7 = "aug7"`
   - `MAJOR_9 = "maj9"`
   - `MINOR_9 = "m9"`

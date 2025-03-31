@@ -33,7 +33,7 @@ class RateLimiter:
         request_count = len(self.requests[client_id])
         
         # Check if we're over the limit
-        if request_count > RATE_LIMIT:
+        if request_count > RATE_LIMIT["times"]:
             return True, request_count
             
         return False, request_count
@@ -60,7 +60,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 }
             )
 
-        client_id = request.client.host
+        # Safely get client IP address
+        client_id = request.client.host if request.client else "unknown"
         is_limited, count = rate_limiter.is_rate_limited(client_id)
         
         if is_limited:

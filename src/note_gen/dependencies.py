@@ -1,19 +1,12 @@
-"""
-Database dependencies for FastAPI.
-"""
-
-import logging
+"""FastAPI dependencies."""
 from typing import AsyncGenerator
+from fastapi import Depends
 from motor.motor_asyncio import AsyncIOMotorDatabase
-from .database.db import get_db_conn, close_mongo_connection
 
-logger = logging.getLogger(__name__)
+# Use consistent import style
+from note_gen.database.db import get_db_conn, close_mongo_connection
 
-async def get_db() -> AsyncGenerator[AsyncIOMotorDatabase, None]:
-    """Get database connection."""
-    logger.debug("Getting database connection with current event loop")
-    db = await get_db_conn()
-    try:
+async def get_database() -> AsyncGenerator[AsyncIOMotorDatabase, None]:
+    """Get database connection dependency."""
+    async for db in get_db_conn():
         yield db
-    finally:
-        await close_mongo_connection()

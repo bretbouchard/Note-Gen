@@ -1,59 +1,135 @@
-"""Type-safe accessors for enums and constants."""
-from typing import List, Tuple, Optional
-from .enums import (
-    ScaleType, 
-    ChordQuality,
-    TimeSignatureType
-)
-from .constants import (
+"""Core accessors for musical elements."""
+from typing import Dict, List, Optional, Tuple
+from src.note_gen.core.constants import (
+    NOTES,
+    NOTE_TO_SEMITONE,
     SCALE_INTERVALS,
-    VALID_KEYS,
-    COMMON_TIME_SIGNATURES,
-    COLLECTION_NAMES,
-    NOTE_PATTERNS,
-    RHYTHM_PATTERNS,
-    DEFAULT_KEY,
-    DEFAULT_SCALE_TYPE,
-    COMMON_PROGRESSIONS
+    DEFAULTS,
+    MIDI_MIDDLE_C
 )
+from src.note_gen.core.enums import ScaleType
+
+class NoteAccessor:
+    """Accessor for note-related operations."""
+    
+    @staticmethod
+    def get_note_semitone(note_name: str) -> int:
+        """Get semitone value for a note name."""
+        return NOTE_TO_SEMITONE[note_name]
+
+    @staticmethod
+    def get_notes() -> List[str]:
+        """Get list of valid note names."""
+        return NOTES.copy()
+
+    @staticmethod
+    def validate_note_name(note_name: str) -> bool:
+        """Validate if a note name is valid."""
+        return note_name in NOTES
+
+    @staticmethod
+    def normalize_note_name(note_name: str) -> str:
+        """
+        Normalize a note name to standard format.
+        
+        Args:
+            note_name: Note name to normalize (e.g., 'C', 'C#', 'Db')
+            
+        Returns:
+            Normalized note name
+            
+        Raises:
+            ValueError: If note name is invalid
+        """
+        if not note_name:
+            raise ValueError("Note name cannot be empty")
+            
+        # Remove any whitespace and capitalize
+        normalized = note_name.strip().upper()
+        
+        # Check if the normalized note is in NOTES or is a flat equivalent
+        if normalized not in NOTES and normalized not in NOTE_TO_SEMITONE:
+            raise ValueError(f"Invalid note name: {note_name}")
+            
+        return normalized
+
+    @staticmethod
+    def get_midi_number(note_name: str, octave: int) -> int:
+        """
+        Convert note name and octave to MIDI number.
+        
+        Args:
+            note_name: Note name (e.g., 'C', 'C#')
+            octave: Octave number
+            
+        Returns:
+            MIDI note number
+            
+        Raises:
+            ValueError: If note name or octave is invalid
+        """
+        normalized_note = NoteAccessor.normalize_note_name(note_name)
+        semitone = NoteAccessor.get_note_semitone(normalized_note)
+        
+        if not isinstance(octave, int):
+            raise ValueError("Octave must be an integer")
+        
+        if not (0 <= octave <= 8):
+            raise ValueError("Octave must be between 0 and 8")
+        
+        # MIDI note number calculation: (octave + 1) * 12 + semitone
+        midi_number = (octave + 1) * 12 + semitone
+        
+        return midi_number
+
+class ScaleDegreeAccessor:
+    """Accessor for scale degree operations."""
+    
+    @staticmethod
+    def get_scale_degree(degree: int, scale_type: ScaleType) -> int:
+        """Get semitone value for a scale degree in a given scale."""
+        intervals = SCALE_INTERVALS[scale_type]
+        return intervals[degree - 1] if 1 <= degree <= len(intervals) else 0
+
+    @staticmethod
+    def validate_degree(degree: int, scale_type: ScaleType) -> bool:
+        """Validate if a scale degree is valid for the given scale type."""
+        return 1 <= degree <= len(SCALE_INTERVALS[scale_type])
 
 class ScaleAccessor:
+    """Accessor for scale-related operations."""
+    
     @staticmethod
-    def get_intervals(scale_type: ScaleType) -> Tuple[int, ...]:
+    def get_scale_intervals(scale_type: ScaleType) -> Tuple[int, ...]:
         """Get intervals for a scale type."""
         return SCALE_INTERVALS[scale_type]
 
     @staticmethod
-    def is_valid_scale(scale_type: str) -> bool:
-        """Check if a scale type is valid."""
-        return scale_type in ScaleType.__members__
+    def get_scale_notes(root: str, scale_type: ScaleType) -> List[str]:
+        """Get notes in a scale."""
+        intervals = SCALE_INTERVALS[scale_type]
+        root_semitone = NOTE_TO_SEMITONE[root]
+        scale_notes = []
+        
+        for interval in intervals:
+            semitone = (root_semitone + interval) % 12
+            note = [n for n, s in NOTE_TO_SEMITONE.items() if s == semitone][0]
+            scale_notes.append(note)
+            
+        return scale_notes
 
 class MusicTheoryAccessor:
+    """Accessor for general music theory operations."""
+    
     @staticmethod
-    def get_valid_keys() -> List[str]:
-        """Get all valid musical keys."""
-        return VALID_KEYS
+    def get_interval(note1: str, note2: str) -> int:
+        """Get interval between two notes in semitones."""
+        semitone1 = NOTE_TO_SEMITONE[note1]
+        semitone2 = NOTE_TO_SEMITONE[note2]
+        return (semitone2 - semitone1) % 12
 
     @staticmethod
-    def get_time_signatures() -> List[str]:
-        """Get all supported time signatures."""
-        return COMMON_TIME_SIGNATURES
-
-class DatabaseAccessor:
-    @staticmethod
-    def get_collection_name(key: str) -> str:
-        """Get collection name by key."""
-        return COLLECTION_NAMES[key]
-
-class ProgressionAccessor:
-    @staticmethod
-    def get_progression(name: str) -> List[str]:
-        """Get a chord progression by name."""
-        if name not in COMMON_PROGRESSIONS:
-            raise ValueError(f"Invalid progression name: {name}")
-        return COMMON_PROGRESSIONS[name]
-
-    @staticmethod
-    def list_progressions() -> List[str]:
-        """List all available progression names."""
-        return list(COMMON_PROGRESSIONS.keys())
+    def is_consonant_interval(interval: int) -> bool:
+        """Check if an interval is consonant."""
+        consonant_intervals = {0, 3, 4, 7, 8, 9}  # Unison, thirds, perfect fourth/fifth, sixths
+        return interval in consonant_intervals

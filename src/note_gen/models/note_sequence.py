@@ -1,70 +1,28 @@
-"""Note sequence model with updated imports."""
-
-from typing import List, Optional
-from pydantic import BaseModel, Field, ConfigDict
-
-from src.note_gen.core.enums import ScaleType
+"""Models for note sequences."""
+from typing import Dict, Any, List, Optional
+from pydantic import BaseModel
+from .scale_info import ScaleInfo
 from src.note_gen.models.note import Note
-from src.note_gen.models.scale_info import ScaleInfo
-from src.note_gen.core.accessors import ScaleAccessor
-
-class NoteSequenceCreate(BaseModel):
-    """Model for creating a new note sequence."""
-    model_config = ConfigDict(
-        json_schema_extra={
-            "example": {
-                "progression_name": "I-IV-V",
-                "note_pattern_name": "ascending_scale",
-                "rhythm_pattern_name": "basic_quarter_notes",
-                "scale_info": {
-                    "root": {
-                        "note_name": "C",
-                        "octave": 4,
-                        "duration": 1.0,
-                        "velocity": 64
-                    },
-                    "scale_type": "MAJOR"
-                }
-            }
-        }
-    )
-
-    progression_name: str = Field(..., description="Name of the chord progression to use")
-    note_pattern_name: str = Field(..., description="Name of the note pattern to use")
-    rhythm_pattern_name: str = Field(..., description="Name of the rhythm pattern to use")
-    scale_info: ScaleInfo = Field(..., description="Scale information for the sequence")
+from src.note_gen.validation.musical_validation import validate_note_sequence
+from src.note_gen.core.enums import ValidationLevel
 
 class NoteSequence(BaseModel):
-    """Model representing a sequence of notes."""
-    model_config = ConfigDict(
-        json_schema_extra={
-            "example": {
-                "notes": [
-                    {
-                        "note_name": "C",
-                        "octave": 4,
-                        "duration": 1.0,
-                        "velocity": 64
-                    }
-                ],
-                "scale_info": {
-                    "root": {
-                        "note_name": "C",
-                        "octave": 4,
-                        "duration": 1.0,
-                        "velocity": 64
-                    },
-                    "scale_type": "MAJOR"
-                },
-                "progression_name": "I-IV-V",
-                "note_pattern_name": "ascending_scale",
-                "rhythm_pattern_name": "basic_quarter_notes"
-            }
-        }
-    )
+    notes: List[Note]
+    metadata: Dict[str, Any] = {}
+    scale_info: Optional[ScaleInfo] = None
+    progression_name: Optional[str] = None
+    note_pattern_name: Optional[str] = None
+    rhythm_pattern_name: Optional[str] = None
 
-    notes: List[Note] = Field(default_factory=list, description="List of notes in the sequence")
-    scale_info: ScaleInfo = Field(..., description="Scale information for the sequence")
-    progression_name: Optional[str] = Field(None, description="Name of the chord progression used")
-    note_pattern_name: Optional[str] = Field(None, description="Name of the note pattern used")
-    rhythm_pattern_name: Optional[str] = Field(None, description="Name of the rhythm pattern used")
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'NoteSequence':
+        """Create a NoteSequence from a dictionary."""
+        # Convert dictionary notes to Note objects
+        notes = [Note(**note_data) if isinstance(note_data, dict) else note_data 
+                for note_data in data.get('notes', [])]
+        return cls(notes)
+
+    def validate(self, level: ValidationLevel = ValidationLevel.NORMAL) -> bool:
+        """Validate the note sequence."""
+        # Pass the list of notes, not the dictionary
+        return validate_note_sequence(self.notes, level).is_valid

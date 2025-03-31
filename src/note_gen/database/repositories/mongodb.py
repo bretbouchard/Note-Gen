@@ -1,36 +1,45 @@
-"""MongoDB repository implementation."""
-from typing import Any, Dict, List, Optional, TypeVar, Generic
+"""Base MongoDB repository implementation."""
+from typing import Generic, TypeVar, Dict, Any, Optional, List
 from motor.motor_asyncio import AsyncIOMotorCollection
-from src.note_gen.database.repositories.base import BaseRepository
+from pydantic import BaseModel
 
-T = TypeVar('T')
+T = TypeVar('T', bound=BaseModel)
 
-class MongoDBRepository(BaseRepository[T], Generic[T]):
-    def __init__(self, collection: AsyncIOMotorCollection):
+class MongoDBRepository(Generic[T]):
+    """Base repository for MongoDB operations."""
+    
+    def __init__(self, collection: AsyncIOMotorCollection[Dict[str, Any]]) -> None:
+        """Initialize repository with collection."""
         self.collection = collection
+        self._model_class: type[T]
 
-    async def find_one(self, query: Dict[str, Any]) -> Optional[T]:
-        """Find a single document."""
-        result = await self.collection.find_one(query)
-        return self.model_class(**result) if result else None
+    async def find_one(self, filter_dict: Dict[str, Any]) -> Optional[T]:
+        """Find single document by filter."""
+        doc = await self.collection.find_one(filter_dict)
+        return self._convert_to_model(doc) if doc else None
 
-    async def find_many(self, query: Dict[str, Any]) -> List[T]:
-        """Find multiple documents."""
-        cursor = self.collection.find(query)
-        results = await cursor.to_list(length=None)
-        return [self.model_class(**doc) for doc in results]
+    async def find_many(self, filter_dict: Dict[str, Any]) -> List[T]:
+        """Find multiple documents by filter."""
+        cursor = self.collection.find(filter_dict)
+        documents = await cursor.to_list(None)
+        return [self._convert_to_model(doc) for doc in documents]
 
-    async def insert_one(self, document: T) -> str:
-        """Insert a single document."""
-        result = await self.collection.insert_one(document.dict())
+    async def create(self, model: T) -> str:
+        """Create new document."""
+        doc = model.model_dump(exclude_unset=True)
+        result = await self.collection.insert_one(doc)
         return str(result.inserted_id)
 
-    async def update_one(self, query: Dict[str, Any], update: Dict[str, Any]) -> bool:
-        """Update a single document."""
-        result = await self.collection.update_one(query, {"$set": update})
-        return result.modified_count > 0
+    async def update(self, id: str, model: T) -> Optional[T]:
+        """Update document by ID."""
+        doc = model.model_dump(exclude_unset=True)
+        result = await self.collection.find_one_and_update(
+            {"_id": id},
+            {"$set": doc},
+            return_document=True
+        )
+        return self._convert_to_model(result) if result else None
 
-    async def delete_one(self, query: Dict[str, Any]) -> bool:
-        """Delete a single document."""
-        result = await self.collection.delete_one(query)
-        return result.deleted_count > 0
+    def _convert_to_model(self, doc: Dict[str, Any]) -> T:
+        """Convert dictionary to model instance."""
+        return self._model_class(**doc)

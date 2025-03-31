@@ -1,7 +1,7 @@
 import pytest
 import pytest_asyncio
 import httpx
-from main import app
+from src.note_gen.main import app
 import asyncio
 import logging
 from httpx import ASGITransport

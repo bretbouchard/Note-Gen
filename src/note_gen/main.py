@@ -1,11 +1,15 @@
-from fastapi import FastAPI, Request
+"""Main FastAPI application."""
+from fastapi import FastAPI
+from src.note_gen.routers.router import router  # Use relative import
 
-app = FastAPI()
+app = FastAPI(
+    title="Note Generator API",
+    description="API for generating musical patterns and sequences",
+    version="1.0.0"
+)
 
-@app.get("/test")
-async def test_endpoint():
-    return {"status": "ok"}
+app.include_router(router, prefix="/api/v1")
 
-@app.post("/test")
-async def test_post_endpoint(request: Request):
-    return {"status": "ok"}
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -1,46 +1,78 @@
 """Module for note event models."""
 
 import logging
-from pydantic import BaseModel, field_validator, Field, ConfigDict
 from typing import Union, Any, Dict
+from pydantic import Field, field_validator, ConfigDict
 
 from src.note_gen.models.note import Note
 from src.note_gen.models.chord import Chord
 from src.note_gen.models.scale_degree import ScaleDegree
+from src.note_gen.models.base import BaseModelWithConfig
+from src.note_gen.core.enums import ValidationLevel
+from src.note_gen.validation.base_validation import ValidationResult
+from src.note_gen.validation.validation_manager import ValidationManager
 
 # Set up logging
 logger = logging.getLogger(__name__)
 
 
-class NoteEvent(BaseModel):
+class NoteEvent(BaseModelWithConfig):
     """A musical event with timing information."""
+    
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        validate_assignment=True,
+        frozen=False,
+        json_schema_extra={
+            "example": {
+                "note": "C4",
+                "position": 0.0,
+                "duration": 1.0,
+                "velocity": 100,
+                "channel": 0,
+                "is_rest": False
+            }
+        }
+    )
+
     note: Union[Note, ScaleDegree, Chord]
     position: float = Field(
         default=0.0, 
         ge=0,
-        validation_alias="position"
+        description="Position in beats"
     )
     duration: float = Field(
         default=1.0, 
         gt=0,
-        validation_alias="duration"
+        description="Duration in beats"
     )
     velocity: int = Field(
         default=100, 
         ge=0, 
-        le=127
+        le=127,
+        description="MIDI velocity (0-127)"
     )
-    channel: int = Field(default=0, ge=0, le=15)
-    is_rest: bool = Field(default=False)
+    channel: int = Field(
+        default=0, 
+        ge=0, 
+        le=15,
+        description="MIDI channel (0-15)"
+    )
+    is_rest: bool = Field(
+        default=False,
+        description="Whether this event represents a rest"
+    )
 
     @field_validator('position')
+    @classmethod
     def validate_position(cls, value: float) -> float:
         """Validate position with specific error message."""
         if value < 0:
-            raise ValueError("Position cannot be negative.")
+            raise ValueError("Position cannot be negative")
         return value
 
     @field_validator('duration')
+    @classmethod
     def validate_duration(cls, value: float) -> float:
         """Validate duration with specific error message."""
         if value <= 0:
@@ -48,6 +80,7 @@ class NoteEvent(BaseModel):
         return value
 
     @field_validator('note')
+    @classmethod
     def validate_note(cls, value: Any) -> Union[Note, ScaleDegree, Chord]:
         """Validate that note is of correct type."""
         if not isinstance(value, (Note, ScaleDegree, Chord)):
@@ -73,12 +106,9 @@ class NoteEvent(BaseModel):
                     self.note = transposed_note
                     logger.debug(f"Successfully transposed note to: {self.note}")
             elif isinstance(self.note, Chord):
-                # Transpose each note in the chord
-                transposed_root = self.note.root.transpose(semitones)
-                if transposed_root:
-                    self.note.root = transposed_root
-                    self.note.notes = [note.transpose(semitones) for note in self.note.notes]
-                    logger.debug(f"Successfully transposed chord to: {self.note}")
+                # Create a new transposed chord
+                self.note = self.note.transpose(semitones)
+                logger.debug(f"Successfully transposed chord to: {self.note}")
             else:
                 raise TypeError(f"Cannot transpose note of type: {type(self.note)}")
         except ValueError as e:
@@ -88,7 +118,7 @@ class NoteEvent(BaseModel):
     def to_dict(self) -> Dict[str, Any]:
         """Convert the event to a dictionary."""
         return {
-            "note": self.note.to_dict() if hasattr(self.note, 'to_dict') else str(self.note),
+            "note": self.note.model_dump() if isinstance(self.note, (Note, Chord)) else str(self.note),
             "position": self.position,
             "duration": self.duration,
             "velocity": self.velocity,
@@ -99,6 +129,17 @@ class NoteEvent(BaseModel):
     def __str__(self) -> str:
         return f"NoteEvent(note={self.note}, position={self.position}, duration={self.duration})"
 
-    model_config = ConfigDict(
-        arbitrary_types_allowed=True
-    )
+    def validate_event(self, level: ValidationLevel = ValidationLevel.NORMAL) -> ValidationResult:
+        """Validate note event using validation manager."""
+        return ValidationManager.validate_model(
+            self.__class__,
+            self.model_dump(),
+            level
+        )
+
+    @classmethod
+    def validate_event_data(cls, data: Dict[str, Any], level: ValidationLevel = ValidationLevel.NORMAL) -> ValidationResult:
+        """Validate raw note event data."""
+        return ValidationManager.validate_model(cls, data, level)
+
+

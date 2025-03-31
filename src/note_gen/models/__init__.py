@@ -1,13 +1,20 @@
-"""Models package initialization."""
-
-from .note import Note
-from .rhythm_note import RhythmNote
-from .chord_progression import ChordProgression
+"""Models package."""
 from .base import BaseModelWithConfig
+from .chord import Chord
+from .note import Note
+from .patterns import Pattern, NotePattern, ChordProgressionPattern
+from .rhythm_note import RhythmNote
+from .rhythm import RhythmPattern
+from .scale_info import ScaleInfo
 
 __all__ = [
-    'Note',
-    'RhythmNote',
-    'ChordProgression',
     'BaseModelWithConfig',
+    'Chord',
+    'Note',
+    'Pattern',
+    'NotePattern',
+    'RhythmPattern',
+    'RhythmNote',
+    'ChordProgressionPattern',
+    'ScaleInfo'
 ]

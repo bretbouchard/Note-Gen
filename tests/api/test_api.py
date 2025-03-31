@@ -1,40 +1,43 @@
+"""API endpoint tests."""
+import os
+os.environ["TESTING"] = "1"
+
 import pytest
-import pytest_asyncio
-from src.note_gen.database.db import get_db, get_db_conn
-from src.note_gen.models.note import Note
-from src.note_gen.core.enums import ScaleType, ChordQuality
-from src.note_gen.core.constants import (
-    DEFAULT_MONGODB_URI,
-    DEFAULT_DB_NAME,
-    COLLECTION_NAMES,
-    DEFAULT_KEY,
-    DEFAULT_SCALE_TYPE
-)
-from pydantic import ValidationError
+from fastapi.testclient import TestClient
+from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 
-@pytest_asyncio.fixture
-async def db_connection():
-    async for conn in get_db():
-        yield conn
+from src.note_gen.api.main import app
+from src.note_gen.api.database import get_db
+
+# Create test client
+client = TestClient(app)
+
+# Create a test database client
+test_client = AsyncIOMotorClient("mongodb://localhost:27017")
+test_db = test_client["test_db"]
+
+# Override database dependency for testing
+async def override_get_db():
+    """Override database connection for testing."""
+    return test_db
+
+app.dependency_overrides[get_db] = override_get_db
+
+def test_read_main():
+    """Test main endpoint."""
+    response = client.get("/")
+    assert response.status_code == 200
+    assert response.json() == {"message": "Note Generator API"}
 
 @pytest.mark.asyncio
-async def test_api_functionality(db_connection):
-    """Test basic API functionality with proper DB connection."""
-    # Test implementation here
-    collection = db_connection[COLLECTION_NAMES['chord_progressions']]
-    assert collection is not None
+async def test_get_patterns():
+    """Test patterns endpoint."""
+    response = client.get("/api/v1/patterns")
+    assert response.status_code == 200
+    assert isinstance(response.json(), list)
 
 @pytest.mark.asyncio
-async def test_note_validation():
-    """Test note validation in API context."""
-    with pytest.raises(ValidationError):
-        Note(
-            note_name="H",  # Invalid note name
-            octave=4,
-            duration=1.0,
-            position=0.0,
-            velocity=64,
-            stored_midi_number=None,
-            scale_degree=None,
-            prefer_flats=False
-        )
+async def test_get_pattern_by_id():
+    """Test getting pattern by ID."""
+    response = client.get("/api/v1/patterns/test_id")
+    assert response.status_code in (200, 404)

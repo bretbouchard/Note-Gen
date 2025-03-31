@@ -1,65 +1,96 @@
-from motor.motor_asyncio import AsyncIOMotorDatabase
-from typing import Generic, TypeVar, Optional, List, Dict, Any
-from .interfaces import Repository
-from .retry import with_retry
-from .validation import DocumentValidator
-from .errors import DatabaseError
+"""MongoDB base repository implementation."""
+from typing import TypeVar, Generic, Dict, Any, List, Optional
+from motor.motor_asyncio import AsyncIOMotorCollection
+from bson import ObjectId
+from pydantic import BaseModel
 
-T = TypeVar('T')
+T = TypeVar('T', bound=BaseModel)
 
-class MongoRepository(Repository[T], Generic[T]):
-    """Enhanced base MongoDB repository implementation."""
+class MongoDBRepository(Generic[T]):
+    """Base MongoDB repository."""
     
-    def __init__(self, database: AsyncIOMotorDatabase, collection_name: str):
-        self.collection = database[collection_name]
-        self.validator = DocumentValidator()
-    
-    @with_retry()
-    async def find_one(self, id: str) -> Optional[T]:
-        doc = await self.collection.find_one({"_id": id})
+    def __init__(self, collection: AsyncIOMotorCollection[Dict[str, Any]]) -> None:
+        """Initialize MongoDB repository.
+        
+        Args:
+            collection: MongoDB collection to use
+        """
+        self.collection = collection
+        self._model_class: type[T]
+
+    def _convert_to_model(self, doc: Dict[str, Any]) -> T:
+        """Convert MongoDB document to model instance.
+        
+        Args:
+            doc: MongoDB document
+            
+        Returns:
+            Model instance
+        """
+        if doc is None:
+            raise ValueError("Document cannot be None")
+        return self._model_class(**doc)
+
+    async def find_by_id(self, id: str) -> Optional[T]:
+        """Find document by ID.
+        
+        Args:
+            id: Document ID
+            
+        Returns:
+            Model instance if found, None otherwise
+        """
+        doc = await self.collection.find_one({"_id": ObjectId(id)})
         return self._convert_to_model(doc) if doc else None
-    
-    @with_retry()
-    async def find_many(self, filter_dict: Dict[str, Any]) -> List[T]:
-        cursor = self.collection.find(filter_dict)
-        documents = await cursor.to_list(length=None)
+
+    async def find_all(self) -> List[T]:
+        """Find all documents.
+        
+        Returns:
+            List of model instances
+        """
+        cursor = self.collection.find()
+        documents = await cursor.to_list(None)
         return [self._convert_to_model(doc) for doc in documents]
-    
-    @with_retry()
-    async def create(self, document: T) -> T:
-        doc_dict = self._convert_to_dict(document)
-        # Validate before insertion
-        self.validator.validate_document(type(document), doc_dict)
-        result = await self.collection.insert_one(doc_dict)
-        return document
-    
-    @with_retry()
-    async def update(self, id: str, document: T) -> Optional[T]:
-        doc_dict = self._convert_to_dict(document)
-        # Validate before update
-        self.validator.validate_document(type(document), doc_dict)
-        result = await self.collection.replace_one({"_id": id}, doc_dict)
-        return document if result.modified_count > 0 else None
-    
-    @with_retry()
+
+    async def insert(self, model: T) -> str:
+        """Insert new document.
+        
+        Args:
+            model: Model instance to insert
+            
+        Returns:
+            Inserted document ID
+        """
+        doc = model.model_dump(exclude_unset=True)
+        result = await self.collection.insert_one(doc)
+        return str(result.inserted_id)
+
+    async def update(self, id: str, model: T) -> bool:
+        """Update existing document.
+        
+        Args:
+            id: Document ID
+            model: Updated model instance
+            
+        Returns:
+            True if document was updated, False otherwise
+        """
+        doc = model.model_dump(exclude_unset=True)
+        result = await self.collection.update_one(
+            {"_id": ObjectId(id)},
+            {"$set": doc}
+        )
+        return result.modified_count > 0
+
     async def delete(self, id: str) -> bool:
-        result = await self.collection.delete_one({"_id": id})
+        """Delete document by ID.
+        
+        Args:
+            id: Document ID
+            
+        Returns:
+            True if document was deleted, False otherwise
+        """
+        result = await self.collection.delete_one({"_id": ObjectId(id)})
         return result.deleted_count > 0
-    
-    async def update_many(self, filter_dict: Dict[str, Any], update_dict: Dict[str, Any]) -> int:
-        # Validate update operations
-        validated_update = self.validator.validate_update(self._get_model_class(), update_dict)
-        result = await self.collection.update_many(filter_dict, validated_update)
-        return result.modified_count
-    
-    def _get_model_class(self) -> type:
-        """Get the model class for this repository."""
-        raise NotImplementedError
-    
-    def _convert_to_model(self, doc: Dict) -> T:
-        """Override in concrete repositories to convert dict to model."""
-        raise NotImplementedError
-    
-    def _convert_to_dict(self, model: T) -> Dict:
-        """Override in concrete repositories to convert model to dict."""
-        raise NotImplementedError

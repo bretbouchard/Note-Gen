@@ -1,7 +1,11 @@
 # scripts/cleanup_patterns.py
-from motor.motor_asyncio import AsyncIOMotorClient
+from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 from typing import Dict, Any
 import asyncio
+from src.note_gen.services.pattern_validator import PatternValidator
+from src.note_gen.models.patterns import NotePattern
+from src.note_gen.core.enums import ValidationLevel
+from pydantic import ValidationError
 
 
 # [Note and RhythmNote classes remain unchanged]
@@ -95,6 +99,31 @@ def validate_chord_progression(progression: Dict[str, Any]) -> bool:
         return False
     return True
 
+async def validate_and_clean_patterns(db: AsyncIOMotorDatabase) -> None:
+    """Validate and clean up patterns in the database."""
+    validator = PatternValidator()
+    
+    async for doc in db.note_patterns.find({}):
+        try:
+            # Convert to NotePattern model
+            pattern = NotePattern.model_validate(doc)
+            
+            # Validate with lenient rules first
+            validator.validate_pattern(
+                pattern,
+                validation_level=ValidationLevel.LENIENT
+            )
+            
+            # Update the document with cleaned data
+            await db.note_patterns.update_one(
+                {'_id': doc['_id']},
+                {'$set': pattern.model_dump(exclude_unset=True)}
+            )
+            
+        except ValidationError as e:
+            print(f"Removing invalid pattern {doc.get('name', 'unnamed')}: {e}")
+            await db.note_patterns.delete_one({'_id': doc['_id']})
+
 async def cleanup_database() -> None:
     """Clean up invalid patterns in the database using async operations."""
     client = AsyncIOMotorClient('mongodb://localhost:27017/')
@@ -109,10 +138,7 @@ async def cleanup_database() -> None:
         print(f"Removed {result.deleted_count} rhythm patterns without IDs")
 
         # Clean up note patterns
-        async for pattern in db.note_patterns.find({}):
-            if not validate_note_pattern(pattern):
-                await db.note_patterns.delete_one({'_id': pattern['_id']})
-                print(f"Deleted invalid note pattern: {pattern.get('name', 'unnamed')}")
+        await validate_and_clean_patterns(db.note_patterns)
         
         # Clean up rhythm patterns
         async for pattern in db.rhythm_patterns.find({}):

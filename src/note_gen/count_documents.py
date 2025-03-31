@@ -1,3 +1,4 @@
+import asyncio
 from motor.motor_asyncio import AsyncIOMotorClient
 from src.note_gen.core.constants import (
     DEFAULT_MONGODB_URI,

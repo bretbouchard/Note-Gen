@@ -1,27 +1,16 @@
-"""
-User model for the application.
-"""
-from typing import Optional
+"""User model for authentication and authorization."""
 from pydantic import BaseModel, Field, ConfigDict
+from typing import Optional
 
 class User(BaseModel):
-    """User model."""
     model_config = ConfigDict(
-        populate_by_name=True,
-        json_schema_extra={
-            "example": {
-                "username": "johndoe",
-                "email": "john.doe@example.com",
-                "first_name": "John",
-                "last_name": "Doe",
-                "is_active": True
-            }
-        }
+        from_attributes=True,
+        validate_assignment=True,
+        str_strip_whitespace=True
     )
-
-    id: Optional[str] = Field(None, alias="_id")
-    username: str
-    email: str
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
+    id: Optional[str] = None
+    username: str = Field(..., min_length=3, max_length=50)
+    email: str = Field(..., pattern=r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$")
+    hashed_password: str
     is_active: bool = True
+    is_superuser: bool = False

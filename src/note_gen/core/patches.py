@@ -13,7 +13,8 @@ from pydantic import BaseModel
 # Define the model_rebuild function to be added to BaseModel
 def model_rebuild_patch(
     cls: Type[Any], 
-    *args: Any, 
+    /, # Make cls positional-only
+    *args: Any,
     **kwargs: Any
 ) -> bool:
     """

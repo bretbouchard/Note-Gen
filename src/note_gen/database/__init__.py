@@ -1,22 +1,11 @@
-"""Database package initialization."""
-from .db import (
-    get_db_conn,
-    close_mongo_connection,
-    AsyncDBConnection,
-    get_db,
-    init_db,
-    get_database,
-    MONGODB_URI,
-    DATABASE_NAME
-)
+"""Database initialization module."""
+from motor.motor_asyncio import AsyncIOMotorClient
+from src.note_gen.core.constants import DATABASE
 
-__all__ = [
-    'get_db_conn',
-    'close_mongo_connection',
-    'AsyncDBConnection',
-    'get_db',
-    'init_db',
-    'get_database',
-    'MONGODB_URI',
-    'DATABASE_NAME'
-]
+# Initialize the MongoDB client
+client = AsyncIOMotorClient(DATABASE["uri"])
+db = client[DATABASE["name"]]
+
+async def get_database():
+    """Get the database instance."""
+    return db

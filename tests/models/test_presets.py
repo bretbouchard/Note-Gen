@@ -1,56 +1,49 @@
-import pytest
-from unittest.mock import patch
-from src.note_gen.models.rhythm import RhythmPattern
-from src.note_gen.models.presets import Presets, Patterns
-from src.note_gen.models.roman_numeral import RomanNumeral
-from src.note_gen.models.patterns import COMMON_PROGRESSIONS, NOTE_PATTERNS, ValidationError, RhythmPatternData
-from src.note_gen.core.enums import ScaleType
-from pydantic import BaseModel, ConfigDict
+import unittest
+from typing import Dict, Any
+from src.note_gen.models.patterns import NotePattern, NotePatternData
+from src.note_gen.core.constants import NOTE_PATTERNS
+from src.note_gen.core.enums import PatternDirection, ScaleType
 
-@patch('src.note_gen.models.presets.Presets.load')
-def test_preset_initialization(mock_load) -> None:
-    mock_load.return_value = [Presets()]
-    presets = Presets.load()[0]
-    
-    # Verify default patterns are initialized
-    assert isinstance(presets.patterns, Patterns)
-    assert 'Simple Triad' in presets.patterns.note_patterns
-    assert 'basic_4_4' in presets.patterns.rhythm_patterns
-    
-    # Verify RhythmPattern initialization
-    rhythm_pattern = presets.patterns.rhythm_patterns['basic_4_4']
-    assert rhythm_pattern.pattern == '1 1 1 1'
-    assert rhythm_pattern.data is not None
-    
-    # Verify NotePattern initialization
-    note_pattern = presets.patterns.note_patterns['Simple Triad']
-    assert note_pattern.intervals == [0, 4, 7]
-    assert note_pattern.data.scale_type == ScaleType.MAJOR
-    assert note_pattern.data.root_note == "C"
-    assert note_pattern.data.octave_range == [4, 5]
-    assert note_pattern.data.max_interval_jump == 12
-    assert note_pattern.data.allow_chromatic == False
-    assert note_pattern.data.direction == "up"
-    
-    # Test invalid pattern - should fail validation
-    with pytest.raises(ValidationError):
-        RhythmPattern(
-            name='invalid',
-            pattern=[],  # Empty list should trigger validation error
-            time_signature="4/4",
-            description='Test description',
-            complexity=0.5,
-            data={}
-        )
+class TestPresets(unittest.TestCase):
+    def setUp(self):
+        self.test_patterns = NOTE_PATTERNS
+        self.test_pattern_name = "basic_scale"
+        
+    def test_pattern_structure(self):
+        """Test that pattern presets have the required structure."""
+        # Check if patterns exist
+        self.assertIsInstance(self.test_patterns, dict)
+        self.assertGreater(len(self.test_patterns), 0)
+        
+        # Check specific pattern
+        pattern = self.test_patterns[self.test_pattern_name]
+        self.assertIsInstance(pattern, dict)
+        self.assertIn('intervals', pattern)
+        self.assertIsInstance(pattern['intervals'], list)
+        
+        # Create pattern from preset
+        note_pattern = NotePattern.from_preset(self.test_pattern_name)
+        
+        # Validate pattern structure
+        self.assertIsInstance(note_pattern, NotePattern)
+        self.assertEqual(note_pattern.name, self.test_pattern_name)
+        self.assertIsInstance(note_pattern.data, NotePatternData)
+        self.assertEqual(note_pattern.data.intervals, pattern['intervals'])
+        
+        # Validate initial note
+        self.assertGreaterEqual(len(note_pattern.pattern), 1)
+        self.assertEqual(note_pattern.pattern[0].pitch, 'C')  # Check pitch instead of note_name
+        self.assertEqual(note_pattern.pattern[0].octave, 4)   # Check octave separately
 
-@patch('src.note_gen.models.presets.Presets.load')
-def test_load_presets(mock_load) -> None:
-    mock_load.return_value = Presets(
-        default_key='C',
-        default_scale_type=ScaleType.MAJOR
-    )
-    presets = Presets.load()
-    assert len(presets) > 0
-    for preset in presets:
-        assert isinstance(preset, Presets)
-        assert preset.common_progressions == COMMON_PROGRESSIONS
+    def test_pattern_creation(self):
+        """Test creating patterns from presets."""
+        pattern = NotePattern.from_preset(self.test_pattern_name)
+        self.assertIsInstance(pattern, NotePattern)
+        self.assertIsInstance(pattern.data, NotePatternData)
+        self.assertEqual(pattern.name, self.test_pattern_name)
+        self.assertGreaterEqual(len(pattern.pattern), 1)
+
+    def test_invalid_preset(self):
+        """Test handling of invalid preset names."""
+        with self.assertRaises(ValueError):
+            NotePattern.from_preset("nonexistent_pattern")

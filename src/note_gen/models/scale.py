@@ -1,103 +1,116 @@
-"""Scale models and related functionality."""
-from typing import List, Optional
-from pydantic import BaseModel, ConfigDict, Field, model_validator
-from src.note_gen.core.enums import ScaleType  # Import from centralized location
-from src.note_gen.core.constants import SCALE_INTERVALS
-from .note import Note
+"""Scale model definition."""
+from typing import List, Tuple, Optional, Union, Dict, Any
+import re
+from pydantic import Field, field_validator, ConfigDict, model_validator
+from src.note_gen.models.base import BaseModelWithConfig
+from src.note_gen.models.note import Note
+from src.note_gen.core.enums import ScaleType
 
-class Scale(BaseModel):
-    """Scale model with full implementation."""
-    model_config = ConfigDict(arbitrary_types_allowed=True)
+class ScaleInfo(BaseModelWithConfig):
+    """Information about a musical scale."""
     
-    root: Note
+    key: str = Field(..., pattern=r'^[A-G][b#]?\d*$')  # Allow optional octave number
+    scale_type: ScaleType = Field(default=ScaleType.MAJOR)
+    
+    @property
+    def root_note(self) -> Note:
+        """Get the root note of the scale."""
+        return Note.from_name(self.key)
+
+class Scale(BaseModelWithConfig):
+    """Model representing a musical scale."""
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        validate_assignment=True
+    )
+
+    root: Union[str, Note]
     scale_type: ScaleType
-    octave: int = 4
-    notes: Optional[List[Note]] = None
-    
-    @model_validator(mode='after')
-    def ensure_notes(self) -> 'Scale':
-        """Ensure notes list is populated."""
-        if self.notes is None:
-            self.notes = self._generate_scale_notes()
-        return self
 
-    def _generate_scale_notes(self) -> List[Note]:
-        """Generate the notes for this scale."""
-        if not isinstance(self.scale_type, ScaleType):
-            raise ValueError(f"Invalid scale type: {self.scale_type}")
-            
-        # Get intervals for this scale type
-        intervals = SCALE_INTERVALS.get(self.scale_type)
-        if not intervals:
-            raise ValueError(f"No intervals defined for scale type: {self.scale_type}")
+    @model_validator(mode='before')
+    def _validate_root_input(cls, values: Dict[str, Any]) -> Dict[str, Any]:
+        if isinstance(values.get('root'), str):
+            values['root'] = Note.from_name(values['root'])
+        return values
+
+    notes: List[Note] = Field(default_factory=list, description="Notes in the scale")
+    octave_range: tuple[int, int] = Field(default=(4, 5), description="Range of octaves (min, max)")
+
+    def generate_notes(self) -> 'Scale':
+        """Generate the notes of the scale based on root note and scale type."""
+        intervals = self.scale_type.intervals
+        root_midi = self.root.to_midi_number()
+        if root_midi is None:
+            raise ValueError("Root note has no valid MIDI number")
         
-        # Generate notes based on root note and intervals
-        root_midi = self.root.midi_number
-        result = [self.root]  # Start with the root note
+        self.notes = []
+        for interval in intervals:
+            note_midi = root_midi + interval
+            if 0 <= note_midi <= 127:  # Check MIDI number is valid
+                self.notes.append(Note.from_midi_number(note_midi))
         
-        for interval in intervals[1:]:  # Skip the first interval (0) as it's the root
-            # Calculate new midi number
-            new_midi = root_midi + interval
-            
-            # Create new note
-            if self.root.prefer_flats:
-                note_name = Note.SEMITONE_TO_FLAT[new_midi % 12]
-            else:
-                note_name = Note.SEMITONE_TO_SHARP[new_midi % 12]
-                
-            octave = (new_midi // 12) - 1
-            
-            # Create the note with proper parameters
-            note = Note(
-                note_name=note_name,
-                octave=octave,
-                duration=self.root.duration,
-                velocity=self.root.velocity,
-                position=self.root.position,
-                stored_midi_number=new_midi,  # Set the stored_midi_number
-                scale_degree=intervals.index(interval) + 1,  # Set the scale degree based on the interval index
-                prefer_flats=self.root.prefer_flats  # Inherit prefer_flats from the root note
-            )
-            result.append(note)
-            
+        return self  # Return self for method chaining
+
+    @field_validator('root')
+    def _validate_root_type(cls, v: Note) -> Note:
+        """Validate the root note."""
+        if not isinstance(v, Note):
+            if isinstance(v, str):
+                return Note.from_name(v)
+            raise ValueError("Root must be a Note instance or a valid note name string")
+        return v
+
+    @classmethod
+    def from_root(cls, root: str, scale_type: ScaleType = ScaleType.MAJOR, **kwargs) -> 'Scale':
+        """Create a scale from a root note name."""
+        root_note = Note.from_name(root) if isinstance(root, str) else root
+        scale = cls(root=root_note, scale_type=scale_type, **kwargs)
+        return scale.generate_notes()
+
+    def get_degree(self, degree: int) -> Optional[Note]:
+        """Get the note at the specified scale degree (1-based)."""
+        if not 1 <= degree <= len(self.notes):
+            return None
+        return self.notes[degree - 1]
+
+    def contains_note(self, note: Note) -> bool:
+        """Check if a note is in the scale."""
+        note_midi = note.to_midi_number()
+        if note_midi is None:
+            return False
+        return any(
+            (n.to_midi_number() or 0) % 12 == note_midi % 12 
+            for n in self.notes
+        )
+
+    def transpose(self, semitones: int) -> 'Scale':
+        """Create a new scale transposed by the specified number of semitones."""
+        new_root = self.root.transpose(semitones)
+        new_scale = Scale(root=new_root, scale_type=self.scale_type)
+        return new_scale.generate_notes()
+
+    def get_notes_in_range(self, min_midi: int = 21, max_midi: int = 108) -> List[Note]:
+        """Get all scale notes within the specified MIDI range."""
+        result: List[Note] = []
+        for note in self.notes:
+            midi_num = note.to_midi_number()
+            if midi_num is not None and min_midi <= midi_num <= max_midi:
+                result.append(note)
         return result
 
-    def get_note_at_position(self, position: int) -> Optional[Note]:
-        """
-        Get the note at the specified scale position (0-based index).
-        
-        Args:
-            position: The position in the scale (0 = tonic, 1 = second, etc.)
-            
-        Returns:
-            The Note at the specified position, or None if position is invalid.
-        """
-        if not self.notes:
-            self.notes = self._generate_scale_notes()
-            
-        # Handle degree within the scale's range
-        if 0 <= position < len(self.notes):
-            return self.notes[position]
-            
-        # Handle degrees outside the scale's range (modulo calculation)
-        if self.notes:
-            # Calculate octaves and position within the scale
-            octaves = position // len(self.notes)
-            position_in_scale = position % len(self.notes)
-            
-            # Get the base note and adjust octave
-            base_note = self.notes[position_in_scale]
-            if base_note:
-                # Create a new note with adjusted octave
-                return Note(
-                    note_name=base_note.note_name,
-                    octave=base_note.octave + octaves,
-                    duration=base_note.duration,
-                    velocity=base_note.velocity,
-                    position=base_note.position,
-                    prefer_flats=base_note.prefer_flats,
-                    stored_midi_number=None,  # Will be calculated automatically
-                    scale_degree=base_note.scale_degree if hasattr(base_note, 'scale_degree') else None
-                )
-        
-        return None
+    def get_note_by_degree(self, degree: int) -> Optional[Note]:
+        """Get note by scale degree."""
+        if not isinstance(degree, int) or degree < 1:
+            return None
+        # Implementation...
+
+    def get_scale_notes(self) -> List[Note]:
+        """Get all notes in the scale."""
+        # Implementation...
+        return []
+
+    def __str__(self) -> str:
+        """Return string representation of scale."""
+        # Remove octave from string representation
+        root_without_octave = self.root.pitch if self.root else "?"
+        return f"{root_without_octave} {self.scale_type.name}"

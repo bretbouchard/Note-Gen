@@ -7,17 +7,33 @@ client = TestClient(app)
 
 def test_request_validation():
     """Test request validation middleware."""
+    # Test missing required fields
     response = client.post(
         "/generate/progression",
         json={},
         headers={"content-type": "application/json"}
     )
     assert response.status_code == 422
+    assert "validation error" in response.json()["detail"][0]["msg"].lower()
     
     # Test missing content-type header
     response = client.post("/generate/progression", json={})
     assert response.status_code == 400
     assert "Missing required header" in response.json()["message"]
+    
+    # Test valid request
+    valid_data = {
+        "name": "Test Progression",
+        "key": "C",
+        "scale_type": "MAJOR",
+        "chords": []
+    }
+    response = client.post(
+        "/generate/progression",
+        json=valid_data,
+        headers={"content-type": "application/json"}
+    )
+    assert response.status_code == 200
 
 def test_rate_limiting():
     """Test rate limiting middleware."""

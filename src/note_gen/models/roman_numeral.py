@@ -1,151 +1,127 @@
-from pydantic import BaseModel, Field
-from typing import Dict, Optional, ClassVar, Pattern
-import re
-from src.note_gen.core.enums import ChordQuality  # Updated import
-from src.note_gen.models.scale import Scale
+"""Roman numeral model definition."""
+from enum import Enum
+from typing import Optional, Dict
+from pydantic import BaseModel, Field, ConfigDict
+from src.note_gen.models.chord import ChordQuality
+from src.note_gen.core.constants import (
+    INT_TO_ROMAN,
+    ROMAN_TO_INT,
+    SCALE_DEGREE_QUALITIES,
+    DEFAULT_SCALE_DEGREE_QUALITIES
+)
+from src.note_gen.models.chord import Chord
+
+ROMAN_NUMERAL_PATTERN = r'^[IViv]+$'
 
 class RomanNumeral(BaseModel):
-    numeral: str = Field(...)
-    quality: ChordQuality = Field(default=ChordQuality.MAJOR)
-    inversion: int = Field(default=0)
-    degree: int
+    """Model representing a Roman numeral chord symbol."""
+    model_config = ConfigDict(
+        extra='allow'
+    )
 
-    # Class variables 
-    ROMAN_PATTERN: ClassVar[str] = r'^(b|#)?([ivIV]+)(°|\+|dim|aug|ø7|°7|maj7|m7|7|m)?(\d)?$'
-    ROMAN_TO_INT: ClassVar[Dict[str, int]] = {'i': 1, 'ii': 2, 'iii': 3, 'iv': 4, 'v': 5, 'vi': 6, 'vii': 7}
-    INT_TO_ROMAN: ClassVar[Dict[int, str]] = {v: k for k, v in ROMAN_TO_INT.items()}
-    
+    numeral: str = Field(..., pattern=ROMAN_NUMERAL_PATTERN)
+    quality: Optional[ChordQuality] = None
+    inversion: Optional[int] = Field(default=None, ge=0, le=3)
+    accidental: Optional[str] = Field(default=None, pattern=r'^[b#]?$')
+    secondary: Optional['RomanNumeral'] = None
+
     @classmethod
-    def from_scale_degree(cls, degree: int, quality: ChordQuality = ChordQuality.MAJOR, 
-                         inversion: int = 0) -> 'RomanNumeral':
-        """Create a Roman numeral from a scale degree."""
+    def from_scale_degree(cls, degree: int, is_minor: bool | ChordQuality = False) -> 'RomanNumeral':
+        """
+        Create a RomanNumeral from a scale degree.
+        
+        Args:
+            degree: Scale degree (1-7)
+            is_minor: Either a boolean indicating if the chord is minor,
+                     or a ChordQuality enum value specifying the exact quality
+        
+        Returns:
+            RomanNumeral instance
+        
+        Raises:
+            ValueError: If degree is not between 1 and 7
+        """
         if not 1 <= degree <= 7:
             raise ValueError(f"Scale degree must be between 1 and 7, got {degree}")
         
-        numeral = cls.INT_TO_ROMAN[degree]
+        numeral = INT_TO_ROMAN[degree]
         
-        # Uppercase for major-based qualities
-        if quality in [ChordQuality.MAJOR, ChordQuality.DOMINANT_SEVENTH, 
-                      ChordQuality.MAJOR_SEVENTH, ChordQuality.AUGMENTED]:
-            numeral = numeral.upper()
+        # Handle quality
+        if isinstance(is_minor, ChordQuality):
+            # If explicit ChordQuality is provided, use it directly
+            quality = is_minor
         else:
-            numeral = numeral.lower()
-        
-        # Add quality symbols
-        if quality == ChordQuality.DIMINISHED:
-            numeral = f"{numeral}°"
-        elif quality == ChordQuality.AUGMENTED:
-            numeral = f"{numeral}+"
-        elif quality == ChordQuality.MINOR_SEVENTH:
-            numeral = f"{numeral}7"
-        elif quality == ChordQuality.MAJOR_SEVENTH:
-            numeral = f"{numeral}maj7"
-        elif quality == ChordQuality.DOMINANT_SEVENTH:
-            numeral = f"{numeral}7"
+            # Handle boolean is_minor parameter
+            quality = ChordQuality.MINOR if is_minor else ChordQuality.MAJOR
+            # Only apply default qualities if no explicit quality was provided
+            if degree in DEFAULT_SCALE_DEGREE_QUALITIES:
+                quality = DEFAULT_SCALE_DEGREE_QUALITIES[degree]
         
         return cls(
             numeral=numeral,
             quality=quality,
-            inversion=inversion,
-            degree=degree
+            accidental=None,
+            inversion=None,
+            secondary=None
+        )
+
+    def to_scale_degree(self) -> 'ScaleDegree':
+        """Convert to scale degree."""
+        from src.note_gen.core.constants import ROMAN_TO_INT
+        from src.note_gen.models.scale_degree import ScaleDegree
+        
+        base_degree = ROMAN_TO_INT[self.numeral.upper()]
+        return ScaleDegree(
+            value=base_degree,
+            quality=self.quality
         )
 
     @classmethod
-    def from_roman_numeral(cls, numeral: str) -> 'RomanNumeral':
-        """Parse a Roman numeral string."""
-        match = re.match(cls.ROMAN_PATTERN, numeral, re.IGNORECASE)
+    def from_string(cls, value: str) -> 'RomanNumeral':
+        """Create a RomanNumeral from a string representation."""
+        import re
+        
+        match = re.match(ROMAN_NUMERAL_PATTERN, value)
         if not match:
-            raise ValueError(f"Invalid Roman numeral: {numeral}")
-        
-        accidental, base, quality_str, inversion = match.groups()
-        is_major = base.isupper()
-        
-        quality = ChordQuality.MAJOR if is_major else ChordQuality.MINOR
-        if quality_str:
-            quality = ChordQuality.from_string(quality_str)
+            raise ValueError(f"Invalid Roman numeral format: {value}")
             
-        inv = int(inversion) if inversion else 0
+        accidental, numeral, quality_str, *_ = match.groups()
         
-        degree = cls.ROMAN_TO_INT[base.lower()]
+        # Create base instance
+        instance = cls(
+            numeral=numeral,
+            accidental=accidental if accidental else None
+        )
         
-        return cls(numeral=numeral, quality=quality, inversion=inv, degree=degree)
-
-    @classmethod
-    def from_string(cls, numeral: str) -> "RomanNumeral":
-        """Convert string representation to RomanNumeral."""
-        match = re.match(cls.ROMAN_PATTERN, numeral, re.IGNORECASE)
-        if not match:
-            raise ValueError(f"Invalid Roman numeral: {numeral}")
-        
-        accidental, base, quality_str, inversion = match.groups()
-        is_major = base.isupper()
-        quality = ChordQuality.MAJOR if is_major else ChordQuality.MINOR
-        
+        # Add quality if present
         if quality_str:
             try:
-                quality = ChordQuality.from_string(quality_str)
+                instance.quality = ChordQuality.from_string(quality_str)
             except ValueError:
-                pass  # Keep default quality if conversion fails
+                pass  # Keep default quality if string conversion fails
                 
-        inv = int(inversion) if inversion else 0
-        
-        degree = cls.ROMAN_TO_INT[base.lower()]
-        
-        return cls(
-            numeral=numeral,
-            quality=quality,
-            inversion=inv,
-            degree=degree
-        )
+        return instance
 
-    def to_scale_degree(self) -> int:
-        """Convert Roman numeral to scale degree."""
-        # First validate the entire numeral matches our pattern
-        if not re.match(self.ROMAN_PATTERN, self.numeral, re.IGNORECASE):
-            raise ValueError(f"Invalid Roman numeral format: {self.numeral}")
-        
-        # Extract just the roman numeral part (i, ii, iii, etc.)
-        base = ''.join(c for c in self.numeral.lower() if c in 'iv')
-        
-        # Validate the base numeral is a valid Roman numeral pattern
-        valid_numerals = {'i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii'}
-        if not base or base not in valid_numerals:
-            raise ValueError(f"Invalid Roman numeral: {self.numeral}")
-        
-        # Ensure the base is in our mapping
-        if base not in self.ROMAN_TO_INT:
-            raise ValueError(f"Unsupported Roman numeral: {self.numeral}")
-        
-        return self.ROMAN_TO_INT[base]
+    def __str__(self) -> str:
+        """String representation of the Roman numeral."""
+        parts = []
+        if self.accidental:
+            parts.append(self.accidental)
+        parts.append(self.numeral)
+        if self.quality:
+            parts.append(str(self.quality))
+        if self.inversion is not None and self.inversion > 0:
+            parts.append(f"/{self.inversion}")
+        if self.secondary is not None:
+            parts.append(f"/{str(self.secondary)}")
+        return "".join(parts)
 
+    def to_chord(self) -> Chord:
+        """Convert Roman numeral to a Chord object."""
+        # Implementation...
+        pass
+
+    @property
     def is_minor(self) -> bool:
         """Check if the Roman numeral represents a minor chord."""
-        return self.quality in [ChordQuality.MINOR, ChordQuality.MINOR_SEVENTH]
-    
-    def is_diminished(self) -> bool:
-        """Check if the Roman numeral represents a diminished chord."""
-        return self.quality in [ChordQuality.DIMINISHED, ChordQuality.DIMINISHED_SEVENTH, ChordQuality.HALF_DIMINISHED_SEVENTH]
-    
-    def is_augmented(self) -> bool:
-        """Check if the Roman numeral represents an augmented chord."""
-        return self.quality in [ChordQuality.AUGMENTED, ChordQuality.AUGMENTED_SEVENTH, ChordQuality.AUGMENTED_MAJOR_SEVENTH]
-
-    @classmethod
-    def get_roman_numeral_from_chord(cls, chord, scale) -> 'RomanNumeral':
-        """Get Roman numeral representation of a chord in a given scale."""
-        try:
-            # Get the scale degree of the chord's root note
-            if not hasattr(scale, 'get_degree_of_note'):
-                raise ValueError("Scale must implement get_degree_of_note method")
-            
-            degree = scale.get_degree_of_note(chord.root)
-            if degree is None:
-                raise ValueError(f"Note {chord.root.note_name} not in scale")
-            
-            # Convert degree to int if it's a string
-            if isinstance(degree, str):
-                degree = int(degree)
-            
-            return cls.from_scale_degree(degree, chord.quality, chord.inversion)
-        except Exception as e:
-            raise ValueError(f"Unexpected error processing chord: {str(e)}") from e
+        return self.quality == ChordQuality.MINOR if self.quality else False

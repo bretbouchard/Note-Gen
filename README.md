@@ -104,6 +104,9 @@ Start the FastAPI server:
 uvicorn main:app --reload
 
 PYTHONPATH=src uvicorn main:app --reload
+
+PYTHONPATH=src uvicorn note_gen.main:app --reload
+
 ```
 
 Start the MongoDB database:
@@ -185,3 +188,7 @@ Contributions are welcome! Please feel free to submit a Pull Request. For MAJOR 
 ## License
 
 [MIT](https://choosealicense.com/licenses/mit/)
+
+
+
+@src/note_gen/models/note.py @src/note_gen/models/chord.py @src/note_gen/models/scale.py @src/note_gen/models/scale_info.py @src/note_gen/models/fake_scale_info.py @src/note_gen/models/patterns.py @models/rhythm.py @src/note_gen/core/constants.py @src/note_gen/core/enums.py @src/note_gen/validation/validation_manager.py @src/note_gen/schemas/validation_response.py 

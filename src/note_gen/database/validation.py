@@ -13,7 +13,7 @@ class DocumentValidator:
         try:
             return model_class(**data)
         except ValidationError as e:
-            raise DBValidationError(f"Document validation failed: {str(e)}")
+            raise DBValidationError({"validation_errors": e.errors()})
     
     @staticmethod
     def validate_update(model_class: Type[T], update_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -26,7 +26,9 @@ class DocumentValidator:
                         # Create a partial model with just this field
                         model_class(**{field: value})
                     except ValidationError as e:
-                        raise DBValidationError(
-                            f"Invalid update operation {operator} for field {field}: {str(e)}"
-                        )
+                        raise DBValidationError({
+                            "field": field,
+                            "operator": operator,
+                            "errors": e.errors()
+                        })
         return update_data

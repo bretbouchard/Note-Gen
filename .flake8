@@ -1,4 +1,19 @@
 [flake8]
-max-line-length = 88
-extend-ignore = E203, E266, E501, W503
-exclude = __init__.py, tests/*, src/note_gen/logs/*, src/note_gen/database/*
+# F401: Module imported but unused
+# You can add other error codes you want to ignore, separated by commas
+ignore = F401, E402, E302 , W293, W291, E128, E402, f841
+
+# Maximum line length
+max-line-length = 120
+
+# Exclude patterns for directories
+exclude =
+    .git,
+    __pycache__,
+    build,
+    dist,
+    *.pyc,
+    *.egg-info,
+    .eggs,
+    venv,
+    .venv

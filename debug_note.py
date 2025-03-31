@@ -4,7 +4,7 @@ import traceback
 def test_create_note(note_name, octave):
     print(f"\nTesting Note creation with note_name='{note_name}', octave={octave}")
     try:
-        note = Note(note_name=note_name, octave=octave, duration=1, velocity=64)
+        note = Note(note_name=note_name, octave=octave, duration=1, velocity=64, position=0.0)
         print(f"Success! Created note: {note}")
         return True
     except Exception as e:

@@ -1,4 +1,4 @@
-from typing import List, Type
+from typing import List, Any, Type
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from .base import Migration
 import logging
@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 class MigrationManager:
     """Manages database migrations."""
     
-    def __init__(self, database: AsyncIOMotorDatabase):
+    def __init__(self, database: AsyncIOMotorDatabase[Any]) -> None:
         self.db = database
         self.migrations: List[Type[Migration]] = []
     

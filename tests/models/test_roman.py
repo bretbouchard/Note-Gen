@@ -1,136 +1,158 @@
+"""Tests for RomanNumeral model."""
 import unittest
-
-
-from src.note_gen.models.chord import Chord, ChordQuality
-from src.note_gen.models.note import Note
-from src.note_gen.models.scale import Scale, ScaleType
+from typing import List, Optional
 from src.note_gen.models.roman_numeral import RomanNumeral
-from unittest.mock import patch
-
-
-class FakeScale(Scale):
-    def __init__(self, root: Note, scale_type: ScaleType):
-        super().__init__(root=root, scale_type=scale_type)
-
-    def get_degree_of_note(self, note: Note) -> int:
-        note_to_degree = {"C": 1, "D": 2, "E": 3, "F": 4, "G": 5, "A": 6, "B": 7}
-        if note.note_name not in note_to_degree:
-            raise ValueError(f"Note {note.note_name} not in scale.")
-        return note_to_degree[note.note_name]
-
-    def get_notes(self):
-        return [Note(note_name=name, octave=4, duration=1, velocity=100) for name in ["C", "D", "E", "F", "G", "A", "B"]]
-
+from src.note_gen.core.enums import ChordQuality, ValidationLevel
+from src.note_gen.core.constants import (
+    ROMAN_TO_INT,
+    INT_TO_ROMAN,
+    ROMAN_QUALITY_MAP,
+    DEFAULT_SCALE_DEGREE_QUALITIES
+)
+from src.note_gen.core.accessors import ScaleDegreeAccessor
+from src.note_gen.validation.roman_numeral_validation import validate_roman_numeral_data
 
 class TestRomanNumeral(unittest.TestCase):
+    """Test cases for RomanNumeral class."""
+
     def setUp(self):
-        self.scale = FakeScale(
-            root=Note(note_name="C", octave=4, duration=1, velocity=100),
-            scale_type=ScaleType.MAJOR
-        )
+        """Set up test cases."""
+        self.valid_roman = RomanNumeral.model_validate({
+            "numeral": "V",
+            "quality": ChordQuality.MAJOR,
+            "accidental": None,
+            "inversion": None,
+            "secondary": None
+        })
+        
+    def test_basic_creation(self):
+        """Test basic roman numeral creation."""
+        roman = RomanNumeral.model_validate({
+            "numeral": "V",
+            "quality": ChordQuality.MAJOR,
+            "accidental": None,
+            "inversion": None,
+            "secondary": None
+        })
+        self.assertEqual(roman.numeral, "V")
+        self.assertEqual(roman.quality, ChordQuality.MAJOR)
+        self.assertIsNone(roman.inversion)
+        self.assertIsNone(roman.accidental)
 
-    def test_get_roman_numeral_from_chord_MAJOR(self) -> None:
-        chord = Chord(
-            root=Note(note_name="C", octave=4, duration=1, velocity=100),
-            quality=ChordQuality.MAJOR
-        )
-        result = RomanNumeral.get_roman_numeral_from_chord(chord, self.scale)
-        self.assertEqual(result.numeral, "I")
-        self.assertEqual(result.quality, ChordQuality.MAJOR)
-
-    def test_from_scale_degree_MINOR(self) -> None:
-        for degree, expected in [(1, "i"), (2, "ii"), (3, "iii"), (4, "iv"), (5, "v"), (6, "vi"), (7, "vii")]:
-            with self.subTest(degree=degree):
-                numeral = RomanNumeral.from_scale_degree(degree, ChordQuality.MINOR)
-                self.assertEqual(numeral.numeral.lower(), expected)
-                self.assertEqual(numeral.quality, ChordQuality.MINOR)
-
-    def test_from_scale_degree_diminished(self) -> None:
-        numeral = RomanNumeral.from_scale_degree(3, ChordQuality.DIMINISHED)
-        self.assertEqual(numeral.numeral, "iii°")
-        self.assertEqual(numeral.quality, ChordQuality.DIMINISHED)
-
-    def test_from_scale_degree_augmented(self) -> None:
-        numeral = RomanNumeral.from_scale_degree(4, ChordQuality.AUGMENTED)
-        self.assertEqual(numeral.numeral, "IV+")
-        self.assertEqual(numeral.quality, ChordQuality.AUGMENTED)
-
-    def test_from_scale_degree_MINOR_7(self) -> None:
-        numeral = RomanNumeral.from_scale_degree(2, ChordQuality.MINOR_SEVENTH)
-        self.assertEqual(numeral.numeral, "ii7")
-        self.assertEqual(numeral.quality, ChordQuality.MINOR_SEVENTH)
-
-    def test_from_scale_degree_MAJOR_7(self) -> None:
-        numeral = RomanNumeral.from_scale_degree(1, ChordQuality.MAJOR_SEVENTH)
-        self.assertEqual(numeral.numeral, "Imaj7")
-        self.assertEqual(numeral.quality, ChordQuality.MAJOR_SEVENTH)
-
-    def test_from_scale_degree_dominant_7(self) -> None:
-        numeral = RomanNumeral.from_scale_degree(5, ChordQuality.DOMINANT_SEVENTH)
-        self.assertEqual(numeral.numeral, "V7")
-        self.assertEqual(numeral.quality, ChordQuality.DOMINANT_SEVENTH)
-
-    def test_from_scale_degree_invalid_degree(self) -> None:
-        with self.assertRaises(ValueError):
-            RomanNumeral.from_scale_degree(0, ChordQuality.MAJOR)
-        with self.assertRaises(ValueError):
-            RomanNumeral.from_scale_degree(8, ChordQuality.MAJOR)
-
-    def test_to_scale_degree_valid(self) -> None:
+    def test_from_scale_degree(self):
+        """Test creation from scale degree."""
         test_cases = [
-            ("I", ChordQuality.MAJOR, 1),
-            ("ii", ChordQuality.MINOR, 2),
-            ("iii", ChordQuality.MINOR, 3),
-            ("IV", ChordQuality.MAJOR, 4),
-            ("v", ChordQuality.MINOR, 5),
-            ("vi", ChordQuality.MINOR, 6),
-            ("vii", ChordQuality.MINOR, 7),
-        ]
-        for numeral_str, quality, expected_degree in test_cases:
-            with self.subTest(numeral=numeral_str):
-                numeral = RomanNumeral(numeral=numeral_str, quality=quality)
-                result = RomanNumeral.to_scale_degree(numeral)
-                self.assertEqual(result, expected_degree)
-
-    def test_to_scale_degree_invalid(self):
-        """Test invalid Roman numerals raise ValueError."""
-        invalid_numerals = ["viii", "ixv", "iix"]
-        for numeral in invalid_numerals:
-            with self.assertRaises(ValueError):
-                roman = RomanNumeral(numeral=numeral, quality=ChordQuality.MAJOR)
-                roman.to_scale_degree()  # This should raise the ValueError
-
-    def test_get_roman_numeral_from_chord_different_degrees(self) -> None:
-        test_cases = [
-            (Note(note_name="D", octave=4, duration=1, velocity=100), ChordQuality.MINOR, "ii"),
-            (Note(note_name="E", octave=4, duration=1, velocity=100), ChordQuality.DIMINISHED, "iii°"),
-            (Note(note_name="A", octave=4, duration=1, velocity=100), ChordQuality.MINOR_SEVENTH, "vi7"),
+            (1, ChordQuality.MAJOR),      # I
+            (2, ChordQuality.MINOR),      # ii
+            (3, ChordQuality.MINOR),      # iii
+            (4, ChordQuality.MAJOR),      # IV
+            (5, ChordQuality.MAJOR),      # V
+            (6, ChordQuality.MINOR),      # vi
+            (7, ChordQuality.DIMINISHED)  # vii°
         ]
         
-        for root_note, quality, expected_numeral in test_cases:
-            with self.subTest(root=root_note.note_name, quality=quality):
-                chord = Chord(root=root_note, quality=quality)
-                result = RomanNumeral.get_roman_numeral_from_chord(chord, self.scale)
-                self.assertEqual(result.numeral, expected_numeral)
-                self.assertEqual(result.quality, quality)
+        for degree, expected_quality in test_cases:
+            roman = RomanNumeral.from_scale_degree(degree)
+            self.assertEqual(roman.numeral, INT_TO_ROMAN[degree])
+            self.assertEqual(
+                roman.quality, 
+                expected_quality,
+                f"Scale degree {degree} should have quality {expected_quality}"
+            )
+            
+            # Also test explicit quality override
+            override_quality = ChordQuality.MAJOR
+            roman_override = RomanNumeral.from_scale_degree(degree, override_quality)
+            self.assertEqual(roman_override.quality, override_quality)
 
-    def test_get_roman_numeral_from_chord_note_not_in_scale(self) -> None:
-        scale = FakeScale(root=Note(note_name="C", octave=4, duration=1, velocity=100), scale_type=ScaleType.MAJOR)
-        chord = Chord(root=Note(note_name="C#", octave=4, duration=1, velocity=100), quality=ChordQuality.MAJOR)
-        with self.assertRaises(ValueError) as cm:
-            RomanNumeral.get_roman_numeral_from_chord(chord, scale)
-        self.assertIn("not in scale", str(cm.exception))
+    def test_validation(self):
+        """Test roman numeral validation."""
+        # Test valid cases
+        valid_data = {
+            "numeral": "V",
+            "quality": ChordQuality.MAJOR,
+            "inversion": None,
+            "accidental": None,
+            "secondary": None
+        }
+        result = validate_roman_numeral_data(valid_data, ValidationLevel.STRICT)
+        self.assertTrue(result.is_valid)
 
-    def test_get_roman_numeral_from_chord_unexpected_error(self) -> None:
-        scale = FakeScale(root=Note(note_name="C", octave=4, duration=1, velocity=100), scale_type=ScaleType.MAJOR)
-        chord = Chord(root=Note(note_name="C", octave=4, duration=1, velocity=100), quality=ChordQuality.MAJOR)
+        # Test invalid cases
+        invalid_data = {
+            "numeral": "VIII",  # Invalid roman numeral
+            "quality": ChordQuality.MAJOR,
+            "inversion": None,
+            "accidental": None,
+            "secondary": None
+        }
+        result = validate_roman_numeral_data(invalid_data, ValidationLevel.STRICT)
+        self.assertFalse(result.is_valid)
 
-        with patch.object(FakeScale, 'get_degree_of_note', side_effect=TypeError("Simulating an unexpected error.")):
-            with self.assertRaises(ValueError) as cm:
-                RomanNumeral.get_roman_numeral_from_chord(chord, scale)
-            self.assertIsInstance(cm.exception.__cause__, TypeError)
-            self.assertIn("Unexpected error processing chord", str(cm.exception))
+    def test_to_scale_degree(self):
+        """Test conversion to scale degree."""
+        roman = RomanNumeral.model_validate({
+            "numeral": "V",
+            "quality": ChordQuality.MAJOR,
+            "accidental": None,
+            "inversion": None,
+            "secondary": None
+        })
+        scale_degree = roman.to_scale_degree()
+        self.assertEqual(scale_degree.value, 5)
+        self.assertEqual(scale_degree.quality, ChordQuality.MAJOR)
 
+    def test_secondary_dominants(self):
+        """Test secondary dominant functionality."""
+        secondary = RomanNumeral.model_validate({
+            "numeral": "V",
+            "quality": ChordQuality.DOMINANT_SEVENTH,
+            "accidental": None,
+            "inversion": None,
+            "secondary": None
+        })
+        
+        primary = RomanNumeral.model_validate({
+            "numeral": "V",
+            "quality": ChordQuality.MAJOR,
+            "accidental": None,
+            "inversion": None,
+            "secondary": secondary
+        })
+        
+        # Validate the structure
+        result = validate_roman_numeral_data(
+            primary.model_dump(),
+            ValidationLevel.STRICT
+        )
+        self.assertTrue(result.is_valid)
+        
+        # Check secondary relationship
+        self.assertEqual(primary.secondary, secondary)
 
-if __name__ == "__main__":
+    def test_validation_levels(self):
+        """Test validation at different levels."""
+        roman = RomanNumeral.model_validate({
+            "numeral": "V",
+            "quality": ChordQuality.MAJOR,
+            "inversion": 2,
+            "accidental": None,
+            "secondary": None
+        })
+        
+        # Test LENIENT validation
+        result = validate_roman_numeral_data(
+            roman.model_dump(),
+            ValidationLevel.LENIENT
+        )
+        self.assertTrue(result.is_valid)
+        
+        # Test STRICT validation
+        result = validate_roman_numeral_data(
+            roman.model_dump(),
+            ValidationLevel.STRICT
+        )
+        self.assertTrue(result.is_valid)
+
+if __name__ == '__main__':
     unittest.main()

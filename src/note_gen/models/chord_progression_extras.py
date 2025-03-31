@@ -1,196 +1,177 @@
-from src.note_gen.models.note import Note
-from src.note_gen.models.scale import Scale
-from src.note_gen.models.chord import Chord
-from src.note_gen.core.enums import (
-    ChordQuality,
-    ScaleType,
-    VoiceLeadingRule,
-    PatternComplexity
-)
+"""Extra models and utilities for chord progression handling."""
+
+from typing import List, Optional, Union, Dict, Any, Set, Sequence
+from pydantic import Field, field_validator, ValidationInfo, ConfigDict
 from src.note_gen.models.scale_info import ScaleInfo
 from src.note_gen.models.roman_numeral import RomanNumeral
 from src.note_gen.models.fake_scale_info import FakeScaleInfo
-from src.note_gen.models.patterns import ChordProgression
-from src.note_gen.core.constants import MAX_CHORDS, VALID_KEYS
-from pydantic import BaseModel, Field, ConfigDict, field_validator, validator, ValidationError
-from typing import List, Optional, Union, Dict, Any, Callable, Set, ForwardRef, TypeVar, Type, Literal
-import logging
-import uuid
-from bson import ObjectId
-import json
+from src.note_gen.models.chord_progression import ChordProgression
+from src.note_gen.models.chord import Chord
+from src.note_gen.models.note import Note
+from src.note_gen.core.constants import RANGE_LIMITS, VALID_KEYS
+from src.note_gen.models.base import BaseModelWithConfig
+from src.note_gen.core.enums import ChordQuality, ScaleType
 from fastapi.encoders import jsonable_encoder
-import warnings
-import re
+from dataclasses import dataclass
+from src.note_gen.models.chord_progression_item import ChordProgressionItem
 
-logger = logging.getLogger(__name__)
+# Constants
+valid_qualities: Set[ChordQuality] = set(ChordQuality.__members__.values())
 
-valid_qualities = set(ChordQuality.__members__.values())
+@dataclass(frozen=True)
+class MidiRange:
+    """MIDI note range limits."""
+    min_midi: int = 0
+    max_midi: int = 127
 
-class ChordProgressionResponse(BaseModel):
+MIDI_LIMITS = MidiRange()
+
+class ChordProgressionResponse(BaseModelWithConfig):
     """Response model for chord progressions."""
-    name: str
-    chords: List[Union[Note, dict, Chord]]
-    scale_info: dict
-    key: str
-    scale_type: str
+    id: Optional[str] = None  # Add this for MongoDB _id
+    name: str = Field(..., min_length=1, max_length=100)
+    chords: List[ChordProgressionItem] = Field(default_factory=list)
+    scale_info: Union[ScaleInfo, FakeScaleInfo] = Field(...)
+    key: str = Field(..., pattern=r'^[A-G][#b]?$')
+    scale_type: ScaleType
     complexity: Optional[float] = Field(None, ge=0.0, le=1.0)
-    duration: Optional[float] = None
-    
-    model_config = ConfigDict(
-        from_attributes=True,
-        json_encoders={
-            Note: lambda v: v.model_dump(),
-            Chord: lambda v: v.model_dump(),
-            ScaleInfo: lambda v: v.model_dump(),
-            FakeScaleInfo: lambda v: v.model_dump(),
-            ObjectId: str,
-            ChordQuality: str
-        }
-    )
+    duration: Optional[float] = Field(None, gt=0.0)
 
-    @field_validator('chords', mode='before')
-    def validate_chords(cls, v: List[Any]) -> List[Union[Note, dict, Chord]]:
-        """Validate and normalize chords list."""
-        if not v:
-            raise ValueError("Chords list cannot be empty")
-        
-        normalized_chords = []
-        for chord in v:
-            if isinstance(chord, str):
-                try:
-                    normalized_chord = {
-                        "root": {"note_name": chord, "octave": 4, "duration": 1.0, "velocity": 64},
-                        "quality": ChordQuality.MAJOR,
-                        "notes": []
-                    }
-                    normalized_chords.append(normalized_chord)
-                except Exception as e:
-                    logger.error(f"Error converting string chord '{chord}': {e}")
-                    raise ValueError(f"Invalid chord format: {chord}")
-            elif isinstance(chord, dict):
-                if 'quality' in chord and isinstance(chord['quality'], str):
-                    try:
-                        chord['quality'] = ChordQuality[chord['quality'].upper()]
-                    except KeyError:
-                        raise ValueError(f"Invalid chord quality: {chord['quality']}")
-                normalized_chords.append(chord)
-            elif isinstance(chord, (Chord, Note)):
-                normalized_chords.append(chord)
-            else:
-                logger.error(f"Invalid chord type: {type(chord)}, value: {chord}")
-                raise TypeError(f"Chord must be a string, dictionary, Chord, or Note instance, not {type(chord)}")
-        
-        return normalized_chords
+    @classmethod
+    def from_db_model(cls, db_model: Dict[str, Any]) -> 'ChordProgressionResponse':
+        """Create response model from database model."""
+        # Convert _id to string if it exists
+        if '_id' in db_model:
+            db_model['id'] = str(db_model.pop('_id'))
+        return cls(**db_model)
 
-    def model_dump(self, *, mode: Literal['json', 'python'] | str = 'python', 
-                 include: Any | None = None, exclude: Any | None = None, 
-                 context: Any | None = None, by_alias: bool = False, 
-                 exclude_unset: bool = False, exclude_defaults: bool = False, 
-                 exclude_none: bool = False, round_trip: bool = False, 
-                 warnings: Literal['none', 'warn', 'error'] | bool = True, 
-                 serialize_as_any: bool = False) -> Dict[str, Any]:
-        """Convert the model to a dictionary representation."""
-        logger.debug("ChordProgressionResponse.model_dump called with mode=%s", mode)
-        result = super().model_dump(
-            mode=mode,
-            include=include,
-            exclude=exclude,
-            context=context,
-            by_alias=by_alias,
-            exclude_unset=exclude_unset,
-            exclude_defaults=exclude_defaults,
-            exclude_none=exclude_none,
-            round_trip=round_trip,
-            warnings=warnings,
-            serialize_as_any=serialize_as_any
-        )
-        return result
-
-    def json(self, *args: Any, **kwargs: Any) -> str:
-        """Convert model to JSON string."""
-        return json.dumps(jsonable_encoder(self))
-
-    def __init__(self, *args, **kwargs):
-        logger.debug(f"Incoming data for ChordProgressionResponse: {kwargs}")
-        try:
-            super().__init__(*args, **kwargs)
-        except ValidationError as e:
-            logger.error(f"Validation error for ChordProgressionResponse: {e}")
-            raise
-
-class ChordProgressionCreate(BaseModel):
-    """Request model for creating chord progressions."""
-    name: str
-    chords: List[Chord]
-    key: str
-    scale_type: str
-    complexity: Optional[float] = Field(None, ge=0.0, le=1.0)
-    scale_info: str
-
-    @field_validator('chords')
-    def validate_chords(cls, v: List[Chord]) -> List[Chord]:
-        """Validate chords list."""
-        if not v:
-            raise ValueError("Chords list cannot be empty")
-        
-        for chord in v:
-            # Handle dictionary quality
-            if isinstance(chord.quality, dict):
-                try:
-                    if 'name' in chord.quality:
-                        chord.quality = ChordQuality[chord.quality['name'].upper()]
-                    elif 'quality_type' in chord.quality:
-                        chord.quality = ChordQuality[chord.quality['quality_type'].upper()]
-                    else:
-                        raise ValueError("Quality dictionary must contain 'name' or 'quality_type'")
-                except (KeyError, TypeError, ValueError) as e:
-                    raise ValueError(f"Invalid chord quality format: {chord.quality}") from e
-            
-            # Handle string quality
-            elif isinstance(chord.quality, str):
-                try:
-                    chord.quality = ChordQuality[chord.quality.upper()]
-                except KeyError as e:
-                    raise ValueError(f"Invalid chord quality: {chord.quality}") from e
-            
-            # Handle ChordQuality enum directly
-            elif not isinstance(chord.quality, ChordQuality):
-                raise TypeError(f"Chord quality must be a string, dict, or ChordQuality enum, got {type(chord.quality)}")
-            
-            if chord.quality not in valid_qualities:
-                raise ValueError(f"Invalid chord quality: {chord.quality}")
-        
-        return v
+    def to_json(self) -> Dict[str, Any]:
+        """Convert the response to JSON-compatible format."""
+        return jsonable_encoder(self)
 
     @field_validator('key')
-    def validate_key(cls, v: str) -> str:
-        """Validate the key."""
+    @classmethod
+    def validate_key(cls, v: str, info: ValidationInfo) -> str:
+        """Validate key against valid keys."""
         if v not in VALID_KEYS:
             raise ValueError(f"Invalid key: {v}. Must be one of {VALID_KEYS}")
         return v
 
-    @field_validator('scale_type')
-    def validate_scale_type(cls, v: str) -> str:
-        """Validate the scale type."""
-        valid_types = {'MAJOR', 'MINOR', 'HARMONIC_MINOR', 'MELODIC_MINOR'}
-        if v.upper() not in valid_types:
-            raise ValueError(f"Invalid scale type: {v}. Must be one of {valid_types}")
-        return v.upper()
+class ChordProgressionCreate(BaseModelWithConfig):
+    """Request model for creating chord progressions."""
+    name: str = Field(..., min_length=1, max_length=100)
+    chords: List[Chord] = Field(...)
+    key: str = Field(
+        ..., 
+        description="Key of the progression",
+        pattern=r'^[A-G][#b]?$'
+    )
+    scale_type: ScaleType
+    complexity: Optional[float] = Field(None, ge=0.0, le=1.0)
+    scale_info: Optional[Union[Dict[str, Any], ScaleInfo]] = None
+    duration: float = Field(default=1.0, gt=0.0)
 
-from fastapi import FastAPI, HTTPException, status
-from fastapi.responses import JSONResponse
+    @field_validator('key')
+    @classmethod
+    def validate_key(cls, v: str, info: ValidationInfo) -> str:
+        """Validate key against valid keys."""
+        if v not in VALID_KEYS:
+            raise ValueError(f"Invalid key: {v}. Must be one of {VALID_KEYS}")
+        return v
 
-app = FastAPI()
+    @field_validator('chords')
+    @classmethod
+    def validate_chord_qualities(cls, v: List[Chord], info: ValidationInfo) -> List[Chord]:
+        """Validate chord qualities."""
+        for chord in v:
+            if chord.quality not in valid_qualities:
+                raise ValueError(f"Invalid chord quality: {chord.quality}")
+            
+            # Validate chord range
+            min_midi = MIDI_LIMITS.min_midi
+            max_midi = MIDI_LIMITS.max_midi
+            
+            # Get notes from the chord
+            for note in chord.notes:  # note is already a Note object
+                midi_number = note.to_midi_number()
+                if midi_number is not None:  # Handle Optional[int]
+                    if not (min_midi <= midi_number <= max_midi):
+                        raise ValueError(
+                            f"Note {note} in chord {chord} is outside valid MIDI range "
+                            f"({min_midi}-{max_midi})"
+                        )
+        return v
 
-@app.post("/api/v1/chord-progressions/create", response_model=ChordProgressionResponse)
-async def create_chord_progression(chord_progression: ChordProgressionCreate):
-    if not chord_progression.chords:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Chords are required.")
+    def to_progression(self) -> ChordProgression:
+        """Convert create request to ChordProgression instance."""
+        scale_info_data = (
+            self.scale_info if isinstance(self.scale_info, dict)
+            else self.scale_info.model_dump() if isinstance(self.scale_info, ScaleInfo)
+            else {"key": self.key, "scale_type": self.scale_type}
+        )
+        
+        progression_items = [
+            ChordProgressionItem(
+                chord_symbol=chord.to_symbol(),  # Convert Chord to symbol string
+                duration=getattr(chord, 'duration', 1.0)
+            ) for i, chord in enumerate(self.chords)
+        ]
+        
+        return ChordProgression(
+            **{
+                "name": self.name,
+                "chords": progression_items,
+                "key": self.key,
+                "scale_type": self.scale_type,
+                "complexity": self.complexity,
+                "duration": self.duration,
+                "scale_info": ScaleInfo(**scale_info_data)
+            }
+        )
+
+class ChordProgressionPartialUpdate(BaseModelWithConfig):
+    """Model for updating existing chord progressions."""
+    model_config = ConfigDict(validate_assignment=True)
+
+    name: Optional[str] = Field(None, min_length=1, max_length=100)
+    chords: Optional[List[ChordProgressionItem]] = None
+    key: Optional[str] = Field(
+        None, 
+        description="Key of the progression",
+        pattern=r'^[A-G][#b]?$'
+    )
+    scale_type: Optional[ScaleType] = None
     
-    for chord in chord_progression.chords:
-        if chord.quality not in ChordQuality.__members__:
-            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid chord quality.")
-    
-    # Proceed with saving the chord progression
-    
-    return JSONResponse(content={"message": "Chord progression created successfully"}, status_code=status.HTTP_201_CREATED)
+    def apply_update(self, progression: ChordProgression) -> ChordProgression:
+        """Apply update to existing progression."""
+        update_data = self.model_dump(exclude_unset=True)
+        for field, value in update_data.items():
+            if value is not None:
+                setattr(progression, field, value)
+        return progression
+
+    def _calculate_voice_leading_score(self, current_note: Note, next_note: Note) -> float:
+        """Calculate voice leading score between two notes."""
+        # Get MIDI numbers using the method instead of accessing attribute
+        current_midi = current_note.to_midi_number()
+        if current_midi is None:
+            return 0.0
+        
+        next_midi = next_note.to_midi_number()
+        if next_midi is None:
+            return 0.0
+        
+        interval = abs(next_midi - current_midi)
+        
+        # Score based on interval size (smaller intervals preferred)
+        if interval == 0:
+            return 1.0  # Perfect - same note
+        elif interval <= 2:
+            return 0.9  # Very good - step-wise motion
+        elif interval <= 4:
+            return 0.7  # Good - small leap
+        elif interval <= 7:
+            return 0.5  # Acceptable - medium leap
+        else:
+            return 0.3  # Less desirable - large leap
+

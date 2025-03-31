@@ -1,27 +1,16 @@
 """Note pattern repository implementation."""
-
-from typing import List, Optional, Dict, Any
+from typing import List, Dict, Any
 from motor.motor_asyncio import AsyncIOMotorCollection
-from src.note_gen.models.patterns import NotePattern
-from .mongodb import MongoDBRepository
+from ..repositories.mongodb import MongoDBRepository
+from ...models.patterns import NotePattern, NotePatternData  # Updated import path
 
 class NotePatternRepository(MongoDBRepository[NotePattern]):
     """Repository for note pattern operations."""
 
-    def __init__(self, collection: AsyncIOMotorCollection):
-        """Initialize note pattern repository.
-        
-        Args:
-            collection: MongoDB collection for note patterns
-        """
-        super().__init__(collection)
-        self.model_class = NotePattern
-
-    async def find_by_pattern_type(self, pattern_type: str) -> List[NotePattern]:
-        """Find note patterns by type."""
-        cursor = self.collection.find({"pattern_type": pattern_type})
-        documents = await cursor.to_list(None)
-        return [NotePattern(**doc) for doc in documents]
+    def __init__(self, collection: AsyncIOMotorCollection[Dict[str, Any]]) -> None:
+        """Initialize note pattern repository."""
+        super().__init__(collection=collection)
+        self._model_class = NotePattern
 
     async def find_by_complexity_range(
         self, min_complexity: float, max_complexity: float
@@ -34,12 +23,16 @@ class NotePatternRepository(MongoDBRepository[NotePattern]):
             }
         })
         documents = await cursor.to_list(None)
-        return [NotePattern(**doc) for doc in documents]
+        return [self._convert_to_model(doc) for doc in documents]
 
-    async def find_compatible_with_scale(self, scale_type: str) -> List[NotePattern]:
-        """Find patterns compatible with a scale type."""
-        cursor = self.collection.find({
-            "compatible_scales": scale_type
-        })
+    async def find_by_scale_type(self, scale_type: str) -> List[NotePattern]:
+        """Find note patterns by scale type."""
+        cursor = self.collection.find({"data.scale_type": scale_type})
         documents = await cursor.to_list(None)
-        return [NotePattern(**doc) for doc in documents]
+        return [self._convert_to_model(doc) for doc in documents]
+
+    async def find_by_validation_level(self, validation_level: str) -> List[NotePattern]:
+        """Find note patterns by validation level."""
+        cursor = self.collection.find({"validation_level": validation_level})
+        documents = await cursor.to_list(None)
+        return [self._convert_to_model(doc) for doc in documents]

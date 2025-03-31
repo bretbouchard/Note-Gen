@@ -2,7 +2,7 @@
 Tests for rhythm pattern functionality.
 """
 import pytest
-from src.note_gen.models.patterns import RhythmPattern, RhythmPatternData, RhythmNote
+from src.note_gen.models.rhythm import RhythmPattern, RhythmNote
 import uuid
 import logging
 import os
@@ -17,29 +17,25 @@ async def test_rhythm_pattern(async_test_client):
     Fixture to create a test rhythm pattern with a unique name.
     Ensures cleanup after the test.
     """
-    rhythm_note = RhythmNote(position=0.0, duration=1.0, velocity=100, is_rest=False)
-    rhythm_data = RhythmPatternData(
-        notes=[rhythm_note],
-        time_signature="4/4",
-        swing_enabled=False,
-        humanize_amount=0.0,
-        swing_ratio=0.67,
-        default_duration=1.0,
-        total_duration=4.0,
-        accent_pattern=[],
-        groove_type="straight",
-        variation_probability=0.0,
+    rhythm_note = RhythmNote(
+        position=0.0,
         duration=1.0,
-        style="basic"
+        velocity=100,
+        accent=False
     )
-    
+
     unique_name = f"Test Rhythm Pattern {uuid.uuid4()}"
     rhythm_pattern = RhythmPattern(
         name=unique_name,
+        pattern=[rhythm_note],
+        time_signature=(4, 4),
         description="A test rhythm pattern",
-        data=rhythm_data,
-        tags=["test"],
-        is_test=True
+        complexity=0.5,
+        data={
+            "groove_type": "straight",
+            "swing_ratio": 0.67,
+            "humanize_amount": 0.0
+        }
     )
     
     # Create the pattern
@@ -47,7 +43,6 @@ async def test_rhythm_pattern(async_test_client):
     assert response.status_code == 201
     created_pattern = response.json()
 
-    # Cleanup the pattern after the test
     try:
         yield created_pattern
     finally:
@@ -94,7 +89,7 @@ async def test_rhythm_pattern_with_float_values(rhythm_pattern_fixture, client):
                 {"duration": 1.0, "position": 1.5, "is_rest": False, "velocity": 100},
                 {"duration": 0.5, "position": 2.5, "is_rest": False, "velocity": 90}
             ],
-            "time_signature": "4/4"
+            "time_signature": (4, 4)  # Changed to tuple format
         }
     }
     
@@ -146,7 +141,7 @@ async def test_rhythm_pattern_with_rests(client):
                 # Second note (2.0 beat)
                 {"duration": 2.0, "position": 1.5, "is_rest": False, "velocity": 100}
             ],
-            "time_signature": "4/4",
+            "time_signature": (4, 4),  # Changed to tuple format
             "groove_type": "straight"
         }
     }
@@ -187,3 +182,35 @@ async def test_rhythm_pattern_with_rests(client):
             # Only log an error if deletion fails, don't fail the test
             if delete_response.status_code != 204:
                 logger.error(f"Failed to delete test pattern: {delete_response.text}")
+
+from typing import List, Dict, Any
+import unittest
+from unittest.mock import AsyncMock, patch
+from src.note_gen.models.rhythm import RhythmPattern, RhythmNote
+from src.note_gen.api.pattern_api import check_rhythm_pattern
+
+class TestRhythmPatternCheck(unittest.IsolatedAsyncioTestCase):
+    async def asyncSetUp(self):
+        # Setup test data
+        self.fixture_pattern = RhythmPattern(
+            name="test_pattern",
+            pattern=[
+                RhythmNote(position=0.0, duration=1.0),
+                RhythmNote(position=1.0, duration=0.5),
+                RhythmNote(position=1.5, duration=0.5)
+            ],
+            time_signature=(4, 4),  # Changed from "4/4" to tuple format
+            description="Test rhythm pattern",
+            complexity=0.5,
+            data={}  # Optional additional data
+        )
+
+    @patch('src.note_gen.api.pattern_api.validate_rhythm_pattern')
+    async def test_check_rhythm_pattern(self, mock_validate):
+        mock_validate.return_value = True
+        
+        # Test pattern check
+        result = await check_rhythm_pattern(self.fixture_pattern.model_dump())
+        
+        # Verify the pattern values are preserved
+        assert result["pattern"] == self.fixture_pattern.pattern, "Pattern values should be preserved"

@@ -1,6 +1,6 @@
 import asyncio
 from functools import wraps
-from typing import TypeVar, Callable, Any
+from typing import TypeVar, Callable, Any, Awaitable, Coroutine, cast
 from .errors import DatabaseError, ConnectionError
 from pymongo.errors import ConnectionFailure, ServerSelectionTimeoutError
 import logging
@@ -13,13 +13,13 @@ def with_retry(
     initial_delay: float = 0.1,
     max_delay: float = 2.0,
     exponential_base: float = 2
-) -> Callable:
+) -> Callable[[Callable[..., Awaitable[T]]], Callable[..., Awaitable[T]]]:
     """Decorator for retrying database operations."""
     
-    def decorator(func: Callable[..., T]) -> Callable[..., T]:
+    def decorator(func: Callable[..., Awaitable[T]]) -> Callable[..., Awaitable[T]]:
         @wraps(func)
         async def wrapper(*args: Any, **kwargs: Any) -> T:
-            last_error = None
+            last_error: Exception | None = None
             delay = initial_delay
 
             for attempt in range(max_attempts):
@@ -36,8 +36,10 @@ def with_retry(
                         f"Retrying in {delay:.2f}s..."
                     )
                     await asyncio.sleep(delay)
-                    
-            raise last_error  # Should never reach here
+            
+            if last_error is not None:
+                raise last_error
+            raise RuntimeError("Unexpected error in retry loop")  # Should never reach here
 
         return wrapper
     return decorator

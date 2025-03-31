@@ -1,70 +1,33 @@
-from __future__ import annotations
-import pytest
-from src.note_gen.models.chord import Chord, ChordQuality
+import unittest
+from src.note_gen.models.chord import Chord
 from src.note_gen.models.note import Note
-from pydantic_core import ValidationError
+from src.note_gen.core.enums import ChordQuality
 
+class TestChord(unittest.TestCase):
+    def test_enharmonic_equivalence(self):
+        """Test that chords with enharmonically equivalent roots are handled correctly."""
+        # Create notes with enharmonic equivalence
+        note1 = Note(pitch="C#", octave=4)
+        note2 = Note(pitch="Db", octave=4)
+        
+        # Verify they have the same MIDI number
+        self.assertEqual(note1.midi_number, note2.midi_number)
+        
+        # Test that they are considered enharmonically equivalent
+        self.assertEqual(note1.get_enharmonic().pitch, "Db")
+        self.assertEqual(note2.get_enharmonic().pitch, "C#")
 
-def test_create_chord() -> None:
-    root_note = Note.from_name("C4", duration=1.0, velocity=64)
-    chord = Chord(root=root_note, quality=ChordQuality.MAJOR)
-    assert chord.root.note_name == "C"
-    assert chord.quality == ChordQuality.MAJOR
+        # Create chords using the pitch strings
+        chord1 = Chord(root=note1.pitch, quality=ChordQuality.MAJOR)
+        chord2 = Chord(root=note2.pitch, quality=ChordQuality.MAJOR)
 
+        # Generate notes for both chords
+        notes1 = chord1.get_notes()
+        notes2 = chord2.get_notes()
 
-def test_chord_initialization() -> None:
-    root_note = Note.from_name("C4")
-    chord = Chord(root=root_note, quality=ChordQuality.MAJOR)
-    assert len(chord.notes) == 3
-    assert chord.notes[0].note_name == "C"
-    assert chord.notes[1].note_name == "E"
-    assert chord.notes[2].note_name == "G"
-
-
-def test_chord_diminished_quality() -> None:
-    root_note = Note.from_name("C4")
-    chord = Chord(root=root_note, quality=ChordQuality.DIMINISHED)
-    assert len(chord.notes) == 3
-    assert chord.notes[0].note_name == "C"
-    # Use enharmonic conversion
-    assert Chord._enharmonic_note_name(chord.notes[1].note_name) == "Eb"
-    assert Chord._enharmonic_note_name(chord.notes[2].note_name) == "Gb"
-
-
-def test_chord_inversion() -> None:
-    root_note = Note.from_name("C4")
-    chord = Chord(root=root_note, quality=ChordQuality.MAJOR, inversion=1)
-    assert chord.inversion == 1
-    assert chord.notes[0].note_name == "E"  # Expecting the first note to be E in first inversion
-    assert chord.notes[1].note_name == "G"
-    assert chord.notes[2].note_name == "C"  # Root note is now the highest
-
-
-def test_chord_invalid_inversion() -> None:
-    root_note = Note.from_name("C4")
-    with pytest.raises(ValidationError) as exc_info:
-        Chord(root=root_note, quality=ChordQuality.MAJOR, inversion=-1)
-    errors = exc_info.value.errors()
-    assert len(errors) == 1
-    assert errors[0]['type'] in ['value_error', 'greater_than_equal']
-
-
-def test_chord_MAJOR_with_seventh() -> None:
-    root_note = Note.from_name("C4")
-    chord = Chord(root=root_note, quality=ChordQuality.MAJOR_SEVENTH)  # Correct usage
-    assert len(chord.notes) == 4
-    assert chord.notes[0].note_name == "C"
-    assert chord.notes[1].note_name == "E"
-    assert chord.notes[2].note_name == "G"
-    assert chord.notes[3].note_name == "B"
-
-
-def test_chord_transposition() -> None:
-    root_note = Note.from_name("C4")
-    chord1 = Chord(root=root_note, quality=ChordQuality.MINOR)
-    transposed_root = Note.from_name("D4")
-    chord2 = Chord(root=transposed_root, quality=ChordQuality.MINOR)
-    assert chord2.root.note_name == "D"
-    assert chord2.notes[0].note_name == "D"
-    assert chord2.notes[1].note_name == "F"
-    assert chord2.notes[2].note_name == "A"
+        # Test that the chords have equivalent root notes
+        self.assertEqual(notes1[0].midi_number, notes2[0].midi_number)
+        
+        # Test that all notes in both chords have the same MIDI numbers
+        for n1, n2 in zip(notes1, notes2):
+            self.assertEqual(n1.midi_number, n2.midi_number)

@@ -23,7 +23,7 @@ class Note:
         ...
 
     @classmethod
-    def from_midi(cls, note_name: str, midi_number: int, duration: float = 1.0) -> 'Note':
+    def from_midi_number(cls, note_name: str, midi_number: int, duration: float = 1.0) -> 'Note':
         ...
 
     @classmethod

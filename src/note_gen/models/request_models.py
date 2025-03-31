@@ -1,17 +1,59 @@
-"""
-src/note_gen/models/request_models.py
-Request models for API endpoints.
-"""
+"""Request models for the API endpoints."""
+from typing import Optional, Tuple
+from pydantic import Field, ConfigDict
+from ..core.constants import DEFAULTS
+from ..models.scale_info import ScaleInfo
+from ..models.base import BaseModelWithConfig
 
-from pydantic import BaseModel
-from typing import Optional, List, Dict, Any
-from .scale_info import ScaleInfo
-from .patterns import NotePattern
+class GenerateSequenceRequest(BaseModelWithConfig):
+    """Request model for sequence generation."""
+    model_config = ConfigDict(
+        validate_assignment=True,
+        str_strip_whitespace=True,
+        extra='forbid'
+    )
 
-class GenerateSequenceRequest(BaseModel):
-    """Request model for generating a note sequence."""
-    progression_name: str
-    note_pattern_name: NotePattern
-    rhythm_pattern_name: str
-    scale_info: ScaleInfo
-    chords: Optional[List[Dict[str, Any]]] = None
+    progression_name: str = Field(
+        ...,  # This means the field is required
+        description="Name of the chord progression to use"
+    )
+    scale_info: ScaleInfo = Field(
+        ...,  # Required
+        description="Scale information for the sequence"
+    )
+    time_signature: Tuple[int, int] = Field(
+        default=DEFAULTS["time_signature"],
+        description="Time signature as (numerator, denominator)"
+    )
+    tempo: int = Field(
+        default=DEFAULTS["bpm"],
+        description="Tempo in beats per minute"
+    )
+    key: str = Field(
+        default=DEFAULTS["key"],
+        description="Musical key (e.g., 'C4', 'F#4')"
+    )
+    duration: Optional[float] = Field(
+        default=DEFAULTS["duration"],
+        description="Duration in beats"
+    )
+
+class GenerateRequest(BaseModelWithConfig):
+    """Request model for generation endpoints."""
+    model_config = ConfigDict(validate_assignment=True)
+    # ... rest of the class implementation
+
+class GenerateResponse(BaseModelWithConfig):
+    """Response model for generation endpoints."""
+    model_config = ConfigDict(validate_assignment=True)
+    # ... rest of the class implementation
+
+class ErrorModel(BaseModelWithConfig):
+    """Error response model."""
+    model_config = ConfigDict(validate_assignment=True)
+    # ... rest of the class implementation
+
+class StatusResponse(BaseModelWithConfig):
+    """Status response model."""
+    model_config = ConfigDict(validate_assignment=True)
+    # ... rest of the class implementation
