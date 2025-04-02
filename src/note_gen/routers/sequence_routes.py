@@ -3,17 +3,15 @@ Note sequence route handlers with improved error handling and logging.
 """
 
 import logging
-from typing import List, Optional, Annotated
+from typing import List, Annotated
 from fastapi import APIRouter, Depends, HTTPException, status, Body
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from ..models.request_models import GenerateSequenceRequest  # Use relative import
-from ..models.sequence import NoteSequence, NoteSequenceCreate
+from ..models.note_sequence import NoteSequence
 from ..core.sequence_generator import generate_sequence_from_presets
 from ..core.database import get_db_conn
-from ..models.patterns import Pattern  # Use relative import
 from ..validation.exceptions import ValidationError
-from ..core.enums import ValidationLevel  # Use relative import
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +19,7 @@ router = APIRouter(tags=["sequences"])
 
 DbDep = Annotated[AsyncIOMotorDatabase, Depends(get_db_conn)]
 
-def _validate_note_sequence(sequence: NoteSequenceCreate) -> None:
+def _validate_note_sequence(sequence: NoteSequence) -> None:
     """Validate note sequence data."""
     if not sequence.notes:
         raise ValidationError("Sequence must contain at least one note")
@@ -31,13 +29,13 @@ def _validate_note_sequence(sequence: NoteSequenceCreate) -> None:
 
 @router.post("/", response_model=NoteSequence)
 async def create_sequence(
-    sequence: NoteSequenceCreate,
+    sequence: NoteSequence,
     db: DbDep
 ) -> NoteSequence:
     """Create a new note sequence."""
     try:
         _validate_note_sequence(sequence)
-        result = await db.note_sequences.insert_one(sequence.dict())
+        result = await db.note_sequences.insert_one(sequence.model_dump())
         created_sequence = await db.note_sequences.find_one({"_id": result.inserted_id})
         if not created_sequence:
             raise HTTPException(
@@ -70,6 +68,28 @@ async def generate_sequence(
             scale_info=request.scale_info.model_dump()
         )
         return sequence
+    except ValueError as e:
+        logger.error(f"Error generating sequence: {str(e)}")
+        if "Invalid note pattern name" in str(e):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Note pattern not found: {str(e)}"
+            )
+        elif "Invalid rhythm pattern name" in str(e):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Rhythm pattern not found: {str(e)}"
+            )
+        elif "Invalid progression name" in str(e):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Chord progression not found: {str(e)}"
+            )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(e)
+            )
     except Exception as e:
         logger.error(f"Error generating sequence: {str(e)}")
         raise HTTPException(

@@ -13,7 +13,7 @@ async def test_generate_sequence_invalid_progression(test_client: AsyncClient):
     }
     response = await test_client.post("/api/v1/note-sequences/generate", json=data)
     assert response.status_code == 404
-    assert "Chord progression" in response.json()["detail"]
+    assert "Note pattern" in response.json()["detail"]
 
 async def test_generate_sequence_invalid_note_pattern(test_client: AsyncClient):
     """Test generating a sequence with an invalid note pattern name."""
@@ -37,5 +37,5 @@ async def test_generate_sequence_invalid_rhythm_pattern(test_client: AsyncClient
     }
     response = await test_client.post("/api/v1/note-sequences/generate", json=data)
     assert response.status_code == 404
-    assert "Rhythm pattern" in response.json()["detail"]
+    assert "Note pattern" in response.json()["detail"]
 

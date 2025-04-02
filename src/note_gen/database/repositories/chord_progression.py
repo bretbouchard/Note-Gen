@@ -1,15 +1,15 @@
 """Chord progression repository implementation."""
 
 from typing import Optional, List, Dict, Any
-from motor.motor_asyncio import AsyncIOMotorCollection
+from motor.motor_asyncio import AsyncIOMotorDatabase
 from src.note_gen.models.chord_progression import ChordProgression
 from src.note_gen.database.repositories.mongodb import MongoDBRepository
 
 class ChordProgressionRepository(MongoDBRepository[ChordProgression]):
     """Repository for chord progression operations."""
 
-    def __init__(self, collection: AsyncIOMotorCollection[Dict[str, Any]]) -> None:
-        super().__init__(collection=collection)
+    def __init__(self, database: AsyncIOMotorDatabase, collection_name: str) -> None:
+        super().__init__(database=database, collection_name=collection_name, model_class=ChordProgression)
 
     async def find_by_name(self, name: str) -> Optional[ChordProgression]:
         """Find a chord progression by name."""

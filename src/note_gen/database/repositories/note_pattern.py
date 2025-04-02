@@ -1,16 +1,15 @@
 """Note pattern repository implementation."""
 from typing import List, Dict, Any
-from motor.motor_asyncio import AsyncIOMotorCollection
+from motor.motor_asyncio import AsyncIOMotorDatabase
 from ..repositories.mongodb import MongoDBRepository
-from ...models.patterns import NotePattern, NotePatternData  # Updated import path
+from ...models.patterns import NotePattern  # Updated import path
 
 class NotePatternRepository(MongoDBRepository[NotePattern]):
     """Repository for note pattern operations."""
 
-    def __init__(self, collection: AsyncIOMotorCollection[Dict[str, Any]]) -> None:
+    def __init__(self, database: AsyncIOMotorDatabase, collection_name: str) -> None:
         """Initialize note pattern repository."""
-        super().__init__(collection=collection)
-        self._model_class = NotePattern
+        super().__init__(database=database, collection_name=collection_name, model_class=NotePattern)
 
     async def find_by_complexity_range(
         self, min_complexity: float, max_complexity: float

@@ -1,8 +1,7 @@
 """Pattern generator module."""
-from typing import Dict, Any, List, Optional
-from src.note_gen.core.enums import PatternType, PatternDirection, ValidationLevel, ScaleType
+from typing import Dict, Any, List
+from src.note_gen.core.enums import PatternType, PatternDirection, ValidationLevel
 from src.note_gen.models.rhythm import RhythmPattern, RhythmNote
-from src.note_gen.models.note import Note
 from src.note_gen.models.scale_info import ScaleInfo
 from src.note_gen.models.note_sequence import NoteSequence
 from src.note_gen.validation.pattern_validation import PatternValidator
@@ -49,25 +48,27 @@ async def generate_sequence_from_presets(
     generator = PatternGenerator()
 
     # Generate patterns
-    note_pattern = generator.generate_pattern(
+    # We don't use the note_pattern directly, but it's generated for consistency
+    _ = generator.generate_pattern(
         pattern_type=PatternType.MELODIC,
         config={
             "root_note": scale.key,
             "scale_type": scale.scale_type,
-            **note_pattern_config
+            **(note_pattern_config if isinstance(note_pattern_config, dict) else {})
         }
     )
 
     rhythm_pattern = generator.generate_pattern(
         pattern_type=PatternType.RHYTHMIC,
-        config=rhythm_pattern_config
+        config=rhythm_pattern_config if isinstance(rhythm_pattern_config, dict) else {}
     )
 
     # Combine patterns into a sequence
     notes = []
     current_position = 0.0
 
-    for chord in progression:
+    # We don't use the chord directly, but iterate through the progression
+    for _ in progression:
         for rhythm_note in rhythm_pattern.pattern:
             if rhythm_note.note:
                 note = rhythm_note.note.clone()
@@ -159,9 +160,7 @@ class PatternGenerator:
         # Create and validate the pattern
         pattern = RhythmPattern(
             pattern=pattern_notes,
-            pattern_type=PatternType.MELODIC,
-            total_duration=float(len(pattern_notes)),
-            scale_type=scale_type
+            total_duration=float(len(pattern_notes))
         )
 
         validation_result = PatternValidator.validate(pattern, validation_level)
@@ -209,7 +208,6 @@ class PatternGenerator:
         # Create and validate the pattern
         pattern = RhythmPattern(
             pattern=pattern_notes,
-            pattern_type=PatternType.RHYTHMIC,
             time_signature=time_signature,
             total_duration=total_duration
         )

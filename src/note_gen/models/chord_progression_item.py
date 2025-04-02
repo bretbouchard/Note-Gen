@@ -9,7 +9,7 @@ from src.note_gen.models.chord import Chord
 class ChordProgressionItem(BaseModelWithConfig):
     """
     Represents a chord within a progression with additional properties.
-    
+
     Attributes:
         chord_symbol: The chord symbol (e.g., 'C', 'Am', 'F7')
         duration: Duration of the chord in beats
@@ -32,12 +32,12 @@ class ChordProgressionItem(BaseModelWithConfig):
     def create(cls, chord_symbol: str, duration: float = 1.0, position: float = 0.0) -> 'ChordProgressionItem':
         """
         Create a new ChordProgressionItem.
-        
+
         Args:
             chord_symbol: The chord symbol (e.g., 'C', 'Am', 'F7')
             duration: Duration of the chord in beats
             position: Position of the chord in beats from start
-            
+
         Returns:
             ChordProgressionItem: A new chord progression item
         """
@@ -47,15 +47,16 @@ class ChordProgressionItem(BaseModelWithConfig):
             position=position
         )
 
+    @classmethod
     def from_chord(cls, chord: Chord, duration: float = 1.0, position: float = 0.0) -> 'ChordProgressionItem':
         """
         Create a new ChordProgressionItem from a Chord object.
-        
+
         Args:
             chord: The Chord object
             duration: Duration of the chord in beats
             position: Position of the chord in beats from start
-            
+
         Returns:
             ChordProgressionItem: A new chord progression item
         """
@@ -69,17 +70,17 @@ class ChordProgressionItem(BaseModelWithConfig):
     def transpose(self, semitones: int) -> 'ChordProgressionItem':
         """
         Create a new ChordProgressionItem transposed by the specified number of semitones.
-        
+
         Args:
             semitones: Number of semitones to transpose by
-            
+
         Returns:
             ChordProgressionItem: New transposed chord progression item
         """
         # Create a Chord object to handle the transposition
         chord = Chord.from_symbol(self.chord_symbol)
         transposed_chord = chord.transpose(semitones)
-        
+
         return ChordProgressionItem(
             chord_symbol=transposed_chord.to_symbol(),
             duration=self.duration,

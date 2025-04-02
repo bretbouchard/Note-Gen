@@ -5,8 +5,8 @@ from fastapi import Depends
 from ..core.constants import DATABASE
 
 # Create a motor client
-client = AsyncIOMotorClient(DATABASE["uri"])
-database = client[DATABASE["name"]]
+client: AsyncIOMotorClient = AsyncIOMotorClient(str(DATABASE["uri"]))
+database: AsyncIOMotorDatabase = client[str(DATABASE["name"])]
 
 async def get_db() -> AsyncGenerator[AsyncIOMotorDatabase, None]:
     """Get database connection."""

@@ -4,7 +4,7 @@ from functools import wraps
 from warnings import warn
 import math
 from typing import (
-    Tuple, List, Set, Optional, Dict, Any, Union, 
+    Tuple, List, Set, Optional, Dict, Any, Union,
     Callable, TypeVar, ParamSpec
 )
 
@@ -42,8 +42,9 @@ class ScaleType(str, Enum):
     def intervals(self) -> Tuple[int, ...]:
         """Get the intervals for this scale type as a tuple."""
         from .constants import SCALE_INTERVALS
-        # Convert the list from SCALE_INTERVALS to a tuple
-        return tuple(SCALE_INTERVALS[self.value])
+        # Get the intervals from SCALE_INTERVALS
+        # The intervals are already tuples, so no conversion needed
+        return SCALE_INTERVALS[self.value]
 
 class ChordQuality(str, Enum):
     """Chord quality enumeration."""
@@ -104,10 +105,10 @@ class ChordQuality(str, Enum):
             cls.MAJOR_NINTH: [0, 4, 7, 11, 14],
             cls.MINOR_NINTH: [0, 3, 7, 10, 14]
         }
-        
+
         if quality not in QUALITY_INTERVALS:
             raise ValueError(f"Invalid chord quality: {quality}")
-            
+
         return QUALITY_INTERVALS[quality]
 
     def __str__(self) -> str:
@@ -132,7 +133,7 @@ class TimeSignatureType(str, Enum):
 
         if denominator not in [2, 4, 8, 16]:
             raise ValueError("Denominator must be 2, 4, 8, or 16")
-        
+
         if numerator <= 0 or denominator <= 0:
             raise ValueError("Time signature components must be positive")
 
@@ -249,10 +250,10 @@ class AccentType(str, Enum):
         """Validate an accent pattern."""
         if not pattern:
             raise ValueError("Accent pattern cannot be empty")
-        
+
         if not all(isinstance(accent, cls) for accent in pattern):
             raise ValueError("All accents must be AccentType instances")
-        
+
         return True
 
 
@@ -282,7 +283,7 @@ class VoiceLeadingRule(str, Enum):
         """Validate a chord progression against voice leading rules."""
         if rules is None:
             rules = set(cls)
-        
+
         violations: List[Dict[str, Any]] = []
         # Implementation would check for specific voice leading violations
         # and return a list of violation dictionaries

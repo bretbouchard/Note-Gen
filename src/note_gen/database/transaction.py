@@ -1,7 +1,7 @@
 """Transaction management for MongoDB operations."""
 
-from typing import Any, List, AsyncContextManager
-from motor.motor_asyncio import AsyncIOMotorClient
+from typing import Any, List, AsyncContextManager, AsyncGenerator, Callable, TypeVar
+from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorClientSession
 from pymongo.errors import OperationFailure
 from contextlib import asynccontextmanager
 
@@ -11,12 +11,12 @@ class TransactionError(Exception):
 
 class TransactionManager:
     """Manages database transactions."""
-    
+
     def __init__(self, client: AsyncIOMotorClient) -> None:
         self.client = client
-    
+
     @asynccontextmanager
-    async def __call__(self) -> AsyncContextManager:
+    async def __call__(self) -> AsyncGenerator[AsyncIOMotorClientSession, None]:
         """Context manager for transactions."""
         async with await self.client.start_session() as session:
             try:

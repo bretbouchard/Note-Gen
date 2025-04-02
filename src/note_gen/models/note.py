@@ -6,14 +6,14 @@ from src.note_gen.core.constants import FULL_NOTE_REGEX
 
 class Note(BaseModel):
     """A musical note model."""
-    
+
     model_config = ConfigDict(
         validate_assignment=True,
         arbitrary_types_allowed=True,
         str_strip_whitespace=True,
         from_attributes=True
     )
-    
+
     # MIDI note numbers for each pitch in octave 4
     MIDI_BASE_NOTES: ClassVar[Dict[str, int]] = {
         'C': 60, 'C#': 61, 'Db': 61,
@@ -24,7 +24,7 @@ class Note(BaseModel):
         'A': 69, 'A#': 70, 'Bb': 70,
         'B': 71
     }
-    
+
     pitch: str = Field(..., description="The pitch of the note (A-G with optional # or b)")
     octave: Optional[int] = Field(None, ge=-1, le=9, description="The octave number (-1 to 9)")
     duration: float = Field(1.0, gt=0, description="Duration in beats")
@@ -59,20 +59,20 @@ class Note(BaseModel):
             pitch = pitch[:-1].upper() + 'b'
         else:
             pitch = pitch.upper()
-        
+
         if not re.match(r'^[A-G][#b]?$', pitch):
             raise ValueError(f"Invalid pitch format: {pitch}")
         return pitch
 
     @classmethod
     def from_name(cls, name: str, duration: float = 1.0, velocity: int = 64,
-                 position: float = 0.0, default_octave: int = 4) -> 'Note':
+                 position: float = 0.0, default_octave: int = 4, stored_midi_number: Optional[int] = None) -> 'Note':
         """Create a Note from a name string with optional parameters."""
         name = name.strip()
-        
+
         # First try matching with octave
         match = re.match(r'^([A-G][#b]?)(\d)$', name)
-        
+
         if match:
             pitch, octave = match.groups()
             octave = int(octave)
@@ -83,13 +83,14 @@ class Note(BaseModel):
                 raise ValueError(f"Invalid note name: {name}")
             pitch = match.group(1)
             octave = default_octave
-        
+
         return cls(
             pitch=pitch,
             octave=octave,
             duration=duration,
             velocity=velocity,
-            position=position
+            position=position,
+            stored_midi_number=stored_midi_number
         )
 
     @classmethod
@@ -97,15 +98,15 @@ class Note(BaseModel):
                         velocity: int = 64, position: float = 0.0) -> 'Note':
         """Create a Note from a MIDI note number."""
         from src.note_gen.validation.midi_validation import midi_to_octave_pitch
-        
+
         cls.validate_midi_number(midi_number)
-        
+
         octave, pitch_number = midi_to_octave_pitch(midi_number)
         pitch_map = {
             0: 'C', 1: 'C#', 2: 'D', 3: 'D#', 4: 'E', 5: 'F',
             6: 'F#', 7: 'G', 8: 'G#', 9: 'A', 10: 'A#', 11: 'B'
         }
-        
+
         return cls(
             pitch=pitch_map[pitch_number],
             octave=octave,
@@ -119,7 +120,7 @@ class Note(BaseModel):
         """Convert note to MIDI note number."""
         if self.stored_midi_number is not None:
             return self.stored_midi_number
-            
+
         if self.octave is None:
             raise ValueError("Octave must be set to convert to MIDI number")
         base = self.MIDI_BASE_NOTES[self.pitch]
@@ -130,10 +131,10 @@ class Note(BaseModel):
         """Create a new note transposed by the specified number of semitones."""
         if self.octave is None:
             raise ValueError("Cannot transpose note without octave")
-        
+
         midi_num = self.to_midi_number()
         new_midi = midi_num + semitones
-        
+
         self.validate_midi_number(new_midi)
         return self.from_midi_number(
             new_midi,
@@ -151,12 +152,12 @@ class Note(BaseModel):
             'G#': 'Ab', 'Ab': 'G#',
             'A#': 'Bb', 'Bb': 'A#'
         }
-        
+
         if self.pitch in enharmonic_map:
             new_pitch = enharmonic_map[self.pitch]
             if prefer_flats and not new_pitch.endswith('b'):
                 new_pitch = enharmonic_map[new_pitch]
-            
+
             return Note(
                 pitch=new_pitch,
                 octave=self.octave,

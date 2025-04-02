@@ -10,6 +10,7 @@ from .api.sequence_api import router as sequence_router
 from .api.pattern_api import router as pattern_router
 from .api.user_api import router as user_router
 from .api.routes.rhythm_patterns import router as rhythm_patterns_router
+from .routers.sequence_routes import router as sequence_routes_router
 from .database.db import init_db, close_mongo_connection
 
 # Configure rate limiter
@@ -42,6 +43,7 @@ async def rate_limit_handler(request, exc):
 
 # Include all routers with proper prefixes
 app.include_router(sequence_router, prefix="/api/v1/note-sequences")
+app.include_router(sequence_routes_router, prefix="/api/v1/note-sequences")
 app.include_router(pattern_router, prefix="/api/v1/patterns")
 app.include_router(user_router, prefix="/api/v1/users")
 app.include_router(rhythm_patterns_router, prefix="/api/v1/patterns/rhythm")

@@ -2,28 +2,19 @@
 import pytest
 import pytest_asyncio
 from motor.motor_asyncio import AsyncIOMotorDatabase
-from pydantic import BaseModel
 from src.note_gen.database.repository import MongoDBRepository
-
-class TestModel(BaseModel):
-    """Test model for repository tests."""
-    name: str
-    value: int
-
-    model_config = {
-        "arbitrary_types_allowed": True
-    }
+from tests.database.test_models import DBTestModel
 
 @pytest_asyncio.fixture
-async def test_repository(test_db: AsyncIOMotorDatabase) -> MongoDBRepository[TestModel]:
+async def test_repository(test_db: AsyncIOMotorDatabase) -> MongoDBRepository[DBTestModel]:
     """Create a test repository."""
-    repo = MongoDBRepository[TestModel](test_db, "test_collection", model_type=TestModel)
+    repo = MongoDBRepository[DBTestModel](test_db, "test_collection", model_type=DBTestModel)
     await repo.collection.drop()  # Ensure clean state
     return repo
 
-async def test_insert_and_find(test_repository: MongoDBRepository[TestModel]):
+async def test_insert_and_find(test_repository: MongoDBRepository[DBTestModel]):
     """Test inserting and finding a document."""
-    model = TestModel(name="test", value=1)
+    model = DBTestModel(name="test", value=1)
     await test_repository.insert_one(model)
     found = await test_repository.find_one({"name": "test"})
     assert found is not None

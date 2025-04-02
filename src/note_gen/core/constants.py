@@ -1,6 +1,6 @@
 """Constants for note generation."""
-from typing import Dict, Any
-from src.note_gen.core.enums import ScaleType, ChordQuality, PatternDirection
+from typing import Dict, Any, Tuple
+from src.note_gen.core.enums import ScaleType, ChordQuality
 
 # Note-related constants
 FULL_NOTE_REGEX = r'^[A-G][#b]?[0-9]$'  # Matches notes like 'C4', 'F#5', 'Bb3'
@@ -58,17 +58,29 @@ DEFAULT_SCALE_DEGREE_QUALITIES = {
 }
 
 # Scale intervals
-SCALE_INTERVALS = {
-    "MAJOR": (0, 2, 4, 5, 7, 9, 11),
-    "MINOR": (0, 2, 3, 5, 7, 8, 10),
-    "HARMONIC_MINOR": (0, 2, 3, 5, 7, 8, 11),
-    "MELODIC_MINOR": (0, 2, 3, 5, 7, 9, 11),
-    "DORIAN": (0, 2, 3, 5, 7, 9, 10),
-    "PHRYGIAN": (0, 1, 3, 5, 7, 8, 10),
-    "LYDIAN": (0, 2, 4, 6, 7, 9, 11),
-    "MIXOLYDIAN": (0, 2, 4, 5, 7, 9, 10),
-    "LOCRIAN": (0, 1, 3, 5, 6, 8, 10),
-    "CHROMATIC": (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)
+# Define each tuple with its own type
+MAJOR_SCALE = (0, 2, 4, 5, 7, 9, 11)
+MINOR_SCALE = (0, 2, 3, 5, 7, 8, 10)
+HARMONIC_MINOR_SCALE = (0, 2, 3, 5, 7, 8, 11)
+MELODIC_MINOR_SCALE = (0, 2, 3, 5, 7, 9, 11)
+DORIAN_SCALE = (0, 2, 3, 5, 7, 9, 10)
+PHRYGIAN_SCALE = (0, 1, 3, 5, 7, 8, 10)
+LYDIAN_SCALE = (0, 2, 4, 6, 7, 9, 11)
+MIXOLYDIAN_SCALE = (0, 2, 4, 5, 7, 9, 10)
+LOCRIAN_SCALE = (0, 1, 3, 5, 6, 8, 10)
+CHROMATIC_SCALE = (0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)
+
+SCALE_INTERVALS: Dict[str, Tuple[int, ...]] = {
+    "MAJOR": MAJOR_SCALE,
+    "MINOR": MINOR_SCALE,
+    "HARMONIC_MINOR": HARMONIC_MINOR_SCALE,
+    "MELODIC_MINOR": MELODIC_MINOR_SCALE,
+    "DORIAN": DORIAN_SCALE,
+    "PHRYGIAN": PHRYGIAN_SCALE,
+    "LYDIAN": LYDIAN_SCALE,
+    "MIXOLYDIAN": MIXOLYDIAN_SCALE,
+    "LOCRIAN": LOCRIAN_SCALE,
+    "CHROMATIC": CHROMATIC_SCALE
 }
 
 # Roman numeral pattern for validation
@@ -150,7 +162,7 @@ CHORD_INTERVALS = {
     # Add other chord qualities as needed
 }
 
-RHYTHM_PATTERNS = {
+RHYTHM_PATTERNS: Dict[str, Any] = {
     # Add your rhythm patterns here
 }
 
@@ -163,11 +175,16 @@ def validate_constants() -> None:
         assert all(0 <= i <= 11 for i in intervals), "Chord intervals must be between 0 and 11"
 
     # Validate scale intervals
-    for scale_type, intervals in SCALE_INTERVALS.items():
+    for scale_type, intervals in SCALE_INTERVALS.items():  # type: ignore
+        # Check that intervals is a tuple
         assert isinstance(intervals, tuple), f"Scale intervals for {scale_type} must be a tuple"
+
+        # Check that all elements are integers
         assert all(isinstance(i, int) for i in intervals), "Scale intervals must be integers"
+
+        # Check that all integers are in the valid range
         assert all(0 <= i <= 11 for i in intervals), "Scale intervals must be between 0 and 11"
-        
+
         if scale_type == ScaleType.CHROMATIC:
             assert len(intervals) == 12, "Chromatic scale must have 12 notes"
         elif scale_type in {ScaleType.MAJOR, ScaleType.MINOR}:
@@ -182,19 +199,30 @@ def validate_constants() -> None:
 
     # Validate rhythm patterns
     for pattern_name, pattern_data in RHYTHM_PATTERNS.items():
+        # Check that pattern_data is a dictionary
         assert isinstance(pattern_data, dict), f"Rhythm pattern data for {pattern_name} must be a dictionary"
+
+        # Check for required keys
         required_keys = {'notes', 'total_duration', 'description'}
-        missing_keys = required_keys - set(pattern_data.keys())
+        pattern_keys = set(pattern_data.keys())
+        missing_keys = required_keys - pattern_keys
         assert not missing_keys, f"Rhythm pattern {pattern_name} missing required keys: {missing_keys}"
 
     # Validate progressions
     for prog_name, prog_data in COMMON_PROGRESSIONS.items():
+        # Check that prog_data is a dictionary
         assert isinstance(prog_data, dict), f"Progression {prog_name} data must be a dictionary"
+
+        # Check for required keys
         required_keys = {'name', 'description', 'chords'}
-        missing_keys = required_keys - set(prog_data.keys())
+        prog_keys = set(prog_data.keys())
+        missing_keys = required_keys - prog_keys
         assert not missing_keys, f"Progression {prog_name} missing required keys: {missing_keys}"
-        
+
+        # Check that chords is a list
         assert isinstance(prog_data['chords'], list), f"Chords in progression {prog_name} must be a list"
+
+        # Check each chord
         for chord in prog_data['chords']:
             assert isinstance(chord, dict), "Each chord must be a dictionary"
             assert all(key in chord for key in ['root', 'quality']), \
@@ -223,12 +251,55 @@ SCALE_DEGREE_QUALITIES = {
 }
 
 # Common chord progressions
-COMMON_PROGRESSIONS = {
-    'I_IV_V': ['I', 'IV', 'V'],
-    'I_V_vi_IV': ['I', 'V', 'vi', 'IV'],
-    'ii_V_I': ['ii', 'V', 'I'],
-    'I_vi_IV_V': ['I', 'vi', 'IV', 'V'],
-    'I_IV_vi_V': ['I', 'IV', 'vi', 'V']
+COMMON_PROGRESSIONS: Dict[str, Dict[str, Any]] = {
+    'I_IV_V': {
+        'name': 'I-IV-V',
+        'description': 'Basic I-IV-V progression',
+        'chords': [
+            {'root': 'C', 'quality': 'MAJOR'},
+            {'root': 'F', 'quality': 'MAJOR'},
+            {'root': 'G', 'quality': 'MAJOR'}
+        ]
+    },
+    'I_V_vi_IV': {
+        'name': 'I-V-vi-IV',
+        'description': 'Pop progression',
+        'chords': [
+            {'root': 'C', 'quality': 'MAJOR'},
+            {'root': 'G', 'quality': 'MAJOR'},
+            {'root': 'A', 'quality': 'MINOR'},
+            {'root': 'F', 'quality': 'MAJOR'}
+        ]
+    },
+    'ii_V_I': {
+        'name': 'ii-V-I',
+        'description': 'Jazz progression',
+        'chords': [
+            {'root': 'D', 'quality': 'MINOR'},
+            {'root': 'G', 'quality': 'MAJOR'},
+            {'root': 'C', 'quality': 'MAJOR'}
+        ]
+    },
+    'I_vi_IV_V': {
+        'name': 'I-vi-IV-V',
+        'description': '50s progression',
+        'chords': [
+            {'root': 'C', 'quality': 'MAJOR'},
+            {'root': 'A', 'quality': 'MINOR'},
+            {'root': 'F', 'quality': 'MAJOR'},
+            {'root': 'G', 'quality': 'MAJOR'}
+        ]
+    },
+    'I_IV_vi_V': {
+        'name': 'I-IV-vi-V',
+        'description': 'Alternative progression',
+        'chords': [
+            {'root': 'C', 'quality': 'MAJOR'},
+            {'root': 'F', 'quality': 'MAJOR'},
+            {'root': 'A', 'quality': 'MINOR'},
+            {'root': 'G', 'quality': 'MAJOR'}
+        ]
+    }
 }
 
 # Pattern presets

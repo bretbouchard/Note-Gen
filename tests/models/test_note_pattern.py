@@ -1,6 +1,5 @@
 """Tests for note pattern models."""
 import pytest
-from pydantic import ValidationError
 from src.note_gen.models.patterns import NotePattern, NotePatternData
 from src.note_gen.models.note import Note
 from src.note_gen.models.scale_info import ScaleInfo
@@ -12,9 +11,9 @@ def basic_pattern() -> NotePattern:
     return NotePattern(
         name="Basic Pattern",
         pattern=[
-            Note(pitch="C", octave=4),
-            Note(pitch="E", octave=4),
-            Note(pitch="G", octave=4)
+            Note(pitch="C", octave=4, duration=1.0, velocity=100, position=0.0, stored_midi_number=60),
+            Note(pitch="E", octave=4, duration=1.0, velocity=100, position=1.0, stored_midi_number=64),
+            Note(pitch="G", octave=4, duration=1.0, velocity=100, position=2.0, stored_midi_number=67)
         ],
         data=NotePatternData(
             key="C",
@@ -29,8 +28,8 @@ def test_scale_compatibility():
     pattern = NotePattern(
         name="Test Pattern",
         pattern=[
-            Note(pitch="C", octave=4),
-            Note(pitch="C#", octave=4)  # Not in C major scale
+            Note(pitch="C", octave=4, duration=1.0, velocity=100, position=0.0, stored_midi_number=60),
+            Note(pitch="C#", octave=4, duration=1.0, velocity=100, position=1.0, stored_midi_number=61)  # Not in C major scale
         ],
         data=NotePatternData(
             key="C",
@@ -39,20 +38,20 @@ def test_scale_compatibility():
         ),
         scale_info=ScaleInfo(key="C", scale_type=ScaleType.MAJOR)
     )
-    
-    with pytest.raises(ValidationError) as exc_info:
+
+    with pytest.raises(ValueError) as exc_info:
         pattern.enable_validation()  # Use the new method instead
-    
-    assert "scale_compatibility" in str(exc_info.value)
+
+    assert "SCALE_COMPATIBILITY_ERROR" in str(exc_info.value)
 
 def test_parallel_motion():
     """Test detection of parallel motion."""
     pattern = NotePattern(
         name="Test Pattern",
         pattern=[
-            Note(pitch="C", octave=4),
-            Note(pitch="D", octave=4),
-            Note(pitch="E", octave=4)
+            Note(pitch="C", octave=4, duration=1.0, velocity=100, position=0.0, stored_midi_number=60),
+            Note(pitch="D", octave=4, duration=1.0, velocity=100, position=1.0, stored_midi_number=62),
+            Note(pitch="E", octave=4, duration=1.0, velocity=100, position=2.0, stored_midi_number=64)
         ],
         data=NotePatternData(
             key="C",
@@ -62,19 +61,19 @@ def test_parallel_motion():
         ),
         scale_info=ScaleInfo(key="C", scale_type=ScaleType.MAJOR)
     )
-    
-    with pytest.raises(ValidationError) as exc_info:
+
+    with pytest.raises(ValueError) as exc_info:
         pattern.enable_validation()  # Use the new method instead
-    
-    assert "parallel_motion" in str(exc_info.value)
+
+    assert "PARALLEL_MOTION_ERROR" in str(exc_info.value)
 
 def test_consonance():
     """Test consonance validation."""
     pattern = NotePattern(
         name="Dissonance Test",
         pattern=[
-            Note(pitch="C", octave=4),
-            Note(pitch="C#", octave=4)
+            Note(pitch="C", octave=4, duration=1.0, velocity=100, position=0.0, stored_midi_number=60),
+            Note(pitch="C#", octave=4, duration=1.0, velocity=100, position=1.0, stored_midi_number=61)
         ],
         data=NotePatternData(
             key="C",
@@ -84,11 +83,11 @@ def test_consonance():
         ),
         scale_info=ScaleInfo(key="C", scale_type=ScaleType.MAJOR)
     )
-    
-    with pytest.raises(ValidationError) as exc_info:
+
+    with pytest.raises(ValueError) as exc_info:
         pattern.enable_validation()  # Use the new method instead
-    
-    assert "consonance" in str(exc_info.value)
+
+    assert "CONSONANCE_ERROR" in str(exc_info.value)
 
 def test_valid_pattern(basic_pattern: NotePattern) -> None:
     # Should not raise any exceptions
@@ -112,7 +111,7 @@ def test_pattern_data_validation() -> None:
             "scale_type": ScaleType.MAJOR
         }
     }
-    
+
     result = NotePattern.validate_pattern_data(data)
     assert result.is_valid, f"Validation failed: {result.violations}"
 
@@ -121,5 +120,5 @@ def test_invalid_pattern_data() -> None:
         "name": "Invalid Pattern",
     }
 
-    with pytest.raises(ValidationError, match="Pattern cannot be empty"):
+    with pytest.raises(ValueError, match="Pattern cannot be empty"):
         NotePattern(**data)

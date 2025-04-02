@@ -1,4 +1,4 @@
-from typing import TypeVar, Generic, Optional
+from typing import TypeVar, Generic, Optional, Any, cast, Type
 from bson import ObjectId
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import BaseModel
@@ -6,7 +6,7 @@ from pydantic import BaseModel
 T = TypeVar('T', bound=BaseModel)
 
 class MongoDBRepository(Generic[T]):
-    def __init__(self, database: AsyncIOMotorDatabase, collection_name: str, model_type: type[T] = None):
+    def __init__(self, database: AsyncIOMotorDatabase, collection_name: str, model_type: Optional[Type[T]] = None):
         self.collection = database[collection_name]
         # Store the actual type for runtime type checking
         # Try to get the type from __orig_class__ if available, otherwise use the provided model_type
@@ -26,7 +26,9 @@ class MongoDBRepository(Generic[T]):
         result = await self.collection.find_one(filter_dict)
         if result:
             # Use the stored concrete type instead of T
-            return self._type.model_validate(result)
+            # Cast to Type[T] to help mypy understand the type
+            model_class = cast(Type[T], self._type)
+            return model_class.model_validate(result)
         return None
 
     async def get_by_id(self, id: str) -> Optional[T]:
@@ -38,7 +40,9 @@ class MongoDBRepository(Generic[T]):
                 result["_id"] = str(result["_id"])
                 # Add id field for compatibility
                 result["id"] = result["_id"]
-                return self._type.model_validate(result)
+                # Cast to Type[T] to help mypy understand the type
+                model_class = cast(Type[T], self._type)
+                return model_class.model_validate(result)
             return None
         except Exception as e:
             # Log the error or handle it as needed

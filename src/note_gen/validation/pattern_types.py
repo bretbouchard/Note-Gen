@@ -1,11 +1,12 @@
 """Pattern-specific validation types."""
 from typing import Protocol, runtime_checkable
 from pydantic import BaseModel
+from src.note_gen.validation.base_validation import ValidationResult
 
 @runtime_checkable
 class PatternValidatable(Protocol):
     """Protocol for validatable patterns."""
-    
+
     def validate_voice_leading(self) -> None:
         """Validate voice leading rules."""
         ...

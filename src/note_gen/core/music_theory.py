@@ -1,12 +1,9 @@
 """Core music theory utilities and functions."""
-from typing import Dict, List, Optional, Tuple
-from .constants import (
-    NOTES,
-    VALID_KEYS,
-    SCALE_INTERVALS,
-    CHORD_INTERVALS
-)
-from .enums import ScaleType, ChordQuality
+from typing import Dict
+from .constants import NOTES
+
+# Define valid keys (all possible keys in music)
+VALID_KEYS = [f"{note}{quality}" for note in NOTES for quality in ['', 'm']]
 
 # Dictionary mapping notes to their enharmonic equivalents
 ENHARMONIC_EQUIVALENTS: Dict[str, str] = {

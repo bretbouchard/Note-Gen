@@ -22,7 +22,7 @@ class ChordProgression(BaseModelWithConfig):
     description: Optional[str] = None
     tags: Optional[List[str]] = None
     quality: Optional[str] = None
-    
+
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
         from_attributes=True
@@ -40,7 +40,7 @@ class ChordProgression(BaseModelWithConfig):
         """Generate a chord progression from a pattern."""
         if scale_info is None:
             scale_info = ScaleInfo(key=key, scale_type=scale_type)
-        
+
         return cls(
             name=name,
             key=key,
@@ -66,9 +66,10 @@ class ChordProgression(BaseModelWithConfig):
         """Add a chord to the progression."""
         if position is None:
             position = sum(item.duration for item in self.items)
-        
+
         self.items.append(
             ChordProgressionItem(
+                chord_symbol=chord.to_symbol(),
                 chord=chord,
                 duration=duration,
                 position=position

@@ -1,13 +1,13 @@
 """Models for musical patterns and transformations."""
-from typing import TYPE_CHECKING, List, Tuple, Optional, Dict, Any, Union
+from typing import TYPE_CHECKING, List, Tuple, Optional, Dict, Any, Union, cast, Sequence, TypedDict, TypeVar, Generic
 from pydantic import BaseModel, Field, ConfigDict
 
 # Import base classes and utilities first
 from enum import Enum
 from pydantic import (
-    Field, 
-    ConfigDict, 
-    BaseModel, 
+    Field,
+    ConfigDict,
+    BaseModel,
     ValidationError,
     model_validator,
     field_validator
@@ -19,15 +19,15 @@ from .note import Note
 from .chord import Chord
 from .scale_info import ScaleInfo
 from ..core.constants import (
-    DURATION_LIMITS, 
-    MIDI_MIN, 
+    DURATION_LIMITS,
+    MIDI_MIN,
     MIDI_MAX,
     NOTE_PATTERNS,
     PATTERN_VALIDATION_LIMITS,  # Add this import
     DEFAULTS  # Add this import
 )
 from ..core.enums import (
-    ValidationLevel, 
+    ValidationLevel,
     ScaleType,
     PatternType,  # Make sure this is imported
     TransformationType,
@@ -66,6 +66,7 @@ class NotePatternData(BaseModel):
     allow_parallel_motion: bool = Field(default=True)
     custom_interval_weights: Optional[Dict[int, float]] = None
     scale_type: Optional[ScaleType] = Field(default=ScaleType.MAJOR)  # Make scale_type optional
+    intervals: List[int] = Field(default_factory=list)
 
     model_config = ConfigDict(
         validate_assignment=True,
@@ -75,7 +76,9 @@ class NotePatternData(BaseModel):
     @model_validator(mode='after')
     def validate_octave_range(self) -> 'NotePatternData':
         min_octave, max_octave = self.octave_range
-        if not (PATTERN_VALIDATION_LIMITS['MIN_OCTAVE'] <= min_octave <= max_octave <= PATTERN_VALIDATION_LIMITS['MAX_OCTAVE']):
+        min_limit = int(str(PATTERN_VALIDATION_LIMITS.get('MIN_OCTAVE', -1)))
+        max_limit = int(str(PATTERN_VALIDATION_LIMITS.get('MAX_OCTAVE', 9)))
+        if not (min_limit <= min_octave <= max_octave <= max_limit):
             raise ValueError(
                 f"Invalid octave range: must be between {PATTERN_VALIDATION_LIMITS['MIN_OCTAVE']} "
                 f"and {PATTERN_VALIDATION_LIMITS['MAX_OCTAVE']}"
@@ -92,7 +95,7 @@ class Pattern(BaseModel):
         validate_assignment=True,
         arbitrary_types_allowed=True
     )
-    
+
     id: str = Field(default="", description="Pattern ID")
     name: str = Field(
         default="",
@@ -124,7 +127,7 @@ class NotePattern(Pattern):
     )
 
     name: str = Field(default="")
-    pattern: List[Union[str, Note]] = Field(
+    pattern: Sequence[Union[str, Note]] = Field(
         default_factory=list,
         description="List of notes in the pattern"
     )
@@ -143,29 +146,29 @@ class NotePattern(Pattern):
             raise ValueError("Pattern cannot be empty")
         return self
 
-    def __init__(self, **data):
+    def __init__(self, **data: Any) -> None:
         # Set skip_validation to True during initialization
         if 'skip_validation' not in data:
             data['skip_validation'] = True
-        
+
         # Ensure pattern is initialized
         if 'pattern' not in data:
             data['pattern'] = []
-            
+
         super().__init__(**data)
-        
+
         # Convert pattern strings to Note objects if needed
         if 'pattern' in data:
-            self.pattern = self._convert_pattern(data['pattern'])
+            pattern_data = data['pattern']
+            if isinstance(pattern_data, list):
+                self.pattern = self._convert_pattern(pattern_data)
 
-    def _convert_pattern(self, pattern_data: List[Union[str, Note]]) -> List[Note]:
+    def _convert_pattern(self, pattern_data: Sequence[Union[str, Note]]) -> List[Note]:
         """Convert pattern data to Note objects."""
-        result = []
+        result: List[Note] = []
         for item in pattern_data:
             if isinstance(item, str):
                 note = Note.from_name(item)
-                if note is None:
-                    raise ValueError(f"Invalid note string: {item}")
                 result.append(note)
             elif isinstance(item, Note):
                 result.append(item)
@@ -173,19 +176,17 @@ class NotePattern(Pattern):
                 raise ValueError(f"Invalid note type: {type(item)}")
         return result
 
-    def validate(self, level: ValidationLevel = ValidationLevel.NORMAL) -> ValidationResult:
+    def validate_pattern_rules(self, level: ValidationLevel = ValidationLevel.NORMAL) -> ValidationResult:
         """Validate the pattern using ValidationManager."""
-        return ValidationManager.validate_model(
-            model_class=self.__class__,
-            data=self.model_dump(),
-            level=level
-        )
+        # Create a new ValidationResult
+        return self.check_musical_rules()
 
     # Remove the Config class entirely
 
     def enable_validation(self) -> None:
         """Enable validation and run initial validation."""
         self.skip_validation = False
+        # Run validation checks
         self.validate_musical_rules()
 
     @property
@@ -193,12 +194,13 @@ class NotePattern(Pattern):
         """Calculate total duration of the pattern."""
         total: float = 0.0
         for note in self.pattern:
-            total += float(note.duration)
+            if isinstance(note, Note):
+                total += float(note.duration)
         return total
 
     def calculate_total_duration(self) -> float:
         """Calculate the total duration of all notes in the pattern."""
-        return sum(float(note.duration) for note in self.pattern)
+        return sum(float(note.duration) for note in self.pattern if isinstance(note, Note))
 
     def get_duration_as_float(self) -> float:
         """Get the pattern duration as a float."""
@@ -210,7 +212,7 @@ class NotePattern(Pattern):
         if self.data and self.data.octave_range:
             min_octave, max_octave = self.data.octave_range
             for note in self.pattern:
-                if note.octave < min_octave or note.octave > max_octave:
+                if isinstance(note, Note) and note.octave is not None and (note.octave < min_octave or note.octave > max_octave):
                     violations.append(ValidationViolation(
                         message=f"Note {note} is outside allowed octave range ({min_octave}-{max_octave})",
                         code="OCTAVE_RANGE_ERROR",
@@ -223,29 +225,34 @@ class NotePattern(Pattern):
         if not self.scale_info:
             return
         for note in self.pattern:
-            if not self.scale_info.is_note_in_scale(note):
+            # Convert note to Note type if it's a string
+            note_obj = note if isinstance(note, Note) else Note.from_name(str(note))
+            if not self.scale_info.is_note_in_scale(note_obj):
                 raise ValueError(f"Note {note} is not compatible with scale {self.scale_info}")
 
     def validate_voice_leading(self) -> ValidationResult:
         """Validate voice leading rules."""
         violations: List[ValidationViolation] = []
-        
+
         if len(self.pattern) < 2:
             return ValidationResult(is_valid=True, violations=[])
-        
+
         max_interval = self.data.max_interval_jump if self.data else PATTERN_VALIDATION_LIMITS['MAX_INTERVAL_JUMP']
-        
+
         for i in range(len(self.pattern) - 1):
             current_note = self.pattern[i]
             next_note = self.pattern[i + 1]
-            interval = abs(next_note.to_midi_number() - current_note.to_midi_number())
-            
-            if interval > max_interval:
+            # Convert notes to Note objects if they're strings
+            current_note_obj = current_note if isinstance(current_note, Note) else Note.from_name(str(current_note))
+            next_note_obj = next_note if isinstance(next_note, Note) else Note.from_name(str(next_note))
+            interval = abs(next_note_obj.to_midi_number() - current_note_obj.to_midi_number())
+
+            if self.data and hasattr(self.data, 'max_interval_jump') and interval > self.data.max_interval_jump:
                 violations.append(ValidationViolation(
                     code="VALIDATION_ERROR",
-                    message=f"Voice leading violation: interval {interval} exceeds maximum {max_interval}"
+                    message=f"Voice leading violation: interval {interval} exceeds maximum {self.data.max_interval_jump}"
                 ))
-        
+
         return ValidationResult(
             is_valid=len(violations) == 0,
             violations=violations
@@ -258,7 +265,10 @@ class NotePattern(Pattern):
         for i in range(len(self.pattern) - 1):
             current_note = self.pattern[i]
             next_note = self.pattern[i + 1]
-            interval = abs(next_note.to_midi_number() - current_note.to_midi_number()) % 12
+            # Convert notes to Note objects if they're strings
+            current_note_obj = current_note if isinstance(current_note, Note) else Note.from_name(str(current_note))
+            next_note_obj = next_note if isinstance(next_note, Note) else Note.from_name(str(next_note))
+            interval = abs(next_note_obj.to_midi_number() - current_note_obj.to_midi_number()) % 12
             if interval not in [0, 3, 4, 7, 8, 9]:  # Consonant intervals
                 raise ValueError(f"Dissonant interval {interval} between {current_note} and {next_note}")
 
@@ -267,14 +277,16 @@ class NotePattern(Pattern):
         if len(self.pattern) < 3:
             return
         for i in range(len(self.pattern) - 2):
-            if self._is_parallel_motion(self.pattern[i:i+3]):
+            # Convert to List[Note] for type checking
+            notes_subset = cast(List[Note], self.pattern[i:i+3])
+            if self._is_parallel_motion(notes_subset):
                 raise ValueError(f"Parallel motion detected at position {i}")
 
     @staticmethod
     def validate_pattern_structure(data: Dict[str, Any]) -> List[ValidationViolation]:
         """Validate the basic structure of a pattern."""
         violations: List[ValidationViolation] = []
-        
+
         required_fields = {'name', 'pattern', 'data'}
         missing_fields = required_fields - set(data.keys())
         if missing_fields:
@@ -282,25 +294,25 @@ class NotePattern(Pattern):
                 message=f"Missing required fields: {', '.join(missing_fields)}",
                 code="MISSING_FIELDS"
             ))
-            
+
         if 'pattern' in data and not isinstance(data['pattern'], list):
             violations.append(ValidationViolation(
                 message="Pattern must be a list",
                 code="INVALID_PATTERN_TYPE"
             ))
-            
+
         if 'data' in data and not isinstance(data['data'], dict):
             violations.append(ValidationViolation(
                 message="Data must be a dictionary",
                 code="INVALID_DATA_TYPE"
             ))
-            
+
         return violations
 
     def validate_pattern(self, level: ValidationLevel = ValidationLevel.NORMAL) -> ValidationResult:
         """Validate the entire pattern."""
         violations: List[ValidationViolation] = []
-        
+
         try:
             # Basic validation
             if not self.pattern:
@@ -365,7 +377,7 @@ class NotePattern(Pattern):
             # Convert the data dict to NotePatternData
             if 'data' in data:
                 data['data'] = NotePatternData(**data['data'])
-            
+
             # Convert pattern items to Note objects if they're dicts
             if 'pattern' in data and isinstance(data['pattern'], list):
                 data['pattern'] = [
@@ -375,7 +387,7 @@ class NotePattern(Pattern):
 
             # Create and validate the pattern
             pattern = cls(**data)
-            
+
             # Perform all validations
             pattern.validate_scale_compatibility()
             pattern.validate_voice_leading()
@@ -395,78 +407,39 @@ class NotePattern(Pattern):
                 ]
             )
 
-    @model_validator(mode='after')
     def validate_musical_rules(self) -> 'NotePattern':
         """Validate musical rules for the pattern."""
         if self.skip_validation:
             return self
-            
-        errors: List[Dict[str, Any]] = []
 
-        try:
-            # Scale compatibility check
-            if self.scale_info and not (self.data and self.data.allow_chromatic):
-                for note in self.pattern:
-                    if not self.scale_info.is_note_in_scale(note):
-                        errors.append({
-                            'loc': ('pattern',),
-                            'msg': f"Note {note.pitch}{note.octave} is not compatible with scale {self.scale_info.key} {self.scale_info.scale_type}",
-                            'type': 'value_error',
-                            'ctx': {'error': 'scale_compatibility'}
-                        })
+        # Check musical rules and collect errors
+        result = self.check_musical_rules()
+        if not result.is_valid:
+            # Convert ValidationResult to error
+            errors = []
+            for violation in result.violations:
+                errors.append({
+                    'loc': (violation.code,),
+                    'msg': violation.message,
+                    'type': 'value_error',
+                    'ctx': {'error': violation.code}
+                })
 
-            # Voice leading check
-            if len(self.pattern) >= 2:
-                for i in range(len(self.pattern) - 1):
-                    current_note = self.pattern[i]
-                    next_note = self.pattern[i + 1]
-                    interval = abs(next_note.to_midi_number() - current_note.to_midi_number())
-                    if self.data and interval > self.data.max_interval_jump:
-                        errors.append({
-                            'loc': ('pattern',),
-                            'msg': f"Voice leading violation: interval {interval} exceeds maximum {self.data.max_interval_jump}",
-                            'type': 'value_error',
-                            'ctx': {'error': 'voice_leading'}
-                        })
+            # Create a simple error message from the collected errors
+            error_parts = []
+            for err in errors:
+                error_code = 'validation_error'
+                if isinstance(err, dict) and 'ctx' in err and isinstance(err['ctx'], dict) and 'error' in err['ctx']:
+                    error_code = str(err['ctx']['error'])
 
-            # Parallel motion check
-            if self.data and not self.data.allow_parallel_motion and len(self.pattern) >= 3:
-                for i in range(len(self.pattern) - 2):
-                    if self._is_parallel_motion(self.pattern[i:i+3]):
-                        errors.append({
-                            'loc': ('pattern',),
-                            'msg': f"Parallel motion detected at position {i}",
-                            'type': 'value_error',
-                            'ctx': {'error': 'parallel_motion'}
-                        })
+                msg = ''
+                if isinstance(err, dict) and 'msg' in err:
+                    msg = str(err['msg'])
 
-            # Consonance check
-            if len(self.pattern) >= 2:
-                for i in range(len(self.pattern) - 1):
-                    current_note = self.pattern[i]
-                    next_note = self.pattern[i + 1]
-                    interval = abs(next_note.to_midi_number() - current_note.to_midi_number()) % 12
-                    if interval not in [0, 3, 4, 7, 8, 9]:  # Consonant intervals
-                        errors.append({
-                            'loc': ('pattern',),
-                            'msg': f"Dissonant interval {interval} between {current_note} and {next_note}",
-                            'type': 'value_error',
-                            'ctx': {'error': 'consonance'}
-                        })
+                error_parts.append(f"{error_code}: {msg}")
 
-        except Exception as e:
-            errors.append({
-                'loc': ('pattern',),
-                'msg': str(e),
-                'type': 'value_error',
-                'ctx': {'error': 'validation_error'}
-            })
-
-        if errors:
-            raise ValidationError.from_exception_data(
-                title='Musical Rule Validation Error',
-                line_errors=errors
-            )
+            error_message = "\n".join(error_parts) if error_parts else "Validation error"
+            raise ValueError(f"Musical Rule Validation Error: {error_message}")
 
         return self
 
@@ -474,20 +447,20 @@ class NotePattern(Pattern):
         """Check if three consecutive notes form parallel motion."""
         if len(notes) < 3:
             return False
-        
+
         # Calculate intervals between consecutive notes
         intervals = [
             notes[i + 1].to_midi_number() - notes[i].to_midi_number()
             for i in range(len(notes) - 1)
         ]
-        
+
         # Check if intervals are the same and in the same direction
-        return (intervals[0] == intervals[1] and 
-                ((intervals[0] > 0 and intervals[1] > 0) or 
+        return (intervals[0] == intervals[1] and
+                ((intervals[0] > 0 and intervals[1] > 0) or
                  (intervals[0] < 0 and intervals[1] < 0)))
 
-    def check_musical_rules(self, 
-                          validate_consonance: bool = True, 
+    def check_musical_rules(self,
+                          validate_consonance: bool = True,
                           validate_parallel: bool = True,
                           validate_scale: bool = True) -> ValidationResult:
         """Check musical rules for the pattern."""
@@ -500,16 +473,25 @@ class NotePattern(Pattern):
             # Scale compatibility check
             if validate_scale and self.scale_info and not (self.data and self.data.allow_chromatic):
                 for note in self.pattern:
-                    if not self.scale_info.is_note_in_scale(note):
+                    # Convert note to Note type if it's a string
+                    note_obj = note if isinstance(note, Note) else Note.from_name(str(note))
+                    if not self.scale_info.is_note_in_scale(note_obj):
+                        # Handle both Note objects and strings
+                        if isinstance(note, Note):
+                            note_str = f"{note.pitch}{note.octave}"
+                        else:
+                            note_str = str(note)
                         violations.append(ValidationViolation(
                             code="SCALE_COMPATIBILITY_ERROR",
-                            message=f"Note {note.pitch}{note.octave} is not compatible with scale {self.scale_info.key} {self.scale_info.scale_type}"
+                            message=f"Note {note_str} is not compatible with scale {self.scale_info.key} {self.scale_info.scale_type}"
                         ))
 
             # Parallel motion check
             if validate_parallel and self.data and not self.data.allow_parallel_motion:
                 for i in range(len(self.pattern) - 2):
-                    if self._is_parallel_motion(self.pattern[i:i+3]):
+                    # Convert to List[Note] for type checking
+                    notes_subset = cast(List[Note], self.pattern[i:i+3])
+                    if self._is_parallel_motion(notes_subset):
                         violations.append(ValidationViolation(
                             code="PARALLEL_MOTION_ERROR",
                             message=f"Parallel motion detected at position {i}"
@@ -520,11 +502,21 @@ class NotePattern(Pattern):
                 for i in range(len(self.pattern) - 1):
                     current_note = self.pattern[i]
                     next_note = self.pattern[i + 1]
-                    interval = abs(next_note.to_midi_number() - current_note.to_midi_number()) % 12
+                    # Convert notes to Note objects if they're strings
+                    current_note_obj = current_note if isinstance(current_note, Note) else Note.from_name(str(current_note))
+                    next_note_obj = next_note if isinstance(next_note, Note) else Note.from_name(str(next_note))
+                    interval = abs(next_note_obj.to_midi_number() - current_note_obj.to_midi_number()) % 12
                     if interval not in [0, 3, 4, 7, 8, 9]:  # Consonant intervals
+                        # Handle both Note objects and strings
+                        if isinstance(current_note, Note) and isinstance(next_note, Note):
+                            current_str = f"{current_note.pitch}{current_note.octave}"
+                            next_str = f"{next_note.pitch}{next_note.octave}"
+                        else:
+                            current_str = str(current_note)
+                            next_str = str(next_note)
                         violations.append(ValidationViolation(
                             code="CONSONANCE_ERROR",
-                            message=f"Dissonant interval {interval} between {current_note.pitch}{current_note.octave} and {next_note.pitch}{next_note.octave}"
+                            message=f"Dissonant interval {interval} between {current_str} and {next_str}"
                         ))
 
         except Exception as e:
@@ -554,7 +546,6 @@ class NotePattern(Pattern):
     def validate_data_requirements(self) -> 'NotePattern':
         """Validate required data fields."""
         if not self.data or not hasattr(self.data, 'scale_type'):
-            from pydantic import ValidationError
             raise ValueError('Field required: scale_type')  # Simpler approach
             # Or use the more detailed approach:
             # errors = [
@@ -588,7 +579,7 @@ class NotePattern(Pattern):
     def validate_all(self) -> ValidationResult:
         """Perform all validations after initialization."""
         violations: List[ValidationViolation] = []
-        
+
         try:
             # Validate note range first
             range_result = self.validate_note_range()
@@ -605,7 +596,7 @@ class NotePattern(Pattern):
                 self.validate_scale_compatibility()
             if self.data:
                 self.validate_voice_leading()
-            
+
         except ValueError as e:
             violations.append(
                 ValidationViolation(
@@ -613,7 +604,7 @@ class NotePattern(Pattern):
                     message=str(e)
                 )
             )
-        
+
         return ValidationResult(
             is_valid=len(violations) == 0,
             violations=violations
@@ -647,8 +638,27 @@ class NotePattern(Pattern):
             'scale_type': preset_data.get('scale_type', ScaleType.MAJOR)
         }
 
-        # Create NotePatternData instance
-        note_pattern_data = NotePatternData(**pattern_data)
+        # Create NotePatternData instance with specific fields
+        key = pattern_data.get('key')
+        if not isinstance(key, str):
+            key = 'C'
+
+        root_note = pattern_data.get('root_note')
+        if not isinstance(root_note, str):
+            root_note = 'C'
+
+        scale_type = pattern_data.get('scale_type')
+        if not isinstance(scale_type, ScaleType):
+            scale_type = ScaleType.MAJOR
+
+        intervals = preset_data.get('intervals', [])
+
+        note_pattern_data = NotePatternData(
+            key=key,
+            root_note=root_note,
+            scale_type=scale_type,
+            intervals=intervals
+        )
 
         # Create initial pattern with at least one note
         pattern = [
@@ -657,7 +667,8 @@ class NotePattern(Pattern):
                 octave=4,
                 duration=1.0,
                 position=0.0,
-                velocity=100
+                velocity=100,
+                stored_midi_number=60  # Middle C
             )
         ]
 
@@ -674,21 +685,22 @@ class NotePattern(Pattern):
         root = Note.from_name(root_note)
         if root is None:
             raise ValueError(f"Invalid root note: {root_note}")
-            
+
         notes: List[Note] = []
         for interval in pattern:
             midi_num = root.to_midi_number() + interval
             note = Note.from_midi_number(midi_num)
             if note is not None:
                 notes.append(note)
-        
-        pattern_data = NotePatternData(
-            key=root_note,
-            root_note=root.pitch,
-            intervals=pattern,
+
+        # Create pattern data without the 'intervals' field which is not in NotePatternData
+        pattern_data_dict = {
+            'key': root_note,
+            'root_note': root.pitch,
             **kwargs  # Allow additional fields to be set
-        )
-        
+        }
+        pattern_data = NotePatternData(**pattern_data_dict)
+
         return cls(
             pattern=notes,
             data=pattern_data
@@ -699,10 +711,10 @@ class NotePattern(Pattern):
         """Create a pattern from a dictionary."""
         if not isinstance(data, dict):
             raise TypeError("Data must be a dictionary")
-            
+
         pattern_data = NotePatternData(**data.get('data', {}))
         notes = [Note(**note_data) for note_data in data.get('pattern', [])]
-        
+
         return cls(
             name=data.get('name', ''),
             pattern=notes,
@@ -765,7 +777,7 @@ class RhythmPattern(BaseModel):
         arbitrary_types_allowed=True,
         from_attributes=True
     )
-    
+
     id: str = Field(default="")
     name: str = Field(default="")
     pattern: List[RhythmNote] = Field(default_factory=list)
@@ -780,16 +792,16 @@ class RhythmPattern(BaseModel):
         """Validate the rhythm pattern."""
         if not self.pattern:
             raise ValueError("Pattern cannot be empty")
-            
+
         # Validate time signature denominator (must be power of 2)
         if self.time_signature[1] not in [1, 2, 4, 8, 16, 32, 64]:
             raise ValueError("Time signature denominator must be a power of 2")
-            
+
         # Check if notes are ordered by position
         positions = [note.position for note in self.pattern]
         if positions != sorted(positions):
             raise ValueError("Notes must be ordered by position")
-            
+
         return self
 
 class ChordProgressionPattern(Pattern):

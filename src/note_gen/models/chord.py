@@ -7,7 +7,7 @@ from ..core.enums import ChordQuality  # Updated import
 
 class Chord(BaseModelWithConfig):
     """Model representing a musical chord."""
-    
+
     model_config = ConfigDict(
         validate_assignment=True,
         arbitrary_types_allowed=True,
@@ -64,7 +64,7 @@ class Chord(BaseModelWithConfig):
         # Create the base note with octave in the name string
         base_note = Note.from_name(f"{self.root}4")  # Use middle octave as default
         intervals = self.QUALITY_INTERVALS[self.quality]
-        
+
         self.notes = []
         for interval in intervals:
             note = base_note.transpose(interval)
@@ -73,16 +73,16 @@ class Chord(BaseModelWithConfig):
     def transpose(self, semitones: int) -> 'Chord':
         """
         Create a new chord transposed by the specified number of semitones.
-        
+
         Args:
             semitones: Number of semitones to transpose by
-            
+
         Returns:
             Chord: New transposed chord
         """
-        base_note = Note.from_name(self.root, octave=4)
+        base_note = Note.from_name(self.root, default_octave=4)
         transposed_note = base_note.transpose(semitones)
-        
+
         return Chord(
             root=transposed_note.note_name,
             quality=self.quality
@@ -91,7 +91,7 @@ class Chord(BaseModelWithConfig):
     def to_symbol(self) -> str:
         """
         Convert the chord to its symbol representation.
-        
+
         Returns:
             str: Chord symbol (e.g., 'C', 'Am', 'F7')
         """
@@ -110,34 +110,34 @@ class Chord(BaseModelWithConfig):
     def from_symbol(cls, symbol: str) -> 'Chord':
         """
         Create a Chord instance from a chord symbol.
-        
+
         Args:
             symbol: Chord symbol (e.g., 'C', 'Am', 'F7')
-            
+
         Returns:
             Chord: New chord instance
         """
         # Parse root note
         root = symbol[0]
         idx = 1
-        
+
         # Handle sharp/flat
         if idx < len(symbol) and symbol[idx] in '#b':
             root += symbol[idx]
             idx += 1
-        
+
         # Parse quality
         quality_str = symbol[idx:] if idx < len(symbol) else ''
         # Default to MAJOR if no quality specified
         quality = ChordQuality.MAJOR if not quality_str else ChordQuality.from_string(quality_str)
-        
+
         return cls(root=root, quality=quality)
 
 
 class ChordProgressionItem(BaseModelWithConfig):
     """
     Represents an item in a chord progression.
-    
+
     Attributes:
         chord: The chord
         duration: Duration in beats
@@ -150,10 +150,10 @@ class ChordProgressionItem(BaseModelWithConfig):
     def transpose(self, semitones: int) -> 'ChordProgressionItem':
         """
         Create a new ChordProgressionItem with transposed chord.
-        
+
         Args:
             semitones: Number of semitones to transpose by
-            
+
         Returns:
             ChordProgressionItem: New transposed item
         """
