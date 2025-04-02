@@ -76,7 +76,7 @@ class ChordProgressionController:
         """
         # This would typically call a service or use a factory
         # For now, we'll implement a simple placeholder
-        from src.note_gen.models.chord import Chord
+        from note_gen.models.chord import Chord
 
         progression = ChordProgression(
             name=f"Generated {key} {scale_type} Progression",
