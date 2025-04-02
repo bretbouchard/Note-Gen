@@ -7,6 +7,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from note_gen.database.db import get_db_conn, close_mongo_connection
 from src.note_gen.controllers.chord_progression_controller import ChordProgressionController
 from src.note_gen.controllers.pattern_controller import PatternController
+from src.note_gen.controllers.sequence_controller import SequenceController
 from src.note_gen.database.repositories.base_repository import BaseRepository
 
 async def get_database() -> AsyncGenerator[AsyncIOMotorDatabase, None]:
@@ -47,3 +48,17 @@ async def get_pattern_controller(
 ) -> PatternController:
     """Get pattern controller dependency."""
     return PatternController(note_pattern_repository, rhythm_pattern_repository)
+
+async def get_sequence_repository(db: AsyncIOMotorDatabase = Depends(get_database)) -> BaseRepository:
+    """Get sequence repository dependency."""
+    from src.note_gen.models.sequence import Sequence
+
+    return BaseRepository[Sequence](db.sequences)
+
+async def get_sequence_controller(
+    sequence_repository: BaseRepository = Depends(get_sequence_repository),
+    pattern_controller: PatternController = Depends(get_pattern_controller),
+    chord_progression_repository: BaseRepository = Depends(get_chord_progression_repository)
+) -> SequenceController:
+    """Get sequence controller dependency."""
+    return SequenceController(sequence_repository, pattern_controller, chord_progression_repository)
