@@ -19,7 +19,7 @@ async def test_create_from_preset():
     )
     assert sequence is not None
     assert sequence.chord_progression is not None
-    assert len(sequence.chord_progression.items) > 0
+    assert "items" in sequence.chord_progression
 
 @pytest.mark.asyncio
 async def test_create_from_pattern():

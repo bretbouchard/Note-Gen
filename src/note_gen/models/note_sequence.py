@@ -19,8 +19,8 @@ class NoteSequence(Sequence):
         default=DEFAULTS["time_signature"],
         description="Time signature as (numerator, denominator)"
     )
-    scale_info: Optional[ScaleInfo] = None
-    chord_progression: Optional[ChordProgression] = None
+    scale_info: Optional[Dict[str, Any]] = None
+    chord_progression: Optional[Dict[str, Any]] = None
     progression_name: Optional[str] = None
     note_pattern_name: Optional[str] = None
     rhythm_pattern_name: Optional[str] = None
@@ -47,7 +47,7 @@ class NoteSequence(Sequence):
             "duration": self.duration,
             "tempo": self.tempo,
             "time_signature": self.time_signature,
-            "scale_info": self.scale_info.model_dump() if self.scale_info else None,
+            "scale_info": self.scale_info if self.scale_info else None,
             "progression_name": self.progression_name,
             "note_pattern_name": self.note_pattern_name,
             "rhythm_pattern_name": self.rhythm_pattern_name

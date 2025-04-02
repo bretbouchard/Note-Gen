@@ -30,10 +30,10 @@ class NoteSequenceFactory:
             rhythm_pattern=rhythm_pattern,
             validation_level=validation_level
         )
-        
+
         sequence = await generator.generate(scale_info=scale_info)
         # Ensure chord progression is set on the sequence
-        sequence.chord_progression = chord_progression
+        sequence.chord_progression = chord_progression.model_dump() if chord_progression else None
         sequence.progression_name = chord_progression.name
         return sequence
 
@@ -49,7 +49,7 @@ class NoteSequenceFactory:
         """Create a note sequence from a preset configuration."""
         from ..factories.pattern_factory import PatternFactory
         from ..factories.chord_progression_factory import ChordProgressionFactory
-        
+
         # Create components using their respective factories
         pattern_factory = PatternFactory()
         note_pattern = pattern_factory.create_note_pattern(
@@ -57,21 +57,21 @@ class NoteSequenceFactory:
             scale_type=scale_type,
             intervals=[0, 2, 4]  # Basic triad pattern
         )
-        
+
         rhythm_pattern = pattern_factory.create_rhythm_pattern(
             durations=[1.0, 1.0, 1.0, 1.0],  # Basic quarter note pattern
             time_signature=time_signature
         )
-        
+
         chord_progression = await ChordProgressionFactory.from_preset(
             preset_name=preset_name,
             key=key,
             scale_type=scale_type,
             time_signature=time_signature
         )
-        
+
         scale_info = ScaleInfo(key=key, scale_type=scale_type)
-        
+
         return await cls.create_from_patterns(
             chord_progression=chord_progression,
             note_pattern=note_pattern,
@@ -106,16 +106,16 @@ class NoteSequenceFactory:
         # Validate config
         if not ValidationManager.validate_config(config, "note_sequence"):
             raise ValueError("Invalid note sequence configuration")
-            
+
         # Extract components from config
         chord_progression = ChordProgression(**config["chord_progression"])
         note_pattern = NotePattern(**config["note_pattern"])
         rhythm_pattern = RhythmPattern(**config["rhythm_pattern"])
-        
+
         scale_info = None
         if "scale_info" in config:
             scale_info = ScaleInfo(**config["scale_info"])
-        
+
         sequence = await cls.create_from_patterns(
             chord_progression=chord_progression,
             note_pattern=note_pattern,
@@ -123,10 +123,10 @@ class NoteSequenceFactory:
             scale_info=scale_info,
             validation_level=validation_level
         )
-        
+
         # Set additional properties from config
         sequence.name = f"Generated Sequence {note_pattern.name}"
         sequence.note_pattern_name = note_pattern.name
         sequence.rhythm_pattern_name = rhythm_pattern.name
-        
+
         return sequence

@@ -42,7 +42,7 @@ class NoteSequenceGenerator(BaseModel):
             scale_info = self.chord_progression.scale_info
         if scale_info is None:
             raise ValueError("scale_info must be provided either in constructor or generate method")
-            
+
         return await self.generate_sequence_async(scale_info, transpose)
 
     async def generate_sequence_async(
@@ -73,7 +73,7 @@ class NoteSequenceGenerator(BaseModel):
                 duration=sum(note.duration for note in sequence),
                 tempo=120,  # Default tempo
                 time_signature=self.rhythm_pattern.time_signature,
-                scale_info=scale_info,
+                scale_info=scale_info.model_dump() if scale_info else None,
                 progression_name=self.chord_progression.name,
                 note_pattern_name=self.note_pattern.name,
                 rhythm_pattern_name=self.rhythm_pattern.name
@@ -106,7 +106,7 @@ class NoteSequenceGenerator(BaseModel):
                 velocity=64
             )
             chord_notes = [root_note]
-            
+
             # Add chord notes based on intervals
             root_midi = root_note.to_midi_number()
             for interval in ChordQuality.get_intervals(chord_item.quality):
@@ -117,7 +117,7 @@ class NoteSequenceGenerator(BaseModel):
                     velocity=64
                 )
                 chord_notes.append(new_note)
-            
+
             sequence.extend(chord_notes)
         return sequence
 
@@ -131,20 +131,20 @@ class NoteSequenceGenerator(BaseModel):
         pattern_positions = [note.position for note in self.rhythm_pattern.pattern]
         pattern_accents = [note.accent for note in self.rhythm_pattern.pattern]
         pattern_length = len(pattern_durations)
-        
+
         current_position = 0.0
         for i, note in enumerate(sequence):
             pattern_idx = i % pattern_length
             duration = pattern_durations[pattern_idx]
             position = pattern_positions[pattern_idx]
             accent = pattern_accents[pattern_idx]
-            
+
             # Update note properties
             note.duration = duration
             note.position = current_position + position
             if accent:
                 note.velocity = min(note.velocity + 16, 127)  # Increase velocity for accented notes
-            
+
             rhythmic_sequence.append(note)
             current_position += duration
 
@@ -163,23 +163,23 @@ class NoteSequenceGenerator(BaseModel):
                 pitch=scale_note.pitch,  # Use the pitch string from the Note object
                 octave=4
             ))
-        
+
         pattern_sequence = []
         pattern_length = len(self.note_pattern.pattern)
 
         for i, note in enumerate(sequence):
             pattern_idx = i % pattern_length
             pattern_note = self.note_pattern.pattern[pattern_idx]
-            
+
             # Find the index of the current note in the scale using the pitch string
             scale_idx = next(i for i, n in enumerate(scale_notes) if n.pitch == note.pitch)
-            
+
             # Calculate interval from pattern note to current note
             interval = pattern_note.to_midi_number() - note.to_midi_number()
-            
+
             new_idx = (scale_idx + interval) % len(scale_notes)
             scale_note = scale_notes[new_idx]
-            
+
             # Use the pitch string from the scale note
             new_note = Note(
                 pitch=scale_note.pitch,
