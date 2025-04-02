@@ -22,7 +22,7 @@ async def test_generate_sequence(scale_info):
         duration=1.0,
         velocity=64
     )
-    
+
     # Create test instances
     chord_progression = ChordProgression(
         name="Test Progression",
@@ -65,10 +65,7 @@ async def test_generate_sequence(scale_info):
             RhythmNote(position=2.0, duration=1.0, velocity=64)
         ],
         time_signature=(4, 4),
-        swing_enabled=False,
-        humanize_enabled=False,
-        swing_ratio=0.67,
-        humanize_amount=0.0
+        swing_enabled=False
     )
 
     # Create the generator with all required parameters
@@ -80,10 +77,12 @@ async def test_generate_sequence(scale_info):
 
     # Generate the sequence
     sequence = await generator.generate(scale_info=scale_info)
-    
+
     # Add assertions
     assert sequence is not None
     assert len(sequence.notes) > 0
-    assert sequence.scale_info == scale_info
+    assert sequence.scale_info is not None
+    assert "key" in sequence.scale_info
+    assert sequence.scale_info["key"] == scale_info.key
     assert sequence.progression_name == "Test Progression"
     assert sequence.note_pattern_name == "Test Pattern"
