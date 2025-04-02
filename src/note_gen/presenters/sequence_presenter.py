@@ -7,9 +7,9 @@ ensuring a clean separation between the business logic and the presentation laye
 
 from typing import List, Dict, Any, Union
 
-from src.note_gen.models.sequence import Sequence
-from src.note_gen.models.note_sequence import NoteSequence
-from src.note_gen.models.note import Note
+from note_gen.models.sequence import Sequence
+from note_gen.models.note_sequence import NoteSequence
+from note_gen.models.note import Note
 
 
 class SequencePresenter:
@@ -44,13 +44,13 @@ class SequencePresenter:
             Formatted note sequence data
         """
         base_data = SequencePresenter.present_sequence(sequence)
-        
+
         # Add note sequence specific data
         base_data.update({
             "notes": SequencePresenter._format_notes(sequence.notes),
             "type": "note_sequence",
         })
-        
+
         return base_data
 
     @staticmethod

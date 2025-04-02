@@ -7,15 +7,15 @@ including retrieving, creating, and validating patterns.
 
 from typing import List, Optional, Dict, Any, Union
 
-from src.note_gen.database.repositories.base_repository import BaseRepository
-from src.note_gen.models.patterns import NotePattern, RhythmPattern
+from note_gen.database.repositories.base import BaseRepository
+from note_gen.models.patterns import NotePattern, RhythmPattern
 
 
 class PatternController:
     """Controller for pattern operations."""
 
     def __init__(
-        self, 
+        self,
         note_pattern_repository: BaseRepository,
         rhythm_pattern_repository: BaseRepository
     ):
@@ -39,7 +39,7 @@ class PatternController:
         Returns:
             The note pattern if found, None otherwise
         """
-        return await self.note_pattern_repository.find_by_id(pattern_id)
+        return await self.note_pattern_repository.find_one(pattern_id)
 
     async def get_all_note_patterns(self) -> List[NotePattern]:
         """
@@ -48,7 +48,7 @@ class PatternController:
         Returns:
             List of all note patterns
         """
-        return await self.note_pattern_repository.find_all()
+        return await self.note_pattern_repository.find_many()
 
     async def create_note_pattern(self, pattern_data: Dict[str, Any]) -> NotePattern:
         """
@@ -73,7 +73,7 @@ class PatternController:
         Returns:
             The rhythm pattern if found, None otherwise
         """
-        return await self.rhythm_pattern_repository.find_by_id(pattern_id)
+        return await self.rhythm_pattern_repository.find_one(pattern_id)
 
     async def get_all_rhythm_patterns(self) -> List[RhythmPattern]:
         """
@@ -82,7 +82,7 @@ class PatternController:
         Returns:
             List of all rhythm patterns
         """
-        return await self.rhythm_pattern_repository.find_all()
+        return await self.rhythm_pattern_repository.find_many()
 
     async def create_rhythm_pattern(self, pattern_data: Dict[str, Any]) -> RhythmPattern:
         """
@@ -115,7 +115,7 @@ class PatternController:
             if pattern_type.lower() == "note"
             else self.rhythm_pattern_repository
         )
-        
+
         # Find pattern by name
-        patterns = await repository.find({"name": pattern_name})
+        patterns = await repository.find_many({"name": pattern_name})
         return patterns[0] if patterns else None

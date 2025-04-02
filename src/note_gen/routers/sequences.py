@@ -1,12 +1,12 @@
 from fastapi import APIRouter, HTTPException, Depends, Body, Query
 from typing import Dict, Any, List, Optional
 
-from src.note_gen.controllers.sequence_controller import SequenceController
-from src.note_gen.presenters.sequence_presenter import SequencePresenter
-from src.note_gen.dependencies import get_sequence_controller
-from src.note_gen.models.note import Note
-from src.note_gen.models.sequence import Sequence
-from src.note_gen.models.note_sequence import NoteSequence
+from note_gen.controllers.sequence_controller import SequenceController
+from note_gen.presenters.sequence_presenter import SequencePresenter
+from note_gen.dependencies import get_sequence_controller
+from note_gen.models.note import Note
+from note_gen.models.sequence import Sequence
+from note_gen.models.note_sequence import NoteSequence
 
 router = APIRouter(tags=["sequences"])
 

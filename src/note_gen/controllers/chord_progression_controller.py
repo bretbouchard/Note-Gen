@@ -7,8 +7,8 @@ including retrieving, creating, and generating chord progressions.
 
 from typing import List, Optional, Dict, Any
 
-from src.note_gen.models.chord_progression import ChordProgression
-from src.note_gen.database.repositories.base_repository import BaseRepository
+from note_gen.models.chord_progression import ChordProgression
+from note_gen.database.repositories.base import BaseRepository
 
 
 class ChordProgressionController:
@@ -33,7 +33,7 @@ class ChordProgressionController:
         Returns:
             The chord progression if found, None otherwise
         """
-        return await self.repository.find_by_id(progression_id)
+        return await self.repository.find_one(progression_id)
 
     async def get_all_progressions(self) -> List[ChordProgression]:
         """
@@ -42,7 +42,7 @@ class ChordProgressionController:
         Returns:
             List of all chord progressions
         """
-        return await self.repository.find_all()
+        return await self.repository.find_many()
 
     async def create_progression(self, progression_data: Dict[str, Any]) -> ChordProgression:
         """
@@ -75,7 +75,7 @@ class ChordProgressionController:
         # This would typically call a service or use a factory
         # For now, we'll implement a simple placeholder
         from src.note_gen.models.chord import Chord
-        
+
         progression = ChordProgression(
             name=f"Generated {key} {scale_type} Progression",
             key=key,
@@ -87,5 +87,5 @@ class ChordProgressionController:
                 Chord(root=1, quality="MAJOR", duration=1),
             ][:num_chords]
         )
-        
+
         return await self.repository.create(progression)

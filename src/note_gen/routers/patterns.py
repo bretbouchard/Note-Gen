@@ -1,10 +1,10 @@
 from fastapi import APIRouter, HTTPException, Depends, Body, Query
 from typing import Dict, Any, List, Optional
 
-from src.note_gen.controllers.pattern_controller import PatternController
-from src.note_gen.presenters.pattern_presenter import PatternPresenter
-from src.note_gen.dependencies import get_pattern_controller
-from src.note_gen.models.patterns import NotePattern, RhythmPattern
+from note_gen.controllers.pattern_controller import PatternController
+from note_gen.presenters.pattern_presenter import PatternPresenter
+from note_gen.dependencies import get_pattern_controller
+from note_gen.models.patterns import NotePattern, RhythmPattern
 
 router = APIRouter(tags=["patterns"])
 

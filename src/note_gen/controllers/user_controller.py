@@ -7,8 +7,8 @@ including user authentication, registration, and profile management.
 
 from typing import List, Optional, Dict, Any
 
-from src.note_gen.database.repositories.base_repository import BaseRepository
-from src.note_gen.models.user import User
+from note_gen.database.repositories.base import BaseRepository
+from note_gen.models.user import User
 
 
 class UserController:
@@ -33,7 +33,7 @@ class UserController:
         Returns:
             The user if found, None otherwise
         """
-        return await self.user_repository.find_by_id(user_id)
+        return await self.user_repository.find_one(user_id)
 
     async def get_all_users(self) -> List[User]:
         """
@@ -42,7 +42,7 @@ class UserController:
         Returns:
             List of all users
         """
-        return await self.user_repository.find_all()
+        return await self.user_repository.find_many()
 
     async def create_user(self, user_data: Dict[str, Any]) -> User:
         """
@@ -55,7 +55,7 @@ class UserController:
             The created user
         """
         # Check if username already exists
-        existing_users = await self.user_repository.find({"username": user_data["username"]})
+        existing_users = await self.user_repository.find_many({"username": user_data["username"]})
         if existing_users:
             raise ValueError(f"Username already exists: {user_data['username']}")
 
@@ -123,5 +123,5 @@ class UserController:
         Returns:
             The user if found, None otherwise
         """
-        users = await self.user_repository.find({"username": username})
+        users = await self.user_repository.find_many({"username": username})
         return users[0] if users else None

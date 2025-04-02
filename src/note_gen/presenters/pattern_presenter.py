@@ -7,7 +7,7 @@ ensuring a clean separation between the business logic and the presentation laye
 
 from typing import List, Dict, Any, Union
 
-from src.note_gen.models.patterns import NotePattern, RhythmPattern
+from note_gen.models.patterns import NotePattern, RhythmPattern
 
 
 class PatternPresenter:

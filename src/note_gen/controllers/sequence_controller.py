@@ -7,11 +7,11 @@ including generating, retrieving, and manipulating sequences.
 
 from typing import List, Optional, Dict, Any, Union
 
-from src.note_gen.database.repositories.base_repository import BaseRepository
-from src.note_gen.models.sequence import Sequence
-from src.note_gen.models.note_sequence import NoteSequence
-from src.note_gen.models.chord_progression import ChordProgression
-from src.note_gen.controllers.pattern_controller import PatternController
+from note_gen.database.repositories.base import BaseRepository
+from note_gen.models.sequence import Sequence
+from note_gen.models.note_sequence import NoteSequence
+from note_gen.models.chord_progression import ChordProgression
+from note_gen.controllers.pattern_controller import PatternController
 
 
 class SequenceController:
@@ -45,7 +45,7 @@ class SequenceController:
         Returns:
             The sequence if found, None otherwise
         """
-        return await self.sequence_repository.find_by_id(sequence_id)
+        return await self.sequence_repository.find_one(sequence_id)
 
     async def get_all_sequences(self) -> List[Sequence]:
         """
@@ -54,7 +54,7 @@ class SequenceController:
         Returns:
             List of all sequences
         """
-        return await self.sequence_repository.find_all()
+        return await self.sequence_repository.find_many()
 
     async def create_sequence(self, sequence_data: Dict[str, Any]) -> Sequence:
         """
@@ -87,7 +87,7 @@ class SequenceController:
             The generated note sequence
         """
         # Get the chord progression
-        progressions = await self.chord_progression_repository.find({"name": progression_name})
+        progressions = await self.chord_progression_repository.find_many({"name": progression_name})
         if not progressions:
             raise ValueError(f"Chord progression not found: {progression_name}")
         progression = progressions[0]
@@ -128,5 +128,5 @@ class SequenceController:
         Returns:
             The sequence if found, None otherwise
         """
-        sequences = await self.sequence_repository.find({"name": sequence_name})
+        sequences = await self.sequence_repository.find_many({"name": sequence_name})
         return sequences[0] if sequences else None

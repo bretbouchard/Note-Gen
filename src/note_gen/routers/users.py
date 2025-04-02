@@ -1,10 +1,10 @@
 from fastapi import APIRouter, HTTPException, Depends, Body, Path, Query
 from typing import Dict, Any, List, Optional
 
-from src.note_gen.controllers.user_controller import UserController
-from src.note_gen.presenters.user_presenter import UserPresenter
-from src.note_gen.dependencies import get_user_controller
-from src.note_gen.models.user import User
+from note_gen.controllers.user_controller import UserController
+from note_gen.presenters.user_presenter import UserPresenter
+from note_gen.dependencies import get_user_controller
+from note_gen.models.user import User
 
 router = APIRouter(tags=["users"])
 

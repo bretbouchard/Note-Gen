@@ -7,7 +7,7 @@ ensuring a clean separation between the business logic and the presentation laye
 
 from typing import List, Dict, Any
 
-from src.note_gen.models.user import User
+from note_gen.models.user import User
 
 
 class UserPresenter:
@@ -60,11 +60,11 @@ class UserPresenter:
         """
         # Profile view might include additional data like preferences, settings, etc.
         profile = UserPresenter.present(user)
-        
+
         # Add profile-specific fields
         profile.update({
             "preferences": user.preferences if hasattr(user, "preferences") else {},
             "settings": user.settings if hasattr(user, "settings") else {},
         })
-        
+
         return profile

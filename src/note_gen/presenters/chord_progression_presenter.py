@@ -7,8 +7,8 @@ ensuring a clean separation between the business logic and the presentation laye
 
 from typing import List, Dict, Any, Optional
 
-from src.note_gen.models.chord_progression import ChordProgression
-from src.note_gen.models.chord import Chord
+from note_gen.models.chord_progression import ChordProgression
+from note_gen.models.chord import Chord
 
 
 class ChordProgressionPresenter:
