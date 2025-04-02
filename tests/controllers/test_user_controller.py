@@ -1,21 +1,21 @@
 """Tests for the user controller."""
 import pytest
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 
-from src.note_gen.controllers.user_controller import UserController
-from src.note_gen.models.user import User
+from note_gen.controllers.user_controller import UserController
+from note_gen.models.user import User
 
 
 @pytest.fixture
 def mock_user_repository():
     """Create a mock user repository for testing."""
     repository = AsyncMock()
-    repository.find_by_id = AsyncMock()
-    repository.find_all = AsyncMock(return_value=[])
+    repository.find_one = AsyncMock()
+    repository.find_many = AsyncMock(return_value=[])
     repository.create = AsyncMock()
     repository.update = AsyncMock()
     repository.delete = AsyncMock(return_value=True)
-    repository.find = AsyncMock(return_value=[])
+    repository.find_many = AsyncMock(return_value=[])
     return repository
 
 
@@ -33,16 +33,17 @@ async def test_get_user(controller, mock_user_repository):
     expected_user = User(
         username="testuser",
         email="test@example.com",
-        full_name="Test User"
+
+        hashed_password="hashed_password"
     )
-    mock_user_repository.find_by_id.return_value = expected_user
+    mock_user_repository.find_one.return_value = expected_user
 
     # Act
     result = await controller.get_user(user_id)
 
     # Assert
     assert result == expected_user
-    mock_user_repository.find_by_id.assert_called_once_with(user_id)
+    mock_user_repository.find_one.assert_called_once_with(user_id)
 
 
 @pytest.mark.asyncio
@@ -53,22 +54,24 @@ async def test_get_all_users(controller, mock_user_repository):
         User(
             username="user1",
             email="user1@example.com",
-            full_name="User One"
+
+            hashed_password="hashed_password"
         ),
         User(
             username="user2",
             email="user2@example.com",
-            full_name="User Two"
+
+            hashed_password="hashed_password"
         )
     ]
-    mock_user_repository.find_all.return_value = expected_users
+    mock_user_repository.find_many.return_value = expected_users
 
     # Act
     result = await controller.get_all_users()
 
     # Assert
     assert result == expected_users
-    mock_user_repository.find_all.assert_called_once()
+    mock_user_repository.find_many.assert_called_once()
 
 
 @pytest.mark.asyncio
@@ -78,18 +81,20 @@ async def test_create_user(controller, mock_user_repository):
     user_data = {
         "username": "newuser",
         "email": "new@example.com",
-        "full_name": "New User"
+        "hashed_password": "hashed_password",
+        "is_active": True,
+        "is_superuser": False
     }
     expected_user = User(**user_data)
     mock_user_repository.create.return_value = expected_user
-    mock_user_repository.find.return_value = []  # No existing user with the same username
+    mock_user_repository.find_many.return_value = []  # No existing user with the same username
 
     # Act
     result = await controller.create_user(user_data)
 
     # Assert
     assert result == expected_user
-    mock_user_repository.find.assert_called_once_with({"username": user_data["username"]})
+    mock_user_repository.find_many.assert_called_once_with({"username": user_data["username"]})
     mock_user_repository.create.assert_called_once()
 
 
@@ -100,16 +105,18 @@ async def test_create_user_username_exists(controller, mock_user_repository):
     user_data = {
         "username": "existinguser",
         "email": "existing@example.com",
-        "full_name": "Existing User"
+        "hashed_password": "hashed_password",
+        "is_active": True,
+        "is_superuser": False
     }
     existing_user = User(**user_data)
-    mock_user_repository.find.return_value = [existing_user]  # Existing user with the same username
+    mock_user_repository.find_many.return_value = [existing_user]  # Existing user with the same username
 
     # Act & Assert
     with pytest.raises(ValueError, match="Username already exists"):
         await controller.create_user(user_data)
-    
-    mock_user_repository.find.assert_called_once_with({"username": user_data["username"]})
+
+    mock_user_repository.find_many.assert_called_once_with({"username": user_data["username"]})
     mock_user_repository.create.assert_not_called()
 
 
@@ -119,20 +126,21 @@ async def test_update_user(controller, mock_user_repository):
     # Arrange
     user_id = "test_id"
     user_data = {
-        "email": "updated@example.com",
-        "full_name": "Updated User"
+        "email": "updated@example.com"
     }
     existing_user = User(
         username="testuser",
         email="test@example.com",
-        full_name="Test User"
+
+        hashed_password="hashed_password"
     )
     updated_user = User(
         username="testuser",
         email="updated@example.com",
-        full_name="Updated User"
+
+        hashed_password="hashed_password"
     )
-    mock_user_repository.find_by_id.return_value = existing_user
+    mock_user_repository.find_one.return_value = existing_user
     mock_user_repository.update.return_value = updated_user
 
     # Act
@@ -140,7 +148,7 @@ async def test_update_user(controller, mock_user_repository):
 
     # Assert
     assert result == updated_user
-    mock_user_repository.find_by_id.assert_called_once_with(user_id)
+    mock_user_repository.find_one.assert_called_once_with(user_id)
     mock_user_repository.update.assert_called_once()
 
 
@@ -150,17 +158,16 @@ async def test_update_user_not_found(controller, mock_user_repository):
     # Arrange
     user_id = "nonexistent_id"
     user_data = {
-        "email": "updated@example.com",
-        "full_name": "Updated User"
+        "email": "updated@example.com"
     }
-    mock_user_repository.find_by_id.return_value = None
+    mock_user_repository.find_one.return_value = None
 
     # Act
     result = await controller.update_user(user_id, user_data)
 
     # Assert
     assert result is None
-    mock_user_repository.find_by_id.assert_called_once_with(user_id)
+    mock_user_repository.find_one.assert_called_once_with(user_id)
     mock_user_repository.update.assert_not_called()
 
 
@@ -188,7 +195,7 @@ async def test_get_current_user(controller):
     # Assert
     assert result.username == "current_user"
     assert result.email == "current@example.com"
-    assert result.full_name == "Current User"
+
 
 
 @pytest.mark.asyncio
@@ -199,13 +206,14 @@ async def test_get_user_by_username(controller, mock_user_repository):
     expected_user = User(
         username=username,
         email="test@example.com",
-        full_name="Test User"
+
+        hashed_password="hashed_password"
     )
-    mock_user_repository.find.return_value = [expected_user]
+    mock_user_repository.find_many.return_value = [expected_user]
 
     # Act
     result = await controller.get_user_by_username(username)
 
     # Assert
     assert result == expected_user
-    mock_user_repository.find.assert_called_once_with({"username": username})
+    mock_user_repository.find_many.assert_called_once_with({"username": username})

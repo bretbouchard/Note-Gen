@@ -25,13 +25,11 @@ class UserPresenter:
             Formatted user data
         """
         return {
-            "id": str(user.id) if hasattr(user, "id") else None,
+            "id": str(user.id) if hasattr(user, "id") and user.id else None,
             "username": user.username,
             "email": user.email,
-            "full_name": user.full_name,
-            "disabled": user.disabled if hasattr(user, "disabled") else False,
-            "created_at": user.created_at.isoformat() if hasattr(user, "created_at") else None,
-            "updated_at": user.updated_at.isoformat() if hasattr(user, "updated_at") else None,
+            "is_active": user.is_active,
+            "is_superuser": user.is_superuser,
         }
 
     @staticmethod

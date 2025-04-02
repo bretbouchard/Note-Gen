@@ -1,6 +1,6 @@
 """User model for authentication and authorization."""
 from pydantic import BaseModel, Field, ConfigDict
-from typing import Optional
+from typing import Optional, Dict, Any
 
 class User(BaseModel):
     model_config = ConfigDict(
@@ -14,3 +14,5 @@ class User(BaseModel):
     hashed_password: str
     is_active: bool = True
     is_superuser: bool = False
+    preferences: Dict[str, Any] = Field(default_factory=dict)
+    settings: Dict[str, Any] = Field(default_factory=dict)

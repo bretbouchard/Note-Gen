@@ -3,8 +3,8 @@ import pytest
 from bson import ObjectId
 from datetime import datetime
 
-from src.note_gen.presenters.user_presenter import UserPresenter
-from src.note_gen.models.user import User
+from note_gen.presenters.user_presenter import UserPresenter
+from note_gen.models.user import User
 
 
 def test_present():
@@ -12,13 +12,12 @@ def test_present():
     # Arrange
     now = datetime.now()
     user = User(
-        id=ObjectId("5f9f1b9b9c9d1b9b9c9d1b9b"),
+        id="5f9f1b9b9c9d1b9b9c9d1b9b",
         username="testuser",
         email="test@example.com",
-        full_name="Test User",
-        disabled=False,
-        created_at=now,
-        updated_at=now
+        hashed_password="hashed_password",
+        is_active=True,
+        is_superuser=False
     )
 
     # Act
@@ -28,10 +27,8 @@ def test_present():
     assert result["id"] == str(user.id)
     assert result["username"] == user.username
     assert result["email"] == user.email
-    assert result["full_name"] == user.full_name
-    assert result["disabled"] == user.disabled
-    assert result["created_at"] == now.isoformat()
-    assert result["updated_at"] == now.isoformat()
+    assert result["is_active"] == user.is_active
+    assert result["is_superuser"] == user.is_superuser
 
 
 def test_present_without_id():
@@ -40,7 +37,7 @@ def test_present_without_id():
     user = User(
         username="testuser",
         email="test@example.com",
-        full_name="Test User"
+        hashed_password="hashed_password"
     )
 
     # Act
@@ -50,10 +47,8 @@ def test_present_without_id():
     assert result["id"] is None
     assert result["username"] == user.username
     assert result["email"] == user.email
-    assert result["full_name"] == user.full_name
-    assert result["disabled"] is False
-    assert result["created_at"] is None
-    assert result["updated_at"] is None
+    assert result["is_active"] is True
+    assert result["is_superuser"] is False
 
 
 def test_present_many():
@@ -61,16 +56,16 @@ def test_present_many():
     # Arrange
     users = [
         User(
-            id=ObjectId("5f9f1b9b9c9d1b9b9c9d1b9b"),
+            id="5f9f1b9b9c9d1b9b9c9d1b9b",
             username="user1",
             email="user1@example.com",
-            full_name="User One"
+            hashed_password="hashed_password"
         ),
         User(
-            id=ObjectId("5f9f1b9b9c9d1b9b9c9d1b9c"),
+            id="5f9f1b9b9c9d1b9b9c9d1b9c",
             username="user2",
             email="user2@example.com",
-            full_name="User Two"
+            hashed_password="hashed_password"
         )
     ]
 
@@ -82,21 +77,19 @@ def test_present_many():
     assert result[0]["id"] == str(users[0].id)
     assert result[0]["username"] == users[0].username
     assert result[0]["email"] == users[0].email
-    assert result[0]["full_name"] == users[0].full_name
     assert result[1]["id"] == str(users[1].id)
     assert result[1]["username"] == users[1].username
     assert result[1]["email"] == users[1].email
-    assert result[1]["full_name"] == users[1].full_name
 
 
 def test_present_profile():
     """Test presenting a user profile."""
     # Arrange
     user = User(
-        id=ObjectId("5f9f1b9b9c9d1b9b9c9d1b9b"),
+        id="5f9f1b9b9c9d1b9b9c9d1b9b",
         username="testuser",
         email="test@example.com",
-        full_name="Test User",
+        hashed_password="hashed_password",
         preferences={"theme": "dark", "language": "en"},
         settings={"notifications": True}
     )
@@ -108,7 +101,6 @@ def test_present_profile():
     assert result["id"] == str(user.id)
     assert result["username"] == user.username
     assert result["email"] == user.email
-    assert result["full_name"] == user.full_name
     assert result["preferences"] == user.preferences
     assert result["settings"] == user.settings
 
@@ -117,10 +109,10 @@ def test_present_profile_without_preferences():
     """Test presenting a user profile without preferences."""
     # Arrange
     user = User(
-        id=ObjectId("5f9f1b9b9c9d1b9b9c9d1b9b"),
+        id="5f9f1b9b9c9d1b9b9c9d1b9b",
         username="testuser",
         email="test@example.com",
-        full_name="Test User"
+        hashed_password="hashed_password"
     )
 
     # Act
@@ -130,5 +122,4 @@ def test_present_profile_without_preferences():
     assert result["id"] == str(user.id)
     assert result["username"] == user.username
     assert result["email"] == user.email
-    assert result["full_name"] == user.full_name
     assert result["preferences"] == {}
