@@ -1,18 +1,17 @@
 """Tests for the sequence presenter."""
 import pytest
-from bson import ObjectId
 
-from src.note_gen.presenters.sequence_presenter import SequencePresenter
-from src.note_gen.models.sequence import Sequence
-from src.note_gen.models.note_sequence import NoteSequence
-from src.note_gen.models.note import Note
+from note_gen.presenters.sequence_presenter import SequencePresenter
+from note_gen.models.sequence import Sequence
+from note_gen.models.note_sequence import NoteSequence
+from note_gen.models.note import Note
 
 
 def test_present_sequence():
     """Test presenting a single sequence."""
     # Arrange
     sequence = Sequence(
-        id=ObjectId("5f9f1b9b9c9d1b9b9c9d1b9b"),
+        id="5f9f1b9b9c9d1b9b9c9d1b9b",
         name="Test Sequence",
         metadata={"key": "value"}
     )
@@ -47,12 +46,12 @@ def test_present_note_sequence():
     """Test presenting a note sequence."""
     # Arrange
     notes = [
-        Note(note_name="C", octave=4, duration=1, velocity=64, position=0),
-        Note(note_name="E", octave=4, duration=1, velocity=64, position=1),
-        Note(note_name="G", octave=4, duration=1, velocity=64, position=2)
+        Note(pitch="C", octave=4, duration=1, velocity=64, position=0, stored_midi_number=60),
+        Note(pitch="E", octave=4, duration=1, velocity=64, position=1, stored_midi_number=64),
+        Note(pitch="G", octave=4, duration=1, velocity=64, position=2, stored_midi_number=67)
     ]
     sequence = NoteSequence(
-        id=ObjectId("5f9f1b9b9c9d1b9b9c9d1b9b"),
+        id="5f9f1b9b9c9d1b9b9c9d1b9b",
         name="Test Note Sequence",
         notes=notes,
         metadata={"key": "value"}
@@ -67,10 +66,10 @@ def test_present_note_sequence():
     assert result["metadata"] == sequence.metadata
     assert result["type"] == "note_sequence"
     assert len(result["notes"]) == 3
-    assert result["notes"][0]["note_name"] == "C"
+    assert result["notes"][0]["pitch"] == "C"
     assert result["notes"][0]["octave"] == 4
-    assert result["notes"][1]["note_name"] == "E"
-    assert result["notes"][2]["note_name"] == "G"
+    assert result["notes"][1]["pitch"] == "E"
+    assert result["notes"][2]["pitch"] == "G"
 
 
 def test_present_many_sequences():
@@ -78,12 +77,12 @@ def test_present_many_sequences():
     # Arrange
     sequences = [
         Sequence(
-            id=ObjectId("5f9f1b9b9c9d1b9b9c9d1b9b"),
+            id="5f9f1b9b9c9d1b9b9c9d1b9b",
             name="Test Sequence 1",
             metadata={"key1": "value1"}
         ),
         Sequence(
-            id=ObjectId("5f9f1b9b9c9d1b9b9c9d1b9c"),
+            id="5f9f1b9b9c9d1b9b9c9d1b9c",
             name="Test Sequence 2",
             metadata={"key2": "value2"}
         )
@@ -107,18 +106,18 @@ def test_present_many_note_sequences():
     # Arrange
     sequences = [
         NoteSequence(
-            id=ObjectId("5f9f1b9b9c9d1b9b9c9d1b9b"),
+            id="5f9f1b9b9c9d1b9b9c9d1b9b",
             name="Test Note Sequence 1",
             notes=[
-                Note(note_name="C", octave=4, duration=1, velocity=64, position=0)
+                Note(pitch="C", octave=4, duration=1, velocity=64, position=0, stored_midi_number=60)
             ],
             metadata={"key1": "value1"}
         ),
         NoteSequence(
-            id=ObjectId("5f9f1b9b9c9d1b9b9c9d1b9c"),
+            id="5f9f1b9b9c9d1b9b9c9d1b9c",
             name="Test Note Sequence 2",
             notes=[
-                Note(note_name="D", octave=4, duration=1, velocity=64, position=0)
+                Note(pitch="D", octave=4, duration=1, velocity=64, position=0, stored_midi_number=62)
             ],
             metadata={"key2": "value2"}
         )
@@ -134,22 +133,22 @@ def test_present_many_note_sequences():
     assert result[0]["metadata"] == sequences[0].metadata
     assert result[0]["type"] == "note_sequence"
     assert len(result[0]["notes"]) == 1
-    assert result[0]["notes"][0]["note_name"] == "C"
+    assert result[0]["notes"][0]["pitch"] == "C"
     assert result[1]["id"] == str(sequences[1].id)
     assert result[1]["name"] == sequences[1].name
     assert result[1]["metadata"] == sequences[1].metadata
     assert result[1]["type"] == "note_sequence"
     assert len(result[1]["notes"]) == 1
-    assert result[1]["notes"][0]["note_name"] == "D"
+    assert result[1]["notes"][0]["pitch"] == "D"
 
 
 def test_format_notes():
     """Test formatting notes."""
     # Arrange
     notes = [
-        Note(note_name="C", octave=4, duration=1, velocity=64, position=0),
-        Note(note_name="E", octave=4, duration=1, velocity=64, position=1),
-        Note(note_name="G", octave=4, duration=1, velocity=64, position=2)
+        Note(pitch="C", octave=4, duration=1, velocity=64, position=0, stored_midi_number=60),
+        Note(pitch="E", octave=4, duration=1, velocity=64, position=1, stored_midi_number=64),
+        Note(pitch="G", octave=4, duration=1, velocity=64, position=2, stored_midi_number=67)
     ]
 
     # Act
@@ -157,10 +156,10 @@ def test_format_notes():
 
     # Assert
     assert len(result) == 3
-    assert result[0]["note_name"] == "C"
+    assert result[0]["pitch"] == "C"
     assert result[0]["octave"] == 4
     assert result[0]["duration"] == 1
     assert result[0]["velocity"] == 64
     assert result[0]["position"] == 0
-    assert result[1]["note_name"] == "E"
-    assert result[2]["note_name"] == "G"
+    assert result[1]["pitch"] == "E"
+    assert result[2]["pitch"] == "G"

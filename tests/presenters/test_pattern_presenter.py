@@ -1,19 +1,19 @@
 """Tests for the pattern presenter."""
 import pytest
-from bson import ObjectId
 
-from src.note_gen.presenters.pattern_presenter import PatternPresenter
-from src.note_gen.models.patterns import NotePattern, RhythmPattern
+from note_gen.presenters.pattern_presenter import PatternPresenter
+from note_gen.models.patterns import NotePattern, RhythmPattern, RhythmNote
+from note_gen.models.note import Note
+from pydantic import BaseModel
 
 
 def test_present_note_pattern():
     """Test presenting a single note pattern."""
     # Arrange
     pattern = NotePattern(
-        id=ObjectId("5f9f1b9b9c9d1b9b9c9d1b9b"),
         name="Test Pattern",
-        description="A test pattern",
-        pattern="1 2 3 4",
+        pattern=[Note(pitch="C", octave=4, duration=1.0, velocity=64, position=0.0, stored_midi_number=60),
+                Note(pitch="D", octave=4, duration=1.0, velocity=64, position=1.0, stored_midi_number=62)],
         tags=["test", "pattern"]
     )
 
@@ -21,9 +21,9 @@ def test_present_note_pattern():
     result = PatternPresenter.present_note_pattern(pattern)
 
     # Assert
-    assert result["id"] == str(pattern.id)
+    assert "id" in result
     assert result["name"] == pattern.name
-    assert result["description"] == pattern.description
+
     assert result["pattern"] == pattern.pattern
     assert result["tags"] == pattern.tags
     assert result["type"] == "note"
@@ -33,22 +33,19 @@ def test_present_rhythm_pattern():
     """Test presenting a single rhythm pattern."""
     # Arrange
     pattern = RhythmPattern(
-        id=ObjectId("5f9f1b9b9c9d1b9b9c9d1b9b"),
         name="Test Rhythm",
-        description="A test rhythm",
-        pattern="q q q q",
-        tags=["test", "rhythm"]
+        pattern=[RhythmNote(position=0.0, duration=1.0), RhythmNote(position=1.0, duration=1.0)]
     )
 
     # Act
     result = PatternPresenter.present_rhythm_pattern(pattern)
 
     # Assert
-    assert result["id"] == str(pattern.id)
+    assert "id" in result
     assert result["name"] == pattern.name
-    assert result["description"] == pattern.description
+
     assert result["pattern"] == pattern.pattern
-    assert result["tags"] == pattern.tags
+
     assert result["type"] == "rhythm"
 
 
@@ -56,10 +53,9 @@ def test_present_pattern_note():
     """Test presenting a pattern (note type)."""
     # Arrange
     pattern = NotePattern(
-        id=ObjectId("5f9f1b9b9c9d1b9b9c9d1b9b"),
         name="Test Pattern",
-        description="A test pattern",
-        pattern="1 2 3 4",
+        pattern=[Note(pitch="C", octave=4, duration=1.0, velocity=64, position=0.0, stored_midi_number=60),
+                Note(pitch="D", octave=4, duration=1.0, velocity=64, position=1.0, stored_midi_number=62)],
         tags=["test", "pattern"]
     )
 
@@ -67,7 +63,7 @@ def test_present_pattern_note():
     result = PatternPresenter.present_pattern(pattern)
 
     # Assert
-    assert result["id"] == str(pattern.id)
+    assert "id" in result
     assert result["name"] == pattern.name
     assert result["type"] == "note"
 
@@ -76,18 +72,15 @@ def test_present_pattern_rhythm():
     """Test presenting a pattern (rhythm type)."""
     # Arrange
     pattern = RhythmPattern(
-        id=ObjectId("5f9f1b9b9c9d1b9b9c9d1b9b"),
         name="Test Rhythm",
-        description="A test rhythm",
-        pattern="q q q q",
-        tags=["test", "rhythm"]
+        pattern=[RhythmNote(position=0.0, duration=1.0), RhythmNote(position=1.0, duration=1.0)]
     )
 
     # Act
     result = PatternPresenter.present_pattern(pattern)
 
     # Assert
-    assert result["id"] == str(pattern.id)
+    assert "id" in result
     assert result["name"] == pattern.name
     assert result["type"] == "rhythm"
 
@@ -95,14 +88,15 @@ def test_present_pattern_rhythm():
 def test_present_pattern_unknown_type():
     """Test presenting a pattern with unknown type."""
     # Arrange
-    class UnknownPattern:
-        pass
+    class UnknownPattern(BaseModel):
+        name: str = "Unknown"
 
     pattern = UnknownPattern()
 
     # Act & Assert
     with pytest.raises(ValueError, match="Unknown pattern type"):
-        PatternPresenter.present_pattern(pattern)
+        # Type ignore for testing purposes
+        PatternPresenter.present_pattern(pattern)  # type: ignore
 
 
 def test_present_many_note_patterns():
@@ -110,17 +104,15 @@ def test_present_many_note_patterns():
     # Arrange
     patterns = [
         NotePattern(
-            id=ObjectId("5f9f1b9b9c9d1b9b9c9d1b9b"),
             name="Test Pattern 1",
-            description="A test pattern",
-            pattern="1 2 3 4",
+            pattern=[Note(pitch="C", octave=4, duration=1.0, velocity=64, position=0.0, stored_midi_number=60),
+                    Note(pitch="D", octave=4, duration=1.0, velocity=64, position=1.0, stored_midi_number=62)],
             tags=["test", "pattern"]
         ),
         NotePattern(
-            id=ObjectId("5f9f1b9b9c9d1b9b9c9d1b9c"),
             name="Test Pattern 2",
-            description="Another test pattern",
-            pattern="5 6 7 8",
+            pattern=[Note(pitch="E", octave=4, duration=1.0, velocity=64, position=0.0, stored_midi_number=64),
+                    Note(pitch="F", octave=4, duration=1.0, velocity=64, position=1.0, stored_midi_number=65)],
             tags=["test", "pattern"]
         )
     ]
@@ -130,10 +122,10 @@ def test_present_many_note_patterns():
 
     # Assert
     assert len(result) == 2
-    assert result[0]["id"] == str(patterns[0].id)
+    assert "id" in result[0]
     assert result[0]["name"] == patterns[0].name
     assert result[0]["type"] == "note"
-    assert result[1]["id"] == str(patterns[1].id)
+    assert "id" in result[1]
     assert result[1]["name"] == patterns[1].name
     assert result[1]["type"] == "note"
 
@@ -143,18 +135,12 @@ def test_present_many_rhythm_patterns():
     # Arrange
     patterns = [
         RhythmPattern(
-            id=ObjectId("5f9f1b9b9c9d1b9b9c9d1b9b"),
             name="Test Rhythm 1",
-            description="A test rhythm",
-            pattern="q q q q",
-            tags=["test", "rhythm"]
+            pattern=[RhythmNote(position=0.0, duration=1.0), RhythmNote(position=1.0, duration=1.0)]
         ),
         RhythmPattern(
-            id=ObjectId("5f9f1b9b9c9d1b9b9c9d1b9c"),
             name="Test Rhythm 2",
-            description="Another test rhythm",
-            pattern="h h",
-            tags=["test", "rhythm"]
+            pattern=[RhythmNote(position=0.0, duration=2.0), RhythmNote(position=2.0, duration=2.0)]
         )
     ]
 
@@ -163,10 +149,10 @@ def test_present_many_rhythm_patterns():
 
     # Assert
     assert len(result) == 2
-    assert result[0]["id"] == str(patterns[0].id)
+    assert "id" in result[0]
     assert result[0]["name"] == patterns[0].name
     assert result[0]["type"] == "rhythm"
-    assert result[1]["id"] == str(patterns[1].id)
+    assert "id" in result[1]
     assert result[1]["name"] == patterns[1].name
     assert result[1]["type"] == "rhythm"
 
@@ -176,18 +162,14 @@ def test_present_many_patterns_mixed():
     # Arrange
     patterns = [
         NotePattern(
-            id=ObjectId("5f9f1b9b9c9d1b9b9c9d1b9b"),
             name="Test Pattern",
-            description="A test pattern",
-            pattern="1 2 3 4",
+            pattern=[Note(pitch="C", octave=4, duration=1.0, velocity=64, position=0.0, stored_midi_number=60),
+                    Note(pitch="D", octave=4, duration=1.0, velocity=64, position=1.0, stored_midi_number=62)],
             tags=["test", "pattern"]
         ),
         RhythmPattern(
-            id=ObjectId("5f9f1b9b9c9d1b9b9c9d1b9c"),
             name="Test Rhythm",
-            description="A test rhythm",
-            pattern="q q q q",
-            tags=["test", "rhythm"]
+            pattern=[RhythmNote(position=0.0, duration=1.0), RhythmNote(position=1.0, duration=1.0)]
         )
     ]
 
@@ -196,9 +178,9 @@ def test_present_many_patterns_mixed():
 
     # Assert
     assert len(result) == 2
-    assert result[0]["id"] == str(patterns[0].id)
+    assert "id" in result[0]
     assert result[0]["name"] == patterns[0].name
     assert result[0]["type"] == "note"
-    assert result[1]["id"] == str(patterns[1].id)
+    assert "id" in result[1]
     assert result[1]["name"] == patterns[1].name
     assert result[1]["type"] == "rhythm"

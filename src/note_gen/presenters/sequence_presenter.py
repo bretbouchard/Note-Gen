@@ -5,7 +5,7 @@ This presenter formats sequence data for API responses,
 ensuring a clean separation between the business logic and the presentation layer.
 """
 
-from typing import List, Dict, Any, Union
+from typing import List, Dict, Any
 
 from note_gen.models.sequence import Sequence
 from note_gen.models.note_sequence import NoteSequence
@@ -27,7 +27,7 @@ class SequencePresenter:
             Formatted sequence data
         """
         return {
-            "id": str(sequence.id) if hasattr(sequence, "id") else None,
+            "id": str(sequence.id) if hasattr(sequence, "id") and sequence.id else None,
             "name": sequence.name,
             "metadata": sequence.metadata if hasattr(sequence, "metadata") else {},
         }
@@ -92,11 +92,12 @@ class SequencePresenter:
         """
         return [
             {
-                "note_name": note.note_name,
+                "pitch": note.pitch,
                 "octave": note.octave,
                 "duration": note.duration,
                 "velocity": note.velocity,
                 "position": note.position,
+                "note_name": note.note_name,
             }
             for note in notes
         ]
