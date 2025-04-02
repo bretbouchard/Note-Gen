@@ -30,22 +30,26 @@ class PatternFactory:
         """
         return self._create_note_pattern(root_note, scale_type, intervals)
 
-    def create_rhythm_pattern(
-        self,
-        durations: List[float],
-        time_signature: Tuple[int, int] = (4, 4)
-    ) -> RhythmPattern:
-        """
-        Create a rhythm pattern from the given parameters.
+    def create_rhythm_pattern(self, durations: list[float], time_signature: tuple[int, int] = (4, 4)) -> RhythmPattern:
+        """Create a rhythm pattern from a list of durations."""
+        position = 0.0
+        pattern = []
         
-        Args:
-            durations: List of note durations in beats
-            time_signature: Time signature as (numerator, denominator)
-            
-        Returns:
-            RhythmPattern: The created rhythm pattern
-        """
-        return self._create_rhythm_pattern(durations, time_signature)
+        for duration in durations:
+            rhythm_note = RhythmNote(
+                position=position,
+                duration=duration,
+                velocity=64,
+                accent=False
+            )
+            pattern.append(rhythm_note)
+            position += duration
+        
+        return RhythmPattern(
+            pattern=pattern,
+            time_signature=time_signature,
+            total_duration=sum(durations)
+        )
 
     def _create_note_pattern(
         self,

@@ -13,6 +13,14 @@ class GenerateSequenceRequest(BaseModelWithConfig):
         extra='forbid'
     )
 
+    note_pattern_name: str = Field(
+        ...,  # This means the field is required
+        description="Name of the note pattern to use"
+    )
+    rhythm_pattern_name: str = Field(
+        ...,  # This means the field is required
+        description="Name of the rhythm pattern to use"
+    )
     progression_name: str = Field(
         ...,  # This means the field is required
         description="Name of the chord progression to use"

@@ -1,29 +1,22 @@
-"""Database connection module."""
-from typing import AsyncGenerator
-from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
-from src.note_gen.core.constants import DATABASE, DB_NAME
+"""Database connection management."""
+from motor.motor_asyncio import AsyncIOMotorClient
+from ..config import settings
 
-async def get_db_conn() -> AsyncIOMotorDatabase:
-    """Get database connection."""
-    client = AsyncIOMotorClient(
-        DATABASE["uri"],
-        maxPoolSize=DATABASE["pool"]["max_size"],
-        minPoolSize=DATABASE["pool"]["min_size"],
-        serverSelectionTimeoutMS=DATABASE["timeout_ms"]
-    )
-    return client[DB_NAME]
-
-async def get_database() -> AsyncIOMotorDatabase:
-    """Alias for get_db_conn for backward compatibility."""
-    return await get_db_conn()
+_client = None
 
 async def init_db():
-    """Initialize database connection."""
-    db = await get_db_conn()
-    # Add any initialization logic here
-    return db
+    global _client
+    if _client is None:
+        _client = AsyncIOMotorClient(settings.mongodb_url)
+    return _client
+
+async def get_db_conn():
+    if _client is None:
+        await init_db()
+    return _client[settings.database_name]
 
 async def close_mongo_connection():
-    """Close database connection."""
-    client = AsyncIOMotorClient(DATABASE["uri"])
-    client.close()
+    global _client
+    if _client is not None:
+        _client.close()
+        _client = None

@@ -1,6 +1,3 @@
-import os
-os.environ["TESTING"] = "1"
-
 import pytest
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from src.note_gen.api.pattern_api import (
@@ -11,13 +8,20 @@ from src.note_gen.api.pattern_api import (
     fetch_note_patterns,
     fetch_note_pattern_by_id
 )
-from src.note_gen.database import get_database
 
 @pytest.mark.asyncio
 async def test_fetch_chord_progressions(test_db: AsyncIOMotorDatabase):
     """Test fetching all chord progressions."""
+    # Insert test data
+    await test_db.chord_progressions.insert_one({
+        "_id": "test1",
+        "name": "Test Progression",
+        "chords": []
+    })
+    
     progressions = await fetch_chord_progressions(test_db)
     assert isinstance(progressions, list)
+    assert len(progressions) > 0
 
 @pytest.mark.asyncio
 async def test_fetch_chord_progression_by_id(test_db: AsyncIOMotorDatabase):
@@ -28,8 +32,16 @@ async def test_fetch_chord_progression_by_id(test_db: AsyncIOMotorDatabase):
 @pytest.mark.asyncio
 async def test_fetch_rhythm_patterns(test_db: AsyncIOMotorDatabase):
     """Test fetching all rhythm patterns."""
+    # Insert test data
+    await test_db.rhythm_patterns.insert_one({
+        "_id": "test1",
+        "name": "Test Pattern",
+        "pattern": []
+    })
+    
     patterns = await fetch_rhythm_patterns(test_db)
     assert isinstance(patterns, list)
+    assert len(patterns) > 0
 
 @pytest.mark.asyncio
 async def test_fetch_rhythm_pattern_by_id(test_db: AsyncIOMotorDatabase):
@@ -40,8 +52,16 @@ async def test_fetch_rhythm_pattern_by_id(test_db: AsyncIOMotorDatabase):
 @pytest.mark.asyncio
 async def test_fetch_note_patterns(test_db: AsyncIOMotorDatabase):
     """Test fetching all note patterns."""
+    # Insert test data
+    await test_db.note_patterns.insert_one({
+        "_id": "test1",
+        "name": "Test Pattern",
+        "notes": []
+    })
+    
     patterns = await fetch_note_patterns(test_db)
     assert isinstance(patterns, list)
+    assert len(patterns) > 0
 
 @pytest.mark.asyncio
 async def test_fetch_note_pattern_by_id(test_db: AsyncIOMotorDatabase):

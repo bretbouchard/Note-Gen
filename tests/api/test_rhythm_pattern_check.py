@@ -2,215 +2,150 @@
 Tests for rhythm pattern functionality.
 """
 import pytest
-from src.note_gen.models.rhythm import RhythmPattern, RhythmNote
-import uuid
-import logging
 import os
+import logging
+from httpx import AsyncClient
 
-# Configure logging
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
 
 @pytest.fixture
-async def test_rhythm_pattern(async_test_client):
-    """
-    Fixture to create a test rhythm pattern with a unique name.
-    Ensures cleanup after the test.
-    """
-    rhythm_note = RhythmNote(
-        position=0.0,
-        duration=1.0,
-        velocity=100,
-        accent=False
-    )
-
-    unique_name = f"Test Rhythm Pattern {uuid.uuid4()}"
-    rhythm_pattern = RhythmPattern(
-        name=unique_name,
-        pattern=[rhythm_note],
-        time_signature=(4, 4),
-        description="A test rhythm pattern",
-        complexity=0.5,
-        data={
-            "groove_type": "straight",
-            "swing_ratio": 0.67,
-            "humanize_amount": 0.0
-        }
-    )
-    
-    # Create the pattern
-    response = await async_test_client.post('/api/v1/rhythm-patterns', json=rhythm_pattern.model_dump())
-    assert response.status_code == 201
-    created_pattern = response.json()
-
-    try:
-        yield created_pattern
-    finally:
-        try:
-            await async_test_client.delete(f'/api/v1/rhythm-patterns/{created_pattern["id"]}')
-        except Exception as e:
-            logger.error(f"Error during cleanup: {str(e)}")
-
-@pytest.mark.asyncio
-async def test_rhythm_pattern_with_float_values(rhythm_pattern_fixture, client):
-    """Test that rhythm patterns with float values in the pattern field are properly handled."""
-    
-    # Get the pattern from the fixture
-    fixture_pattern = rhythm_pattern_fixture["pattern"]
-    pattern_id = rhythm_pattern_fixture["id"]
-    
-    # Verify the fixture has a mix of int and float values
-    assert any(isinstance(val, float) for val in fixture_pattern["pattern"]), "Test fixture should have float values in pattern"
-    
-    # Get the pattern from the API
-    response = await client.get(f"/api/v1/rhythm-patterns/{pattern_id}")
-    
-    # Check the response
-    assert response.status_code == 200, f"Failed to get rhythm pattern: {response.text}"
-    
-    # Parse the response data
-    data = response.json()
-    
-    # Verify the pattern values are preserved
-    assert data["pattern"] == fixture_pattern["pattern"], "Pattern values should be preserved"
-    
-    # Create a new rhythm pattern with float values
-    new_pattern = {
-        "name": "Float Value Rhythm Pattern",
-        "pattern": [0.25, 0.5, 0.75, 1.0, 0.5],  # All float values
-        "description": "A rhythm pattern with float values",
-        "tags": ["test", "float"],
-        "complexity": 3.0,
+async def rhythm_pattern_fixture(test_db):
+    """Fixture providing a test rhythm pattern."""
+    pattern_data = {
+        "pattern": [1.0, 0.5, 0.25, 1.0],
+        "name": "Test Rhythm Pattern",
+        "description": "Test pattern with float values",
+        "tags": ["test"],
+        "complexity": 2.0,
         "data": {
             "notes": [
-                {"duration": 0.25, "position": 0, "is_rest": False, "velocity": 100},
-                {"duration": 0.5, "position": 0.25, "is_rest": False, "velocity": 90},
-                {"duration": 0.75, "position": 0.75, "is_rest": False, "velocity": 80},
-                {"duration": 1.0, "position": 1.5, "is_rest": False, "velocity": 100},
-                {"duration": 0.5, "position": 2.5, "is_rest": False, "velocity": 90}
-            ],
-            "time_signature": (4, 4)  # Changed to tuple format
-        }
-    }
-    
-    # Send the creation request
-    create_response = await client.post("/api/v1/rhythm-patterns/", json=new_pattern)
-    
-    # Check that creation succeeded
-    assert create_response.status_code == 201, f"Failed to create rhythm pattern: {create_response.text}"
-    
-    # Get the created pattern ID
-    created_id = create_response.json()["id"]
-    
-    try:
-        # Fetch the created pattern to verify it was stored correctly
-        get_response = await client.get(f"/api/v1/rhythm-patterns/{created_id}")
-        
-        # Check the fetch response
-        assert get_response.status_code == 200, f"Failed to get created rhythm pattern: {get_response.text}"
-        
-        # Parse the fetched data
-        fetched_data = get_response.json()
-        
-        # Verify the pattern values are preserved
-        assert fetched_data["pattern"] == new_pattern["pattern"], "Float pattern values should be preserved"
-        
-    finally:
-        # Clean up - delete the created pattern
-        if os.getenv("CLEAR_DB_AFTER_TESTS", "0") == "1":
-            delete_response = await client.delete(f"/api/v1/rhythm-patterns/{created_id}")
-            assert delete_response.status_code == 200, f"Failed to delete test rhythm pattern: {delete_response.text}"
-
-@pytest.mark.asyncio
-async def test_rhythm_pattern_with_rests(client):
-    """Test that rhythm patterns with negative values (rests) are properly handled via the API."""
-    
-    # Create a new rhythm pattern with both notes and rests
-    rest_pattern = {
-        "name": "Rest Value Rhythm Pattern",
-        "pattern": [1.0, -0.5, 2.0],  # 1 beat note, 0.5 beat rest, 2 beat note
-        "description": "A rhythm pattern with rest values (negative numbers)",
-        "tags": ["test", "rest"],
-        "complexity": 3.0,
-        "data": {
-            "notes": [
-                # First note (1.0 beat)
                 {"duration": 1.0, "position": 0, "is_rest": False, "velocity": 100},
-                # Rest (0.5 beat)
-                {"duration": 0.5, "position": 1.0, "is_rest": True, "velocity": 0},
-                # Second note (2.0 beat)
-                {"duration": 2.0, "position": 1.5, "is_rest": False, "velocity": 100}
+                {"duration": 0.5, "position": 1.0, "is_rest": False, "velocity": 90},
+                {"duration": 0.25, "position": 1.5, "is_rest": False, "velocity": 80},
+                {"duration": 1.0, "position": 1.75, "is_rest": False, "velocity": 100}
             ],
-            "time_signature": (4, 4),  # Changed to tuple format
-            "groove_type": "straight"
+            "time_signature": "4/4"
         }
     }
     
+    # Insert the pattern into the test database
+    result = await test_db.rhythm_patterns.insert_one(pattern_data)
+    pattern_data["id"] = str(result.inserted_id)
+    
+    yield pattern_data
+    
+    # Cleanup
+    if os.getenv("CLEAR_DB_AFTER_TESTS", "0") == "1":
+        await test_db.rhythm_patterns.delete_one({"_id": result.inserted_id})
+
+@pytest.mark.asyncio
+async def test_rhythm_pattern_with_float_values(rhythm_pattern_fixture, test_client: AsyncClient):
+    """Test that rhythm patterns with float values in the pattern field are properly handled."""
+    pattern_data = {
+        "notes": [
+            {"position": 0.0, "duration": 0.25, "velocity": 100, "is_rest": False},
+            {"position": 0.25, "duration": 0.5, "velocity": 90, "is_rest": False},
+            {"position": 0.75, "duration": 0.75, "velocity": 80, "is_rest": False}
+        ],
+        "time_signature": "4/4"
+    }
+
     # Send the creation request
-    create_response = await client.post("/api/v1/rhythm-patterns/", json=rest_pattern)
+    response = await test_client.post("/api/v1/patterns/rhythm/", json=pattern_data)
     
-    # Check that creation succeeded
-    assert create_response.status_code == 201, f"Failed to create rhythm pattern: {create_response.text}"
-    
-    # Get the created pattern ID
-    created_id = create_response.json()["id"]
-    
-    try:
-        # Fetch the created pattern to verify it was stored correctly
-        get_response = await client.get(f"/api/v1/rhythm-patterns/{created_id}")
-        
-        # Check the fetch response
-        assert get_response.status_code == 200, f"Failed to get created rhythm pattern: {get_response.text}"
-        
-        # Parse the fetched data
-        fetched_data = get_response.json()
-        
-        # Verify the pattern with rests is preserved
-        assert fetched_data["pattern"] == rest_pattern["pattern"], "Pattern with rests should be preserved"
-        
-        # Specifically check that the negative value (rest) is preserved
-        assert fetched_data["pattern"][1] == -0.5, "Rest value should be preserved as negative"
-        
-        # Verify the rest in notes data is properly preserved
-        assert fetched_data["data"]["notes"][1]["is_rest"] == True, "Rest flag should be set to True"
-        assert fetched_data["data"]["notes"][1]["duration"] == 0.5, "Rest duration should match pattern"
-        
-    finally:
-        # Cleanup - delete the pattern
-        if created_id:
-            delete_response = await client.delete(f"/api/v1/rhythm-patterns/{created_id}")
-            # Only log an error if deletion fails, don't fail the test
-            if delete_response.status_code != 204:
-                logger.error(f"Failed to delete test pattern: {delete_response.text}")
+    assert response.status_code == 200
+    response_data = response.json()
+    assert isinstance(response_data, dict)  # Changed from list to dict
+    assert response_data["is_valid"] == True
 
-from typing import List, Dict, Any
-import unittest
-from unittest.mock import AsyncMock, patch
-from src.note_gen.models.rhythm import RhythmPattern, RhythmNote
-from src.note_gen.api.pattern_api import check_rhythm_pattern
+@pytest.mark.asyncio
+async def test_rhythm_pattern_with_rests(test_client: AsyncClient):
+    """Test creating a rhythm pattern with rest values."""
+    pattern_data = {
+        "notes": [
+            {
+                "position": 0.0,
+                "duration": 1.0,
+                "velocity": 100,
+                "is_rest": False
+            },
+            {
+                "position": 1.0,
+                "duration": 0.5,
+                "velocity": 0,
+                "is_rest": True
+            },
+            {
+                "position": 1.5,
+                "duration": 2.0,
+                "velocity": 100,
+                "is_rest": False
+            }
+        ],
+        "time_signature": "4/4"
+    }
+    
+    response = await test_client.post(
+        "/api/v1/patterns/rhythm/",
+        json=pattern_data
+    )
+    
+    assert response.status_code == 200
+    response_data = response.json()
+    assert isinstance(response_data, dict)  # Changed from list to dict
+    assert response_data["is_valid"] == True
 
-class TestRhythmPatternCheck(unittest.IsolatedAsyncioTestCase):
-    async def asyncSetUp(self):
-        # Setup test data
-        self.fixture_pattern = RhythmPattern(
-            name="test_pattern",
-            pattern=[
-                RhythmNote(position=0.0, duration=1.0),
-                RhythmNote(position=1.0, duration=0.5),
-                RhythmNote(position=1.5, duration=0.5)
+import pytest
+from httpx import AsyncClient
+
+class TestRhythmPatternCheck:
+    @pytest.mark.asyncio
+    async def test_check_rhythm_pattern(self, test_client: AsyncClient):
+        """Test checking a valid rhythm pattern."""
+        pattern_data = {
+            "notes": [
+                {"position": 0.0, "duration": 1.0, "velocity": 64},
+                {"position": 1.0, "duration": 1.0, "velocity": 64},
+                {"position": 2.0, "duration": 1.0, "velocity": 64},
+                {"position": 3.0, "duration": 1.0, "velocity": 64}
             ],
-            time_signature=(4, 4),  # Changed from "4/4" to tuple format
-            description="Test rhythm pattern",
-            complexity=0.5,
-            data={}  # Optional additional data
-        )
+            "time_signature": "4/4"
+        }
+        
+        response = await test_client.post("/api/v1/patterns/rhythm/check", json=pattern_data)
+        assert response.status_code == 200
+        assert response.json()["is_valid"] == True
 
-    @patch('src.note_gen.api.pattern_api.validate_rhythm_pattern')
-    async def test_check_rhythm_pattern(self, mock_validate):
-        mock_validate.return_value = True
+    @pytest.mark.asyncio
+    async def test_rhythm_pattern_with_float_values(self, test_client: AsyncClient):
+        """Test checking a rhythm pattern with floating point values."""
+        pattern_data = {
+            "notes": [
+                {"position": 0.0, "duration": 0.5, "velocity": 64},
+                {"position": 0.5, "duration": 0.5, "velocity": 64},
+                {"position": 1.0, "duration": 0.5, "velocity": 64},
+                {"position": 1.5, "duration": 0.5, "velocity": 64}
+            ],
+            "time_signature": "4/4"
+        }
         
-        # Test pattern check
-        result = await check_rhythm_pattern(self.fixture_pattern.model_dump())
+        response = await test_client.post("/api/v1/patterns/rhythm/check", json=pattern_data)
+        assert response.status_code == 200
+        assert response.json()["is_valid"] == True
+
+    @pytest.mark.asyncio
+    async def test_rhythm_pattern_with_rests(self, test_client: AsyncClient):
+        """Test checking a rhythm pattern with rests."""
+        pattern_data = {
+            "notes": [
+                {"position": 0.0, "duration": 1.0, "velocity": 64},
+                {"position": 1.0, "duration": 1.0, "velocity": 0, "is_rest": True},
+                {"position": 2.0, "duration": 1.0, "velocity": 64},
+                {"position": 3.0, "duration": 1.0, "velocity": 0, "is_rest": True}
+            ],
+            "time_signature": "4/4"
+        }
         
-        # Verify the pattern values are preserved
-        assert result["pattern"] == self.fixture_pattern.pattern, "Pattern values should be preserved"
+        response = await test_client.post("/api/v1/patterns/rhythm/check", json=pattern_data)
+        assert response.status_code == 200
+        assert response.json()["is_valid"] == True

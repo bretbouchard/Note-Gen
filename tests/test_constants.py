@@ -134,7 +134,7 @@ def test_validate_progression_invalid_chords_type():
     with patch('src.note_gen.core.constants.COMMON_PROGRESSIONS', invalid_progressions):
         with pytest.raises(AssertionError) as exc_info:
             validate_constants()
-        assert "chords must be a list" in str(exc_info.value)
+        assert "Chords in progression I-IV-V must be a list" in str(exc_info.value)
 
 def test_validate_progression_invalid_chord_dict():
     """Test validation of progression with invalid chord dictionary (line 249)."""
@@ -150,7 +150,7 @@ def test_validate_progression_invalid_chord_dict():
     with patch('src.note_gen.core.constants.COMMON_PROGRESSIONS', invalid_progressions):
         with pytest.raises(AssertionError) as exc_info:
             validate_constants()
-        assert "Invalid chord format in progression" in str(exc_info.value)
+        assert "Each chord must be a dictionary" in str(exc_info.value)
 
 def test_validate_constants_valid_data():
     """Test validation with valid data to ensure no false positives."""

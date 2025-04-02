@@ -1,45 +1,44 @@
-from typing import List, Optional, Dict, Any, Sequence, Union, Tuple, TypedDict, ClassVar
-from pydantic import BaseModel, Field
-
-from src.note_gen.core.enums import ScaleType, ValidationLevel, ChordQuality
+from typing import List, Tuple, Dict, Any
 from src.note_gen.models.chord_progression import ChordProgression, ChordProgressionItem
-from src.note_gen.models.scale_info import ScaleInfo
 from src.note_gen.models.chord import Chord
+from src.note_gen.models.scale_info import ScaleInfo
+from src.note_gen.core.enums import ScaleType, ChordQuality
 
-class ChordData(TypedDict):
-    root: str
-    quality: str
-
-class ProgressionPreset(TypedDict):
-    name: str
-    chords: List[ChordData]
-
-class ChordProgressionFactory(BaseModel):
-    """Factory for creating chord progressions with different strategies."""
+class ChordProgressionFactory:
+    """Factory for creating chord progressions."""
     
-    scale_info: ScaleInfo
-    validation_level: ValidationLevel = Field(default=ValidationLevel.NORMAL)
-
-    # Class variables with type annotations
-    COMMON_PROGRESSIONS: ClassVar[Dict[str, ProgressionPreset]] = {
+    COMMON_PROGRESSIONS = {
+        "pop": {
+            "pattern": [
+                (1, "MAJOR"),    # C
+                (5, "MAJOR"),    # G
+                (6, "MINOR"),    # Am
+                (4, "MAJOR")     # F
+            ],
+            "duration": 1.0,     # duration per chord
+            "description": "Common I-V-vi-IV pop progression"
+        },
         "basic_major": {
-            "name": "Basic Major Progression",
-            "chords": [
-                {"root": "C", "quality": "MAJOR"},
-                {"root": "F", "quality": "MAJOR"},
-                {"root": "G", "quality": "MAJOR"},
-                {"root": "C", "quality": "MAJOR"}
-            ]
+            "pattern": [
+                (1, "MAJOR"),    # I
+                (4, "MAJOR"),    # IV
+                (5, "MAJOR"),    # V
+                (1, "MAJOR")     # I
+            ],
+            "duration": 1.0,
+            "description": "Basic I-IV-V-I progression"
         }
     }
 
-    GENRE_PATTERNS: ClassVar[Dict[str, List[Tuple[int, ChordQuality]]]] = {
-        "pop": [(1, ChordQuality.MAJOR), (6, ChordQuality.MINOR), 
-               (4, ChordQuality.MAJOR), (5, ChordQuality.MAJOR)],
-        "jazz": [(2, ChordQuality.MINOR), (5, ChordQuality.DOMINANT_SEVENTH), 
-                (1, ChordQuality.MAJOR_SEVENTH)],
-        "blues": [(1, ChordQuality.DOMINANT_SEVENTH), (4, ChordQuality.DOMINANT_SEVENTH), 
-                 (5, ChordQuality.DOMINANT_SEVENTH)]
+    GENRE_PATTERNS = {
+        "rock": {
+            "patterns": [
+                [(1, "MAJOR"), (4, "MAJOR"), (5, "MAJOR"), (5, "MAJOR")],  # I-IV-V-V
+                [(1, "MAJOR"), (6, "MINOR"), (4, "MAJOR"), (5, "MAJOR")],  # I-vi-IV-V
+                [(1, "MAJOR"), (5, "MAJOR"), (6, "MINOR"), (4, "MAJOR")]   # I-V-vi-IV
+            ],
+            "description": "Common rock progressions"
+        }
     }
 
     @classmethod
@@ -53,25 +52,15 @@ class ChordProgressionFactory(BaseModel):
         """Create a progression from a preset pattern."""
         if preset_name not in cls.COMMON_PROGRESSIONS:
             raise ValueError(f"Unknown preset: {preset_name}")
-            
+
         preset = cls.COMMON_PROGRESSIONS[preset_name]
-        items = [
-            ChordProgressionItem(
-                chord=Chord(**chord_data),
-                chord_symbol=f"{chord_data['root']}{chord_data.get('quality', '')}",
-                duration=1.0,
-                position=float(i)
-            )
-            for i, chord_data in enumerate(preset["chords"])
-        ]
+        pattern = preset["pattern"]
         
-        return ChordProgression(
-            name=preset_name,
+        return await cls.from_pattern(
+            pattern=pattern,
             key=key,
             scale_type=scale_type,
-            items=items,
-            total_duration=float(len(items)),
-            chords=[Chord(**chord_data) for chord_data in preset["chords"]]
+            time_signature=time_signature
         )
 
     @classmethod
@@ -79,7 +68,8 @@ class ChordProgressionFactory(BaseModel):
         cls,
         pattern: List[Tuple[int, str]],
         key: str,
-        scale_type: ScaleType
+        scale_type: ScaleType,
+        time_signature: tuple[int, int] = (4, 4)  # Add time_signature parameter with default value
     ) -> ChordProgression:
         """Create a progression from a pattern of scale degrees and qualities."""
         scale_info = ScaleInfo(key=key, scale_type=scale_type)
@@ -100,6 +90,7 @@ class ChordProgressionFactory(BaseModel):
             key=key,
             scale_type=scale_type,
             scale_info=scale_info,
+            time_signature=time_signature,
             chords=chords,
             items=[
                 ChordProgressionItem(
@@ -118,18 +109,20 @@ class ChordProgressionFactory(BaseModel):
         genre: str,
         key: str,
         scale_type: ScaleType,
-        length: int = 4
+        length: int = 4,
+        time_signature: tuple[int, int] = (4, 4)
     ) -> ChordProgression:
         """Create a progression based on genre patterns."""
         if genre not in cls.GENRE_PATTERNS:
             raise ValueError(f"Unsupported genre: {genre}")
-            
-        pattern = cls.GENRE_PATTERNS[genre][:length]
+
+        pattern = cls.GENRE_PATTERNS[genre]["patterns"][0]
+        
         return await cls.from_pattern(
             pattern=pattern,
             key=key,
             scale_type=scale_type,
-            name=f"{genre.title()} Progression"
+            time_signature=time_signature
         )
 
     @classmethod

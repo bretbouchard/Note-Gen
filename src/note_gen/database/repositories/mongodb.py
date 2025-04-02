@@ -1,6 +1,6 @@
-"""Base MongoDB repository implementation."""
-from typing import Generic, TypeVar, Dict, Any, Optional, List
-from motor.motor_asyncio import AsyncIOMotorCollection
+"""MongoDB repository implementation."""
+from typing import Generic, TypeVar, Dict, Any, Optional, List, Type
+from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import BaseModel
 
 T = TypeVar('T', bound=BaseModel)
@@ -8,10 +8,10 @@ T = TypeVar('T', bound=BaseModel)
 class MongoDBRepository(Generic[T]):
     """Base repository for MongoDB operations."""
     
-    def __init__(self, collection: AsyncIOMotorCollection[Dict[str, Any]]) -> None:
-        """Initialize repository with collection."""
-        self.collection = collection
-        self._model_class: type[T]
+    def __init__(self, database: AsyncIOMotorDatabase, collection_name: str, model_class: Type[T]):
+        self.database = database
+        self.collection = database[collection_name]
+        self.model_class = model_class
 
     async def find_one(self, filter_dict: Dict[str, Any]) -> Optional[T]:
         """Find single document by filter."""
@@ -24,22 +24,6 @@ class MongoDBRepository(Generic[T]):
         documents = await cursor.to_list(None)
         return [self._convert_to_model(doc) for doc in documents]
 
-    async def create(self, model: T) -> str:
-        """Create new document."""
-        doc = model.model_dump(exclude_unset=True)
-        result = await self.collection.insert_one(doc)
-        return str(result.inserted_id)
-
-    async def update(self, id: str, model: T) -> Optional[T]:
-        """Update document by ID."""
-        doc = model.model_dump(exclude_unset=True)
-        result = await self.collection.find_one_and_update(
-            {"_id": id},
-            {"$set": doc},
-            return_document=True
-        )
-        return self._convert_to_model(result) if result else None
-
     def _convert_to_model(self, doc: Dict[str, Any]) -> T:
         """Convert dictionary to model instance."""
-        return self._model_class(**doc)
+        return self.model_class.model_validate(doc)

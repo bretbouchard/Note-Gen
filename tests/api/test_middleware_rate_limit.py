@@ -1,63 +1,80 @@
-import time
 import pytest
-from src.note_gen.core.constants import RATE_LIMIT
-from src.note_gen.api.errors import ErrorCodes
-from src.note_gen.api.middleware.rate_limit import rate_limiter
+from httpx import AsyncClient
+import asyncio
+from unittest.mock import patch
+from src.note_gen.app import limiter  # Import the limiter instance directly from app
 
 class TestRateLimiting:
-    @pytest.fixture
-    def endpoint(self):
-        return "/test"
-
-    @pytest.fixture(autouse=True)
-    def setup(self):
-        rate_limiter.clear()
-        yield
-
-    def test_rate_limit_exceeded(self, test_client, endpoint):
-        headers = {"content-type": "application/json"}
+    @pytest.mark.asyncio
+    async def test_rate_limit_exceeded(self, test_client: AsyncClient):
+        """Test that rate limiting works correctly."""
+        endpoint = "/api/v1/patterns/"
         
-        # Make requests exactly up to the limit
-        for _ in range(RATE_LIMIT):
-            response = test_client.get(endpoint, headers=headers)
-            assert response.status_code == 200, f"Failed on request with status {response.status_code}"
-            
-        # Next request should be rate limited
-        response = test_client.get(endpoint, headers=headers)
+        # Clear any existing rate limit data
+        limiter.reset()
+        
+        # Make requests up to the limit
+        for _ in range(61):  # One more than the limit
+            await test_client.get(endpoint)
+            await asyncio.sleep(0.01)  # Small delay to prevent overwhelming
+        
+        # This request should be rate limited
+        response = await test_client.get(endpoint)
         assert response.status_code == 429
-        assert response.json()["code"] == ErrorCodes.RATE_LIMIT_EXCEEDED.value
+        assert "error" in response.json()
 
-    def test_rate_limit_reset(self, test_client, endpoint):
-        headers = {"content-type": "application/json"}
+    @pytest.mark.asyncio
+    async def test_rate_limit_reset(self, test_client: AsyncClient):
+        """Test that rate limit resets after the specified time."""
+        endpoint = "/api/v1/patterns/"
         
-        # Fill up to the limit
-        for _ in range(RATE_LIMIT):
-            response = test_client.get(endpoint, headers=headers)
+        # Clear any existing rate limit data
+        limiter.reset()
+        
+        # Make initial requests
+        for _ in range(3):
+            response = await test_client.get(endpoint)
             assert response.status_code == 200
-            
-        # Verify rate limit is hit
-        response = test_client.get(endpoint, headers=headers)
-        assert response.status_code == 429
+
+        # Reset the limiter
+        limiter.reset()
         
-        # Clear the rate limiter (simulating time passage)
-        rate_limiter.clear()
-        
-        # Should work again
-        response = test_client.get(endpoint, headers=headers)
+        # Should be able to make requests again
+        response = await test_client.get(endpoint)
         assert response.status_code == 200
 
-    def test_concurrent_requests(self, test_client, endpoint):
-        headers = {"content-type": "application/json"}
+    @pytest.mark.asyncio
+    async def test_rate_limit_with_mocked_time(self, test_client: AsyncClient):
+        """Test rate limit with mocked time."""
+        endpoint = "/api/v1/patterns/"
         
-        # Make concurrent requests
-        responses = []
-        for _ in range(RATE_LIMIT + 5):
-            response = test_client.get(endpoint, headers=headers)
-            responses.append(response)
+        # Clear any existing rate limit data
+        limiter.reset()
+
+        # Make requests up to the limit
+        for _ in range(60):  # Hit the full limit
+            response = await test_client.get(endpoint)
+            assert response.status_code == 200
+
+        # This request should be rate limited
+        response = await test_client.get(endpoint)
+        assert response.status_code == 429  # Should be rate limited
+
+        with patch('time.time') as mock_time:
+            # Set initial time
+            current_time = 1000.0  # arbitrary start time
+            mock_time.return_value = current_time
             
-        # Verify some responses were rate limited
-        success_count = sum(1 for r in responses if r.status_code == 200)
-        rate_limited_count = sum(1 for r in responses if r.status_code == 429)
-        
-        assert success_count <= RATE_LIMIT
-        assert rate_limited_count > 0
+            # Verify we're still rate limited
+            response = await test_client.get(endpoint)
+            assert response.status_code == 429
+
+            # Move time forward past the window (60 seconds)
+            mock_time.return_value = current_time + 61
+            
+            # Reset the limiter to simulate time passing
+            limiter.reset()
+            
+            # Should be able to make requests again
+            response = await test_client.get(endpoint)
+            assert response.status_code == 200

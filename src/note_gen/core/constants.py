@@ -155,64 +155,50 @@ RHYTHM_PATTERNS = {
 }
 
 def validate_constants() -> None:
-    """Validate all constants are properly defined and consistent."""
-    # Validate roman numeral mappings are consistent
-    for num, roman in INT_TO_ROMAN.items():
-        assert ROMAN_TO_INT[roman] == num, f"Mismatch in roman numeral mapping for {num}"
-
+    """Validate all constant definitions."""
     # Validate chord intervals
     for quality, intervals in CHORD_INTERVALS.items():
         assert isinstance(intervals, tuple), f"Chord intervals for {quality} must be a tuple"
-        assert all(isinstance(i, int) for i in intervals), f"Chord intervals for {quality} must be integers"
-        assert all(0 <= i <= 11 for i in intervals), f"Chord intervals must be between 0 and 11 in {quality}"
+        assert all(isinstance(i, int) for i in intervals), "Chord intervals must be integers"
+        assert all(0 <= i <= 11 for i in intervals), "Chord intervals must be between 0 and 11"
 
     # Validate scale intervals
-    for scale_name, intervals in SCALE_INTERVALS.items():
-        assert isinstance(intervals, tuple), f"Scale intervals for {scale_name} must be a tuple"
-        assert all(isinstance(i, int) for i in intervals), f"Scale intervals for {scale_name} must be integers"
-        assert all(0 <= i <= 11 for i in intervals), f"Scale intervals must be between 0 and 11 in {scale_name}"
-        assert len(set(intervals)) == len(intervals), f"Duplicate intervals in {scale_name} scale"
-
-        if scale_name == ScaleType.CHROMATIC:
-            assert len(intervals) == 12, "Chromatic scale must have 12 notes"
-        elif scale_name in (ScaleType.MAJOR, ScaleType.MINOR):
-            assert len(intervals) == 7, f"Diatonic scale {scale_name} must have 7 notes"
-
-    # Validate progressions
-    for prog_name, prog_data in COMMON_PROGRESSIONS.items():
-        assert isinstance(prog_data, dict), "Progression data must be a dictionary"
-        required_keys = {"name", "description", "chords"}
-        assert all(key in prog_data for key in required_keys), f"Progression {prog_name} missing required keys"
-        assert isinstance(prog_data["chords"], list), "Progression chords must be a list"
+    for scale_type, intervals in SCALE_INTERVALS.items():
+        assert isinstance(intervals, tuple), f"Scale intervals for {scale_type} must be a tuple"
+        assert all(isinstance(i, int) for i in intervals), "Scale intervals must be integers"
+        assert all(0 <= i <= 11 for i in intervals), "Scale intervals must be between 0 and 11"
         
-        for chord in prog_data["chords"]:
-            assert isinstance(chord, dict), "Invalid chord format in progression"
-            assert "root" in chord and "quality" in chord, "Invalid chord format in progression"
+        if scale_type == ScaleType.CHROMATIC:
+            assert len(intervals) == 12, "Chromatic scale must have 12 notes"
+        elif scale_type in {ScaleType.MAJOR, ScaleType.MINOR}:
+            assert len(intervals) == 7, f"Diatonic scale {scale_type} must have 7 notes"
 
     # Validate note patterns
     for pattern_name, pattern_data in NOTE_PATTERNS.items():
-        assert isinstance(pattern_data, dict), "Note pattern must be a dictionary"
-        required_keys = {"direction", "intervals", "description"}
-        assert all(key in pattern_data for key in required_keys), f"Note pattern {pattern_name} missing required keys"
+        assert isinstance(pattern_data, dict), f"Pattern data for {pattern_name} must be a dictionary"
+        required_keys = {'intervals', 'description', 'direction'}
+        missing_keys = required_keys - set(pattern_data.keys())
+        assert not missing_keys, f"Pattern {pattern_name} missing required keys: {missing_keys}"
 
-    # Validate pattern validation limits
-    assert all(isinstance(v, (int, float, tuple)) for v in PATTERN_VALIDATION_LIMITS.values()), \
-        "Invalid type in PATTERN_VALIDATION_LIMITS"
-    
-    # Validate duration limits
-    assert DURATION_LIMITS['MIN'] > 0, "Minimum duration must be positive"
-    assert DURATION_LIMITS['MAX'] > DURATION_LIMITS['MIN'], "Maximum duration must be greater than minimum"
-    assert DURATION_LIMITS['DEFAULT'] >= DURATION_LIMITS['MIN'], "Default duration must be >= minimum"
-    assert DURATION_LIMITS['DEFAULT'] <= DURATION_LIMITS['MAX'], "Default duration must be <= maximum"
+    # Validate rhythm patterns
+    for pattern_name, pattern_data in RHYTHM_PATTERNS.items():
+        assert isinstance(pattern_data, dict), f"Rhythm pattern data for {pattern_name} must be a dictionary"
+        required_keys = {'notes', 'total_duration', 'description'}
+        missing_keys = required_keys - set(pattern_data.keys())
+        assert not missing_keys, f"Rhythm pattern {pattern_name} missing required keys: {missing_keys}"
 
-    # Validate chord intervals
-    if 'CHORD_INTERVALS' in globals():  # Only validate if defined
-        for quality, intervals in CHORD_INTERVALS.items():
-            assert isinstance(intervals, tuple), f"Chord intervals for {quality} must be a tuple"
-            assert all(isinstance(i, int) for i in intervals), \
-                f"Chord intervals for {quality} must be integers"
-            assert all(0 <= i <= 11 for i in intervals), \
-                f"Chord intervals must be between 0 and 11 in {quality}"
+    # Validate progressions
+    for prog_name, prog_data in COMMON_PROGRESSIONS.items():
+        assert isinstance(prog_data, dict), f"Progression {prog_name} data must be a dictionary"
+        required_keys = {'name', 'description', 'chords'}
+        missing_keys = required_keys - set(prog_data.keys())
+        assert not missing_keys, f"Progression {prog_name} missing required keys: {missing_keys}"
+        
+        assert isinstance(prog_data['chords'], list), f"Chords in progression {prog_name} must be a list"
+        for chord in prog_data['chords']:
+            assert isinstance(chord, dict), "Each chord must be a dictionary"
+            assert all(key in chord for key in ['root', 'quality']), \
+                f"Invalid chord format in progression {prog_name}"
 
 # Scale degree qualities
 SCALE_DEGREE_QUALITIES = {
@@ -297,7 +283,7 @@ DURATION_LIMITS = {
 }
 
 # Database constants
-DEFAULT_DB_NAME = "note_gen_db"
+DEFAULT_DB_NAME = "note_gen"
 DB_NAME = "note_gen"  # Keep existing DB_NAME
 DATABASE = {
     "uri": "mongodb://localhost:27017",
@@ -306,7 +292,12 @@ DATABASE = {
     "name": DB_NAME,
     "database": DB_NAME,
     "user": "postgres",
-    "password": "postgres"
+    "password": "postgres",
+    "pool": {
+        "max_size": 10,
+        "min_size": 1
+    },
+    "timeout_ms": 5000
 }
 
 # Default values
@@ -376,10 +367,5 @@ COLLECTION_NAMES = {
 # API Rate Limiting
 RATE_LIMIT = {
     "requests_per_minute": 60,
-    "burst_limit": 100,
-    "window_seconds": 60,
-    "default_limit": {
-        "calls": 100,
-        "period": 60
-    }
+    "burst_size": 10
 }

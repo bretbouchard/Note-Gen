@@ -1,6 +1,6 @@
 """Models for musical patterns and transformations."""
 from typing import TYPE_CHECKING, List, Tuple, Optional, Dict, Any, Union
-from pydantic import BaseModel, Field, ValidationInfo, field_validator, model_validator, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict
 
 # Import base classes and utilities first
 from enum import Enum
@@ -88,7 +88,10 @@ class NotePatternData(BaseModel):
 
 class Pattern(BaseModel):
     """Base class for all musical patterns."""
-    model_config = ConfigDict(validate_assignment=True)
+    model_config = ConfigDict(
+        validate_assignment=True,
+        arbitrary_types_allowed=True
+    )
     
     id: str = Field(default="", description="Pattern ID")
     name: str = Field(
@@ -117,7 +120,7 @@ class NotePattern(Pattern):
         arbitrary_types_allowed=True,
         from_attributes=True,
         validate_default=False,
-        extra='allow'  # Allow extra fields
+        extra='allow'
     )
 
     name: str = Field(default="")
@@ -135,14 +138,23 @@ class NotePattern(Pattern):
     @model_validator(mode='after')
     def validate_pattern_empty(self) -> 'NotePattern':
         """Validate that pattern is not empty."""
-        if not self.pattern:
+        # Only validate non-empty pattern requirement if skip_validation is False
+        if not self.skip_validation and not self.pattern:
             raise ValueError("Pattern cannot be empty")
         return self
 
     def __init__(self, **data):
+        # Set skip_validation to True during initialization
+        if 'skip_validation' not in data:
+            data['skip_validation'] = True
+        
+        # Ensure pattern is initialized
         if 'pattern' not in data:
             data['pattern'] = []
+            
         super().__init__(**data)
+        
+        # Convert pattern strings to Note objects if needed
         if 'pattern' in data:
             self.pattern = self._convert_pattern(data['pattern'])
 
@@ -703,6 +715,10 @@ class RhythmNote(BaseModel):
     duration: float = Field(gt=0.0, description="Duration in beats")
     velocity: float = Field(default=64, ge=0, le=127, description="MIDI velocity")
     accent: bool = Field(default=False, description="Whether the note is accented")
+    note: Optional['Note'] = None  # Add note field
+    groove_offset: float = Field(default=0.0, ge=-1.0, le=1.0)  # Add groove_offset field
+    swing_ratio: float = Field(default=0.5, ge=0.0, le=1.0)  # Add swing_ratio field
+    tuplet_ratio: Optional[Tuple[int, int]] = None  # Add tuplet_ratio field
 
     def get_velocity_int(self) -> int:
         """Get the note velocity as integer."""
@@ -710,6 +726,12 @@ class RhythmNote(BaseModel):
 
     def get_duration(self) -> float:
         """Get the note duration."""
+        return self.duration
+
+    def get_actual_duration(self) -> float:
+        """Get the actual duration considering tuplet ratio."""
+        if self.tuplet_ratio:
+            return self.duration * (self.tuplet_ratio[0] / self.tuplet_ratio[1])
         return self.duration
 
 class RhythmPatternData(BaseModel):
@@ -743,14 +765,15 @@ class RhythmPattern(BaseModel):
         arbitrary_types_allowed=True,
         from_attributes=True
     )
-
+    
     id: str = Field(default="")
     name: str = Field(default="")
     pattern: List[RhythmNote] = Field(default_factory=list)
     time_signature: Tuple[int, int] = Field(default=(4, 4))
     total_duration: float = Field(default=4.0)
     style: str = Field(default="basic")
-    description: Optional[str] = Field(default=None)
+    description: Optional[str] = None
+    swing_enabled: bool = Field(default=False)  # Add swing_enabled field
 
     @model_validator(mode='after')
     def validate_pattern(self) -> 'RhythmPattern':

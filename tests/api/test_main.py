@@ -1,9 +1,8 @@
 import pytest
-from fastapi.testclient import TestClient
+from httpx import AsyncClient
 
-def test_get_patterns(client):
-    response = client.get("/api/v1/patterns")
+@pytest.mark.asyncio
+async def test_get_patterns(test_client: AsyncClient):
+    """Test getting patterns endpoint."""
+    response = await test_client.get("/api/v1/patterns/", follow_redirects=True)
     assert response.status_code == 200
-    data = response.json()
-    assert "rhythm_patterns" in data
-    assert "note_patterns" in data

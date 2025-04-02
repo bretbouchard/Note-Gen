@@ -9,7 +9,7 @@ from src.note_gen.models.chord import Chord
 from src.note_gen.models.chord_progression import ChordProgression
 from src.note_gen.models.scale_info import ScaleInfo
 from src.note_gen.models.patterns import NotePattern
-from src.note_gen.models.rhythm import RhythmPattern
+from src.note_gen.models.rhythm import RhythmPattern, RhythmNote
 from src.note_gen.models.note_sequence import NoteSequence
 from src.note_gen.core.enums import ValidationLevel, VoiceLeadingRule, ChordQuality
 from src.note_gen.validation.validation_manager import ValidationManager
@@ -26,10 +26,10 @@ class NoteSequenceGenerator(BaseModel):
         from_attributes=True
     )
 
-    chord_progression: ChordProgression = Field(...)
-    note_pattern: NotePattern = Field(...)
-    rhythm_pattern: RhythmPattern = Field(...)
-    validation_level: ValidationLevel = Field(default=ValidationLevel.NORMAL)
+    chord_progression: ChordProgression
+    note_pattern: NotePattern
+    rhythm_pattern: RhythmPattern
+    validation_level: ValidationLevel = ValidationLevel.NORMAL
     voice_leading_rules: List[VoiceLeadingRule] = Field(default_factory=list)
 
     async def generate(

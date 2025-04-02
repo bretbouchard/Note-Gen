@@ -1,13 +1,19 @@
 import pytest
 from fastapi import FastAPI
-from fastapi.testclient import TestClient
-from src.note_gen.routers.router import router  # Import the actual router instance, not the module
+from src.note_gen.main import app
 
 def test_router_paths():
-    app = FastAPI()
-    app.include_router(router)  # Now using the router instance
+    """Test that all expected routes are registered."""
+    routes = [route.path for route in app.routes]
+    expected_paths = [
+        '/api/v1/patterns',
+        '/api/v1/note-sequences',
+        '/health',
+        '/',
+        '/docs',
+        '/redoc',
+        '/openapi.json'
+    ]
     
-    # Use route.path instead of accessing path directly
-    routes = [route.path for route in app.routes if hasattr(route, 'path')]
-    assert "/api/v1/patterns" in routes
-    assert "/api/v1/chords" in routes
+    for path in expected_paths:
+        assert any(route == path or route.startswith(path) for route in routes), f"Expected path {path} not found in routes"

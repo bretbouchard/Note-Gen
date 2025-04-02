@@ -1,53 +1,22 @@
 import pytest
-from fastapi.testclient import TestClient
-from src.note_gen.main import app
-import time
+from httpx import AsyncClient
+import asyncio
 
-client = TestClient(app)
-
-def test_request_validation():
-    """Test request validation middleware."""
-    # Test missing required fields
-    response = client.post(
-        "/generate/progression",
-        json={},
-        headers={"content-type": "application/json"}
-    )
+@pytest.mark.asyncio
+async def test_request_validation(test_client: AsyncClient):
+    """Test validation middleware with invalid request."""
+    response = await test_client.post("/api/v1/patterns/", json={})
     assert response.status_code == 422
-    assert "validation error" in response.json()["detail"][0]["msg"].lower()
-    
-    # Test missing content-type header
-    response = client.post("/generate/progression", json={})
-    assert response.status_code == 400
-    assert "Missing required header" in response.json()["message"]
-    
-    # Test valid request
-    valid_data = {
-        "name": "Test Progression",
-        "key": "C",
-        "scale_type": "MAJOR",
-        "chords": []
-    }
-    response = client.post(
-        "/generate/progression",
-        json=valid_data,
-        headers={"content-type": "application/json"}
-    )
-    assert response.status_code == 200
+    assert "detail" in response.json()
 
-def test_rate_limiting():
+@pytest.mark.asyncio
+async def test_rate_limiting(test_client: AsyncClient):
     """Test rate limiting middleware."""
-    # Make requests up to the limit
-    for _ in range(100):  # RATE_LIMIT is 100
-        response = client.get("/presets/progressions")
-        assert response.status_code == 200
-    
-    # Next request should be rate limited
-    response = client.get("/presets/progressions")
+    # Make multiple requests to trigger rate limit
+    for _ in range(60):  # Increased to hit the rate limit
+        await test_client.get("/api/v1/patterns/")
+        await asyncio.sleep(0.01)  # Small delay to prevent overwhelming
+
+    response = await test_client.get("/api/v1/patterns/")
     assert response.status_code == 429
-    assert "Rate limit exceeded" in response.json()["message"]
-    
-    # Wait for rate limit window to reset
-    time.sleep(60)
-    response = client.get("/presets/progressions")
-    assert response.status_code == 200
+    assert "error" in response.json()

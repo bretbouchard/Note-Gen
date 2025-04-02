@@ -11,6 +11,7 @@ dependencies = [
     "fastapi>=0.110.0",
     "uvicorn>=0.27.1",
     "pydantic>=2.6.1",
+    "pydantic-settings>=2.1.0",
     "motor>=3.3.2",
     "pymongo>=4.6.1",
     "python-dotenv>=1.0.1",
@@ -22,7 +23,8 @@ packages = [
     "note_gen",
     "note_gen.routers",
     "note_gen.models",
-    "note_gen.core"
+    "note_gen.core",
+    "note_gen.services"
 ]
 
 [tool.pytest]
@@ -33,52 +35,13 @@ python_functions = "test_*"
 pythonpath = [".", "src"]
 
 [tool.pytest.ini_options]
+asyncio_mode = "auto"
 pythonpath = [
     ".",
     "src"
 ]
-asyncio_mode = "strict"
 asyncio_default_fixture_loop_scope = "function"
 
-[tool.mypy]
-python_version = "3.12"
-warn_return_any = true
-warn_unused_configs = true
-disallow_untyped_defs = false
-disallow_incomplete_defs = false
-check_untyped_defs = true
-disallow_untyped_decorators = false
-no_implicit_optional = true
-strict_optional = true
-warn_redundant_casts = true
-warn_unused_ignores = true
-warn_no_return = true
-warn_unreachable = true
-namespace_packages = true
-mypy_path = ["src"]
-exclude = ["tools", "setup.py"]
-
-[[tool.mypy.overrides]]
-module = ["src.note_gen.*"]
-disallow_untyped_defs = false
-disallow_incomplete_defs = false
-
-[[tool.mypy.overrides]]
-module = ["html5lib.*"]
-ignore_missing_imports = true
-
-[[tool.mypy.overrides]]
-module = ["setuptools.*"]
-ignore_missing_imports = true
-
-[[tool.mypy.overrides]]
-module = ["motor.*"]
-ignore_missing_imports = true
-
-[[tool.mypy.overrides]]
-module = ["pymongo.*"]
-ignore_missing_imports = true
-
 [tool.poetry.dependencies]
-pytest-asyncio = "^0.23.0"
+pytest-asyncio = "^0.25.0"
 pytest-timeout = "^2.1.0"

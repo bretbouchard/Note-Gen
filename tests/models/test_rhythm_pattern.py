@@ -1,10 +1,11 @@
 """Tests for rhythm pattern models."""
 import pytest
-from src.note_gen.models.rhythm import RhythmPattern , RhythmNote
+from src.note_gen.models.rhythm import RhythmPattern, RhythmNote
 
-def test_rhythm_pattern_creation() -> None:
-    """Test basic rhythm pattern creation."""
-    pattern = RhythmPattern(
+@pytest.fixture
+def basic_rhythm_pattern() -> RhythmPattern:
+    """Create a basic rhythm pattern for testing."""
+    return RhythmPattern(
         name="test_pattern",
         time_signature=(4, 4),
         pattern=[
@@ -14,10 +15,13 @@ def test_rhythm_pattern_creation() -> None:
             RhythmNote(position=3.0, duration=1.0, velocity=64, accent=False)
         ]
     )
-    assert pattern.name == "test_pattern"
-    assert pattern.time_signature == (4, 4)
-    assert len(pattern.pattern) == 4
-    assert pattern.total_duration == 4.0
+
+def test_rhythm_pattern_creation(basic_rhythm_pattern: RhythmPattern) -> None:
+    """Test basic rhythm pattern creation."""
+    assert basic_rhythm_pattern.name == "test_pattern"
+    assert basic_rhythm_pattern.time_signature == (4, 4)
+    assert len(basic_rhythm_pattern.pattern) == 4
+    assert basic_rhythm_pattern.total_duration == 4.0
 
 def test_invalid_rhythm_pattern():
     """Test invalid rhythm pattern creation."""
@@ -71,19 +75,23 @@ def test_rhythm_pattern_swing() -> None:
     pattern = RhythmPattern(
         name="swing_pattern",
         swing_enabled=True,
-        total_duration=1.0,  # Explicitly set the expected duration
+        time_signature=(4, 4),
         pattern=[
             RhythmNote(
                 position=0.0,
                 duration=0.5,
+                velocity=64,
                 swing_ratio=0.67
             ),
             RhythmNote(
                 position=0.5,
                 duration=0.5,
+                velocity=64,
                 swing_ratio=0.33
             )
         ]
     )
     assert pattern.swing_enabled
     assert len(pattern.pattern) == 2
+    assert pattern.pattern[0].swing_ratio == 0.67
+    assert pattern.pattern[1].swing_ratio == 0.33

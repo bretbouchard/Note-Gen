@@ -17,9 +17,7 @@ from ..core.enums import ValidationLevel  # Use relative import
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(
-    tags=["sequences"]
-)
+router = APIRouter(tags=["sequences"])
 
 DbDep = Annotated[AsyncIOMotorDatabase, Depends(get_db_conn)]
 
@@ -53,10 +51,10 @@ async def create_sequence(
             detail=str(e)
         )
 
-@router.post("/generate", response_model=Pattern)
+@router.post("/generate", response_model=NoteSequence)
 async def generate_sequence(
     request: GenerateSequenceRequest = Body(...)
-) -> Pattern:
+) -> NoteSequence:
     """Generate a new sequence based on provided parameters."""
     try:
         if not request.scale_info:
@@ -64,13 +62,12 @@ async def generate_sequence(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail="Scale info is required"
             )
-            
+
         sequence = await generate_sequence_from_presets(
+            note_pattern_name=request.note_pattern_name,
+            rhythm_pattern_name=request.rhythm_pattern_name,
             progression_name=request.progression_name,
-            scale_info=request.scale_info,
-            time_signature=request.time_signature,
-            tempo=request.tempo,
-            key=request.key
+            scale_info=request.scale_info.model_dump()
         )
         return sequence
     except Exception as e:

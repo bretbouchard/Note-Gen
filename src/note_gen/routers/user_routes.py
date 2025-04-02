@@ -12,9 +12,7 @@ from src.note_gen.core.database import get_db_conn
 import logging
 
 logger = logging.getLogger(__name__)
-router = APIRouter(
-    tags=["users"]
-)
+router = APIRouter(tags=["users"])
 
 DbDep = Annotated[AsyncIOMotorDatabase, Depends(get_db_conn)]
 
@@ -23,7 +21,7 @@ async def get_current_user():
     """Get the current user."""
     return {"username": "testuser"}
 
-@router.get("/users", response_model=List[User])
+@router.get("/", response_model=List[User])
 async def get_users(db: DbDep):
     """Get all users."""
     cursor = db.users.find({})
