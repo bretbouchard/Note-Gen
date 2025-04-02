@@ -19,6 +19,11 @@ async def get_db_conn() -> AsyncIOMotorDatabase:
         return _client[settings.database_name]
     raise ConnectionError("Failed to initialize database connection")
 
+
+async def get_database() -> AsyncIOMotorDatabase:
+    """Alias for get_db_conn for compatibility with services."""
+    return await get_db_conn()
+
 async def close_mongo_connection() -> None:
     global _client
     if _client is not None:

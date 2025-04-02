@@ -152,4 +152,38 @@ cython_debug/
 # MongoDB files
 data/db/
 
+# Environment variables
 .env
+
+# IDE files
+.vscode/
+.vscode.example/
+.idea/
+.devcontainer/
+
+# Project specific
+server_logs.txt
+command.sh
+class_summary.txt
+test_file.txt
+
+# Database scripts and utilities
+check_db.py
+check_db_entries.py
+cleanup_database.py
+database.py
+import_data.py
+list_collections.py
+test_db_connection.py
+test_mongo_connection.py
+
+# Logs
+logs/
+
+# Backup files
+*.bak
+*.bak.*
+.pre-commit-config.bak.yaml
+
+# macOS
+.DS_Store

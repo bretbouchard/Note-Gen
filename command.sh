@@ -1,1 +1,0 @@
-pytest -ra -v --cov=src --cov-report=term-missing -x --maxfail=10

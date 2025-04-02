@@ -1,4 +1,4 @@
-from typing import TypeVar, Generic, Optional, Any, cast, Type
+from typing import TypeVar, Generic, Optional, Any, cast, Type, List
 from bson import ObjectId
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import BaseModel
@@ -48,3 +48,39 @@ class MongoDBRepository(Generic[T]):
             # Log the error or handle it as needed
             print(f"Error in get_by_id: {e}")
             return None
+
+    async def insert_many(self, models: List[T]) -> List[str]:
+        """Insert multiple documents."""
+        # Convert models to dictionaries
+        documents = [model.model_dump() for model in models]
+        result = await self.collection.insert_many(documents)
+        return [str(id) for id in result.inserted_ids]
+
+    async def find_many(self, filter_dict: dict) -> List[T]:
+        """Find multiple documents matching the filter."""
+        cursor = self.collection.find(filter_dict)
+        results = []
+        async for document in cursor:
+            model_class = cast(Type[T], self._type)
+            results.append(model_class.model_validate(document))
+        return results
+
+    async def update_one(self, filter_dict: dict, update_dict: dict):
+        """Update a single document matching the filter."""
+        return await self.collection.update_one(filter_dict, update_dict)
+
+    async def update_many(self, filter_dict: dict, update_dict: dict):
+        """Update multiple documents matching the filter."""
+        return await self.collection.update_many(filter_dict, update_dict)
+
+    async def delete_one(self, filter_dict: dict):
+        """Delete a single document matching the filter."""
+        return await self.collection.delete_one(filter_dict)
+
+    async def delete_many(self, filter_dict: dict):
+        """Delete multiple documents matching the filter."""
+        return await self.collection.delete_many(filter_dict)
+
+    async def count_documents(self, filter_dict: dict) -> int:
+        """Count documents matching the filter."""
+        return await self.collection.count_documents(filter_dict)

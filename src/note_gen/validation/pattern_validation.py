@@ -10,7 +10,7 @@ T = TypeVar('T')
 
 class PatternValidation:
     """Pattern validation class."""
-    
+
     @staticmethod
     def validate_unknown_pattern() -> ValidationResult:
         """Create validation result for unknown pattern type."""
@@ -27,7 +27,7 @@ class PatternValidation:
     def validate_rhythm_pattern(pattern: RhythmPattern) -> ValidationResult:
         """Validate a rhythm pattern."""
         violations = []
-        
+
         if not pattern.pattern:
             violations.append(
                 ValidationViolation(
@@ -35,7 +35,7 @@ class PatternValidation:
                     message="Pattern cannot be empty"
                 )
             )
-            
+
         # Validate time signature
         numerator, denominator = pattern.time_signature
         if denominator not in [1, 2, 4, 8, 16, 32, 64]:
@@ -45,7 +45,7 @@ class PatternValidation:
                     message="Time signature denominator must be a power of 2"
                 )
             )
-            
+
         # Validate note positions are ordered
         positions = [note.position for note in pattern.pattern]
         if positions != sorted(positions):
@@ -55,7 +55,7 @@ class PatternValidation:
                     message="Notes must be ordered by position"
                 )
             )
-            
+
         return ValidationResult(
             is_valid=len(violations) == 0,
             violations=violations
@@ -65,7 +65,7 @@ class PatternValidation:
     def validate_pattern_structure(data: Dict[str, Any]) -> List[ValidationViolation]:
         """Validate the basic structure of a pattern."""
         violations: List[ValidationViolation] = []
-        
+
         # Only validate required fields that are actually needed
         required_fields = {'name', 'pattern'}  # Remove 'data' from required fields
         missing_fields = required_fields - set(data.keys())
@@ -74,18 +74,39 @@ class PatternValidation:
                 message=f"Missing required fields: {', '.join(missing_fields)}",
                 code="MISSING_FIELDS"
             ))
-            
+
         if 'pattern' in data and not isinstance(data['pattern'], list):
             violations.append(ValidationViolation(
                 message="Pattern must be a list",
                 code="INVALID_PATTERN_TYPE"
             ))
-            
+
         return violations
+
+def validate_pattern_structure(data: Dict[str, Any]) -> List[ValidationViolation]:
+    """Validate the basic structure of a pattern."""
+    violations: List[ValidationViolation] = []
+
+    required_fields = {'name', 'pattern', 'data'}
+    missing_fields = required_fields - set(data.keys())
+    if missing_fields:
+        violations.append(ValidationViolation(
+            message=f"Missing required fields: {', '.join(missing_fields)}",
+            code="MISSING_FIELDS"
+        ))
+
+    if 'pattern' in data and not isinstance(data['pattern'], list):
+        violations.append(ValidationViolation(
+            message="Pattern must be a list",
+            code="INVALID_PATTERN_TYPE"
+        ))
+
+    return violations
+
 
 class PatternValidator:
     """Validator for musical patterns."""
-    
+
     @staticmethod
     def validate(pattern: Any, level: ValidationLevel = ValidationLevel.NORMAL) -> ValidationResult:
         """Validate pattern data."""

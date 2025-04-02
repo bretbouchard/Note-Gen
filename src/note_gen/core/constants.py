@@ -14,6 +14,28 @@ MIDI_VELOCITY_MIN = 0
 MIDI_VELOCITY_MAX = 127
 MIDI_DEFAULT_VELOCITY = 64
 
+# MIDI range limits for use in models
+from dataclasses import dataclass
+
+@dataclass(frozen=True)
+class MidiRange:
+    """MIDI note range limits."""
+    min_midi: int = MIDI_MIN
+    max_midi: int = MIDI_MAX
+
+RANGE_LIMITS = MidiRange()
+
+# Valid musical keys
+VALID_KEYS = ['C', 'C#', 'Db', 'D', 'D#', 'Eb', 'E', 'F', 'F#', 'Gb', 'G', 'G#', 'Ab', 'A', 'A#', 'Bb', 'B']
+
+# Pattern-related constants
+RHYTHM_PATTERNS = {}
+NOTE_PATTERNS = {}
+COMMON_PROGRESSIONS = {}
+PATTERN_VALIDATION_LIMITS = {}
+DEFAULTS = {}
+DURATION_LIMITS = {"min": 0.0, "max": 16.0}
+
 # Note to semitone mapping (C = 0)
 NOTE_TO_SEMITONE = {
     'C': 0,

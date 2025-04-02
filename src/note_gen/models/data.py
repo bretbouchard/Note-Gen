@@ -52,23 +52,23 @@ class PatternData(BaseModelWithConfig):
         pattern_data = {"pattern": self.rhythm_pattern}
         violations = validate_pattern_structure(pattern_data)
         result = ValidationResult(is_valid=not bool(violations))
-        
+
         for message in violations:
             result.add_violation(
                 code="RHYTHM_PATTERN_ERROR",
                 message=message,
                 path="rhythm_pattern"
             )
-        
+
         return result
 
     def validate_voice_leading(self, rules: Optional[List[VoiceLeadingRule]] = None) -> ValidationResult:
         """
         Validate voice leading rules.
-        
+
         Args:
             rules: Optional list of voice leading rules to check
-            
+
         Returns:
             ValidationResult containing validation status and any errors
         """
@@ -79,23 +79,23 @@ class PatternData(BaseModelWithConfig):
         }
         violations = validate_pattern_structure(pattern_data)
         result = ValidationResult(is_valid=not bool(violations))
-        
+
         for message in violations:
             result.add_violation(
                 code="VOICE_LEADING_ERROR",
                 message=message,
                 path="voice_leading"
             )
-        
+
         return result
 
     def validate_with_rules(self, level: ValidationLevel = ValidationLevel.NORMAL) -> ValidationResult:
         """
         Validate pattern data using validation manager.
-        
+
         Args:
             level: Validation level to apply
-            
+
         Returns:
             ValidationResult containing validation status and any errors
         """
