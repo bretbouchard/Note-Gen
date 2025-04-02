@@ -27,9 +27,9 @@ class PatternPresenter:
         return {
             "id": str(pattern.id) if hasattr(pattern, "id") else None,
             "name": pattern.name,
-            "description": pattern.description,
+            "description": pattern.description if hasattr(pattern, "description") else None,
             "pattern": pattern.pattern,
-            "tags": pattern.tags,
+            "tags": pattern.tags if hasattr(pattern, "tags") else [],
             "type": "note",
         }
 
@@ -47,9 +47,9 @@ class PatternPresenter:
         return {
             "id": str(pattern.id) if hasattr(pattern, "id") else None,
             "name": pattern.name,
-            "description": pattern.description,
+            "description": pattern.description if hasattr(pattern, "description") else None,
             "pattern": pattern.pattern,
-            "tags": pattern.tags,
+            "tags": pattern.tags if hasattr(pattern, "tags") else [],
             "type": "rhythm",
         }
 
