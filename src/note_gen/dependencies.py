@@ -1,29 +1,25 @@
 """FastAPI dependencies."""
-from typing import AsyncGenerator
+
 from fastapi import Depends
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 # Use consistent import style
-from note_gen.database.db import get_db_conn, close_mongo_connection
+from note_gen.database.db import get_db_conn
 from note_gen.controllers.chord_progression_controller import ChordProgressionController
 from note_gen.controllers.pattern_controller import PatternController
 from note_gen.controllers.sequence_controller import SequenceController
 from note_gen.controllers.user_controller import UserController
 from note_gen.database.repositories.base import BaseRepository
 
-async def get_database() -> AsyncGenerator[AsyncIOMotorDatabase, None]:
+async def get_database() -> AsyncIOMotorDatabase:
     """Get database connection dependency."""
-    async for db in get_db_conn():
-        yield db
+    return await get_db_conn()
 
 async def get_chord_progression_repository(db: AsyncIOMotorDatabase = Depends(get_database)) -> BaseRepository:
     """Get chord progression repository dependency."""
-    # This would typically use a specific repository implementation
-    # For now, we'll use a placeholder
-    from note_gen.database.repositories.base import BaseRepository
-    from note_gen.models.chord_progression import ChordProgression
+    from note_gen.database.repositories.chord_progression_repository import ChordProgressionRepository
 
-    return BaseRepository[ChordProgression](db.chord_progressions)
+    return ChordProgressionRepository(db.chord_progressions)
 
 async def get_chord_progression_controller(
     repository: BaseRepository = Depends(get_chord_progression_repository)
@@ -33,15 +29,15 @@ async def get_chord_progression_controller(
 
 async def get_note_pattern_repository(db: AsyncIOMotorDatabase = Depends(get_database)) -> BaseRepository:
     """Get note pattern repository dependency."""
-    from note_gen.models.patterns import NotePattern
+    from note_gen.database.repositories.note_pattern_repository import NotePatternRepository
 
-    return BaseRepository[NotePattern](db.note_patterns)
+    return NotePatternRepository(db.note_patterns)
 
 async def get_rhythm_pattern_repository(db: AsyncIOMotorDatabase = Depends(get_database)) -> BaseRepository:
     """Get rhythm pattern repository dependency."""
-    from note_gen.models.patterns import RhythmPattern
+    from note_gen.database.repositories.rhythm_pattern_repository import RhythmPatternRepository
 
-    return BaseRepository[RhythmPattern](db.rhythm_patterns)
+    return RhythmPatternRepository(db.rhythm_patterns)
 
 async def get_pattern_controller(
     note_pattern_repository: BaseRepository = Depends(get_note_pattern_repository),
@@ -52,9 +48,9 @@ async def get_pattern_controller(
 
 async def get_sequence_repository(db: AsyncIOMotorDatabase = Depends(get_database)) -> BaseRepository:
     """Get sequence repository dependency."""
-    from note_gen.models.sequence import Sequence
+    from note_gen.database.repositories.sequence_repository import SequenceRepository
 
-    return BaseRepository[Sequence](db.sequences)
+    return SequenceRepository(db.sequences)
 
 async def get_sequence_controller(
     sequence_repository: BaseRepository = Depends(get_sequence_repository),
@@ -66,9 +62,9 @@ async def get_sequence_controller(
 
 async def get_user_repository(db: AsyncIOMotorDatabase = Depends(get_database)) -> BaseRepository:
     """Get user repository dependency."""
-    from note_gen.models.user import User
+    from note_gen.database.repositories.user_repository import UserRepository
 
-    return BaseRepository[User](db.users)
+    return UserRepository(db.users)
 
 async def get_user_controller(
     user_repository: BaseRepository = Depends(get_user_repository)
