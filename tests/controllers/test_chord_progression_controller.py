@@ -2,17 +2,18 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 
-from src.note_gen.controllers.chord_progression_controller import ChordProgressionController
-from src.note_gen.models.chord_progression import ChordProgression
-from src.note_gen.models.chord import Chord
+from note_gen.controllers.chord_progression_controller import ChordProgressionController
+from note_gen.models.chord_progression import ChordProgression
+from note_gen.models.chord import Chord
+from note_gen.core.enums import ChordQuality, ScaleType
 
 
 @pytest.fixture
 def mock_repository():
     """Create a mock repository for testing."""
     repository = AsyncMock()
-    repository.find_by_id = AsyncMock()
-    repository.find_all = AsyncMock(return_value=[])
+    repository.find_one = AsyncMock()
+    repository.find_many = AsyncMock(return_value=[])
     repository.create = AsyncMock()
     return repository
 
@@ -31,17 +32,17 @@ async def test_get_progression(controller, mock_repository):
     expected_progression = ChordProgression(
         name="Test Progression",
         key="C",
-        scale_type="MAJOR",
-        chords=[Chord(root=1, quality="MAJOR", duration=1)]
+        scale_type=ScaleType.MAJOR,
+        chords=[Chord(root="C", quality=ChordQuality.MAJOR, duration=1)]
     )
-    mock_repository.find_by_id.return_value = expected_progression
+    mock_repository.find_one.return_value = expected_progression
 
     # Act
     result = await controller.get_progression(progression_id)
 
     # Assert
     assert result == expected_progression
-    mock_repository.find_by_id.assert_called_once_with(progression_id)
+    mock_repository.find_one.assert_called_once_with(progression_id)
 
 
 @pytest.mark.asyncio
@@ -52,24 +53,24 @@ async def test_get_all_progressions(controller, mock_repository):
         ChordProgression(
             name="Test Progression 1",
             key="C",
-            scale_type="MAJOR",
-            chords=[Chord(root=1, quality="MAJOR", duration=1)]
+            scale_type=ScaleType.MAJOR,
+            chords=[Chord(root="C", quality=ChordQuality.MAJOR, duration=1)]
         ),
         ChordProgression(
             name="Test Progression 2",
             key="D",
-            scale_type="MINOR",
-            chords=[Chord(root=1, quality="MINOR", duration=1)]
+            scale_type=ScaleType.MINOR,
+            chords=[Chord(root="D", quality=ChordQuality.MINOR, duration=1)]
         )
     ]
-    mock_repository.find_all.return_value = expected_progressions
+    mock_repository.find_many.return_value = expected_progressions
 
     # Act
     result = await controller.get_all_progressions()
 
     # Assert
     assert result == expected_progressions
-    mock_repository.find_all.assert_called_once()
+    mock_repository.find_many.assert_called_once()
 
 
 @pytest.mark.asyncio
@@ -79,8 +80,8 @@ async def test_create_progression(controller, mock_repository):
     progression_data = {
         "name": "New Progression",
         "key": "E",
-        "scale_type": "MAJOR",
-        "chords": [{"root": 1, "quality": "MAJOR", "duration": 1}]
+        "scale_type": ScaleType.MAJOR,
+        "chords": [{"root": "E", "quality": ChordQuality.MAJOR, "duration": 1}]
     }
     expected_progression = ChordProgression(**progression_data)
     mock_repository.create.return_value = expected_progression
@@ -98,14 +99,14 @@ async def test_generate_progression(controller, mock_repository):
     """Test generating a progression."""
     # Arrange
     key = "F"
-    scale_type = "MINOR"
+    scale_type = ScaleType.MINOR
     complexity = 0.7
     num_chords = 3
-    
+
     # Mock the create method to return the generated progression
     def mock_create(progression):
         return progression
-    
+
     mock_repository.create.side_effect = mock_create
 
     # Act

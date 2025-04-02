@@ -8,7 +8,9 @@ including retrieving, creating, and generating chord progressions.
 from typing import List, Optional, Dict, Any
 
 from note_gen.models.chord_progression import ChordProgression
+from note_gen.models.chord import Chord
 from note_gen.database.repositories.base import BaseRepository
+from note_gen.core.enums import ChordQuality, ScaleType
 
 
 class ChordProgressionController:
@@ -58,7 +60,7 @@ class ChordProgressionController:
         return await self.repository.create(progression)
 
     async def generate_progression(
-        self, key: str, scale_type: str, complexity: float, num_chords: int
+        self, key: str, scale_type: ScaleType, complexity: float, num_chords: int
     ) -> ChordProgression:
         """
         Generate a new chord progression.
@@ -81,10 +83,10 @@ class ChordProgressionController:
             key=key,
             scale_type=scale_type,
             chords=[
-                Chord(root=1, quality="MAJOR", duration=1),
-                Chord(root=4, quality="MAJOR", duration=1),
-                Chord(root=5, quality="MAJOR", duration=1),
-                Chord(root=1, quality="MAJOR", duration=1),
+                Chord(root="C", quality=ChordQuality.MAJOR, duration=1),
+                Chord(root="F", quality=ChordQuality.MAJOR, duration=1),
+                Chord(root="G", quality=ChordQuality.MAJOR, duration=1),
+                Chord(root="C", quality=ChordQuality.MAJOR, duration=1),
             ][:num_chords]
         )
 
