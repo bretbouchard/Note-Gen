@@ -1,14 +1,10 @@
 """Tests for the validation router."""
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import patch
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from note_gen.routers.validation import router
-from note_gen.controllers.validation_controller import ValidationController
-from note_gen.core.enums import ValidationLevel
-from note_gen.validation.base_validation import ValidationViolation
-from note_gen.validation.base_validation import ValidationResult, ValidationViolation
 
 
 @pytest.fixture
@@ -25,23 +21,13 @@ def client(app):
     return TestClient(app)
 
 
-@pytest.fixture
-def mock_controller():
-    """Create a mock validation controller."""
-    controller = AsyncMock(spec=ValidationController)
-    return controller
 
 
-def test_validate_note_pattern(client, mock_controller):
+
+def test_validate_note_pattern(client):
     """Test the validate note pattern endpoint."""
-    # Setup mock
-    mock_controller.validate_note_pattern.return_value = ValidationResult(
-        is_valid=True,
-        violations=[]
-    )
-
-    # Patch the dependency
-    with patch("note_gen.routers.validation.get_validation_controller", return_value=mock_controller):
+    # Patch the endpoint function directly
+    with patch("note_gen.routers.validation.validate_note_pattern", return_value={"is_valid": True, "violations": []}):
         # Call endpoint
         response = client.post(
             "/note-pattern",
@@ -58,27 +44,18 @@ def test_validate_note_pattern(client, mock_controller):
         )
 
         # Verify response
-        # For now, just check that the controller was called
-        # We'll fix the actual response validation later
-        mock_controller.validate_note_pattern.assert_called_once()
+        assert response.status_code == 200
+        assert response.json()["is_valid"] is True
+        assert len(response.json()["violations"]) == 0
 
 
-def test_validate_note_pattern_invalid(client, mock_controller):
+def test_validate_note_pattern_invalid(client):
     """Test the validate note pattern endpoint with invalid data."""
-    # Setup mock
-    mock_controller.validate_note_pattern.return_value = ValidationResult(
-        is_valid=False,
-        violations=[
-            ValidationViolation(
-                message="Invalid note pattern",
-                code="VALIDATION_ERROR",
-                path=""
-            )
-        ]
-    )
-
-    # Patch the dependency
-    with patch("note_gen.routers.validation.get_validation_controller", return_value=mock_controller):
+    # Patch the endpoint function directly
+    with patch("note_gen.routers.validation.validate_note_pattern", return_value={
+        "is_valid": False,
+        "violations": [{"message": "Invalid note pattern", "code": "VALIDATION_ERROR", "path": ""}]
+    }):
         # Call endpoint
         response = client.post(
             "/note-pattern",
@@ -92,19 +69,12 @@ def test_validate_note_pattern_invalid(client, mock_controller):
         assert response.json()["is_valid"] is False
         assert len(response.json()["violations"]) == 1
         assert response.json()["violations"][0]["message"] == "Invalid note pattern"
-        mock_controller.validate_note_pattern.assert_called_once()
 
 
-def test_validate_rhythm_pattern(client, mock_controller):
+def test_validate_rhythm_pattern(client):
     """Test the validate rhythm pattern endpoint."""
-    # Setup mock
-    mock_controller.validate_rhythm_pattern.return_value = ValidationResult(
-        is_valid=True,
-        violations=[]
-    )
-
-    # Patch the dependency
-    with patch("note_gen.routers.validation.get_validation_controller", return_value=mock_controller):
+    # Patch the endpoint function directly
+    with patch("note_gen.routers.validation.validate_rhythm_pattern", return_value={"is_valid": True, "violations": []}):
         # Call endpoint
         response = client.post(
             "/rhythm-pattern",
@@ -116,21 +86,15 @@ def test_validate_rhythm_pattern(client, mock_controller):
         )
 
         # Verify response
-        # For now, just check that the controller was called
-        # We'll fix the actual response validation later
-        mock_controller.validate_rhythm_pattern.assert_called_once()
+        assert response.status_code == 200
+        assert response.json()["is_valid"] is True
+        assert len(response.json()["violations"]) == 0
 
 
-def test_validate_chord_progression(client, mock_controller):
+def test_validate_chord_progression(client):
     """Test the validate chord progression endpoint."""
-    # Setup mock
-    mock_controller.validate_chord_progression.return_value = ValidationResult(
-        is_valid=True,
-        violations=[]
-    )
-
-    # Patch the dependency
-    with patch("note_gen.routers.validation.get_validation_controller", return_value=mock_controller):
+    # Patch the endpoint function directly
+    with patch("note_gen.routers.validation.validate_chord_progression", return_value={"is_valid": True, "violations": []}):
         # Call endpoint
         response = client.post(
             "/chord-progression",
@@ -143,18 +107,15 @@ def test_validate_chord_progression(client, mock_controller):
         )
 
         # Verify response
-        # For now, just check that the controller was called
-        # We'll fix the actual response validation later
-        mock_controller.validate_chord_progression.assert_called_once()
+        assert response.status_code == 200
+        assert response.json()["is_valid"] is True
+        assert len(response.json()["violations"]) == 0
 
 
-def test_validate_config(client, mock_controller):
+def test_validate_config(client):
     """Test the validate config endpoint."""
-    # Setup mock
-    mock_controller.validate_config.return_value = True
-
-    # Patch the dependency
-    with patch("note_gen.routers.validation.get_validation_controller", return_value=mock_controller):
+    # Patch the endpoint function directly
+    with patch("note_gen.routers.validation.validate_config", return_value={"is_valid": True}):
         # Call endpoint
         response = client.post(
             "/config",
@@ -165,6 +126,5 @@ def test_validate_config(client, mock_controller):
         )
 
         # Verify response
-        # For now, just check that the controller was called
-        # We'll fix the actual response validation later
         assert response.status_code == 200
+        assert response.json()["is_valid"] is True
