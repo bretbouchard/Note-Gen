@@ -26,7 +26,7 @@ class ValidationController:
         """Initialize the validation controller."""
         self.validation_manager = ValidationManager()
 
-    async def validate_model(self, model: Any, level: ValidationLevel = ValidationLevel.NORMAL) -> ValidationResult:
+    async def validate_model(self, model: Any, level: Optional[ValidationLevel] = ValidationLevel.NORMAL) -> ValidationResult:
         """
         Validate a model instance.
 
@@ -37,12 +37,17 @@ class ValidationController:
         Returns:
             ValidationResult: The validation result
         """
-        if hasattr(model, 'validate'):
-            return model.validate(level)
+        # Use default level if None is provided
+        validation_level = level if level is not None else ValidationLevel.NORMAL
+
+        if hasattr(model, 'model_validate'):
+            return model.model_validate(validation_level)
+        elif hasattr(model, 'validate'):  # For backward compatibility
+            return model.validate(validation_level)
         return self.validation_manager.validate(model)
 
-    async def validate_note_pattern(self, pattern: Union[Dict[str, Any], NotePattern], 
-                              level: ValidationLevel = ValidationLevel.NORMAL) -> ValidationResult:
+    async def validate_note_pattern(self, pattern: Union[Dict[str, Any], NotePattern],
+                              level: Optional[ValidationLevel] = ValidationLevel.NORMAL) -> ValidationResult:
         """
         Validate a note pattern.
 
@@ -61,14 +66,14 @@ class ValidationController:
                     is_valid=False,
                     violations=[ValidationViolation(
                         message=f"Invalid note pattern format: {str(e)}",
-                        severity=ValidationLevel.ERROR
+                        code="VALIDATION_ERROR"
                     )]
                 )
-        
+
         return await self.validate_model(pattern, level)
 
-    async def validate_rhythm_pattern(self, pattern: Union[Dict[str, Any], RhythmPattern], 
-                                level: ValidationLevel = ValidationLevel.NORMAL) -> ValidationResult:
+    async def validate_rhythm_pattern(self, pattern: Union[Dict[str, Any], RhythmPattern],
+                                level: Optional[ValidationLevel] = ValidationLevel.NORMAL) -> ValidationResult:
         """
         Validate a rhythm pattern.
 
@@ -87,14 +92,14 @@ class ValidationController:
                     is_valid=False,
                     violations=[ValidationViolation(
                         message=f"Invalid rhythm pattern format: {str(e)}",
-                        severity=ValidationLevel.ERROR
+                        code="VALIDATION_ERROR"
                     )]
                 )
-        
+
         return await self.validate_model(pattern, level)
 
-    async def validate_note_sequence(self, sequence: Union[Dict[str, Any], NoteSequence], 
-                               level: ValidationLevel = ValidationLevel.NORMAL) -> ValidationResult:
+    async def validate_note_sequence(self, sequence: Union[Dict[str, Any], NoteSequence],
+                               level: Optional[ValidationLevel] = ValidationLevel.NORMAL) -> ValidationResult:
         """
         Validate a note sequence.
 
@@ -113,14 +118,14 @@ class ValidationController:
                     is_valid=False,
                     violations=[ValidationViolation(
                         message=f"Invalid note sequence format: {str(e)}",
-                        severity=ValidationLevel.ERROR
+                        code="VALIDATION_ERROR"
                     )]
                 )
-        
+
         return await self.validate_model(sequence, level)
 
-    async def validate_chord_progression(self, progression: Union[Dict[str, Any], ChordProgression], 
-                                   level: ValidationLevel = ValidationLevel.NORMAL) -> ValidationResult:
+    async def validate_chord_progression(self, progression: Union[Dict[str, Any], ChordProgression],
+                                   level: Optional[ValidationLevel] = ValidationLevel.NORMAL) -> ValidationResult:
         """
         Validate a chord progression.
 
@@ -139,10 +144,10 @@ class ValidationController:
                     is_valid=False,
                     violations=[ValidationViolation(
                         message=f"Invalid chord progression format: {str(e)}",
-                        severity=ValidationLevel.ERROR
+                        code="VALIDATION_ERROR"
                     )]
                 )
-        
+
         return await self.validate_model(progression, level)
 
     async def validate_config(self, config: Dict[str, Any], config_type: str) -> bool:

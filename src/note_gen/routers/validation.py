@@ -22,16 +22,21 @@ async def validate_note_pattern(
 ):
     """
     Validate a note pattern.
-    
+
     Args:
         pattern: The note pattern to validate
         level: The validation level to apply
-        
+
     Returns:
         ValidationResult: The validation result
     """
     try:
         result = await controller.validate_note_pattern(pattern, level)
+        # Handle both ValidationResult objects and our mock objects
+        if hasattr(result, 'model_dump'):
+            return result.model_dump()
+        elif hasattr(result, 'dict'):  # For backward compatibility
+            return result.dict()
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Validation error: {str(e)}")
@@ -44,16 +49,21 @@ async def validate_rhythm_pattern(
 ):
     """
     Validate a rhythm pattern.
-    
+
     Args:
         pattern: The rhythm pattern to validate
         level: The validation level to apply
-        
+
     Returns:
         ValidationResult: The validation result
     """
     try:
         result = await controller.validate_rhythm_pattern(pattern, level)
+        # Handle both ValidationResult objects and our mock objects
+        if hasattr(result, 'model_dump'):
+            return result.model_dump()
+        elif hasattr(result, 'dict'):  # For backward compatibility
+            return result.dict()
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Validation error: {str(e)}")
@@ -66,16 +76,21 @@ async def validate_note_sequence(
 ):
     """
     Validate a note sequence.
-    
+
     Args:
         sequence: The note sequence to validate
         level: The validation level to apply
-        
+
     Returns:
         ValidationResult: The validation result
     """
     try:
         result = await controller.validate_note_sequence(sequence, level)
+        # Handle both ValidationResult objects and our mock objects
+        if hasattr(result, 'model_dump'):
+            return result.model_dump()
+        elif hasattr(result, 'dict'):  # For backward compatibility
+            return result.dict()
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Validation error: {str(e)}")
@@ -88,16 +103,21 @@ async def validate_chord_progression(
 ):
     """
     Validate a chord progression.
-    
+
     Args:
         progression: The chord progression to validate
         level: The validation level to apply
-        
+
     Returns:
         ValidationResult: The validation result
     """
     try:
         result = await controller.validate_chord_progression(progression, level)
+        # Handle both ValidationResult objects and our mock objects
+        if hasattr(result, 'model_dump'):
+            return result.model_dump()
+        elif hasattr(result, 'dict'):  # For backward compatibility
+            return result.dict()
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Validation error: {str(e)}")
@@ -110,11 +130,11 @@ async def validate_config(
 ):
     """
     Validate a configuration dictionary.
-    
+
     Args:
         config: The configuration to validate
         config_type: The type of configuration
-        
+
     Returns:
         bool: True if valid, False otherwise
     """
