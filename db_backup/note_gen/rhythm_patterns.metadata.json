@@ -1,1 +1,0 @@
-{"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_"},{"v":{"$numberInt":"2"},"key":{"complexity":{"$numberInt":"1"}},"name":"complexity_1"},{"v":{"$numberInt":"2"},"key":{"pattern.tags":{"$numberInt":"1"}},"name":"pattern.tags_1"}],"uuid":"190379246c4a461cb0ac850570ebdabc","collectionName":"rhythm_patterns","type":"collection"}
