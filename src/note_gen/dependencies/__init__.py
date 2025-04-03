@@ -9,6 +9,9 @@ from note_gen.controllers.chord_progression_controller import ChordProgressionCo
 from note_gen.controllers.pattern_controller import PatternController
 from note_gen.controllers.sequence_controller import SequenceController
 from note_gen.controllers.user_controller import UserController
+from note_gen.controllers.validation_controller import ValidationController
+from note_gen.controllers.import_export_controller import ImportExportController
+from note_gen.controllers.utility_controller import UtilityController
 from note_gen.database.repositories.base import BaseRepository
 
 async def get_database() -> AsyncGenerator[AsyncIOMotorDatabase, None]:
@@ -75,3 +78,39 @@ async def get_user_controller(
 ) -> UserController:
     """Get user controller dependency."""
     return UserController(user_repository)
+
+async def get_validation_controller() -> ValidationController:
+    """Get validation controller dependency."""
+    return await ValidationController.create()
+
+async def get_import_export_controller(
+    chord_progression_repository: BaseRepository = Depends(get_chord_progression_repository),
+    note_pattern_repository: BaseRepository = Depends(get_note_pattern_repository),
+    rhythm_pattern_repository: BaseRepository = Depends(get_rhythm_pattern_repository),
+    sequence_repository: BaseRepository = Depends(get_sequence_repository)
+) -> ImportExportController:
+    """Get import/export controller dependency."""
+    return await ImportExportController.create(
+        chord_progression_repository,
+        note_pattern_repository,
+        rhythm_pattern_repository,
+        sequence_repository
+    )
+
+async def get_utility_controller(
+    db: AsyncIOMotorDatabase = Depends(get_database),
+    chord_progression_repository: BaseRepository = Depends(get_chord_progression_repository),
+    note_pattern_repository: BaseRepository = Depends(get_note_pattern_repository),
+    rhythm_pattern_repository: BaseRepository = Depends(get_rhythm_pattern_repository),
+    sequence_repository: BaseRepository = Depends(get_sequence_repository),
+    user_repository: BaseRepository = Depends(get_user_repository)
+) -> UtilityController:
+    """Get utility controller dependency."""
+    return await UtilityController.create(
+        db,
+        chord_progression_repository,
+        note_pattern_repository,
+        rhythm_pattern_repository,
+        sequence_repository,
+        user_repository
+    )
