@@ -166,6 +166,7 @@ server_logs.txt
 command.sh
 class_summary.txt
 test_file.txt
+docs/rfp/
 
 # Database scripts and utilities
 check_db.py
