@@ -8,12 +8,12 @@ This directory contains documentation for the Note-Gen MCP (Model-Controller-Pre
 - **app_flow_mcp.md**: High-level overview of the MCP architecture and application flow
 - **app_flow_detail_mcp.md**: Detailed technical breakdown of the MCP architecture, including data types and component interactions
 
-## Legacy Files
+## Musical Algorithm Documentation
 
-The following files are kept for historical reference but may not reflect the current MCP architecture:
+The following files contain detailed specifications for the musical algorithms that will be implemented within the MCP architecture:
 
-- **app_flow.md**: Original app flow document based on the Schillinger System
-- **app_flow_detail.md**: Original detailed app flow document
+- **app_flow.md**: Overview of the Schillinger System musical algorithms
+- **app_flow_detail.md**: General detailed flow of musical algorithms
 - **app_flow_detail_rhythm.md**: Detailed implementation of rhythm generation algorithms
 - **app_flow_detail_harmony.md**: Detailed implementation of harmony generation algorithms
 - **app_flow_detail_melody.md**: Detailed implementation of melody generation algorithms
@@ -21,7 +21,7 @@ The following files are kept for historical reference but may not reflect the cu
 - **app_flow_detail_integrate.md**: Detailed implementation of harmony-melody integration
 - **app_flow_detail_output.md**: Detailed implementation of output generation
 
-These legacy files contain valuable information about the musical algorithms and implementations, which can be useful for developers working on the musical aspects of the application. However, they don't reflect the current MCP architecture and should be used as reference material only.
+These files contain essential musical theory and algorithms that will be integrated into the MCP architecture. The algorithms described in these files will be implemented within the appropriate controllers and models of the MCP server.
 
 ## Architecture
 

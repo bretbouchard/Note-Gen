@@ -101,9 +101,44 @@ The Note-Gen application follows the Model-Controller-Presenter (MCP) architectu
 4. Results stored in database if requested
 5. Formatted response returned to AI system
 
+## Integration of Musical Algorithms
+
+The musical algorithms from the Schillinger System will be integrated into the MCP architecture as follows:
+
+1. **Rhythm Generation Algorithms**
+   - Implemented in the PatternController and specialized utility classes
+   - Interference patterns and rhythmic synchronization will be encapsulated in dedicated service classes
+   - Results will be stored as RhythmPattern models in the database
+
+2. **Harmony Generation Algorithms**
+   - Implemented in the ChordProgressionController
+   - Scale mapping, chord generation, and harmonic frameworks will be handled by specialized service classes
+   - Results will be stored as ChordProgression models in the database
+
+3. **Melody Generation Algorithms**
+   - Implemented in the PatternController and specialized melody services
+   - Melodic axis creation and pitch assignment will be handled by dedicated classes
+   - Results will be stored as NotePattern models in the database
+
+4. **Geometric Transformations**
+   - Implemented in the TransformationController (to be added)
+   - Inversion, retrograde, expansion, and contraction operations will be available as transformation services
+   - Can be applied to existing patterns and progressions
+
+5. **Harmony-Melody Integration**
+   - Implemented in the SequenceController
+   - Combines note patterns, rhythm patterns, and chord progressions into coherent musical sequences
+   - Results will be stored as Sequence models in the database
+
+6. **Output Generation**
+   - Implemented in the ImportExportController
+   - Converts internal models to various output formats (MIDI, JSON, etc.)
+   - Handles serialization and formatting for different output types
+
 ## Next Steps
 
-1. Implement remaining controllers (ValidationController, UtilityController)
-2. Enhance AI integration interfaces
-3. Expand import/export capabilities
-4. Implement advanced pattern generation algorithms
+1. Implement remaining controllers (ValidationController, UtilityController, TransformationController)
+2. Implement the musical algorithm services described above
+3. Enhance AI integration interfaces
+4. Expand import/export capabilities
+5. Implement advanced pattern generation algorithms

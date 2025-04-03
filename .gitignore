@@ -166,9 +166,7 @@ server_logs.txt
 command.sh
 class_summary.txt
 test_file.txt
-# Exclude specific files in docs/rfp
-docs/rfp/private_*
-docs/rfp/draft_*
+docs/rfp/
 
 # Database scripts and utilities
 check_db.py
