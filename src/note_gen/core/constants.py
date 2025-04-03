@@ -185,7 +185,108 @@ CHORD_INTERVALS = {
 }
 
 RHYTHM_PATTERNS: Dict[str, Any] = {
-    # Add your rhythm patterns here
+    "quarter_notes": {
+        "notes": [
+            {"position": 0.0, "duration": 1.0, "velocity": 100, "accent": False},
+            {"position": 1.0, "duration": 1.0, "velocity": 100, "accent": False},
+            {"position": 2.0, "duration": 1.0, "velocity": 100, "accent": False},
+            {"position": 3.0, "duration": 1.0, "velocity": 100, "accent": False}
+        ],
+        "total_duration": 4.0,
+        "description": "Simple quarter note pattern"
+    },
+    "eighth_notes": {
+        "notes": [
+            {"position": 0.0, "duration": 0.5, "velocity": 100, "accent": False},
+            {"position": 0.5, "duration": 0.5, "velocity": 100, "accent": False},
+            {"position": 1.0, "duration": 0.5, "velocity": 100, "accent": False},
+            {"position": 1.5, "duration": 0.5, "velocity": 100, "accent": False},
+            {"position": 2.0, "duration": 0.5, "velocity": 100, "accent": False},
+            {"position": 2.5, "duration": 0.5, "velocity": 100, "accent": False},
+            {"position": 3.0, "duration": 0.5, "velocity": 100, "accent": False},
+            {"position": 3.5, "duration": 0.5, "velocity": 100, "accent": False}
+        ],
+        "total_duration": 4.0,
+        "description": "Simple eighth note pattern"
+    },
+    "sixteenth_notes": {
+        "notes": [
+            {"position": 0.0, "duration": 0.25, "velocity": 100, "accent": False},
+            {"position": 0.25, "duration": 0.25, "velocity": 100, "accent": False},
+            {"position": 0.5, "duration": 0.25, "velocity": 100, "accent": False},
+            {"position": 0.75, "duration": 0.25, "velocity": 100, "accent": False},
+            {"position": 1.0, "duration": 0.25, "velocity": 100, "accent": False},
+            {"position": 1.25, "duration": 0.25, "velocity": 100, "accent": False},
+            {"position": 1.5, "duration": 0.25, "velocity": 100, "accent": False},
+            {"position": 1.75, "duration": 0.25, "velocity": 100, "accent": False},
+            {"position": 2.0, "duration": 0.25, "velocity": 100, "accent": False},
+            {"position": 2.25, "duration": 0.25, "velocity": 100, "accent": False},
+            {"position": 2.5, "duration": 0.25, "velocity": 100, "accent": False},
+            {"position": 2.75, "duration": 0.25, "velocity": 100, "accent": False},
+            {"position": 3.0, "duration": 0.25, "velocity": 100, "accent": False},
+            {"position": 3.25, "duration": 0.25, "velocity": 100, "accent": False},
+            {"position": 3.5, "duration": 0.25, "velocity": 100, "accent": False},
+            {"position": 3.75, "duration": 0.25, "velocity": 100, "accent": False}
+        ],
+        "total_duration": 4.0,
+        "description": "Simple sixteenth note pattern"
+    },
+    "basic_rock": {
+        "notes": [
+            {"position": 0.0, "duration": 1.0, "velocity": 120, "accent": True},
+            {"position": 1.0, "duration": 1.0, "velocity": 80, "accent": False},
+            {"position": 2.0, "duration": 1.0, "velocity": 120, "accent": True},
+            {"position": 3.0, "duration": 1.0, "velocity": 80, "accent": False}
+        ],
+        "total_duration": 4.0,
+        "description": "Basic rock beat with accents on beats 1 and 3"
+    },
+    "swing": {
+        "notes": [
+            {"position": 0.0, "duration": 0.67, "velocity": 100, "accent": True},
+            {"position": 0.67, "duration": 0.33, "velocity": 80, "accent": False},
+            {"position": 1.0, "duration": 0.67, "velocity": 100, "accent": True},
+            {"position": 1.67, "duration": 0.33, "velocity": 80, "accent": False},
+            {"position": 2.0, "duration": 0.67, "velocity": 100, "accent": True},
+            {"position": 2.67, "duration": 0.33, "velocity": 80, "accent": False},
+            {"position": 3.0, "duration": 0.67, "velocity": 100, "accent": True},
+            {"position": 3.67, "duration": 0.33, "velocity": 80, "accent": False}
+        ],
+        "total_duration": 4.0,
+        "description": "Swing rhythm with triplet feel"
+    },
+    "waltz": {
+        "notes": [
+            {"position": 0.0, "duration": 1.0, "velocity": 120, "accent": True},
+            {"position": 1.0, "duration": 1.0, "velocity": 80, "accent": False},
+            {"position": 2.0, "duration": 1.0, "velocity": 80, "accent": False}
+        ],
+        "total_duration": 3.0,
+        "description": "Basic waltz rhythm in 3/4 time"
+    },
+    "bossa_nova": {
+        "notes": [
+            {"position": 0.0, "duration": 0.5, "velocity": 100, "accent": True},
+            {"position": 1.0, "duration": 0.5, "velocity": 80, "accent": False},
+            {"position": 2.0, "duration": 0.5, "velocity": 90, "accent": True},
+            {"position": 3.0, "duration": 0.5, "velocity": 80, "accent": False},
+            {"position": 3.5, "duration": 0.5, "velocity": 70, "accent": False}
+        ],
+        "total_duration": 4.0,
+        "description": "Bossa Nova rhythm pattern"
+    },
+    "syncopated": {
+        "notes": [
+            {"position": 0.0, "duration": 0.5, "velocity": 100, "accent": True},
+            {"position": 0.5, "duration": 0.5, "velocity": 80, "accent": False},
+            {"position": 1.5, "duration": 0.5, "velocity": 100, "accent": True},
+            {"position": 2.0, "duration": 0.5, "velocity": 80, "accent": False},
+            {"position": 3.0, "duration": 0.5, "velocity": 100, "accent": True},
+            {"position": 3.5, "duration": 0.5, "velocity": 80, "accent": False}
+        ],
+        "total_duration": 4.0,
+        "description": "Syncopated rhythm with off-beat accents"
+    }
 }
 
 def validate_constants() -> None:

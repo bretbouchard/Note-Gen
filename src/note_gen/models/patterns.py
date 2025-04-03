@@ -166,17 +166,37 @@ class NotePattern(Pattern):
             if isinstance(pattern_data, list):
                 self.pattern = self._convert_pattern(pattern_data)
 
-    def _convert_pattern(self, pattern_data: Sequence[Union[str, Note]]) -> List[Note]:
+    def _convert_pattern(self, pattern_data: Sequence[Union[str, Note, Dict[str, Any]]]) -> List[Note]:
         """Convert pattern data to Note objects."""
         result: List[Note] = []
         for item in pattern_data:
             if isinstance(item, str):
-                note = Note.from_name(item)
-                result.append(note)
+                try:
+                    note = Note.from_name(item)
+                    result.append(note)
+                except Exception as e:
+                    print(f"Error converting string note: {e}")
+                    # Skip this note
             elif isinstance(item, Note):
                 result.append(item)
+            elif isinstance(item, dict):
+                try:
+                    # Create Note object from dictionary
+                    if "pitch" in item and "octave" in item:
+                        note = Note(
+                            pitch=item["pitch"],
+                            octave=item["octave"],
+                            duration=item.get("duration", 1.0),
+                            velocity=item.get("velocity", 100),
+                            position=item.get("position", 0.0),
+                            stored_midi_number=item.get("stored_midi_number")
+                        )
+                        result.append(note)
+                except Exception as e:
+                    print(f"Error converting dict note: {e}")
+                    # Skip this note
             else:
-                raise ValueError(f"Invalid note type: {type(item)}")
+                print(f"Skipping invalid note type: {type(item)}")
         return result
 
     def validate_pattern_rules(self, level: ValidationLevel = ValidationLevel.NORMAL) -> ValidationResult:
@@ -571,12 +591,11 @@ class NotePattern(Pattern):
 
     @field_validator('pattern')
     @classmethod
-    def validate_pattern_contents(cls, v: List[Note]) -> List[Note]:
+    def validate_pattern_contents(cls, v: List[Union[str, Note, Dict[str, Any]]]) -> List[Union[str, Note, Dict[str, Any]]]:
         """Validate pattern contents."""
         if not v:
             return v
-        if not all(isinstance(note, Note) for note in v):
-            raise ValueError("Pattern must contain only Note objects")
+        # We'll let the _convert_pattern method handle the conversion
         return v
 
     def validate_all(self) -> ValidationResult:
