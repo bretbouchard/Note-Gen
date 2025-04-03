@@ -14,6 +14,14 @@ The following files are kept for historical reference but may not reflect the cu
 
 - **app_flow.md**: Original app flow document based on the Schillinger System
 - **app_flow_detail.md**: Original detailed app flow document
+- **app_flow_detail_rhythm.md**: Detailed implementation of rhythm generation algorithms
+- **app_flow_detail_harmony.md**: Detailed implementation of harmony generation algorithms
+- **app_flow_detail_melody.md**: Detailed implementation of melody generation algorithms
+- **app_flow_detail_geometry.md**: Detailed implementation of geometric transformations
+- **app_flow_detail_integrate.md**: Detailed implementation of harmony-melody integration
+- **app_flow_detail_output.md**: Detailed implementation of output generation
+
+These legacy files contain valuable information about the musical algorithms and implementations, which can be useful for developers working on the musical aspects of the application. However, they don't reflect the current MCP architecture and should be used as reference material only.
 
 ## Architecture
 
