@@ -57,7 +57,7 @@ class ImportExportController:
         Returns:
             Union[str, bytes]: The exported data
         """
-        progressions = await self.chord_progression_repository.find_many()
+        progressions = await self.chord_progression_repository.find_all()
 
         if format.lower() == "json":
             return self._export_to_json(progressions)
@@ -76,7 +76,7 @@ class ImportExportController:
         Returns:
             Union[str, bytes]: The exported data
         """
-        patterns = await self.note_pattern_repository.find_many()
+        patterns = await self.note_pattern_repository.find_all()
 
         if format.lower() == "json":
             return self._export_to_json(patterns)
@@ -95,7 +95,7 @@ class ImportExportController:
         Returns:
             Union[str, bytes]: The exported data
         """
-        patterns = await self.rhythm_pattern_repository.find_many()
+        patterns = await self.rhythm_pattern_repository.find_all()
 
         if format.lower() == "json":
             return self._export_to_json(patterns)
@@ -114,7 +114,7 @@ class ImportExportController:
         Returns:
             Union[str, bytes]: The exported data
         """
-        sequences = await self.sequence_repository.find_many()
+        sequences = await self.sequence_repository.find_all()
 
         if format.lower() == "json":
             return self._export_to_json(sequences)
@@ -247,6 +247,10 @@ class ImportExportController:
                     flattened[key] = value
             flattened_dicts.append(flattened)
 
+        # Handle empty list case
+        if not flattened_dicts:
+            return b""
+
         # Write to CSV
         output = io.StringIO()
         writer = csv.DictWriter(output, fieldnames=flattened_dicts[0].keys())
@@ -274,7 +278,7 @@ class ImportExportController:
                 item = model_class.model_validate(item_data)
 
                 # Save to repository
-                await repository.create(item)
+                await repository.save(item)
                 count += 1
             except Exception as e:
                 print(f"Error importing item: {str(e)}")
@@ -320,7 +324,7 @@ class ImportExportController:
                 item = model_class.model_validate(item_data)
 
                 # Save to repository
-                await repository.create(item)
+                await repository.save(item)
                 count += 1
             except Exception as e:
                 print(f"Error importing item: {str(e)}")
