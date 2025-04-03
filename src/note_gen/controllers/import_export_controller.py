@@ -57,8 +57,8 @@ class ImportExportController:
         Returns:
             Union[str, bytes]: The exported data
         """
-        progressions = await self.chord_progression_repository.find_all()
-        
+        progressions = await self.chord_progression_repository.find_many()
+
         if format.lower() == "json":
             return self._export_to_json(progressions)
         elif format.lower() == "csv":
@@ -76,8 +76,8 @@ class ImportExportController:
         Returns:
             Union[str, bytes]: The exported data
         """
-        patterns = await self.note_pattern_repository.find_all()
-        
+        patterns = await self.note_pattern_repository.find_many()
+
         if format.lower() == "json":
             return self._export_to_json(patterns)
         elif format.lower() == "csv":
@@ -95,8 +95,8 @@ class ImportExportController:
         Returns:
             Union[str, bytes]: The exported data
         """
-        patterns = await self.rhythm_pattern_repository.find_all()
-        
+        patterns = await self.rhythm_pattern_repository.find_many()
+
         if format.lower() == "json":
             return self._export_to_json(patterns)
         elif format.lower() == "csv":
@@ -114,8 +114,8 @@ class ImportExportController:
         Returns:
             Union[str, bytes]: The exported data
         """
-        sequences = await self.sequence_repository.find_all()
-        
+        sequences = await self.sequence_repository.find_many()
+
         if format.lower() == "json":
             return self._export_to_json(sequences)
         elif format.lower() == "csv":
@@ -134,7 +134,7 @@ class ImportExportController:
             int: The number of imported items
         """
         content = await file.read()
-        
+
         if file.filename.endswith(".json"):
             data = json.loads(content)
             return await self._import_from_json(data, ChordProgression, self.chord_progression_repository)
@@ -154,7 +154,7 @@ class ImportExportController:
             int: The number of imported items
         """
         content = await file.read()
-        
+
         if file.filename.endswith(".json"):
             data = json.loads(content)
             return await self._import_from_json(data, NotePattern, self.note_pattern_repository)
@@ -174,7 +174,7 @@ class ImportExportController:
             int: The number of imported items
         """
         content = await file.read()
-        
+
         if file.filename.endswith(".json"):
             data = json.loads(content)
             return await self._import_from_json(data, RhythmPattern, self.rhythm_pattern_repository)
@@ -194,7 +194,7 @@ class ImportExportController:
             int: The number of imported items
         """
         content = await file.read()
-        
+
         if file.filename.endswith(".json"):
             data = json.loads(content)
             return await self._import_from_json(data, NoteSequence, self.sequence_repository)
@@ -229,10 +229,10 @@ class ImportExportController:
         """
         if not items:
             return b""
-            
+
         # Convert items to dictionaries
         item_dicts = [item.model_dump() for item in items]
-        
+
         # Flatten nested dictionaries
         flattened_dicts = []
         for item in item_dicts:
@@ -246,13 +246,13 @@ class ImportExportController:
                 else:
                     flattened[key] = value
             flattened_dicts.append(flattened)
-            
+
         # Write to CSV
         output = io.StringIO()
         writer = csv.DictWriter(output, fieldnames=flattened_dicts[0].keys())
         writer.writeheader()
         writer.writerows(flattened_dicts)
-        
+
         return output.getvalue().encode()
 
     async def _import_from_json(self, data: List[Dict[str, Any]], model_class: Any, repository: BaseRepository) -> int:
@@ -272,13 +272,13 @@ class ImportExportController:
             try:
                 # Create model instance
                 item = model_class.model_validate(item_data)
-                
+
                 # Save to repository
-                await repository.save(item)
+                await repository.create(item)
                 count += 1
             except Exception as e:
                 print(f"Error importing item: {str(e)}")
-                
+
         return count
 
     async def _import_from_csv(self, csv_data: str, model_class: Any, repository: BaseRepository) -> int:
@@ -295,7 +295,7 @@ class ImportExportController:
         """
         count = 0
         reader = csv.DictReader(io.StringIO(csv_data))
-        
+
         for row in reader:
             try:
                 # Unflatten nested dictionaries
@@ -315,16 +315,16 @@ class ImportExportController:
                                 item_data[key] = value
                         except:
                             item_data[key] = value
-                
+
                 # Create model instance
                 item = model_class.model_validate(item_data)
-                
+
                 # Save to repository
-                await repository.save(item)
+                await repository.create(item)
                 count += 1
             except Exception as e:
                 print(f"Error importing item: {str(e)}")
-                
+
         return count
 
     @classmethod
