@@ -1,8 +1,8 @@
 import pytest
-from src.note_gen.models.note import Note
-from src.note_gen.models.chord import Chord
-from src.note_gen.models.note_event import NoteEvent
-from src.note_gen.core.enums import ChordQuality
+from note_gen.models.note import Note
+from note_gen.models.chord import Chord
+from note_gen.models.note_event import NoteEvent
+from note_gen.core.enums import ChordQuality
 
 def test_chord_with_note_event_integration():
     """Test that a chord's notes can be used to create NoteEvents."""

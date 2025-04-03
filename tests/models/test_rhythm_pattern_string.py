@@ -1,5 +1,5 @@
 """Tests for rhythm pattern string representation."""
-from src.note_gen.models.rhythm import RhythmPattern, RhythmNote
+from note_gen.models.rhythm import RhythmPattern, RhythmNote
 
 def test_rhythm_pattern_string_representation() -> None:
     # Create a pattern with notes and rests

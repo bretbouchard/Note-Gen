@@ -2,7 +2,7 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 from motor.motor_asyncio import AsyncIOMotorClient
-from src.note_gen.database.transaction import TransactionManager, TransactionError
+from note_gen.database.transaction import TransactionManager, TransactionError
 
 
 @pytest.fixture

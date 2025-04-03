@@ -1,10 +1,10 @@
 import pytest
 import math
 from pydantic import BaseModel, ValidationError, field_validator
-from src.note_gen.models.rhythm import RhythmPattern, RhythmNote
-from src.note_gen.models.patterns import NotePattern, NotePatternData
-from src.note_gen.models.note import Note
-from src.note_gen.core.enums import ScaleType
+from note_gen.models.rhythm import RhythmPattern, RhythmNote
+from note_gen.models.patterns import NotePattern, NotePatternData
+from note_gen.models.note import Note
+from note_gen.core.enums import ScaleType
 from typing import List, Dict, Any, Tuple
 import unittest
 

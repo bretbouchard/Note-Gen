@@ -7,9 +7,9 @@ from pydantic import BaseModel, Field
 
 from note_gen.database.repositories.mongodb_repository import MongoDBRepository
 
-# Create a test model
-class TestModel(BaseModel):
-    """Test model for repository tests."""
+# Create a model for testing
+class SampleTestModel(BaseModel):
+    """Sample model for repository tests."""
     id: str = Field(default="")
     name: str = Field(default="")
     value: int = Field(default=0)
@@ -31,7 +31,7 @@ def mock_collection():
 @pytest.fixture
 def repository(mock_collection):
     """Create a repository instance with a mock collection."""
-    return MongoDBRepository(mock_collection, TestModel)
+    return MongoDBRepository(mock_collection, SampleTestModel)
 
 @pytest.mark.asyncio
 async def test_find_one(repository, mock_collection):
@@ -82,7 +82,7 @@ async def test_find_many(repository, mock_collection):
     # This avoids the need to mock the cursor and to_list method
     async def mock_find_impl(filter_dict):
         # In a real implementation, this would filter the documents
-        return [TestModel(id=str(doc["_id"]), name=doc["name"], value=doc["value"]) for doc in mock_docs]
+        return [SampleTestModel(id=str(doc["_id"]), name=doc["name"], value=doc["value"]) for doc in mock_docs]
 
     # Patch the find_many method directly
     original_find_many = repository.find_many
@@ -141,7 +141,7 @@ async def test_create(repository, mock_collection):
     mock_collection.insert_one.return_value = mock_result
 
     # Create model
-    model = TestModel(name="Test", value=42)
+    model = SampleTestModel(name="Test", value=42)
 
     # Call method
     result = await repository.create(model)
@@ -171,7 +171,7 @@ async def test_update(repository, mock_collection):
     mock_collection.find_one.return_value = mock_doc
 
     # Create model
-    model = TestModel(id=mock_id, name="Updated", value=43)
+    model = SampleTestModel(id=mock_id, name="Updated", value=43)
 
     # Call method
     result = await repository.update(mock_id, model)
@@ -196,7 +196,7 @@ async def test_update_not_found(repository, mock_collection):
     mock_collection.update_one.return_value = mock_result
 
     # Create model
-    model = TestModel(id=mock_id, name="Updated", value=43)
+    model = SampleTestModel(id=mock_id, name="Updated", value=43)
 
     # Call method
     result = await repository.update(mock_id, model)

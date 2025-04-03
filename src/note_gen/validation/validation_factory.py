@@ -1,11 +1,11 @@
 """Factory for creating validators."""
 from typing import Type, Dict, Any, Protocol, Callable, Union, List
-from src.note_gen.core.enums import ValidationLevel
-from src.note_gen.schemas.validation_response import ValidationResult
-from src.note_gen.validation.pattern_validation import PatternValidator
-from src.note_gen.validation.musical_validation import validate_note_sequence
-from src.note_gen.models.note import Note
-from src.note_gen.models.patterns import Pattern
+from note_gen.core.enums import ValidationLevel
+from note_gen.schemas.validation_response import ValidationResult
+from note_gen.validation.pattern_validation import PatternValidator
+from note_gen.validation.musical_validation import validate_note_sequence
+from note_gen.models.note import Note
+from note_gen.models.patterns import Pattern
 
 class Validator(Protocol):
     """Protocol for validator classes."""

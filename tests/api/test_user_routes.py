@@ -4,9 +4,9 @@ import os
 import pytest
 import pytest_asyncio
 from fastapi.testclient import TestClient
-from src.note_gen.models.rhythm import RhythmPattern
-from src.note_gen.models.patterns import RhythmPatternData, RhythmNote
-from src.note_gen.database.db import get_db_conn, init_db, close_mongo_connection
+from note_gen.models.rhythm import RhythmPattern
+from note_gen.models.patterns import RhythmPatternData, RhythmNote
+from note_gen.database.db import get_db_conn, init_db, close_mongo_connection
 from motor.motor_asyncio import AsyncIOMotorClient
 from bson import ObjectId
 import uuid
@@ -52,7 +52,7 @@ async def test_user_routes_functionality(test_client: httpx.AsyncClient):
 
 @pytest.mark.asyncio
 async def test_get_rhythm_pattern(test_client: httpx.AsyncClient):
-    response = await test_client.get("/api/v1/patterns/rhythm/test-id")
+    response = await test_client.get("/api/v1/patterns/rhythm-patterns/test-id")
     assert response.status_code in [200, 404]
 
 @pytest.mark.asyncio
@@ -61,5 +61,5 @@ async def test_create_rhythm_pattern(test_client: httpx.AsyncClient):
         "name": "Test Pattern",
         "notes": [{"position": 0.0, "duration": 1.0}]
     }
-    response = await test_client.post("/api/v1/patterns/rhythm/", json=pattern_data)
-    assert response.status_code in [201, 422]
+    response = await test_client.post("/api/v1/patterns/rhythm-patterns", json=pattern_data)
+    assert response.status_code in [201, 400, 422]

@@ -1,9 +1,9 @@
 """Scale model definition."""
 from typing import List, Optional, Union, Dict, Any
 from pydantic import Field, field_validator, ConfigDict, model_validator
-from src.note_gen.models.base import BaseModelWithConfig
-from src.note_gen.models.note import Note
-from src.note_gen.core.enums import ScaleType
+from note_gen.models.base import BaseModelWithConfig
+from note_gen.models.note import Note
+from note_gen.core.enums import ScaleType
 
 class ScaleInfo(BaseModelWithConfig):
     """Information about a musical scale."""

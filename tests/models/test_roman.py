@@ -1,16 +1,16 @@
 """Tests for RomanNumeral model."""
 import unittest
 from typing import List, Optional
-from src.note_gen.models.roman_numeral import RomanNumeral
-from src.note_gen.core.enums import ChordQuality, ValidationLevel
-from src.note_gen.core.constants import (
+from note_gen.models.roman_numeral import RomanNumeral
+from note_gen.core.enums import ChordQuality, ValidationLevel
+from note_gen.core.constants import (
     ROMAN_TO_INT,
     INT_TO_ROMAN,
     ROMAN_QUALITY_MAP,
     DEFAULT_SCALE_DEGREE_QUALITIES
 )
-from src.note_gen.core.accessors import ScaleDegreeAccessor
-from src.note_gen.validation.roman_numeral_validation import validate_roman_numeral_data
+from note_gen.core.accessors import ScaleDegreeAccessor
+from note_gen.validation.roman_numeral_validation import validate_roman_numeral_data
 
 class TestRomanNumeral(unittest.TestCase):
     """Test cases for RomanNumeral class."""

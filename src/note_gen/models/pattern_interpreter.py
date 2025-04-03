@@ -15,22 +15,22 @@ from pydantic import (
     ConfigDict
 )
 
-from src.note_gen.models.patterns import (
+from note_gen.models.patterns import (
     NotePattern,
     NotePatternData,
     TransformationType,
     TransformationModel
 )
-from src.note_gen.models.note import Note
-from src.note_gen.models.scale import Scale
-from src.note_gen.core.enums import ScaleType, PatternDirection
-from src.note_gen.models.note_event import NoteEvent
-from src.note_gen.models.rhythm import RhythmNote, RhythmPattern
-from src.note_gen.models.scale_info import ScaleInfo
-from src.note_gen.models.chord_progression import ChordProgression
-from src.note_gen.models.note_sequence import NoteSequence
-from src.note_gen.models.scale_degree import ScaleDegree
-from src.note_gen.models.base import BaseModelWithConfig  # Fixed import path
+from note_gen.models.note import Note
+from note_gen.models.scale import Scale
+from note_gen.core.enums import ScaleType, PatternDirection
+from note_gen.models.note_event import NoteEvent
+from note_gen.models.rhythm import RhythmNote, RhythmPattern
+from note_gen.models.scale_info import ScaleInfo
+from note_gen.models.chord_progression import ChordProgression
+from note_gen.models.note_sequence import NoteSequence
+from note_gen.models.scale_degree import ScaleDegree
+from note_gen.models.base import BaseModelWithConfig  # Fixed import path
 
 import logging
 from dataclasses import dataclass

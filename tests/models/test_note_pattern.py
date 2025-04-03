@@ -1,9 +1,9 @@
 """Tests for note pattern models."""
 import pytest
-from src.note_gen.models.patterns import NotePattern, NotePatternData
-from src.note_gen.models.note import Note
-from src.note_gen.models.scale_info import ScaleInfo
-from src.note_gen.core.enums import ScaleType, PatternDirection
+from note_gen.models.patterns import NotePattern, NotePatternData
+from note_gen.models.note import Note
+from note_gen.models.scale_info import ScaleInfo
+from note_gen.core.enums import ScaleType, PatternDirection
 
 @pytest.fixture
 def basic_pattern() -> NotePattern:

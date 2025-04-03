@@ -1,7 +1,7 @@
 """Test suite for Note model."""
 import pytest
 from pydantic import ValidationError
-from src.note_gen.models.note import Note
+from note_gen.models.note import Note
 
 
 class TestNote:

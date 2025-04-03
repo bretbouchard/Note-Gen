@@ -4,9 +4,9 @@ from unittest.mock import MagicMock, AsyncMock, patch
 from motor.motor_asyncio import AsyncIOMotorDatabase, AsyncIOMotorCollection
 from bson import ObjectId
 
-from src.note_gen.models.chord_progression import ChordProgression
-from src.note_gen.models.chord import Chord
-from src.note_gen.core.enums import ScaleType, ChordQuality
+from note_gen.models.chord_progression import ChordProgression
+from note_gen.models.chord import Chord
+from note_gen.core.enums import ScaleType, ChordQuality
 
 # Create a mock version of the service to avoid import errors
 class MockChordProgressionService:

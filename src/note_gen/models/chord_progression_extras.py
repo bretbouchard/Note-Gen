@@ -2,18 +2,18 @@
 
 from typing import List, Optional, Union, Dict, Any, Set, Sequence
 from pydantic import Field, field_validator, ValidationInfo, ConfigDict
-from src.note_gen.models.scale_info import ScaleInfo
-from src.note_gen.models.roman_numeral import RomanNumeral
-from src.note_gen.models.fake_scale_info import FakeScaleInfo
-from src.note_gen.models.chord_progression import ChordProgression
-from src.note_gen.models.chord import Chord
-from src.note_gen.models.note import Note
-from src.note_gen.core.constants import RANGE_LIMITS, VALID_KEYS
-from src.note_gen.models.base import BaseModelWithConfig
-from src.note_gen.core.enums import ChordQuality, ScaleType
+from note_gen.models.scale_info import ScaleInfo
+from note_gen.models.roman_numeral import RomanNumeral
+from note_gen.models.fake_scale_info import FakeScaleInfo
+from note_gen.models.chord_progression import ChordProgression
+from note_gen.models.chord import Chord
+from note_gen.models.note import Note
+from note_gen.core.constants import RANGE_LIMITS, VALID_KEYS
+from note_gen.models.base import BaseModelWithConfig
+from note_gen.core.enums import ChordQuality, ScaleType
 from fastapi.encoders import jsonable_encoder
 from dataclasses import dataclass
-from src.note_gen.models.chord_progression_item import ChordProgressionItem
+from note_gen.models.chord_progression_item import ChordProgressionItem
 
 # Constants
 valid_qualities: Set[ChordQuality] = set(ChordQuality.__members__.values())

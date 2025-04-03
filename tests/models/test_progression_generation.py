@@ -3,11 +3,11 @@ from typing import List, Optional, Union
 from unittest import mock
 import pytest
 
-from src.note_gen.models.scale_info import ScaleInfo
-from src.note_gen.models.chord import Chord, ChordQuality
-from src.note_gen.core.enums import ScaleType
-from src.note_gen.models.note import Note
-from src.note_gen.models.chord_progression import ChordProgression
+from note_gen.models.scale_info import ScaleInfo
+from note_gen.models.chord import Chord, ChordQuality
+from note_gen.core.enums import ScaleType
+from note_gen.models.note import Note
+from note_gen.models.chord_progression import ChordProgression
 
 logger = logging.getLogger(__name__)
 

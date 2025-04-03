@@ -1,6 +1,6 @@
 """Constants for note generation."""
 from typing import Dict, Any, Tuple
-from src.note_gen.core.enums import ScaleType, ChordQuality
+from note_gen.core.enums import ScaleType, ChordQuality
 
 # Note-related constants
 FULL_NOTE_REGEX = r'^[A-G][#b]?[0-9]$'  # Matches notes like 'C4', 'F#5', 'Bb3'

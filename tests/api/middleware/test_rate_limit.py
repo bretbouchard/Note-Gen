@@ -3,8 +3,8 @@ import pytest
 from unittest.mock import MagicMock, AsyncMock, patch
 from fastapi import Request
 from starlette.responses import Response
-from src.note_gen.api.middleware.rate_limit import RateLimiter, RateLimitMiddleware, rate_limiter
-from src.note_gen.api.errors import ErrorCodes
+from note_gen.api.middleware.rate_limit import RateLimiter, RateLimitMiddleware, rate_limiter
+from note_gen.api.errors import ErrorCodes
 import time
 import json
 

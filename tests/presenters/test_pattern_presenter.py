@@ -2,7 +2,8 @@
 import pytest
 
 from note_gen.presenters.pattern_presenter import PatternPresenter
-from note_gen.models.patterns import NotePattern, RhythmPattern, RhythmNote
+from note_gen.models.patterns import NotePattern
+from note_gen.models.rhythm import RhythmPattern, RhythmNote
 from note_gen.models.note import Note
 from pydantic import BaseModel
 
@@ -24,7 +25,9 @@ def test_present_note_pattern():
     assert "id" in result
     assert result["name"] == pattern.name
 
-    assert result["pattern"] == pattern.pattern
+    # Check that pattern is a list of dictionaries
+    assert isinstance(result["pattern"], list)
+    assert len(result["pattern"]) == len(pattern.pattern)
     assert result["tags"] == pattern.tags
     assert result["type"] == "note"
 
@@ -44,7 +47,9 @@ def test_present_rhythm_pattern():
     assert "id" in result
     assert result["name"] == pattern.name
 
-    assert result["pattern"] == pattern.pattern
+    # Check that pattern is a list of dictionaries
+    assert isinstance(result["pattern"], list)
+    assert len(result["pattern"]) == len(pattern.pattern)
 
     assert result["type"] == "rhythm"
 

@@ -1,9 +1,9 @@
 """Musical validation module."""
 from typing import List, Optional, cast
-from src.note_gen.core.enums import ValidationLevel
-from src.note_gen.validation.base_validation import ValidationResult, ValidationViolation
-from src.note_gen.models.note import Note
-from src.note_gen.validation.note_validation import NoteValidator
+from note_gen.core.enums import ValidationLevel
+from note_gen.validation.base_validation import ValidationResult, ValidationViolation
+from note_gen.models.note import Note
+from note_gen.validation.note_validation import NoteValidator
 
 class ValidationError(Exception):
     """Custom validation error with line information."""

@@ -3,6 +3,7 @@ from typing import Dict, Any, List, Optional
 
 from note_gen.controllers.chord_progression_controller import ChordProgressionController
 from note_gen.presenters.chord_progression_presenter import ChordProgressionPresenter
+# Import dependencies
 from note_gen.dependencies import get_chord_progression_controller
 from note_gen.models.chord import Chord
 from note_gen.models.chord_progression import ChordProgression

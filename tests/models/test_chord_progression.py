@@ -1,11 +1,11 @@
 """Test suite for chord progression model."""
 import pytest
 from pydantic import ValidationError
-from src.note_gen.models.chord_progression import ChordProgression
-from src.note_gen.models.chord_progression_item import ChordProgressionItem
-from src.note_gen.models.scale_info import ScaleInfo
-from src.note_gen.models.chord import Chord
-from src.note_gen.core.enums import ScaleType, ChordQuality
+from note_gen.models.chord_progression import ChordProgression
+from note_gen.models.chord_progression_item import ChordProgressionItem
+from note_gen.models.scale_info import ScaleInfo
+from note_gen.models.chord import Chord
+from note_gen.core.enums import ScaleType, ChordQuality
 
 @pytest.fixture
 def basic_chord_item() -> ChordProgressionItem:

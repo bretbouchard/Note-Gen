@@ -122,11 +122,14 @@ async def test_generate_sequence(
     from note_gen.models.chord_progression import ChordProgression
     from note_gen.models.chord import Chord
 
+    from note_gen.models.chord_progression_item import ChordProgressionItem
+
     progression = ChordProgression(
         name=progression_name,
         key="C",
         scale_type=ScaleType.MAJOR,
-        chords=[Chord(root="C", quality=ChordQuality.MAJOR, duration=1)]
+        chords=[Chord(root="C", quality=ChordQuality.MAJOR, duration=1)],
+        items=[ChordProgressionItem(chord_symbol="C", chord=Chord(root="C", quality=ChordQuality.MAJOR, duration=1), position=0.0)]
     )
     mock_chord_progression_repository.find_many.return_value = [progression]
 

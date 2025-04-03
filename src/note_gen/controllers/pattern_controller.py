@@ -8,7 +8,12 @@ including retrieving, creating, and validating patterns.
 from typing import List, Optional, Dict, Any, Union
 
 from note_gen.database.repositories.base import BaseRepository
-from note_gen.models.patterns import NotePattern, RhythmPattern
+from note_gen.models.patterns import NotePattern, NotePatternData
+from note_gen.models.rhythm import RhythmPattern
+from note_gen.core.enums import ScaleType, PatternDirection, ValidationLevel
+from note_gen.models.scale_info import ScaleInfo
+from note_gen.factories.pattern_factory import PatternFactory
+from note_gen.validation.base_validation import ValidationResult, ValidationViolation
 
 
 class PatternController:
@@ -28,6 +33,7 @@ class PatternController:
         """
         self.note_pattern_repository = note_pattern_repository
         self.rhythm_pattern_repository = rhythm_pattern_repository
+        self.pattern_factory = PatternFactory()
 
     async def get_note_pattern(self, pattern_id: str) -> Optional[NotePattern]:
         """
@@ -119,3 +125,65 @@ class PatternController:
         # Find pattern by name
         patterns = await repository.find_many({"name": pattern_name})
         return patterns[0] if patterns else None
+
+    async def generate_pattern(
+        self,
+        root_note: str,
+        scale_type: ScaleType,
+        pattern_config: Dict[str, Any]
+    ) -> NotePattern:
+        """
+        Generate a musical pattern based on given parameters.
+
+        Args:
+            root_note: The root note (e.g. "C")
+            scale_type: The scale type to use
+            pattern_config: Configuration for the pattern
+
+        Returns:
+            The generated note pattern
+        """
+        # Extract configuration
+        intervals = pattern_config.get("intervals", [0, 2, 4])
+
+        # Create the pattern using the factory
+        pattern = self.pattern_factory.create_note_pattern(
+            root_note=root_note,
+            scale_type=scale_type,
+            intervals=intervals
+        )
+
+        # Save the pattern to the repository
+        return await self.note_pattern_repository.create(pattern)
+
+    async def validate_pattern(
+        self,
+        pattern: Union[NotePattern, RhythmPattern],
+        validation_level: ValidationLevel = ValidationLevel.NORMAL
+    ) -> ValidationResult:
+        """
+        Validate a pattern.
+
+        Args:
+            pattern: The pattern to validate
+            validation_level: The level of validation to perform
+
+        Returns:
+            The validation result
+        """
+        # For now, we'll implement a simple validation
+        # In a real implementation, this would use a validation service
+        try:
+            if isinstance(pattern, NotePattern):
+                # Validate the pattern
+                pattern.validate_musical_rules()
+                # If we get here, validation passed
+                return ValidationResult(is_valid=True)
+            else:
+                # For rhythm patterns, we'll just return valid for now
+                return ValidationResult(is_valid=True)
+        except ValueError as e:
+            # If validation fails, return the error
+            result = ValidationResult(is_valid=False)
+            result.add_error("pattern", str(e))
+            return result

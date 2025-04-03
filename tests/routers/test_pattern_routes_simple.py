@@ -2,7 +2,7 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from fastapi import APIRouter
-from src.note_gen.routers.pattern_routes import router
+from note_gen.routers.pattern_routes import router
 
 
 def test_router_exists():

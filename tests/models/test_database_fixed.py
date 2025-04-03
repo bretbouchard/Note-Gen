@@ -3,8 +3,8 @@ import pytest
 from unittest.mock import patch, MagicMock
 from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional, ClassVar
-from src.note_gen.core.enums import ValidationLevel
-from src.note_gen.validation.base_validation import ValidationResult, ValidationViolation
+from note_gen.core.enums import ValidationLevel
+from note_gen.validation.base_validation import ValidationResult, ValidationViolation
 
 # Create a mock version of the DatabaseConfig class
 class MockDatabaseConfig(BaseModel):

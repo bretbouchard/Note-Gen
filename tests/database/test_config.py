@@ -1,6 +1,6 @@
 """Tests for database configuration."""
 import pytest
-from src.note_gen.database.config import DatabaseConfig
+from note_gen.database.config import DatabaseConfig
 
 
 def test_database_config_defaults():

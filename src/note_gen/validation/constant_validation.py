@@ -1,6 +1,6 @@
 """Validation functions for constants and enums."""
 from typing import Dict, Tuple, Any, List, Optional
-from src.note_gen.core.constants import (
+from note_gen.core.constants import (
     SCALE_INTERVALS,
     COMMON_TIME_SIGNATURES,
     NOTE_PATTERNS,
@@ -14,14 +14,14 @@ from src.note_gen.core.constants import (
     PATTERN_VALIDATION_LIMITS,
     PATTERN_DEFAULTS
 )
-from src.note_gen.core.enums import (
+from note_gen.core.enums import (
     ScaleType, 
     ChordQuality, 
     PatternDirection,
     ValidationLevel,
     PatternType
 )
-from src.note_gen.schemas.validation_response import ValidationResult
+from note_gen.schemas.validation_response import ValidationResult
 
 class ConstantValidator:
     """Validator for application constants."""

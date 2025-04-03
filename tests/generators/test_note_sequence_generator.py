@@ -1,12 +1,12 @@
 import pytest
-from src.note_gen.models.scale_info import ScaleInfo
-from src.note_gen.models.chord import Chord
-from src.note_gen.models.chord_progression import ChordProgression, ChordProgressionItem
-from src.note_gen.models.patterns import NotePattern, NotePatternData
-from src.note_gen.models.rhythm import RhythmPattern, RhythmNote
-from src.note_gen.models.note import Note
-from src.note_gen.generators.note_sequence_generator import NoteSequenceGenerator
-from src.note_gen.core.enums import ScaleType, ChordQuality, PatternDirection
+from note_gen.models.scale_info import ScaleInfo
+from note_gen.models.chord import Chord
+from note_gen.models.chord_progression import ChordProgression, ChordProgressionItem
+from note_gen.models.patterns import NotePattern, NotePatternData
+from note_gen.models.rhythm import RhythmPattern, RhythmNote
+from note_gen.models.note import Note
+from note_gen.generators.note_sequence_generator import NoteSequenceGenerator
+from note_gen.core.enums import ScaleType, ChordQuality, PatternDirection
 
 @pytest.fixture
 def scale_info():

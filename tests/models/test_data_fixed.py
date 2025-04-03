@@ -1,8 +1,8 @@
 """Tests for data models."""
 import pytest
 from unittest.mock import patch, MagicMock
-from src.note_gen.core.enums import ScaleType, ValidationLevel
-from src.note_gen.validation.base_validation import ValidationResult, ValidationViolation
+from note_gen.core.enums import ScaleType, ValidationLevel
+from note_gen.validation.base_validation import ValidationResult, ValidationViolation
 
 # Since we can't import DataStore and PatternData directly due to import errors,
 # we'll create mock classes for testing

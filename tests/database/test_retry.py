@@ -3,8 +3,8 @@ import pytest
 import asyncio
 from unittest.mock import patch, MagicMock
 from pymongo.errors import ConnectionFailure, ServerSelectionTimeoutError
-from src.note_gen.database.retry import with_retry
-from src.note_gen.database.errors import ConnectionError
+from note_gen.database.retry import with_retry
+from note_gen.database.errors import ConnectionError
 
 
 @pytest.mark.asyncio

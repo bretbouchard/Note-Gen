@@ -5,13 +5,17 @@ This controller handles the business logic for sequence operations,
 including generating, retrieving, and manipulating sequences.
 """
 
-from typing import List, Optional, Dict, Any, Union
+from typing import List, Optional, Dict, Any, Union, cast
 
 from note_gen.database.repositories.base import BaseRepository
 from note_gen.models.sequence import Sequence
 from note_gen.models.note_sequence import NoteSequence
 from note_gen.models.chord_progression import ChordProgression
 from note_gen.controllers.pattern_controller import PatternController
+from note_gen.generators.note_sequence_generator import NoteSequenceGenerator
+from note_gen.core.enums import ValidationLevel
+from note_gen.models.patterns import NotePattern
+from note_gen.models.rhythm import RhythmPattern
 
 
 class SequenceController:
@@ -92,28 +96,37 @@ class SequenceController:
             raise ValueError(f"Chord progression not found: {progression_name}")
         progression = progressions[0]
 
+        # Ensure the chord progression has items
+        if not progression.items or len(progression.items) == 0:
+            raise ValueError(f"Chord progression '{progression_name}' is empty")
+
         # Get the note pattern
-        note_pattern = await self.pattern_controller.get_pattern_by_name(pattern_name, "note")
-        if not note_pattern:
+        pattern = await self.pattern_controller.get_pattern_by_name(pattern_name, "note")
+        if not pattern:
             raise ValueError(f"Note pattern not found: {pattern_name}")
+        note_pattern = cast(NotePattern, pattern)  # Explicitly cast to NotePattern
 
         # Get the rhythm pattern
-        rhythm_pattern = await self.pattern_controller.get_pattern_by_name(rhythm_pattern_name, "rhythm")
-        if not rhythm_pattern:
+        pattern = await self.pattern_controller.get_pattern_by_name(rhythm_pattern_name, "rhythm")
+        if not pattern:
             raise ValueError(f"Rhythm pattern not found: {rhythm_pattern_name}")
+        rhythm_pattern = cast(RhythmPattern, pattern)  # Explicitly cast to RhythmPattern
+
+        # Generate the sequence using the generator
+        generator = NoteSequenceGenerator(
+            chord_progression=progression,
+            note_pattern=note_pattern,
+            rhythm_pattern=rhythm_pattern,
+            validation_level=ValidationLevel.NORMAL,
+            note_pattern_name=pattern_name,
+            rhythm_pattern_name=rhythm_pattern_name
+        )
 
         # Generate the sequence
-        # This would typically call a service or use a factory
-        # For now, we'll implement a simple placeholder
-        sequence = NoteSequence(
-            name=f"Generated sequence from {progression_name}",
-            notes=[],  # This would be populated with actual notes
-            metadata={
-                "progression_name": progression_name,
-                "pattern_name": pattern_name,
-                "rhythm_pattern_name": rhythm_pattern_name
-            }
-        )
+        from note_gen.models.scale_info import ScaleInfo
+        scale_info = ScaleInfo(key=progression.key, scale_type=progression.scale_type)
+        sequence = await generator.generate_sequence_async(scale_info=scale_info)
+        sequence.name = f"Generated sequence from {progression_name}"
 
         # Save the sequence
         return await self.sequence_repository.create(sequence)

@@ -4,13 +4,13 @@ import logging
 from typing import Union, Any, Dict
 from pydantic import Field, field_validator, ConfigDict
 
-from src.note_gen.models.note import Note
-from src.note_gen.models.chord import Chord
-from src.note_gen.models.scale_degree import ScaleDegree
-from src.note_gen.models.base import BaseModelWithConfig
-from src.note_gen.core.enums import ValidationLevel
-from src.note_gen.validation.base_validation import ValidationResult
-from src.note_gen.validation.validation_manager import ValidationManager
+from note_gen.models.note import Note
+from note_gen.models.chord import Chord
+from note_gen.models.scale_degree import ScaleDegree
+from note_gen.models.base import BaseModelWithConfig
+from note_gen.core.enums import ValidationLevel
+from note_gen.validation.base_validation import ValidationResult
+from note_gen.validation.validation_manager import ValidationManager
 
 # Set up logging
 logger = logging.getLogger(__name__)

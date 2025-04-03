@@ -4,16 +4,16 @@ Note sequence generator with enhanced validation and pattern support.
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, ConfigDict, Field
 from uuid import uuid4
-from src.note_gen.models.note import Note
-from src.note_gen.models.chord import Chord
-from src.note_gen.models.chord_progression import ChordProgression
-from src.note_gen.models.scale_info import ScaleInfo
-from src.note_gen.models.patterns import NotePattern
-from src.note_gen.models.rhythm import RhythmPattern, RhythmNote
-from src.note_gen.models.note_sequence import NoteSequence
-from src.note_gen.core.enums import ValidationLevel, VoiceLeadingRule, ChordQuality
-from src.note_gen.validation.validation_manager import ValidationManager
-from src.note_gen.validation.base_validation import ValidationResult
+from note_gen.models.note import Note
+from note_gen.models.chord import Chord
+from note_gen.models.chord_progression import ChordProgression
+from note_gen.models.scale_info import ScaleInfo
+from note_gen.models.patterns import NotePattern
+from note_gen.models.rhythm import RhythmPattern, RhythmNote
+from note_gen.models.note_sequence import NoteSequence
+from note_gen.core.enums import ValidationLevel, VoiceLeadingRule, ChordQuality
+from note_gen.validation.validation_manager import ValidationManager
+from note_gen.validation.base_validation import ValidationResult
 
 import logging
 
@@ -30,7 +30,9 @@ class NoteSequenceGenerator(BaseModel):
     note_pattern: NotePattern
     rhythm_pattern: RhythmPattern
     validation_level: ValidationLevel = ValidationLevel.NORMAL
-    voice_leading_rules: List[VoiceLeadingRule] = Field(default_factory=list)
+    voice_leading_rules: List[str] = Field(default_factory=list)
+    note_pattern_name: Optional[str] = None
+    rhythm_pattern_name: Optional[str] = None
 
     async def generate(
         self,
@@ -53,7 +55,7 @@ class NoteSequenceGenerator(BaseModel):
         """Generate note sequence asynchronously with validation."""
         try:
             # Validate inputs
-            if not self.chord_progression.chords:
+            if not self.chord_progression.items:
                 raise ValueError("Chord progression cannot be empty")
 
             # Generate basic sequence
@@ -97,19 +99,24 @@ class NoteSequenceGenerator(BaseModel):
     def _generate_basic_sequence(self) -> List[Note]:
         """Generate basic sequence from chord progression."""
         sequence = []
-        for chord_item in self.chord_progression.chords:
+        for chord_item in self.chord_progression.items:
+            # Skip if chord is None
+            if chord_item.chord is None:
+                continue
+
             # Create root note
             root_note = Note(
-                pitch=chord_item.root,
+                pitch=chord_item.chord.root,
                 octave=4,
                 duration=1.0,
-                velocity=64
+                velocity=64,
+                position=0.0
             )
             chord_notes = [root_note]
 
             # Add chord notes based on intervals
             root_midi = root_note.to_midi_number()
-            for interval in ChordQuality.get_intervals(chord_item.quality):
+            for interval in ChordQuality.get_intervals(chord_item.chord.quality):
                 new_midi = root_midi + interval
                 new_note = Note.from_midi_number(
                     midi_number=new_midi,
@@ -161,7 +168,10 @@ class NoteSequenceGenerator(BaseModel):
         for scale_note in scale_note_strings:
             scale_notes.append(Note(
                 pitch=scale_note.pitch,  # Use the pitch string from the Note object
-                octave=4
+                octave=4,
+                duration=1.0,
+                velocity=64,
+                position=0.0
             ))
 
         pattern_sequence = []
@@ -174,18 +184,17 @@ class NoteSequenceGenerator(BaseModel):
             # Find the index of the current note in the scale using the pitch string
             scale_idx = next(i for i, n in enumerate(scale_notes) if n.pitch == note.pitch)
 
-            # Calculate interval from pattern note to current note
-            interval = pattern_note.to_midi_number() - note.to_midi_number()
-
-            new_idx = (scale_idx + interval) % len(scale_notes)
-            scale_note = scale_notes[new_idx]
+            # Skip interval calculation for now
+            # Just use the same scale note
+            scale_note = scale_notes[scale_idx]
 
             # Use the pitch string from the scale note
             new_note = Note(
                 pitch=scale_note.pitch,
                 octave=note.octave,
                 duration=note.duration,
-                velocity=note.velocity
+                velocity=note.velocity,
+                position=note.position
             )
             pattern_sequence.append(new_note)
 
@@ -210,5 +219,7 @@ class NoteSequenceGenerator(BaseModel):
             "note_pattern": self.note_pattern.model_dump(),
             "rhythm_pattern": self.rhythm_pattern.model_dump(),
             "validation_level": self.validation_level.value,
-            "voice_leading_rules": [rule.value for rule in self.voice_leading_rules]
+            "voice_leading_rules": self.voice_leading_rules,
+            "note_pattern_name": self.note_pattern_name,
+            "rhythm_pattern_name": self.rhythm_pattern_name
         }

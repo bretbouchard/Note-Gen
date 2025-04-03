@@ -1,12 +1,12 @@
 """Service layer for chord progression operations."""
 from typing import List, Optional
 from motor.motor_asyncio import AsyncIOMotorDatabase
-from src.note_gen.database.db import get_database
-from src.note_gen.models.chord_progression import ChordProgression
+from note_gen.database.db import get_database
+from note_gen.models.chord_progression import ChordProgression
 
 class ChordProgressionService:
     """Service for handling chord progression operations."""
-    
+
     def __init__(self, database: AsyncIOMotorDatabase):
         self.db = database
         self.collection = database.chord_progressions

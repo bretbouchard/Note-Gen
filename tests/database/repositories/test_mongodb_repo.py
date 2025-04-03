@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, AsyncMock
 from bson import ObjectId
 from pydantic import BaseModel
 from motor.motor_asyncio import AsyncIOMotorDatabase, AsyncIOMotorCollection
-from src.note_gen.database.repositories.mongodb import MongoDBRepository
+from note_gen.database.repositories.mongodb import MongoDBRepository
 
 
 # Define a test model

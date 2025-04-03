@@ -1,9 +1,9 @@
 """Validation for FakeScaleInfo model used in testing."""
 from typing import Dict, Any, List
-from src.note_gen.core.enums import ValidationLevel, ScaleType
-from src.note_gen.core.constants import VALID_KEYS
-from src.note_gen.schemas.validation_response import ValidationResult
-from src.note_gen.core.accessors import NoteAccessor
+from note_gen.core.enums import ValidationLevel, ScaleType
+from note_gen.core.constants import VALID_KEYS
+from note_gen.schemas.validation_response import ValidationResult
+from note_gen.core.accessors import NoteAccessor
 
 class FakeScaleValidator:
     @staticmethod

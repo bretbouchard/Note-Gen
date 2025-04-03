@@ -3,8 +3,8 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from fastapi import FastAPI, APIRouter
 from fastapi.testclient import TestClient
-from src.note_gen.routers.chord_progression_routes import router
-from src.note_gen.services.chord_progression_service import ChordProgressionService
+from note_gen.routers.chord_progression_routes import router
+from note_gen.services.chord_progression_service import ChordProgressionService
 
 
 def test_router_exists():

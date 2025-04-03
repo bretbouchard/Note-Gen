@@ -3,10 +3,9 @@ import pytest
 from typing import AsyncIterator
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 from httpx import AsyncClient, ASGITransport
-from src.note_gen.main import app
-from src.note_gen.database.db import get_db_conn
-from src.note_gen.app import app, limiter
-from src.note_gen.config import settings
+from note_gen.database.db import get_db_conn
+from note_gen.app import app, limiter
+from note_gen.config import settings
 
 @pytest.fixture(autouse=True)
 def reset_rate_limiter():

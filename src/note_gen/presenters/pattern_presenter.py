@@ -7,7 +7,8 @@ ensuring a clean separation between the business logic and the presentation laye
 
 from typing import List, Dict, Any, Union
 
-from note_gen.models.patterns import NotePattern, RhythmPattern
+from note_gen.models.patterns import NotePattern
+from note_gen.models.rhythm import RhythmPattern
 
 
 class PatternPresenter:
@@ -28,7 +29,7 @@ class PatternPresenter:
             "id": str(pattern.id) if hasattr(pattern, "id") else None,
             "name": pattern.name,
             "description": pattern.description if hasattr(pattern, "description") else None,
-            "pattern": pattern.pattern,
+            "pattern": [note.model_dump() if hasattr(note, 'model_dump') else str(note) for note in pattern.pattern] if pattern.pattern else [],
             "tags": pattern.tags if hasattr(pattern, "tags") else [],
             "type": "note",
         }
@@ -48,7 +49,7 @@ class PatternPresenter:
             "id": str(pattern.id) if hasattr(pattern, "id") else None,
             "name": pattern.name,
             "description": pattern.description if hasattr(pattern, "description") else None,
-            "pattern": pattern.pattern,
+            "pattern": [note.model_dump() if hasattr(note, 'model_dump') else str(note) for note in pattern.pattern] if pattern.pattern else [],
             "tags": pattern.tags if hasattr(pattern, "tags") else [],
             "type": "rhythm",
         }

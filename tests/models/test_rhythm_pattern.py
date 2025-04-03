@@ -1,6 +1,6 @@
 """Tests for rhythm pattern models."""
 import pytest
-from src.note_gen.models.rhythm import RhythmPattern, RhythmNote
+from note_gen.models.rhythm import RhythmPattern, RhythmNote
 
 @pytest.fixture
 def basic_rhythm_pattern() -> RhythmPattern:

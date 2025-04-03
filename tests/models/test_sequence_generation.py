@@ -1,7 +1,7 @@
 """Tests for sequence generation models."""
 import pytest
-from src.note_gen.models.sequence_generation import SequenceGeneration
-from src.note_gen.models.note import Note
+from note_gen.models.sequence_generation import SequenceGeneration
+from note_gen.models.note import Note
 
 
 def test_sequence_generation_init():

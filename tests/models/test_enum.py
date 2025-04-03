@@ -1,5 +1,5 @@
 import pytest
-from src.note_gen.core.enums import (
+from note_gen.core.enums import (
     ScaleType,
     ChordQuality,
     PatternDirection,

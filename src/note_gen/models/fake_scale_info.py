@@ -1,7 +1,7 @@
 """Model for fake scale information used in tests."""
 import re
 from pydantic import BaseModel, Field, field_validator, ConfigDict
-from src.note_gen.core.enums import ScaleType
+from note_gen.core.enums import ScaleType
 
 class FakeScaleInfo(BaseModel):
     model_config = ConfigDict(extra='forbid')

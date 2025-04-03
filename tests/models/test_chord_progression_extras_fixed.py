@@ -4,10 +4,10 @@ from unittest.mock import MagicMock
 from dataclasses import dataclass
 from bson import ObjectId
 
-from src.note_gen.models.scale_info import ScaleInfo
-from src.note_gen.models.chord_progression_item import ChordProgressionItem
-from src.note_gen.core.enums import ScaleType, ChordQuality
-from src.note_gen.models.chord_progression_extras import (
+from note_gen.models.scale_info import ScaleInfo
+from note_gen.models.chord_progression_item import ChordProgressionItem
+from note_gen.core.enums import ScaleType, ChordQuality
+from note_gen.models.chord_progression_extras import (
     valid_qualities,
     ChordProgressionResponse
 )

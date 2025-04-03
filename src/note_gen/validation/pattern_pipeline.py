@@ -1,7 +1,7 @@
 """Validation pipeline for musical patterns."""
 from typing import Optional
-from src.note_gen.core.enums import ValidationLevel
-from src.note_gen.models.patterns import NotePattern, RhythmPattern
+from note_gen.core.enums import ValidationLevel
+from note_gen.models.patterns import NotePattern, RhythmPattern
 
 class PatternValidationPipeline:
     """Pipeline for validating musical patterns."""

@@ -2,22 +2,22 @@
 from typing import Dict, Any, List, Optional
 from pydantic import BaseModel, Field
 
-from src.note_gen.core.constants import (
+from note_gen.core.constants import (
     RHYTHM_PATTERNS,
     NOTE_PATTERNS,
     COMMON_PROGRESSIONS,
     SCALE_INTERVALS,
     VALID_KEYS
 )
-from src.note_gen.core.enums import (
+from note_gen.core.enums import (
     ScaleType,
     ValidationLevel,
     VoiceLeadingRule
 )
-from src.note_gen.validation.base_validation import ValidationResult, ValidationViolation
-from src.note_gen.validation.validation_manager import ValidationManager
-from src.note_gen.validation.pattern_validation import validate_pattern_structure
-from src.note_gen.models.base import BaseModelWithConfig
+from note_gen.validation.base_validation import ValidationResult, ValidationViolation
+from note_gen.validation.validation_manager import ValidationManager
+from note_gen.validation.pattern_validation import validate_pattern_structure
+from note_gen.models.base import BaseModelWithConfig
 
 class DataStore:
     """Store for pattern data."""

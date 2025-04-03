@@ -4,8 +4,8 @@ import pytest_asyncio
 from typing import Dict, Any, List
 from unittest.mock import MagicMock, AsyncMock
 from motor.motor_asyncio import AsyncIOMotorDatabase, AsyncIOMotorCollection
-from src.note_gen.database.repositories.chord_progression import ChordProgressionRepository
-from src.note_gen.models.chord_progression import ChordProgression
+from note_gen.database.repositories.chord_progression import ChordProgressionRepository
+from note_gen.models.chord_progression import ChordProgression
 
 
 @pytest_asyncio.fixture

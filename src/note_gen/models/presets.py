@@ -13,8 +13,8 @@ from .chord_progression import (
 from .scale_info import ScaleInfo
 from .note import Note
 from .patterns import NotePattern, NotePatternData
-from .core.enums import ScaleType, ChordQuality
-from .core.constants import COMMON_PROGRESSIONS, DEFAULTS
+from note_gen.core.enums import ScaleType, ChordQuality
+from note_gen.core.constants import COMMON_PROGRESSIONS, DEFAULTS
 
 # Default values
 DEFAULT_KEY = "C"
@@ -38,20 +38,20 @@ class ChordProgressionPreset(BaseModel):
         """Convert preset to ChordProgression."""
         scale_info = ScaleInfo(key=key, scale_type=scale_type)
         chords: Sequence[ChordProgressionItem] = []
-        
+
         for i, numeral in enumerate(self.numerals):
             duration = self.durations[i] if self.durations else 1.0
             quality_str = self.qualities[i] if self.qualities else None
             roman = RomanNumeral.from_string(numeral)
             chord = roman.to_chord(scale_info)
-            
+
             # Determine the quality
             if quality_str is not None:
                 quality = ChordQuality(quality_str)  # Convert string to enum
             else:
-                quality = (ChordQuality.MINOR if roman.is_minor() 
+                quality = (ChordQuality.MINOR if roman.is_minor()
                           else ChordQuality.MAJOR)
-            
+
             # Create ChordProgressionItem
             chord_item = ChordProgressionItem(
                 chord=numeral,  # Use the roman numeral string
@@ -61,7 +61,7 @@ class ChordProgressionPreset(BaseModel):
                 quality=quality  # Now properly typed as ChordQuality
             )
             chords.append(chord_item)
-            
+
         return ChordProgression(
             name=self.name,
             chords=list(chords),  # Convert Sequence to List
@@ -76,7 +76,7 @@ def create_default_note_pattern() -> NotePattern:
         name=DEFAULT_NOTE_PATTERN,
         pattern=[
             Note(
-                note_name='C',
+                pitch='C',
                 octave=4,
                 duration=1.0,
                 position=0.0,
@@ -108,20 +108,17 @@ class Presets(BaseModel):
     """Model for musical presets."""
     default_key: str = Field(default="C")
     default_scale_type: ScaleType = Field(default=ScaleType.MAJOR)
-    common_progressions: Dict[str, List[RomanNumeral]] = Field(
-        default_factory=lambda: {
-            name: [RomanNumeral.from_string(num) for num in prog]
-            for name, prog in COMMON_PROGRESSIONS.items()
-        }
+    common_progressions: Dict[str, Any] = Field(
+        default_factory=lambda: COMMON_PROGRESSIONS
     )
 
     def get_progression_chords(self, name: str, scale_info: ScaleInfo) -> List[Chord]:
         """Get chords for a named progression."""
         if name not in self.common_progressions:
             raise ValueError(f"Unknown progression: {name}")
-        
+
         return [
-            numeral.to_chord(scale_info)
+            RomanNumeral.from_string(numeral).to_chord(scale_info)
             for numeral in self.common_progressions[name]
         ]
 
@@ -142,8 +139,7 @@ class Presets(BaseModel):
         """Create a preset from preset data."""
         return cls(
             default_key=preset_data.get('default_key', DEFAULT_KEY),
-            default_scale_type=preset_data.get('default_scale_type', DEFAULT_SCALE_TYPE),
-            pattern_data=preset_data.get('patterns', {})  # Changed 'patterns' to 'pattern_data'
+            default_scale_type=preset_data.get('default_scale_type', DEFAULT_SCALE_TYPE)
         )
 
 class RhythmPreset(BaseModel):
@@ -152,7 +148,7 @@ class RhythmPreset(BaseModel):
         """Create a rhythm pattern from preset."""
         return RhythmPattern(
             name=name,
-            notes=[
+            pattern=[
                 RhythmNote(
                     position=0.0,
                     duration=1.0,
@@ -165,6 +161,6 @@ class RhythmPreset(BaseModel):
 class Preset(BaseModel):
     name: str
     key: str = DEFAULTS["key"]
-    scale_type: ScaleType = DEFAULTS["scale_type"]
-    bpm: int = DEFAULTS["bpm"]
-    time_signature: str = DEFAULTS["time_signature"]
+    scale_type: ScaleType = ScaleType.MAJOR  # Default scale type
+    bpm: int = 120  # Default BPM
+    time_signature: str = "4/4"  # Default time signature

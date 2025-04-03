@@ -1,7 +1,7 @@
 """Database initialization module."""
 from typing import Dict, Any
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
-from src.note_gen.core.constants import DATABASE
+from note_gen.core.constants import DATABASE
 
 # Initialize the MongoDB client
 # Cast DATABASE to Dict[str, Any] to help mypy understand the type

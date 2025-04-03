@@ -3,15 +3,15 @@ Chord progression generator with enhanced validation and pattern support.
 """
 from typing import List, Optional, Union, Dict, Any, Tuple
 from pydantic import BaseModel, Field, field_validator, ConfigDict
-from src.note_gen.core.enums import ChordQuality, ScaleType, ValidationLevel, VoiceLeadingRule
-from src.note_gen.models.note import Note
-from src.note_gen.models.chord import Chord
-from src.note_gen.models.scale_info import ScaleInfo
-from src.note_gen.models.chord_progression import ChordProgression
-from src.note_gen.models.chord_progression_item import ChordProgressionItem
-from src.note_gen.core.constants import COMMON_PROGRESSIONS
-from src.note_gen.validation.validation_manager import ValidationManager
-from src.note_gen.validation.base_validation import ValidationResult
+from note_gen.core.enums import ChordQuality, ScaleType, ValidationLevel, VoiceLeadingRule
+from note_gen.models.note import Note
+from note_gen.models.chord import Chord
+from note_gen.models.scale_info import ScaleInfo
+from note_gen.models.chord_progression import ChordProgression
+from note_gen.models.chord_progression_item import ChordProgressionItem
+from note_gen.core.constants import COMMON_PROGRESSIONS
+from note_gen.validation.validation_manager import ValidationManager
+from note_gen.validation.base_validation import ValidationResult
 
 import logging
 
@@ -24,8 +24,9 @@ class ChordProgressionGenerator(BaseModel):
     key: str
     scale_type: ScaleType = ScaleType.MAJOR
     complexity: float = Field(ge=0.1, le=1.0, default=0.5)
-    scale_info: Optional[ScaleInfo] = None
+    scale_info: Dict[str, Any] = Field(default_factory=dict)
     validation_level: ValidationLevel = ValidationLevel.NORMAL
+    voice_leading_rules: List[str] = Field(default_factory=list)
 
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
@@ -40,7 +41,9 @@ class ChordProgressionGenerator(BaseModel):
         if not 1 <= degree <= 7:
             raise ValueError(f"Scale degree must be between 1 and 7, got {degree}")
 
-        scale_notes = self.scale_info.get_scale_notes()
+        # Create a ScaleInfo object if needed
+        scale_info_obj = ScaleInfo(key=self.key, scale_type=self.scale_type)
+        scale_notes = scale_info_obj.get_scale_notes()
         # Convert Note object to string representation (pitch only)
         return scale_notes[degree - 1].pitch
 
@@ -53,23 +56,23 @@ class ChordProgressionGenerator(BaseModel):
         if not pattern:
             raise ValueError("Empty pattern")
 
-        if self.scale_info is None:
-            self.scale_info = ScaleInfo(key=self.key, scale_type=self.scale_type)
+        # Create a ScaleInfo object
+        scale_info_obj = ScaleInfo(key=self.key, scale_type=self.scale_type)
 
         items = []
         chords = []
         position = 0.0
-        
+
         for degree, quality in pattern:
             if not (1 <= degree <= 7):
                 raise ValueError(f"Invalid scale degree: {degree}")
 
             root = self.get_root_note_for_degree(degree)
             chord = Chord(root=root, quality=quality)
-            
+
             # Add to both chords and items lists
             chords.append(chord)
-            
+
             item = ChordProgressionItem(
                 chord_symbol=chord.to_symbol(),
                 duration=1.0,
@@ -83,7 +86,6 @@ class ChordProgressionGenerator(BaseModel):
             name=f"Generated {self.name}",
             key=self.key,
             scale_type=self.scale_type,
-            scale_info=self.scale_info,
             items=items,
             chords=chords,  # Add the chords list here
             total_duration=position
@@ -164,7 +166,7 @@ class ChordProgressionGenerator(BaseModel):
             "scale_type": self.scale_type.value,
             "complexity": self.complexity,
             "validation_level": self.validation_level.value,
-            "voice_leading_rules": [rule.value for rule in self.voice_leading_rules]
+            "voice_leading_rules": self.voice_leading_rules
         }
 
     def generate_from_template(
@@ -175,18 +177,18 @@ class ChordProgressionGenerator(BaseModel):
     ) -> ChordProgression:
         """
         Generate a chord progression from a template.
-        
+
         Args:
             template_name: Name of the template to use
             key: Key to generate in
             validation_level: Level of validation to apply
-            
+
         Returns:
             ChordProgression: Generated progression
         """
         if template_name not in COMMON_PROGRESSIONS:
             raise ValueError(f"Unknown progression template: {template_name}")
-            
+
         template = COMMON_PROGRESSIONS[template_name]
         progression = ChordProgression(
             name=template["name"],
@@ -194,16 +196,13 @@ class ChordProgressionGenerator(BaseModel):
             chords=template["chords"],
             tags=template["tags"]
         )
-        
+
         # Validate the generated progression
-        validation_result = ChordProgression.validate_progression(
-            progression=progression,
-            validation_level=validation_level
-        )
-        
-        if not validation_result.is_valid:
-            raise ValueError(f"Generated progression validation failed: {validation_result.errors}")
-            
+        if validation_level:
+            validation_result = self.validate_progression(progression)
+            if not validation_result.is_valid:
+                raise ValueError(f"Generated progression validation failed: {validation_result.violations}")
+
         return progression
 
     async def generate_custom(
@@ -215,13 +214,13 @@ class ChordProgressionGenerator(BaseModel):
     ) -> ChordProgression:
         """
         Generate a custom chord progression.
-        
+
         Args:
             length: Number of chords
             key: Key to generate in
             complexity: Desired complexity (0-1)
             validation_level: Level of validation to apply
-        
+
         Returns:
             ChordProgression: Generated progression
         """
@@ -232,36 +231,40 @@ class ChordProgressionGenerator(BaseModel):
             chords=self._generate_chord_sequence(length, complexity),
             tags=["custom"]
         )
-        
+
         # Validate the generated progression
-        validation_result = ChordProgression.validate_progression(
-            progression=progression,
-            validation_level=validation_level
-        )
+        if validation_level:
+            self.validate_progression(progression)
         return progression
 
-    def _generate_chord_sequence(self, length: int, complexity: float) -> List[Dict[str, Any]]:
+    def _generate_chord_sequence(self, length: int, complexity: float) -> List[Chord]:
         """
         Generate a sequence of chords based on length and complexity.
-        
+
         Args:
             length: Number of chords to generate
             complexity: Value between 0-1 determining progression complexity
-        
+
         Returns:
-            List of chord dictionaries
+            List of Chord objects
         """
         chords = []
         scale_degrees = [1, 4, 5, 6]  # Basic scale degrees
-        
+
         # Add more complex degrees based on complexity
         if complexity > 0.5:
             scale_degrees.extend([2, 3, 7])
-        
+
+        # Create a ScaleInfo object
+        scale_info_obj = ScaleInfo(key=self.key, scale_type=self.scale_type)
+        scale_notes = scale_info_obj.get_scale_notes()
+
+        position = 0.0
         for _ in range(length):
             # Select degree based on complexity
-            degree = scale_degrees[int(len(scale_degrees) * complexity) % len(scale_degrees)]
-            
+            degree_idx = int(len(scale_degrees) * complexity) % len(scale_degrees)
+            degree = scale_degrees[degree_idx]
+
             # Determine chord quality based on scale degree and complexity
             if complexity > 0.7 and degree in [2, 3, 6]:
                 quality = ChordQuality.MINOR
@@ -269,13 +272,19 @@ class ChordProgressionGenerator(BaseModel):
                 quality = ChordQuality.DOMINANT_SEVENTH
             else:
                 quality = ChordQuality.MAJOR
-            
-            chords.append({
-                "root": degree,
-                "quality": quality,
-                "duration": 1.0  # Default duration
-            })
-        
+
+            # Get the root note for this scale degree
+            root_note = scale_notes[degree - 1].pitch
+
+            # Create a Chord object
+            chord = Chord(
+                root=root_note,
+                quality=quality,
+                duration=1.0  # Default duration
+            )
+            chords.append(chord)
+            position += 1.0
+
         return chords
 
     def validate_model_fields(self) -> bool:

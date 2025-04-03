@@ -1,16 +1,16 @@
 """Model for scale degree representation."""
 from typing import Optional, Dict, Any
 from pydantic import Field, model_validator
-from src.note_gen.models.base import BaseModelWithConfig
-from src.note_gen.core.enums import ChordQuality, ValidationLevel
-from src.note_gen.core.constants import (
+from note_gen.models.base import BaseModelWithConfig
+from note_gen.core.enums import ChordQuality, ValidationLevel
+from note_gen.core.constants import (
     SCALE_DEGREE_QUALITIES,
     INT_TO_ROMAN,
     ROMAN_TO_INT,
     DEFAULT_SCALE_DEGREE_QUALITIES
 )
-from src.note_gen.validation.base_validation import ValidationResult
-from src.note_gen.validation.scale_degree_validation import validate_scale_degree
+from note_gen.validation.base_validation import ValidationResult
+from note_gen.validation.scale_degree_validation import validate_scale_degree
 
 class ScaleDegree(BaseModelWithConfig):
     """Model for scale degrees."""
@@ -44,14 +44,14 @@ class ScaleDegree(BaseModelWithConfig):
     def from_roman(cls, roman: str, quality: Optional[ChordQuality] = None) -> 'ScaleDegree':
         """
         Create from roman numeral.
-        
+
         Args:
             roman: Roman numeral (I-VII or i-vii)
             quality: Optional chord quality (defaults to standard quality for the degree)
-            
+
         Returns:
             ScaleDegree instance
-            
+
         Raises:
             ValueError: If roman numeral is invalid
         """
@@ -59,23 +59,23 @@ class ScaleDegree(BaseModelWithConfig):
         value = ROMAN_TO_INT.get(roman_upper)
         if value is None:
             raise ValueError(f"Invalid roman numeral: {roman}")
-            
+
         # If quality not specified, infer from case
         if quality is None:
             quality = (
                 ChordQuality.MINOR if roman.islower()
                 else DEFAULT_SCALE_DEGREE_QUALITIES.get(value, ChordQuality.MAJOR)
             )
-            
+
         return cls(value=value, quality=quality)
 
     def validate_with_rules(self, level: ValidationLevel = ValidationLevel.NORMAL) -> ValidationResult:
         """
         Validate scale degree using validation rules.
-        
+
         Args:
             level: Validation level to apply
-            
+
         Returns:
             ValidationResult containing validation status and any errors/warnings
         """
@@ -86,11 +86,11 @@ class ScaleDegree(BaseModelWithConfig):
     def validate_data(cls, data: Dict[str, Any], level: ValidationLevel = ValidationLevel.NORMAL) -> ValidationResult:
         """
         Validate raw scale degree data.
-        
+
         Args:
             data: Dictionary containing scale degree data
             level: Validation level to apply
-            
+
         Returns:
             ValidationResult containing validation status and any errors/warnings
         """

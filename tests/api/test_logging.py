@@ -4,7 +4,7 @@ from fastapi.testclient import TestClient
 from fastapi.responses import JSONResponse
 import logging
 from pydantic import BaseModel
-from src.note_gen.utils.logging_utils import (
+from note_gen.utils.logging_utils import (
     setup_logger, 
     log_endpoint, 
     RequestContextFilter, 

@@ -1,7 +1,7 @@
 from __future__ import annotations
 import pytest
-from src.note_gen.models.note_event import NoteEvent
-from src.note_gen.models.note import Note
+from note_gen.models.note_event import NoteEvent
+from note_gen.models.note import Note
 from pydantic_core import ValidationError
 
 

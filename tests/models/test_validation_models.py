@@ -1,6 +1,6 @@
 """Tests for validation models."""
 import pytest
-from src.note_gen.models.validation import (
+from note_gen.models.validation import (
     ValidationError,
     ValidationViolation,
     ValidationResult

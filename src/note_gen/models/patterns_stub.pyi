@@ -3,11 +3,11 @@
 from typing import List, Dict, Any, Optional, Union
 from pydantic import BaseModel, Field
 
-from src.note_gen.models.chord import Chord
-from src.note_gen.models.note import Note
-from src.note_gen.models.scale_degree import ScaleDegree
-from src.note_gen.models.patterns import NotePattern as NotePattern
-from src.note_gen.models.patterns import NotePatternData as NotePatternData
+from note_gen.models.chord import Chord
+from note_gen.models.note import Note
+from note_gen.models.scale_degree import ScaleDegree
+from note_gen.models.patterns import NotePattern as NotePattern
+from note_gen.models.patterns import NotePatternData as NotePatternData
 
 
 DirectionType = str

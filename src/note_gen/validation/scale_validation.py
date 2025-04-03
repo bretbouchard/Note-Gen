@@ -1,15 +1,15 @@
 """Scale validation module."""
 from typing import List, Tuple, Optional, Dict, Any
-from src.note_gen.core.constants import (
+from note_gen.core.constants import (
     SCALE_INTERVALS,
     ScaleValidator,
     FULL_NOTE_REGEX
 )
-from src.note_gen.core.enums import ScaleType, ValidationLevel
-from src.note_gen.validation.base_validation import ValidationResult, ValidationViolation
-from src.note_gen.validation.note_validator import NoteValidator
-from src.note_gen.models.scale import Scale, ScaleInfo
-from src.note_gen.models.note import Note
+from note_gen.core.enums import ScaleType, ValidationLevel
+from note_gen.validation.base_validation import ValidationResult, ValidationViolation
+from note_gen.validation.note_validator import NoteValidator
+from note_gen.models.scale import Scale, ScaleInfo
+from note_gen.models.note import Note
 
 class ScaleValidation:
     """Scale validation class."""

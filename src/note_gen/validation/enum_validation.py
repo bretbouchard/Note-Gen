@@ -1,12 +1,12 @@
 """Validation module for enum consistency."""
 from typing import Dict, Set, Type, Any, Optional
 from enum import Enum
-from src.note_gen.core.enums import (
+from note_gen.core.enums import (
     ScaleType, ChordQuality, TimeSignatureType, PatternDirection,
     AccentType, ValidationLevel, VoiceLeadingRule, PatternType,
     TransformationType, NoteModificationType
 )
-from src.note_gen.core.constants import (
+from note_gen.core.constants import (
     SCALE_INTERVALS, CHORD_INTERVALS, PATTERN_VALIDATION_LIMITS,
     PATTERN_DEFAULTS
 )

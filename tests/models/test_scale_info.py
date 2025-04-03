@@ -1,9 +1,9 @@
 """Test scale info functionality."""
 from typing import List
 import pytest
-from src.note_gen.models.note import Note
-from src.note_gen.models.scale_info import ScaleInfo
-from src.note_gen.core.enums import ScaleType
+from note_gen.models.note import Note
+from note_gen.models.scale_info import ScaleInfo
+from note_gen.core.enums import ScaleType
 
 def test_scale_info_basic() -> None:
     """Test basic scale info functionality."""

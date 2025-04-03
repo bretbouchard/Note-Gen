@@ -3,9 +3,9 @@ import pytest
 from unittest.mock import MagicMock
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
-from src.note_gen.api.middleware.error_handlers import setup_error_handlers
-from src.note_gen.database.errors import ConnectionError, DocumentNotFoundError
-from src.note_gen.api.errors import ErrorCodes
+from note_gen.api.middleware.error_handlers import setup_error_handlers
+from note_gen.database.errors import ConnectionError, DocumentNotFoundError
+from note_gen.api.errors import ErrorCodes
 
 
 @pytest.fixture

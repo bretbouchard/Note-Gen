@@ -4,7 +4,7 @@ import pytest_asyncio
 from typing import Dict, Any, Optional, List
 from unittest.mock import MagicMock, AsyncMock
 from motor.motor_asyncio import AsyncIOMotorCollection
-from src.note_gen.database.repositories.base import BaseRepository
+from note_gen.database.repositories.base import BaseRepository
 
 
 # Create a concrete implementation of BaseRepository for testing
@@ -121,7 +121,7 @@ async def test_find_many(test_repository, mock_collection):
 
     # Verify the find method was called with the correct arguments
     mock_collection.find.assert_called_once_with({"status": "active"})
-    mock_cursor.to_list.assert_called_once_with(length=None)
+    mock_cursor.to_list.assert_called_once_with(None)
 
     # Call the method without a filter
     mock_collection.find.reset_mock()

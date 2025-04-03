@@ -2,7 +2,7 @@
 import pytest
 from unittest.mock import MagicMock, AsyncMock
 from motor.motor_asyncio import AsyncIOMotorDatabase
-from src.note_gen.services.sequence_service import SequenceService
+from note_gen.services.sequence_service import SequenceService
 
 
 @pytest.fixture

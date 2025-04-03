@@ -1,0 +1,465 @@
+[
+    {
+        "name": "II-V-I in C Major",
+        "chords": ["Dm7", "G7", "Cmaj7"],
+        "degrees": ["ii7", "V7", "Imaj7"],
+        "scale_degrees": ["2", "5", "1"]
+ 
+    },
+    {
+        "name": "II-V-I in G Major",
+        "chords": ["Am7", "D7", "Gmaj7"],
+        "degrees": ["ii7", "V7", "Imaj7"],
+        "scale_degrees": ["2", "5", "1"]
+
+    },
+    {
+        "name": "I-VI-II-V",
+        "chords": ["Cmaj7", "Am7", "Dm7", "G7"],
+        "degrees": ["Imaj7", "vi7", "ii7", "V7"],
+        "scale_degrees": ["1", "6", "2", "5"]
+
+    },
+    {
+        "name": "Rhythm Changes",
+        "chords": ["Bbmaj7", "G7", "Cm7", "F7", "Bbmaj7", "G7", "Cm7", "F7"],
+        "degrees": ["Imaj7", "VI7", "ii7", "V7", "Imaj7", "VI7", "ii7", "V7"],
+        "scale_degrees": ["1", "6", "2", "5", "1", "6", "2", "5"]
+
+    },
+    {
+        "name": "Jazz Blues in F",
+        "chords": ["F7", "Bb7", "F7", "C7", "Bb7", "F7"],
+        "degrees": ["I7", "IV7", "I7", "V7", "IV7", "I7"],
+        "scale_degrees": ["1", "4", "1", "5", "4", "1"]
+
+    },
+    {
+        "name": "Minor II-V-I",
+        "chords": ["Dm7b5", "G7b9", "Cm7"],
+        "degrees": ["iiø7", "V7b9", "i7"],
+        "scale_degrees": ["2", "5", "1"]
+
+    },
+    {
+        "name": "Descending II-Vs",
+        "chords": ["Am7", "D7", "Gm7", "C7", "Fm7", "Bb7", "Ebmaj7"],
+        "degrees": ["ii7", "V7", "ii7", "V7", "ii7", "V7", "Imaj7"],
+        "scale_degrees": ["2", "5", "2", "5", "2", "5", "1"]
+
+    },
+    {
+        "name": "Extended Turnaround",
+        "chords": ["Cmaj7", "A7", "Dm7", "G7", "E7", "Am7", "D7", "G7"],
+        "degrees": ["Imaj7", "VI7", "ii7", "V7", "III7", "vi7", "II7", "V7"],
+        "scale_degrees": ["1", "6", "2", "5", "3", "6", "2", "5"]
+
+    },
+    {
+        "name": "Minor Blues in C",
+        "chords": ["Cm7", "Fm7", "Cm7", "G7#5", "Fm7", "Cm7"],
+        "degrees": ["i7", "iv7", "i7", "V7#5", "iv7", "i7"],
+        "scale_degrees": ["1", "4", "1", "5", "4", "1"]
+
+    },
+    {
+        "name": "Backdoor Progression",
+        "chords": ["Cmaj7", "Bb7", "Cmaj7"],
+        "degrees": ["Imaj7", "bVII7", "Imaj7"],
+        "scale_degrees": ["1", "b7", "1"]
+
+    },
+    {
+        "name": "III-VI-II-V",
+        "chords": ["Em7", "A7", "Dm7", "G7"],
+        "degrees": ["iii7", "VI7", "ii7", "V7"],
+        "scale_degrees": ["3", "6", "2", "5"]
+
+    },
+    {
+        "name": "Tritone Substitution",
+        "chords": ["Dm7", "Db7", "Cmaj7"],
+        "degrees": ["ii7", "bII7", "Imaj7"],
+        "scale_degrees": ["2", "b2", "1"]
+
+    },
+    {
+        "name": "Modal Interchange",
+        "chords": ["Cmaj7", "Ebmaj7", "Fmin7", "Bb7", "Cmaj7"],
+        "degrees": ["Imaj7", "bIIImaj7", "iv7", "bVII7", "Imaj7"],
+        "scale_degrees": ["1", "b3", "4", "b7", "1"]
+
+    },
+    {
+        "name": "Stepwise Descending Bass",
+        "chords": ["Cmaj7", "B7", "Bb7", "A7"],
+        "degrees": ["Imaj7", "VII7", "bVII7", "VI7"],
+        "scale_degrees": ["1", "7", "b7", "6"]
+
+    },
+    {
+        "name": "Chromatic Approach",
+        "chords": ["Fmaj7", "F#dim7", "Gm7", "C7"],
+        "degrees": ["Imaj7", "bII°7", "ii7", "V7"],
+        "scale_degrees": ["1", "b2", "2", "5"]
+
+    },
+    {
+        "name": "Altered Dominant",
+        "chords": ["Dm7", "G7#9", "Cmaj7"],
+        "degrees": ["ii7", "V7#9", "Imaj7"],
+        "scale_degrees": ["2", "5", "1"]
+
+    },
+    {
+        "name": "Bebop Turnaround",
+        "chords": ["Cmaj7", "A7", "D7", "G7"],
+        "degrees": ["Imaj7", "VI7", "II7", "V7"],
+        "scale_degrees": ["1", "6", "2", "5"]
+
+    },
+    {
+        "name": "Secondary Dominant",
+        "chords": ["Cmaj7", "A7", "Dm7", "G7"],
+        "degrees": ["Imaj7", "V7/ii", "ii7", "V7"],
+        "scale_degrees": ["1", "V/2", "2", "5"]
+
+    },
+    {
+        "name": "Parallel Minor",
+        "chords": ["Cmaj7", "Cm7", "F7", "Bbmaj7"],
+        "degrees": ["Imaj7", "i7", "IV7", "bVIImaj7"],
+        "scale_degrees": ["1", "1", "4", "b7"]
+
+    },
+    {
+        "name": "Imaj7 - IV7",
+        "chords": ["Cmaj7", "F7"],
+        "degrees": ["Imaj7", "IV7"],
+        "scale_degrees": ["1", "4"]
+
+    },
+    {
+        "name": "IVm to I",
+        "chords": ["Cmaj7", "Fm7", "Cmaj7"],
+        "degrees": ["Imaj7", "iv7", "Imaj7"],
+        "scale_degrees": ["1", "4", "1"]
+
+    },
+    {
+        "name": "Blues Turnaround",
+        "chords": ["C7", "A7", "D7", "G7"],
+        "degrees": ["I7", "VI7", "II7", "V7"],
+        "scale_degrees": ["1", "6", "2", "5"]
+
+    },
+    {
+        "name": "Half-Step II-V",
+        "chords": ["Dbm7", "Gb7", "Cmaj7"],
+        "degrees": ["bii7", "bV7", "Imaj7"],
+        "scale_degrees": ["b2", "b5", "1"]
+
+    },
+    {
+        "name": "IVmaj7 - IVmin7 - Imaj7",
+        "chords": ["Fmaj7", "Fm7", "Cmaj7"],
+        "degrees": ["IVmaj7", "iv7", "Imaj7"],
+        "scale_degrees": ["4", "4", "1"]
+    },
+    {
+        "name": "I - bIII°7 - II- V",
+        "chords": ["Cmaj7", "Eb°7", "Dm7", "G7"],
+        "degrees": ["Imaj7", "bIII°7", "ii7", "V7"],
+        "scale_degrees": ["1", "b3", "2", "5"]
+
+    },
+    {
+        "name": "Chromatic II-V",
+        "chords": ["Dm7", "G7", "Dbm7", "Gb7", "Cmaj7"],
+        "degrees": ["ii7", "V7", "bii7", "bV7", "Imaj7"],
+        "scale_degrees": ["2", "5", "b2", "b5", "1"]
+
+    },
+    {
+        "name": "Secondary II-V",
+        "chords": ["Am7", "D7", "Gmaj7", "Cmaj7"],
+        "degrees": ["vi7", "V7/V", "Vmaj7", "Imaj7"],
+        "scale_degrees": ["6", "V/5", "5", "1"]
+    },
+    {
+        "name": "I - VI7 - II7 - V7",
+        "chords": ["Cmaj7", "A7", "D7", "G7"],
+        "degrees": ["Imaj7", "VI7", "II7", "V7"],
+        "scale_degrees": ["1", "6", "2", "5"]
+    },
+    {
+        "name": "I - III7 - VI7 - II7 - V7",
+        "chords": ["Cmaj7", "E7", "A7", "D7", "G7"],
+        "degrees": ["Imaj7", "III7", "VI7", "II7", "V7"],
+        "scale_degrees": ["1", "3", "6", "2", "5"]
+    },
+    {
+        "name": "Lady Bird Changes",
+        "chords": ["Cmaj7", "Ebm7", "Ab7", "Dbmaj7"],
+        "degrees": ["Imaj7", "bIIImin7", "bVI7", "bIImaj7"],
+        "scale_degrees": ["1", "b3", "b6", "b2"]
+    },
+    {
+        "name": "Dim7 Passing Chords",
+        "chords": ["Cmaj7", "C#dim7", "Dm7", "G7"],
+        "degrees": ["Imaj7", "#Idim7", "ii7", "V7"],
+        "scale_degrees": ["1", "#1", "2", "5"]
+
+    },
+    {
+        "name": "I7 - IV7 Groove",
+        "chords": ["C7", "F7"],
+        "degrees": ["I7", "IV7"],
+        "scale_degrees": ["1", "4"]
+    },
+    {
+        "name": "I7 - bVII7 Vamp",
+        "chords": ["C7", "Bb7"],
+        "degrees": ["I7", "♭VII7"],
+        "scale_degrees": ["1", "♭7"]
+    },
+    {
+        "name": "I7 - IV7 - V7 Jam",
+        "chords": ["C7", "F7", "G7"],
+        "degrees": ["I7", "IV7", "V7"],
+        "scale_degrees": ["1", "4", "5"]
+    },
+    {
+        "name": "Funky II7 - V7 - I7",
+        "chords": ["D7", "G7", "C7"],
+        "degrees": ["II7", "V7", "I7"],
+        "scale_degrees": ["2", "5", "1"]
+    },
+    {
+        "name": "I7 - bIII7 - IV7 Progression",
+        "chords": ["C7", "Eb7", "F7"],
+        "degrees": ["I7", "♭III7", "IV7"],
+        "scale_degrees": ["1", "♭3", "4"]
+    },
+    {
+        "name": "I7 - V7 Funk",
+        "chords": ["C7", "G7"],
+        "degrees": ["I7", "V7"],
+        "scale_degrees": ["1", "5"]
+    },
+    {
+        "name": "I7 - IV7 - bVII7 - V7",
+        "chords": ["C7", "F7", "Bb7", "G7"],
+        "degrees": ["I7", "IV7", "♭VII7", "V7"],
+        "scale_degrees": ["1", "4", "♭7", "5"]
+    },
+    {
+        "name": "I7 - bVI7 Switch",
+        "chords": ["C7", "Ab7"],
+        "degrees": ["I7", "♭VI7"],
+        "scale_degrees": ["1", "♭6"]
+    },
+    {
+        "name": "I7 - IV7 - I7 - V7 Turnaround",
+        "chords": ["C7", "F7", "C7", "G7"],
+        "degrees": ["I7", "IV7", "I7", "V7"],
+        "scale_degrees": ["1", "4", "1", "5"]
+    },
+    {
+        "name": "I7 - II7 - IV7 - V7",
+        "chords": ["C7", "D7", "F7", "G7"],
+        "degrees": ["I7", "II7", "IV7", "V7"],
+        "scale_degrees": ["1", "2", "4", "5"]
+    },
+    {
+        "name": "I7sus4 Groove",
+        "chords": ["C7sus4", "C7"],
+        "degrees": ["I7sus4", "I7"],
+        "scale_degrees": ["1", "1"]
+    },
+    {
+        "name": "I7 - V7sus4 - V7",
+        "chords": ["C7", "G7sus4", "G7"],
+        "degrees": ["I7", "V7sus4", "V7"],
+        "scale_degrees": ["1", "5", "5"]
+    },
+    {
+        "name": "I7 - IV9 Funk",
+        "chords": ["C7", "F9"],
+        "degrees": ["I7", "IV9"],
+        "scale_degrees": ["1", "4"]
+    },
+    {
+        "name": "I7 - bVII9 Vamp",
+        "chords": ["C7", "Bb9"],
+        "degrees": ["I7", "♭VII9"],
+        "scale_degrees": ["1", "♭7"]
+    },
+    {
+        "name": "I7 - IV7 - V7 - bVI7",
+        "chords": ["C7", "F7", "G7", "Ab7"],
+        "degrees": ["I7", "IV7", "V7", "♭VI7"],
+        "scale_degrees": ["1", "4", "5", "♭6"]
+    },
+    {
+        "name": "I7 - bII7 Tension",
+        "chords": ["C7", "Db7"],
+        "degrees": ["I7", "♭II7"],
+        "scale_degrees": ["1", "♭2"]
+    },
+    {
+        "name": "I7 - IV7 - I7 Groove",
+        "chords": ["C7", "F7", "C7"],
+        "degrees": ["I7", "IV7", "I7"],
+        "scale_degrees": ["1", "4", "1"]
+    },
+    {
+        "name": "I7 - IV7 - V7 - IV7",
+        "chords": ["C7", "F7", "G7", "F7"],
+        "degrees": ["I7", "IV7", "V7", "IV7"],
+        "scale_degrees": ["1", "4", "5", "4"]
+    },
+    {
+        "name": "I7 - IV7 - V7 - IV7 - I7",
+        "chords": ["C7", "F7", "G7", "F7", "C7"],
+        "degrees": ["I7", "IV7", "V7", "IV7", "I7"],
+        "scale_degrees": ["1", "4", "5", "4", "1"]
+    },
+    {
+        "name": "I7 - VI7 - II7 - V7",
+        "chords": ["C7", "A7", "D7", "G7"],
+        "degrees": ["I7", "VI7", "II7", "V7"],
+        "scale_degrees": ["1", "6", "2", "5"]
+    },
+    {
+        "name": "Funk Blues Progression",
+        "chords": ["C7", "F7", "C7", "G7", "F7", "C7"],
+        "degrees": ["I7", "IV7", "I7", "V7", "IV7", "I7"],
+        "scale_degrees": ["1", "4", "1", "5", "4", "1"]
+    },
+    {
+        "name": "E Minor Gallop",
+        "chords": ["Em", "C", "D", "Em"],
+        "degrees": ["i", "VI", "VII", "i"],
+        "scale_degrees": ["1", "6", "7", "1"]
+    },
+    {
+        "name": "Chromatic Descent",
+        "chords": ["Em", "Eb", "Dm", "Db"],
+        "degrees": ["i", "♭II", "♭I", "♭VII"],
+        "scale_degrees": ["1", "♭2", "♭1", "♭7"]
+    },
+    {
+        "name": "Phrygian Riff",
+        "chords": ["Em", "F", "G", "F", "Em"],
+        "degrees": ["i", "♭II", "♭III", "♭II", "i"],
+        "scale_degrees": ["1", "♭2", "♭3", "♭2", "1"]
+    },
+    {
+        "name": "Power Chord Progression",
+        "chords": ["E5", "G5", "A5", "C5", "B5"],
+        "degrees": ["i", "♭III", "iv", "♭VI", "v"],
+        "scale_degrees": ["1", "♭3", "4", "♭6", "5"]
+    },
+    {
+        "name": "Minor Scale Ascension",
+        "chords": ["Am", "Bm", "C", "Dm", "Em", "F", "G"],
+        "degrees": ["i", "ii", "III", "iv", "v", "VI", "VII"],
+        "scale_degrees": ["1", "2", "3", "4", "5", "6", "7"]
+    },
+    {
+        "name": "Dorian Mode Groove",
+        "chords": ["Am", "G", "F", "G"],
+        "degrees": ["i", "VII", "VI", "VII"],
+        "scale_degrees": ["1", "7", "6", "7"]
+    },
+    {
+        "name": "Tritone Substitute",
+        "chords": ["Em", "Bb", "Em"],
+        "degrees": ["i", "♭V", "i"],
+        "scale_degrees": ["1", "♭5", "1"]
+    },
+    {
+        "name": "Harmonic Minor Shift",
+        "chords": ["Am", "E", "F", "G#dim"],
+        "degrees": ["i", "V", "VI", "vii°"  ],
+        "scale_degrees": ["1", "5", "6", "7°"]
+    },
+    {
+        "name": "Descending Fourths",
+        "chords": ["E5", "B5", "F#5", "C#5"],
+        "degrees": ["i", "v", "ii", "vi"],
+        "scale_degrees": ["1", "5", "2", "6"]
+    },
+    {
+        "name": "Open String Riff",
+        "chords": ["E5", "D5", "C5", "B5"],
+        "degrees": ["i", "VII", "VI", "v"],
+        "scale_degrees": ["1", "7", "6", "5"]
+    },
+    {
+        "name": "Half-Step Progression",
+        "chords": ["Em", "F", "F#m", "G"],
+        "degrees": ["i", "♭II", "ii", "III"],
+        "scale_degrees": ["1", "♭2", "2", "3"]
+    },
+    {
+        "name": "Minor to Major Shift",
+        "chords": ["Em", "G", "D", "A"],
+        "degrees": ["i", "III", "VII", "IV"],
+        "scale_degrees": ["1", "3", "7", "4"]
+    },
+    {
+        "name": "Pedal Point Riff",
+        "chords": ["E5", "G5/E", "A5/E", "E5"],
+        "degrees": ["i", "♭III/i", "iv/i", "i"],
+        "scale_degrees": ["1", "♭3/1", "4/1", "1"]
+    },
+    {
+        "name": "Diminished Walkdown",
+        "chords": ["Em", "D#dim", "D", "C#dim"],
+        "degrees": ["i", "vii°", "VII", "vi°"],
+        "scale_degrees": ["1", "7°", "7", "6°"]
+    },
+    {
+        "name": "Circle of Fifths",
+        "chords": ["E5", "A5", "D5", "G5", "C5", "F5", "B5"],
+        "degrees": ["i", "iv", "♭VII", "♭III", "♭VI", "♭II", "v"],
+        "scale_degrees": ["1", "4", "♭7", "♭3", "♭6", "♭2", "5"]
+    },
+    {
+        "name": "I-V-vi-IV (Axis Progression)",
+        "chords": ["C", "G", "Am", "F"],
+        "degrees": ["I", "V", "vi", "IV"],
+        "scale_degrees": ["1", "5", "6", "4"]
+    },
+    {
+        "name": "vi-IV-I-V",
+        "chords": ["Am", "F", "C", "G"],
+        "degrees": ["vi", "IV", "I", "V"],
+        "scale_degrees": ["6", "4", "1", "5"],
+        "chroma": {
+            "vector": [1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1],
+            "pitch_classes": ["C", "D", "E", "F", "G", "A", "B"]
+        },
+        "tags": ["pop"]
+    },
+    {
+        "name": "I-vi-IV-V",
+        "chords": ["C", "Am", "F", "G"],
+        "degrees": ["I", "vi", "IV", "V"],
+        "scale_degrees": ["1", "6", "4", "5"]
+    },
+    {
+        "name": "I-IV-V",
+        "chords": ["C", "F", "G"],
+        "degrees": ["I", "IV", "V"],
+        "scale_degrees": ["1", "4", "5"]
+    },
+    {
+        "name": "I-vi-V-IV",
+        "chords": ["C", "Am", "G", "F"],
+        "degrees": ["I", "vi", "V", "IV"],
+        "scale_degrees": ["1", "6", "5", "4"]
+    }
+]

@@ -2,8 +2,8 @@
 
 from typing import Optional, List, Dict, Any
 from motor.motor_asyncio import AsyncIOMotorDatabase
-from src.note_gen.models.chord_progression import ChordProgression
-from src.note_gen.database.repositories.mongodb import MongoDBRepository
+from note_gen.models.chord_progression import ChordProgression
+from note_gen.database.repositories.mongodb import MongoDBRepository
 
 class ChordProgressionRepository(MongoDBRepository[ChordProgression]):
     """Repository for chord progression operations."""

@@ -1,11 +1,11 @@
 """Pattern generator module."""
 from typing import Dict, Any, List
-from src.note_gen.core.enums import PatternType, PatternDirection, ValidationLevel
-from src.note_gen.models.rhythm import RhythmPattern, RhythmNote
-from src.note_gen.models.scale_info import ScaleInfo
-from src.note_gen.models.note_sequence import NoteSequence
-from src.note_gen.validation.pattern_validation import PatternValidator
-from src.note_gen.core.constants import PATTERN_PRESETS, PROGRESSION_PRESETS
+from note_gen.core.enums import PatternType, PatternDirection, ValidationLevel
+from note_gen.models.rhythm import RhythmPattern, RhythmNote
+from note_gen.models.scale_info import ScaleInfo
+from note_gen.models.note_sequence import NoteSequence
+from note_gen.validation.pattern_validation import PatternValidator
+from note_gen.core.constants import PATTERN_PRESETS, PROGRESSION_PRESETS
 
 async def generate_sequence_from_presets(
     note_pattern_name: str,

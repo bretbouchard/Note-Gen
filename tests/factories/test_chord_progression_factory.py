@@ -1,7 +1,7 @@
 import pytest
-from src.note_gen.factories.chord_progression_factory import ChordProgressionFactory
-from src.note_gen.models.chord_progression import ChordProgression
-from src.note_gen.core.enums import ScaleType, ChordQuality
+from note_gen.factories.chord_progression_factory import ChordProgressionFactory
+from note_gen.models.chord_progression import ChordProgression
+from note_gen.core.enums import ScaleType, ChordQuality
 
 class TestChordProgressionFactory:
     @pytest.mark.asyncio

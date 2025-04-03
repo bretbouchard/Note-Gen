@@ -3,11 +3,11 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from typing import Optional, Dict, Any, List
 from fastapi import APIRouter, HTTPException, status, Depends
 from pydantic import BaseModel
-from src.note_gen.models.rhythm import RhythmPattern, RhythmNote
-from src.note_gen.models.patterns import NotePattern
-from src.note_gen.core.enums import ScaleType
-from src.note_gen.validation.validation_manager import ValidationManager
-from src.note_gen.database.db import get_db_conn
+from note_gen.models.rhythm import RhythmPattern, RhythmNote
+from note_gen.models.patterns import NotePattern
+from note_gen.core.enums import ScaleType
+from note_gen.validation.validation_manager import ValidationManager
+from note_gen.database.db import get_db_conn
 
 router = APIRouter()
 

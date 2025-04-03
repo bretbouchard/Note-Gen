@@ -1,9 +1,9 @@
 """Validation functions for Roman numerals."""
 
 from typing import Dict, Any
-from src.note_gen.validation.base_validation import ValidationResult
-from src.note_gen.core.enums import ValidationLevel
-from src.note_gen.core.constants import ROMAN_TO_INT, ROMAN_NUMERAL_PATTERN
+from note_gen.validation.base_validation import ValidationResult
+from note_gen.core.enums import ValidationLevel
+from note_gen.core.constants import ROMAN_TO_INT, ROMAN_NUMERAL_PATTERN
 import re
 
 def validate_roman_numeral_data(data: Dict[str, Any], level: ValidationLevel) -> ValidationResult:

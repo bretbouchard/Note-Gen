@@ -1,9 +1,9 @@
 """Request models for the API endpoints."""
 from typing import Optional, Tuple
 from pydantic import Field, ConfigDict
-from ..core.constants import DEFAULTS
-from ..models.scale_info import ScaleInfo
-from ..models.base import BaseModelWithConfig
+from note_gen.core.constants import DEFAULTS
+from note_gen.models.scale_info import ScaleInfo
+from note_gen.models.base import BaseModelWithConfig
 
 class GenerateSequenceRequest(BaseModelWithConfig):
     """Request model for sequence generation."""

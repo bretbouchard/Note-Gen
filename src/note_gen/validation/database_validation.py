@@ -1,7 +1,7 @@
 """Database validation module."""
 from typing import Dict, Any, Optional
-from src.note_gen.validation.base_validation import ValidationResult
-from src.note_gen.core.constants import DATABASE
+from note_gen.validation.base_validation import ValidationResult
+from note_gen.core.constants import DATABASE
 
 class DatabaseValidation:
     """Database validation class."""

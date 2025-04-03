@@ -1,6 +1,6 @@
 import pytest
 from motor.motor_asyncio import AsyncIOMotorDatabase
-from src.note_gen.api.pattern_api import (
+from note_gen.api.pattern_api import (
     fetch_chord_progressions,
     fetch_chord_progression_by_id,
     fetch_rhythm_patterns,

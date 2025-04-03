@@ -4,8 +4,8 @@ import pytest_asyncio
 from typing import Dict, Any, List
 from unittest.mock import MagicMock, AsyncMock
 from motor.motor_asyncio import AsyncIOMotorDatabase, AsyncIOMotorCollection
-from src.note_gen.database.repositories.rhythm_pattern import RhythmPatternRepository
-from src.note_gen.models.patterns import RhythmPattern
+from note_gen.database.repositories.rhythm_pattern import RhythmPatternRepository
+from note_gen.models.patterns import RhythmPattern
 
 
 @pytest_asyncio.fixture

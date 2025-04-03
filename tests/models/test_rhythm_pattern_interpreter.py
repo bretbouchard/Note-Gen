@@ -1,11 +1,11 @@
-from src.note_gen.models.base import BaseModelWithConfig
-from src.note_gen.validation.base_validation import ValidationResult
+from note_gen.models.base import BaseModelWithConfig
+from note_gen.validation.base_validation import ValidationResult
 from typing import List, Dict, Any
-from src.note_gen.models.rhythm import RhythmNote, RhythmPattern
-from src.note_gen.models.pattern_interpreter import PatternInterpreter
-from src.note_gen.core.enums import ScaleType
-from src.note_gen.models.scale import Scale
-from src.note_gen.models.note import Note
+from note_gen.models.rhythm import RhythmNote, RhythmPattern
+from note_gen.models.pattern_interpreter import PatternInterpreter
+from note_gen.core.enums import ScaleType
+from note_gen.models.scale import Scale
+from note_gen.models.note import Note
 
 def test_rhythm_pattern_interpretation():
     """Test rhythm pattern interpretation with scale."""

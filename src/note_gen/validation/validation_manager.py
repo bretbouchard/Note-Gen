@@ -1,7 +1,7 @@
 
 """Validation manager for musical patterns and structures."""
 from typing import Dict, Any, Type, List, Union, Protocol, cast
-from src.note_gen.core.enums import ValidationLevel
+from note_gen.core.enums import ValidationLevel
 from .base_validation import ValidationResult, ValidationViolation
 from ..models.note import Note
 from pydantic import BaseModel

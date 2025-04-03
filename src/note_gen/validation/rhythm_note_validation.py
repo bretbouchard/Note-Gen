@@ -1,8 +1,8 @@
 """Validation for RhythmNote models."""
 from typing import List
-from src.note_gen.core.enums import ValidationLevel
-from src.note_gen.validation.base_validation import ValidationResult, ValidationViolation
-from src.note_gen.models.rhythm_note import RhythmNote
+from note_gen.core.enums import ValidationLevel
+from note_gen.validation.base_validation import ValidationResult, ValidationViolation
+from note_gen.models.rhythm_note import RhythmNote
 
 class RhythmNoteValidator:
     """Validator for RhythmNote models."""

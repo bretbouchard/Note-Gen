@@ -2,9 +2,9 @@
 
 from typing import Optional
 from pydantic import Field, model_validator
-from src.note_gen.models.base import BaseModelWithConfig
-from src.note_gen.core.enums import ChordQuality
-from src.note_gen.models.chord import Chord
+from note_gen.models.base import BaseModelWithConfig
+from note_gen.core.enums import ChordQuality
+from note_gen.models.chord import Chord
 
 class ChordProgressionItem(BaseModelWithConfig):
     """

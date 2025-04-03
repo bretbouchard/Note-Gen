@@ -1,16 +1,15 @@
 import pytest
 import asyncio
-from src.note_gen.models.note import Note
-from src.note_gen.models.scale_info import ScaleInfo
-from src.note_gen.core.enums import ScaleType, ValidationLevel, ChordQuality
-from src.note_gen.generators.chord_progression_generator import ChordProgressionGenerator
+from note_gen.models.note import Note
+from note_gen.models.scale_info import ScaleInfo
+from note_gen.core.enums import ScaleType, ValidationLevel, ChordQuality
+from note_gen.generators.chord_progression_generator import ChordProgressionGenerator
 
 @pytest.fixture
 def scale_info():
     return ScaleInfo(
         key="C",
-        scale_type=ScaleType.MAJOR,
-        tonic=Note(pitch="C")
+        scale_type=ScaleType.MAJOR
     )
 
 @pytest.fixture
@@ -18,8 +17,7 @@ def generator(scale_info):
     return ChordProgressionGenerator(
         name="Test Generator",
         key="C",
-        scale_type=ScaleType.MAJOR,
-        scale_info=scale_info
+        scale_type=ScaleType.MAJOR
     )
 
 @pytest.mark.asyncio

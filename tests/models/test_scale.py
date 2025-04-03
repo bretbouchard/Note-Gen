@@ -1,10 +1,10 @@
 """Test suite for Scale model."""
 import pytest
-from src.note_gen.models.base import BaseModelWithConfig
-from src.note_gen.validation.base_validation import ValidationResult
-from src.note_gen.models.scale import Scale
-from src.note_gen.models.note import Note
-from src.note_gen.core.enums import ScaleType
+from note_gen.models.base import BaseModelWithConfig
+from note_gen.validation.base_validation import ValidationResult
+from note_gen.models.scale import Scale
+from note_gen.models.note import Note
+from note_gen.core.enums import ScaleType
 
 
 def test_scale_creation():

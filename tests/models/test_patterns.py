@@ -1,17 +1,17 @@
 import pytest
 from pydantic import ValidationError
-from src.note_gen.models.patterns import (
+from note_gen.models.patterns import (
     NotePatternData,
     TransformationType,
     TransformationModel,
     NotePattern,
     NotePatternValidationError
 )
-from src.note_gen.core.enums import ScaleType, PatternDirection
-from src.note_gen.core.constants import DEFAULTS, SCALE_INTERVALS, PATTERN_VALIDATION_LIMITS
-from src.note_gen.models.note import Note
-from src.note_gen.models.chord import Chord, ChordProgressionItem
-from src.note_gen.models.scale_info import ScaleInfo
+from note_gen.core.enums import ScaleType, PatternDirection
+from note_gen.core.constants import DEFAULTS, SCALE_INTERVALS, PATTERN_VALIDATION_LIMITS
+from note_gen.models.note import Note
+from note_gen.models.chord import Chord, ChordProgressionItem
+from note_gen.models.scale_info import ScaleInfo
 from typing import Dict, List, Optional, Union, Any, cast
 
 def test_note_pattern_complex_validation() -> None:

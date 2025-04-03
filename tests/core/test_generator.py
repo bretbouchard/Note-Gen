@@ -1,7 +1,7 @@
 """Test pattern generator functionality."""
 import pytest
-from src.note_gen.core.sequence_generator import PatternGenerator
-from src.note_gen.core.enums import PatternDirection, ScaleType, ValidationLevel, PatternType
+from note_gen.core.sequence_generator import PatternGenerator
+from note_gen.core.enums import PatternDirection, ScaleType, ValidationLevel, PatternType
 
 @pytest.fixture
 def generator():

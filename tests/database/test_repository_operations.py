@@ -2,7 +2,7 @@
 import pytest
 import pytest_asyncio
 from motor.motor_asyncio import AsyncIOMotorDatabase
-from src.note_gen.database.repository import MongoDBRepository
+from note_gen.database.repository import MongoDBRepository
 from tests.database.test_models import DBTestModel
 
 

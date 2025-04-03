@@ -1,7 +1,7 @@
 import pytest
-from src.note_gen.factories.pattern_factory import PatternFactory
-from src.note_gen.models.patterns import NotePattern, RhythmPattern, RhythmNote
-from src.note_gen.core.enums import ScaleType
+from note_gen.factories.pattern_factory import PatternFactory
+from note_gen.models.patterns import NotePattern, RhythmPattern, RhythmNote
+from note_gen.core.enums import ScaleType
 
 class TestPatternFactory:
     @pytest.fixture

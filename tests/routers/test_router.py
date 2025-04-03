@@ -1,7 +1,7 @@
 """Tests for main router configuration."""
 import pytest
 from fastapi import APIRouter
-from src.note_gen.routers.router import main_router
+from note_gen.routers.router import main_router
 
 
 def test_main_router_exists():

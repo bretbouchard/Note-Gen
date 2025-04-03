@@ -1,9 +1,9 @@
 """Tests for the FakeScaleInfo model."""
 
 import pytest
-from src.note_gen.models.fake_scale_info import FakeScaleInfo
-from src.note_gen.models.note import Note
-from src.note_gen.core.enums import ScaleType
+from note_gen.models.fake_scale_info import FakeScaleInfo
+from note_gen.models.note import Note
+from note_gen.core.enums import ScaleType
 
 def test_fake_scale_info_basic():
     """Test basic fake scale info functionality."""

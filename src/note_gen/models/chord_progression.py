@@ -1,14 +1,15 @@
 """Chord progression model."""
 from typing import List, Optional, Tuple
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import Field, ConfigDict
 from .base import BaseModelWithConfig
 from .chord import Chord
 from .scale_info import ScaleInfo
-from ..core.enums import ScaleType, ChordQuality
+from ..core.enums import ScaleType
 from .chord_progression_item import ChordProgressionItem  # Import the correct model
 
 class ChordProgression(BaseModelWithConfig):
     """Model for chord progressions."""
+    id: Optional[str] = Field(default=None)
     name: str = Field(default="")
     key: str = Field(default="C")
     root_note: Optional[str] = Field(default=None)

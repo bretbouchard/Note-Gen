@@ -110,7 +110,7 @@ class UserController:
         return User(
             username="current_user",
             email="current@example.com",
-            full_name="Current User"
+            hashed_password="hashed_password"
         )
 
     async def get_user_by_username(self, username: str) -> Optional[User]:

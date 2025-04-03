@@ -3,8 +3,8 @@ import pytest
 from unittest.mock import MagicMock, AsyncMock
 from fastapi import Request
 from starlette.responses import Response
-from src.note_gen.api.middleware.validation import ValidationMiddleware, validate_request_middleware
-from src.note_gen.api.errors import ErrorCodes
+from note_gen.api.middleware.validation import ValidationMiddleware, validate_request_middleware
+from note_gen.api.errors import ErrorCodes
 import json
 
 

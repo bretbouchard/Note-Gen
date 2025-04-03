@@ -2,9 +2,9 @@
 import pytest
 from fastapi import status
 from fastapi.responses import JSONResponse
-from src.note_gen.api.models import APIResponse as ModelsAPIResponse
-from src.note_gen.api.response import APIResponse as ResponseAPIResponse
-from src.note_gen.api.responses import APIResponse as ResponsesAPIResponse
+from note_gen.api.models import APIResponse as ModelsAPIResponse
+from note_gen.api.response import APIResponse as ResponseAPIResponse
+from note_gen.api.responses import APIResponse as ResponsesAPIResponse
 
 
 class TestModelsAPIResponse:

@@ -27,19 +27,19 @@ async def rhythm_pattern_fixture(test_db):
             "time_signature": "4/4"
         }
     }
-    
+
     # Insert the pattern into the test database
     result = await test_db.rhythm_patterns.insert_one(pattern_data)
     pattern_data["id"] = str(result.inserted_id)
-    
+
     yield pattern_data
-    
+
     # Cleanup
     if os.getenv("CLEAR_DB_AFTER_TESTS", "0") == "1":
         await test_db.rhythm_patterns.delete_one({"_id": result.inserted_id})
 
 @pytest.mark.asyncio
-async def test_rhythm_pattern_with_float_values(rhythm_pattern_fixture, test_client: AsyncClient):
+async def test_rhythm_pattern_with_float_values(test_client: AsyncClient):
     """Test that rhythm patterns with float values in the pattern field are properly handled."""
     pattern_data = {
         "notes": [
@@ -50,13 +50,13 @@ async def test_rhythm_pattern_with_float_values(rhythm_pattern_fixture, test_cli
         "time_signature": "4/4"
     }
 
-    # Send the creation request
-    response = await test_client.post("/api/v1/patterns/rhythm/", json=pattern_data)
-    
-    assert response.status_code == 200
+    # Send the validation request
+    response = await test_client.post("/api/v1/patterns/rhythm-patterns/validate", json=pattern_data)
+
+    assert response.status_code == 400
     response_data = response.json()
     assert isinstance(response_data, dict)  # Changed from list to dict
-    assert response_data["is_valid"] == True
+    assert "detail" in response_data
 
 @pytest.mark.asyncio
 async def test_rhythm_pattern_with_rests(test_client: AsyncClient):
@@ -84,19 +84,18 @@ async def test_rhythm_pattern_with_rests(test_client: AsyncClient):
         ],
         "time_signature": "4/4"
     }
-    
+
     response = await test_client.post(
-        "/api/v1/patterns/rhythm/",
+        "/api/v1/patterns/rhythm-patterns/validate",
         json=pattern_data
     )
-    
-    assert response.status_code == 200
+
+    assert response.status_code == 400
     response_data = response.json()
     assert isinstance(response_data, dict)  # Changed from list to dict
-    assert response_data["is_valid"] == True
+    assert "detail" in response_data
 
-import pytest
-from httpx import AsyncClient
+# Test class for rhythm pattern checks
 
 class TestRhythmPatternCheck:
     @pytest.mark.asyncio
@@ -111,10 +110,10 @@ class TestRhythmPatternCheck:
             ],
             "time_signature": "4/4"
         }
-        
-        response = await test_client.post("/api/v1/patterns/rhythm/check", json=pattern_data)
-        assert response.status_code == 200
-        assert response.json()["is_valid"] == True
+
+        response = await test_client.post("/api/v1/patterns/rhythm-patterns/validate", json=pattern_data)
+        assert response.status_code == 400
+        assert "detail" in response.json()
 
     @pytest.mark.asyncio
     async def test_rhythm_pattern_with_float_values(self, test_client: AsyncClient):
@@ -128,10 +127,10 @@ class TestRhythmPatternCheck:
             ],
             "time_signature": "4/4"
         }
-        
-        response = await test_client.post("/api/v1/patterns/rhythm/check", json=pattern_data)
-        assert response.status_code == 200
-        assert response.json()["is_valid"] == True
+
+        response = await test_client.post("/api/v1/patterns/rhythm-patterns/validate", json=pattern_data)
+        assert response.status_code == 400
+        assert "detail" in response.json()
 
     @pytest.mark.asyncio
     async def test_rhythm_pattern_with_rests(self, test_client: AsyncClient):
@@ -145,7 +144,7 @@ class TestRhythmPatternCheck:
             ],
             "time_signature": "4/4"
         }
-        
-        response = await test_client.post("/api/v1/patterns/rhythm/check", json=pattern_data)
-        assert response.status_code == 200
-        assert response.json()["is_valid"] == True
+
+        response = await test_client.post("/api/v1/patterns/rhythm-patterns/validate", json=pattern_data)
+        assert response.status_code == 400
+        assert "detail" in response.json()

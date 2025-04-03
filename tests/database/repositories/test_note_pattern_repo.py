@@ -4,9 +4,9 @@ import pytest_asyncio
 from typing import Dict, Any, List
 from unittest.mock import MagicMock, AsyncMock
 from motor.motor_asyncio import AsyncIOMotorDatabase, AsyncIOMotorCollection
-from src.note_gen.database.repositories.note_pattern import NotePatternRepository
-from src.note_gen.models.patterns import NotePattern
-from src.note_gen.models.note import Note
+from note_gen.database.repositories.note_pattern import NotePatternRepository
+from note_gen.models.patterns import NotePattern
+from note_gen.models.note import Note
 
 
 @pytest_asyncio.fixture

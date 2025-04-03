@@ -1,7 +1,7 @@
 """Tests for database interfaces."""
 import pytest
 from typing import Optional, List, Dict, Any
-from src.note_gen.database.interfaces import Repository
+from note_gen.database.interfaces import Repository
 
 
 # Create a concrete implementation of the Repository interface for testing

@@ -1,11 +1,11 @@
 import pytest
-from src.note_gen.core.enums import ScaleType, PatternDirection, ValidationLevel
-from src.note_gen.factories.note_sequence_factory import NoteSequenceFactory
-from src.note_gen.factories.chord_progression_factory import ChordProgressionFactory
-from src.note_gen.factories.pattern_factory import PatternFactory
-from src.note_gen.models.note import Note
-from src.note_gen.models.rhythm import RhythmNote
-from src.note_gen.models.scale_info import ScaleInfo
+from note_gen.core.enums import ScaleType, PatternDirection, ValidationLevel
+from note_gen.factories.note_sequence_factory import NoteSequenceFactory
+from note_gen.factories.chord_progression_factory import ChordProgressionFactory
+from note_gen.factories.pattern_factory import PatternFactory
+from note_gen.models.note import Note
+from note_gen.models.rhythm import RhythmNote
+from note_gen.models.scale_info import ScaleInfo
 
 @pytest.mark.asyncio
 async def test_create_from_preset():

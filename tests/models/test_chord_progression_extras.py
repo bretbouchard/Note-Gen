@@ -1,7 +1,7 @@
 """Tests for chord progression extras models."""
 import pytest
 from unittest.mock import MagicMock, patch
-from src.note_gen.models.chord_progression_extras import (
+from note_gen.models.chord_progression_extras import (
     ChordProgressionResponse,
     valid_qualities
 )
@@ -13,9 +13,9 @@ class MidiRange:
     max_midi: int = 127
 
 MIDI_LIMITS = MidiRange()
-from src.note_gen.models.scale_info import ScaleInfo
-from src.note_gen.models.chord_progression_item import ChordProgressionItem
-from src.note_gen.core.enums import ScaleType, ChordQuality
+from note_gen.models.scale_info import ScaleInfo
+from note_gen.models.chord_progression_item import ChordProgressionItem
+from note_gen.core.enums import ScaleType, ChordQuality
 from bson import ObjectId
 
 

@@ -1,11 +1,11 @@
 """Core accessors for musical elements."""
 from typing import List, Tuple
-from src.note_gen.core.constants import (
+from note_gen.core.constants import (
     NOTES,
     NOTE_TO_SEMITONE,
     SCALE_INTERVALS
 )
-from src.note_gen.core.enums import ScaleType
+from note_gen.core.enums import ScaleType
 
 class NoteAccessor:
     """Accessor for note-related operations."""

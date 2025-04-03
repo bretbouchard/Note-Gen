@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
-from src.note_gen.models.rhythm import RhythmNote
-from src.note_gen.core.enums import AccentType
+from note_gen.models.rhythm import RhythmNote
+from note_gen.core.enums import AccentType
 
 
 def test_validate_velocity_valid() -> None:

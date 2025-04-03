@@ -1,7 +1,7 @@
 """Test chord progression check endpoints."""
 import pytest
 from fastapi.testclient import TestClient
-from src.note_gen.main import app  # Update import path
+from note_gen.main import app  # Update import path
 
 @pytest.fixture
 def client():

@@ -2,7 +2,7 @@
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from src.note_gen.routers.pattern_routes import router
+from note_gen.routers.pattern_routes import router
 
 
 @pytest.fixture

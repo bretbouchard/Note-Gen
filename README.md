@@ -2,6 +2,11 @@
 
 A Python-based tool for generating musical note sequences based on scale degrees and chord progressions. This project provides a FastAPI backend for creating and manipulating musical patterns.
 
+[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.95.0+-green.svg)](https://fastapi.tiangolo.com/)
+[![MongoDB](https://img.shields.io/badge/MongoDB-4.4+-green.svg)](https://www.mongodb.com/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 ## Overview
 
 The Note-Gen is a specialized tool that works with scale degrees (1-7) rather than absolute notes (C, D, E, etc.). This approach makes it easier to:
@@ -78,69 +83,148 @@ note-gen/
 
 ## Installation
 
-Clone the repository:
+### Prerequisites
+
+- Python 3.9 or higher
+- MongoDB 4.4 or higher
+- Git
+
+### Step 1: Clone the Repository
 
 ```bash
 git clone https://github.com/bretbouchard/Note-Gen.git
 cd Note-Gen
 ```
 
-Create a virtual environment:
+### Step 2: Set Up Virtual Environment
 
 ```bash
+# Create a virtual environment
 python -m venv venv
+
+# Activate the virtual environment
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 ```
 
-Install dependencies:
+### Step 3: Install Dependencies
 
 ```bash
+# Install required packages
 pip install -r requirements.txt
-pip install -r requirements-dev.txt  # For development
+
+# For development (optional)
+pip install -r requirements-dev.txt
+```
+
+### Step 4: Configure Environment Variables (Optional)
+
+Create a `.env` file in the project root with the following variables:
+
+```env
+MONGODB_URL=mongodb://localhost:27017
+DATABASE_NAME=note_gen
 ```
 
 ## Usage
 
 ### Starting the Application
 
-Start the MongoDB database:
+#### Step 1: Start MongoDB
+
+Ensure MongoDB is running:
 
 ```bash
 # Start MongoDB (if not running as a service)
 mongod --dbpath=./data/db
 ```
 
-Start the FastAPI server:
+#### Step 2: Start the FastAPI Server
 
 ```bash
-# Using the PYTHONPATH to ensure imports work correctly
-PYTHONPATH=src uvicorn note_gen.main:app --reload
+# Using the run script (recommended)
+./run.sh
+```
+
+This script will:
+
+- Activate the virtual environment if needed
+- Start the server on port 8000
+- Enable hot reloading (the server will automatically restart when code changes)
+
+Alternatively, you can start the server manually:
+
+```bash
+PYTHONPATH=src uvicorn note_gen.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+#### Step 3: Populate the Database (First Time Setup)
+
+In a new terminal, run:
+
+```bash
+# Activate the virtual environment
+source venv/bin/activate
+
+# Import chord progressions, note patterns, and rhythm patterns
+python scripts/import_chord_progressions.py --clear
+python scripts/import_note_patterns.py --clear
+python scripts/import_rhythm_patterns.py --clear
+```
+
+### Stopping the Application
+
+```bash
+# Using the stop script
+./stop.sh
+
+# Or press Ctrl+C in the terminal where the server is running
 ```
 
 ### API Documentation
 
-Access the API documentation:
+Once the server is running, access the API documentation at:
 
-- OpenAPI documentation: <http://localhost:8000/docs>
-- ReDoc documentation: <http://localhost:8000/redoc>
+- OpenAPI (Swagger UI): <http://localhost:8000/docs>
+- ReDoc (alternative UI): <http://localhost:8000/redoc>
+
+Note: The server runs on port 8000 by default. If you need to change this, edit the `run.sh` script.
+
+### Key Endpoints
+
+| Endpoint | Description |
+|----------|-------------|
+| `/api/v1/chord-progressions` | List and manage chord progressions |
+| `/api/v1/patterns/note-patterns` | List and manage note patterns |
+| `/api/v1/patterns/rhythm-patterns` | List and manage rhythm patterns |
+| `/api/v1/sequences` | Create and manage sequences |
+| `/stats` | View database statistics |
+| `/patterns-list` | View all available patterns |
 
 ### Example API Calls
 
-Generate a note sequence from a chord progression:
+#### Generate a Note Sequence
 
 ```http
 POST /api/v1/sequences/generate
+Content-Type: application/json
+
 {
     "progression_name": "II-V-I in C Major",
     "pattern_name": "Ascending Scale",
-    "rhythm_pattern_name": "Quarter Notes"
+    "rhythm_pattern_name": "Basic 4/4"
 }
 ```
 
-Get available chord progressions:
+#### Get All Chord Progressions
 
 ```http
 GET /api/v1/chord-progressions
+```
+
+#### Get a Specific Note Pattern
+
+```http
+GET /api/v1/patterns/note-patterns/{pattern_id}
 ```
 
 ## Development
@@ -148,25 +232,41 @@ GET /api/v1/chord-progressions
 ### Running Tests
 
 ```bash
+# Activate the virtual environment
+source venv/bin/activate
+
 # Run all tests
 python -m pytest
 
-# Run with coverage
-python -m pytest --cov=src.note_gen
+# Run with coverage report
+python -m pytest --cov=note_gen --cov-report=term-missing
 
-# Type checking
-mypy src
+# Run specific test file
+python -m pytest tests/path/to/test_file.py
 ```
 
-### Code Quality
+### Code Quality Tools
 
 ```bash
-# Linting
+# Type checking with mypy
+mypy src
+
+# Linting with flake8
 flake8 src
+
+# Linting with ruff (faster alternative)
 ruff check src
 
-# Formatting
+# Formatting with black
 black src
+```
+
+### Debugging
+
+To enable debug logging, set the `DEBUG` environment variable:
+
+```bash
+DEBUG=1 ./run.sh
 ```
 
 ## Documentation

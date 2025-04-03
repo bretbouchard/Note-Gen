@@ -2,7 +2,7 @@
 from typing import Any, ClassVar, Optional, Dict
 from pydantic import BaseModel, Field, field_validator, model_validator, ConfigDict
 import re
-from src.note_gen.core.constants import FULL_NOTE_REGEX
+from note_gen.core.constants import FULL_NOTE_REGEX
 
 class Note(BaseModel):
     """A musical note model."""
@@ -97,7 +97,7 @@ class Note(BaseModel):
     def from_midi_number(cls, midi_number: int, duration: float = 1.0,
                         velocity: int = 64, position: float = 0.0) -> 'Note':
         """Create a Note from a MIDI note number."""
-        from src.note_gen.validation.midi_validation import midi_to_octave_pitch
+        from note_gen.validation.midi_validation import midi_to_octave_pitch
 
         cls.validate_midi_number(midi_number)
 

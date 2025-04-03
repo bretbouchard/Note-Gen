@@ -1,12 +1,12 @@
 from typing import List, Tuple, Dict, Any
-from src.note_gen.models.chord_progression import ChordProgression, ChordProgressionItem
-from src.note_gen.models.chord import Chord
-from src.note_gen.models.scale_info import ScaleInfo
-from src.note_gen.core.enums import ScaleType, ChordQuality
+from note_gen.models.chord_progression import ChordProgression, ChordProgressionItem
+from note_gen.models.chord import Chord
+from note_gen.models.scale_info import ScaleInfo
+from note_gen.core.enums import ScaleType, ChordQuality
 
 class ChordProgressionFactory:
     """Factory for creating chord progressions."""
-    
+
     COMMON_PROGRESSIONS = {
         "pop": {
             "pattern": [
@@ -55,13 +55,18 @@ class ChordProgressionFactory:
 
         preset = cls.COMMON_PROGRESSIONS[preset_name]
         pattern = preset["pattern"]
-        
-        return await cls.from_pattern(
+
+        progression = await cls.from_pattern(
             pattern=pattern,
             key=key,
             scale_type=scale_type,
             time_signature=time_signature
         )
+
+        # Update the progression name
+        progression.name = f"{preset_name.title()} Progression"
+
+        return progression
 
     @classmethod
     async def from_pattern(
@@ -76,7 +81,7 @@ class ChordProgressionFactory:
         scale_notes = scale_info.get_scale_notes()
         chords = []
         position = 0.0
-        
+
         for degree, quality in pattern:
             # Convert scale degree to root note (degrees are 1-based, list is 0-based)
             root = scale_notes[degree - 1].pitch
@@ -84,23 +89,26 @@ class ChordProgressionFactory:
                 "root": root,
                 "quality": quality
             })
-        
+
+        items = []
+        for i, chord in enumerate(chords):
+            chord_obj = Chord(
+                root=chord['root'],
+                quality=chord['quality']
+            )
+            items.append(ChordProgressionItem(
+                chord=chord_obj,
+                chord_symbol=f"{chord['root']}{chord['quality']}",
+                duration=1.0,
+                position=float(i)
+            ))
+
         return ChordProgression(
             name="Pattern-Based Progression",
             key=key,
             scale_type=scale_type,
-            scale_info=scale_info,
             time_signature=time_signature,
-            chords=chords,
-            items=[
-                ChordProgressionItem(
-                    chord=Chord(**chord),
-                    chord_symbol=f"{chord['root']}{chord['quality']}",
-                    duration=1.0,
-                    position=float(i)
-                )
-                for i, chord in enumerate(chords)
-            ]
+            items=items
         )
 
     @classmethod
@@ -117,7 +125,10 @@ class ChordProgressionFactory:
             raise ValueError(f"Unsupported genre: {genre}")
 
         pattern = cls.GENRE_PATTERNS[genre]["patterns"][0]
-        
+
+        # Limit the pattern to the requested length
+        pattern = pattern[:length]
+
         return await cls.from_pattern(
             pattern=pattern,
             key=key,
@@ -138,11 +149,13 @@ class ChordProgressionFactory:
         position = 0.0
 
         for data in chord_data:
+            chord = Chord(
+                root=data.get("root", key),
+                quality=data["quality"]
+            )
             chord_item = ChordProgressionItem(
-                chord=Chord(
-                    root=data.get("root", key),
-                    quality=data["quality"]
-                ),
+                chord_symbol=f"{chord.root}{chord.quality.value}",
+                chord=chord,
                 duration=data.get("duration", 1.0),
                 position=position
             )

@@ -1,6 +1,6 @@
 """Tests for database exceptions."""
 import pytest
-from src.note_gen.database.exceptions import (
+from note_gen.database.exceptions import (
     DatabaseError,
     ConnectionError,
     DuplicateKeyError,

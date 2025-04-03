@@ -1,8 +1,8 @@
 """Tests for document validation."""
 import pytest
 from pydantic import BaseModel, Field
-from src.note_gen.database.validation import DocumentValidator
-from src.note_gen.database.errors import ValidationError as DBValidationError
+from note_gen.database.validation import DocumentValidator
+from note_gen.database.errors import ValidationError as DBValidationError
 
 
 # Define a test model

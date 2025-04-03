@@ -96,7 +96,7 @@ class Pattern(BaseModel):
         arbitrary_types_allowed=True
     )
 
-    id: str = Field(default="", description="Pattern ID")
+    id: Optional[str] = Field(default=None, description="Pattern ID")
     name: str = Field(
         default="",
         description="Pattern name",
@@ -126,7 +126,9 @@ class NotePattern(Pattern):
         extra='allow'
     )
 
+    id: Optional[str] = Field(default=None)
     name: str = Field(default="")
+    description: Optional[str] = None
     pattern: Sequence[Union[str, Note]] = Field(
         default_factory=list,
         description="List of notes in the pattern"
@@ -137,6 +139,7 @@ class NotePattern(Pattern):
     )
     scale_info: Optional[ScaleInfo] = None
     skip_validation: bool = Field(default=True)
+    tags: List[str] = Field(default_factory=list)
 
     @model_validator(mode='after')
     def validate_pattern_empty(self) -> 'NotePattern':
@@ -775,10 +778,11 @@ class RhythmPattern(BaseModel):
     """Model for rhythm patterns."""
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
-        from_attributes=True
+        from_attributes=True,
+        extra='allow'
     )
 
-    id: str = Field(default="")
+    id: Optional[str] = Field(default=None)
     name: str = Field(default="")
     pattern: List[RhythmNote] = Field(default_factory=list)
     time_signature: Tuple[int, int] = Field(default=(4, 4))

@@ -1,8 +1,8 @@
 """Validation functions for scale degree data."""
 from typing import Dict, Any
-from src.note_gen.validation.base_validation import ValidationResult
-from src.note_gen.core.enums import ValidationLevel, ChordQuality
-from src.note_gen.core.constants import SCALE_DEGREE_QUALITIES, DEFAULT_SCALE_DEGREE_QUALITIES
+from note_gen.validation.base_validation import ValidationResult
+from note_gen.core.enums import ValidationLevel, ChordQuality
+from note_gen.core.constants import SCALE_DEGREE_QUALITIES, DEFAULT_SCALE_DEGREE_QUALITIES
 
 def validate_scale_degree(data: Dict[str, Any], level: ValidationLevel = ValidationLevel.NORMAL) -> ValidationResult:
     """

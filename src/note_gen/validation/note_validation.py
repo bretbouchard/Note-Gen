@@ -1,9 +1,9 @@
 """Validation for Note models."""
 from typing import Dict, Any, List
 import re
-from src.note_gen.core.enums import ValidationLevel
-from src.note_gen.core.constants import MIDI_MIN, MIDI_MAX, DEFAULTS
-from src.note_gen.validation.base_validation import ValidationResult, ValidationViolation
+from note_gen.core.enums import ValidationLevel
+from note_gen.core.constants import MIDI_MIN, MIDI_MAX, DEFAULTS
+from note_gen.validation.base_validation import ValidationResult, ValidationViolation
 
 ALLOWED_PITCH_REGEX = r'^[A-G]([#b])?$'
 

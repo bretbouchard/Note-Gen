@@ -1,8 +1,8 @@
 """Validation functions for chord progression data."""
 from typing import Dict, Any
-from src.note_gen.core.enums import ValidationLevel, ChordQuality
-from src.note_gen.core.constants import VALID_KEYS
-from src.note_gen.validation.base_validation import ValidationResult
+from note_gen.core.enums import ValidationLevel, ChordQuality
+from note_gen.core.constants import VALID_KEYS
+from note_gen.validation.base_validation import ValidationResult
 
 def validate_chord_progression_data(data: Dict[str, Any], level: ValidationLevel = ValidationLevel.NORMAL) -> ValidationResult:
     """

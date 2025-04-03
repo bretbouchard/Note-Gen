@@ -8,10 +8,10 @@ from pydantic import (
     computed_field,
     ValidationInfo
 )
-from src.note_gen.core.constants import DATABASE, COLLECTION_NAMES
-from src.note_gen.core.enums import ValidationLevel
-from src.note_gen.validation.validation_manager import ValidationManager
-from src.note_gen.validation.base_validation import ValidationResult
+from note_gen.core.constants import DATABASE, COLLECTION_NAMES
+from note_gen.core.enums import ValidationLevel
+from note_gen.validation.validation_manager import ValidationManager
+from note_gen.validation.base_validation import ValidationResult
 
 class DatabaseConfig(BaseModel):
     """Database configuration model with connection management."""

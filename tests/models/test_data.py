@@ -1,9 +1,9 @@
 """Tests for data models."""
 import pytest
 from unittest.mock import patch, MagicMock
-from src.note_gen.models.data import DataStore, PatternData
-from src.note_gen.core.enums import ScaleType, ValidationLevel
-from src.note_gen.validation.base_validation import ValidationResult, ValidationViolation
+from note_gen.models.data import DataStore, PatternData
+from note_gen.core.enums import ScaleType, ValidationLevel
+from note_gen.validation.base_validation import ValidationResult, ValidationViolation
 
 
 def test_data_store_init():
@@ -12,11 +12,11 @@ def test_data_store_init():
     assert store.patterns == {}
 
 
-@patch('src.note_gen.models.data.RHYTHM_PATTERNS', {'test_rhythm': {}})
-@patch('src.note_gen.models.data.NOTE_PATTERNS', {'test_note': {}})
-@patch('src.note_gen.models.data.COMMON_PROGRESSIONS', {'test_progression': {}})
-@patch('src.note_gen.models.data.SCALE_INTERVALS', {ScaleType.MAJOR: [0, 2, 4, 5, 7, 9, 11]})
-@patch('src.note_gen.models.data.VALID_KEYS', ['C', 'D', 'E', 'F', 'G', 'A', 'B'])
+@patch('note_gen.models.data.RHYTHM_PATTERNS', {'test_rhythm': {}})
+@patch('note_gen.models.data.NOTE_PATTERNS', {'test_note': {}})
+@patch('note_gen.models.data.COMMON_PROGRESSIONS', {'test_progression': {}})
+@patch('note_gen.models.data.SCALE_INTERVALS', {ScaleType.MAJOR: [0, 2, 4, 5, 7, 9, 11]})
+@patch('note_gen.models.data.VALID_KEYS', ['C', 'D', 'E', 'F', 'G', 'A', 'B'])
 def test_pattern_data_valid():
     """Test PatternData with valid data."""
     # Create a valid pattern data
@@ -57,11 +57,11 @@ def test_pattern_data_invalid_rhythm():
         )
 
 
-@patch('src.note_gen.models.data.RHYTHM_PATTERNS', {'test_rhythm': {}})
-@patch('src.note_gen.models.data.NOTE_PATTERNS', {'test_note': {}})
-@patch('src.note_gen.models.data.COMMON_PROGRESSIONS', {'test_progression': {}})
-@patch('src.note_gen.models.data.SCALE_INTERVALS', {ScaleType.MAJOR: [0, 2, 4, 5, 7, 9, 11]})
-@patch('src.note_gen.models.data.VALID_KEYS', ['C', 'D', 'E', 'F', 'G', 'A', 'B'])
+@patch('note_gen.models.data.RHYTHM_PATTERNS', {'test_rhythm': {}})
+@patch('note_gen.models.data.NOTE_PATTERNS', {'test_note': {}})
+@patch('note_gen.models.data.COMMON_PROGRESSIONS', {'test_progression': {}})
+@patch('note_gen.models.data.SCALE_INTERVALS', {ScaleType.MAJOR: [0, 2, 4, 5, 7, 9, 11]})
+@patch('note_gen.models.data.VALID_KEYS', ['C', 'D', 'E', 'F', 'G', 'A', 'B'])
 def test_pattern_data_invalid_note():
     """Test PatternData with invalid note pattern."""
     # Attempt to create with invalid note pattern
@@ -76,11 +76,11 @@ def test_pattern_data_invalid_note():
         )
 
 
-@patch('src.note_gen.models.data.RHYTHM_PATTERNS', {'test_rhythm': {}})
-@patch('src.note_gen.models.data.NOTE_PATTERNS', {'test_note': {}})
-@patch('src.note_gen.models.data.COMMON_PROGRESSIONS', {'test_progression': {}})
-@patch('src.note_gen.models.data.SCALE_INTERVALS', {ScaleType.MAJOR: [0, 2, 4, 5, 7, 9, 11]})
-@patch('src.note_gen.models.data.VALID_KEYS', ['C', 'D', 'E', 'F', 'G', 'A', 'B'])
+@patch('note_gen.models.data.RHYTHM_PATTERNS', {'test_rhythm': {}})
+@patch('note_gen.models.data.NOTE_PATTERNS', {'test_note': {}})
+@patch('note_gen.models.data.COMMON_PROGRESSIONS', {'test_progression': {}})
+@patch('note_gen.models.data.SCALE_INTERVALS', {ScaleType.MAJOR: [0, 2, 4, 5, 7, 9, 11]})
+@patch('note_gen.models.data.VALID_KEYS', ['C', 'D', 'E', 'F', 'G', 'A', 'B'])
 def test_pattern_data_invalid_progression():
     """Test PatternData with invalid progression."""
     # Attempt to create with invalid progression
@@ -95,11 +95,11 @@ def test_pattern_data_invalid_progression():
         )
 
 
-@patch('src.note_gen.models.data.RHYTHM_PATTERNS', {'test_rhythm': {}})
-@patch('src.note_gen.models.data.NOTE_PATTERNS', {'test_note': {}})
-@patch('src.note_gen.models.data.COMMON_PROGRESSIONS', {'test_progression': {}})
-@patch('src.note_gen.models.data.SCALE_INTERVALS', {ScaleType.MAJOR: [0, 2, 4, 5, 7, 9, 11]})
-@patch('src.note_gen.models.data.VALID_KEYS', ['C', 'D', 'E', 'F', 'G', 'A', 'B'])
+@patch('note_gen.models.data.RHYTHM_PATTERNS', {'test_rhythm': {}})
+@patch('note_gen.models.data.NOTE_PATTERNS', {'test_note': {}})
+@patch('note_gen.models.data.COMMON_PROGRESSIONS', {'test_progression': {}})
+@patch('note_gen.models.data.SCALE_INTERVALS', {ScaleType.MAJOR: [0, 2, 4, 5, 7, 9, 11]})
+@patch('note_gen.models.data.VALID_KEYS', ['C', 'D', 'E', 'F', 'G', 'A', 'B'])
 def test_pattern_data_invalid_scale_type():
     """Test PatternData with invalid scale type."""
     # Attempt to create with invalid scale type
@@ -114,11 +114,11 @@ def test_pattern_data_invalid_scale_type():
         )
 
 
-@patch('src.note_gen.models.data.RHYTHM_PATTERNS', {'test_rhythm': {}})
-@patch('src.note_gen.models.data.NOTE_PATTERNS', {'test_note': {}})
-@patch('src.note_gen.models.data.COMMON_PROGRESSIONS', {'test_progression': {}})
-@patch('src.note_gen.models.data.SCALE_INTERVALS', {ScaleType.MAJOR: [0, 2, 4, 5, 7, 9, 11]})
-@patch('src.note_gen.models.data.VALID_KEYS', ['C', 'D', 'E', 'F', 'G', 'A', 'B'])
+@patch('note_gen.models.data.RHYTHM_PATTERNS', {'test_rhythm': {}})
+@patch('note_gen.models.data.NOTE_PATTERNS', {'test_note': {}})
+@patch('note_gen.models.data.COMMON_PROGRESSIONS', {'test_progression': {}})
+@patch('note_gen.models.data.SCALE_INTERVALS', {ScaleType.MAJOR: [0, 2, 4, 5, 7, 9, 11]})
+@patch('note_gen.models.data.VALID_KEYS', ['C', 'D', 'E', 'F', 'G', 'A', 'B'])
 def test_pattern_data_invalid_key():
     """Test PatternData with invalid key."""
     # Attempt to create with invalid key
@@ -133,12 +133,12 @@ def test_pattern_data_invalid_key():
         )
 
 
-@patch('src.note_gen.models.data.RHYTHM_PATTERNS', {'test_rhythm': {}})
-@patch('src.note_gen.models.data.NOTE_PATTERNS', {'test_note': {}})
-@patch('src.note_gen.models.data.COMMON_PROGRESSIONS', {'test_progression': {}})
-@patch('src.note_gen.models.data.SCALE_INTERVALS', {ScaleType.MAJOR: [0, 2, 4, 5, 7, 9, 11]})
-@patch('src.note_gen.models.data.VALID_KEYS', ['C', 'D', 'E', 'F', 'G', 'A', 'B'])
-@patch('src.note_gen.models.data.validate_pattern_structure')
+@patch('note_gen.models.data.RHYTHM_PATTERNS', {'test_rhythm': {}})
+@patch('note_gen.models.data.NOTE_PATTERNS', {'test_note': {}})
+@patch('note_gen.models.data.COMMON_PROGRESSIONS', {'test_progression': {}})
+@patch('note_gen.models.data.SCALE_INTERVALS', {ScaleType.MAJOR: [0, 2, 4, 5, 7, 9, 11]})
+@patch('note_gen.models.data.VALID_KEYS', ['C', 'D', 'E', 'F', 'G', 'A', 'B'])
+@patch('note_gen.models.data.validate_pattern_structure')
 def test_validate_rhythm(mock_validate):
     """Test validate_rhythm method."""
     # Mock the validation result

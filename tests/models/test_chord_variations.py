@@ -1,7 +1,7 @@
 import logging
-from src.note_gen.models.note import Note
-from src.note_gen.models.chord import Chord
-from src.note_gen.core.enums import ChordQuality
+from note_gen.models.note import Note
+from note_gen.models.chord import Chord
+from note_gen.core.enums import ChordQuality
 
 logger = logging.getLogger(__name__)
 

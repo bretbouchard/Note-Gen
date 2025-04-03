@@ -1,6 +1,6 @@
 """Test rhythm pattern functionality."""
-from src.note_gen.models.rhythm import RhythmPattern , RhythmNote
-from src.note_gen.core.enums import ScaleType
+from note_gen.models.rhythm import RhythmPattern , RhythmNote
+from note_gen.core.enums import ScaleType
 
 def test_basic_rhythm_pattern():
     """Test basic rhythm pattern creation and validation."""

@@ -1,10 +1,10 @@
 """Validation functions for rhythm-related data."""
 from typing import Dict, Any, List
-from src.note_gen.core.constants import DURATIONS, DURATION_LIMITS
-from src.note_gen.core.enums import ValidationLevel, AccentType
-from src.note_gen.validation.base_validation import ValidationResult, ValidationError
-from src.note_gen.validation.rhythm_note_validation import RhythmNoteValidator
-from src.note_gen.models.rhythm import RhythmNote
+from note_gen.core.constants import DURATIONS, DURATION_LIMITS
+from note_gen.core.enums import ValidationLevel, AccentType
+from note_gen.validation.base_validation import ValidationResult, ValidationError
+from note_gen.validation.rhythm_note_validation import RhythmNoteValidator
+from note_gen.models.rhythm import RhythmNote
 
 def validate_rhythm_data(data: Dict[str, Any], level: ValidationLevel = ValidationLevel.NORMAL) -> ValidationResult:
     """

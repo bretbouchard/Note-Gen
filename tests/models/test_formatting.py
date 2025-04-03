@@ -1,11 +1,11 @@
 import unittest
-from src.note_gen.models.note import Note
-from src.note_gen.models.rhythm import RhythmNote, RhythmPattern
-from src.note_gen.core.constants import COMMON_PROGRESSIONS
-from src.note_gen.core.enums import ChordQuality, ScaleType
-from src.note_gen.models.chord import Chord, ChordProgressionItem
-from src.note_gen.models.chord_progression import ChordProgression
-from src.note_gen.models.scale import ScaleInfo
+from note_gen.models.note import Note
+from note_gen.models.rhythm import RhythmNote, RhythmPattern
+from note_gen.core.constants import COMMON_PROGRESSIONS
+from note_gen.core.enums import ChordQuality, ScaleType
+from note_gen.models.chord import Chord, ChordProgressionItem
+from note_gen.models.chord_progression import ChordProgression
+from note_gen.models.scale import ScaleInfo
 
 """Test formatting utilities."""
 

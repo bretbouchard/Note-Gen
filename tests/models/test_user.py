@@ -1,7 +1,7 @@
 """Tests for user model."""
 import pytest
 from pydantic import ValidationError
-from src.note_gen.models.user import User
+from note_gen.models.user import User
 
 
 def test_user_init_valid():

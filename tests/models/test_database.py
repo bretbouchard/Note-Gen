@@ -1,9 +1,9 @@
 """Tests for database models."""
 import pytest
 from unittest.mock import patch, MagicMock
-from src.note_gen.models.database import DatabaseConfig
-from src.note_gen.core.enums import ValidationLevel
-from src.note_gen.validation.base_validation import ValidationResult
+from note_gen.models.database import DatabaseConfig
+from note_gen.core.enums import ValidationLevel
+from note_gen.validation.base_validation import ValidationResult
 
 
 def test_database_config_init():
